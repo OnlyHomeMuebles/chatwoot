@@ -34,6 +34,12 @@ class Api::V1::Accounts::TicketsController < Api::V1::Accounts::BaseController
 
   private
 
+  # authorize the record when we have one so the policy can apply
+  # per-ticket rules (e.g. agents deleting their own tickets)
+  def check_authorization
+    @ticket.present? ? authorize(@ticket) : super
+  end
+
   def fetch_ticket
     @ticket = Current.account.tickets.find(params[:id])
   end

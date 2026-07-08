@@ -98,7 +98,7 @@ RSpec.describe 'Tickets API', type: :request do
   describe 'DELETE /api/v1/accounts/{account.id}/tickets/{id}' do
     let!(:ticket) { create(:ticket, account: account) }
 
-    context 'when it is an agent' do
+    context 'when it is an agent and the ticket is not theirs' do
       it 'returns unauthorized' do
         delete "/api/v1/accounts/#{account.id}/tickets/#{ticket.id}",
                headers: agent.create_new_auth_token,
@@ -108,8 +108,34 @@ RSpec.describe 'Tickets API', type: :request do
       end
     end
 
-    context 'when it is an administrator' do
+    context 'when it is an agent and the ticket was created by them' do
       it 'deletes the ticket' do
+        own_ticket = create(:ticket, account: account, creator: agent)
+
+        delete "/api/v1/accounts/#{account.id}/tickets/#{own_ticket.id}",
+               headers: agent.create_new_auth_token,
+               as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(Ticket.exists?(own_ticket.id)).to be(false)
+      end
+    end
+
+    context 'when it is an agent and the ticket is assigned to them' do
+      it 'deletes the ticket' do
+        assigned_ticket = create(:ticket, account: account, assignee: agent)
+
+        delete "/api/v1/accounts/#{account.id}/tickets/#{assigned_ticket.id}",
+               headers: agent.create_new_auth_token,
+               as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(Ticket.exists?(assigned_ticket.id)).to be(false)
+      end
+    end
+
+    context 'when it is an administrator' do
+      it 'deletes any ticket' do
         delete "/api/v1/accounts/#{account.id}/tickets/#{ticket.id}",
                headers: administrator.create_new_auth_token,
                as: :json
