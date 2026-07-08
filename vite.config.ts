@@ -44,6 +44,11 @@ if (isLibraryMode) {
 }
 
 export default defineConfig({
+  server: {
+    // Docker dev: Rails proxies asset requests to this dev server using the
+    // internal hostname "vite", which Vite 6 blocks by default (allowedHosts).
+    allowedHosts: true,
+  },
   plugins: plugins,
   build: {
     rollupOptions: {
