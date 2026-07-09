@@ -495,6 +495,19 @@ const menuItems = computed(() => {
       ],
     },
     {
+      name: 'Tickets',
+      label: t('SIDEBAR.TICKETS'),
+      icon: 'i-lucide-ticket',
+      children: [
+        {
+          name: 'All Tickets',
+          label: t('SIDEBAR.ALL_TICKETS'),
+          to: accountScopedRoute('tickets_index'),
+          activeOn: ['tickets_index'],
+        },
+      ],
+    },
+    {
       name: 'Campaigns',
       label: t('SIDEBAR.CAMPAIGNS'),
       icon: 'i-lucide-megaphone',
