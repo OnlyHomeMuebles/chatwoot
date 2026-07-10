@@ -1,0 +1,47 @@
+{
+  "TICKETS": {
+    "HEADER": "Tickets",
+    "NEW_TICKET": "Nuevo ticket",
+    "LOADING": "Cargando tickets...",
+    "EMPTY_STATE": "No se encontraron tickets",
+    "UNASSIGNED": "Sin asignar",
+    "FILTERS": {
+      "ALL": "Todos",
+      "MINE": "Mis tickets"
+    },
+    "STATUS": {
+      "OPEN": "Abierto",
+      "PENDING": "Pendiente",
+      "RESOLVED": "Resuelto",
+      "CLOSED": "Cerrado"
+    },
+    "TABLE": {
+      "NUMBER": "#",
+      "TITLE": "Título",
+      "STATUS": "Estado",
+      "ASSIGNEE": "Asignado a",
+      "CREATED_AT": "Creado"
+    },
+    "CREATE": {
+      "TITLE": "Crear ticket",
+      "FORM_TITLE_LABEL": "Título",
+      "FORM_TITLE_PLACEHOLDER": "¿Cuál es el problema?",
+      "FORM_DESCRIPTION_LABEL": "Descripción",
+      "FORM_DESCRIPTION_PLACEHOLDER": "Agrega más detalles (opcional)",
+      "CONFIRM": "Crear",
+      "SUCCESS": "Ticket creado correctamente",
+      "ERROR": "Hubo un error al crear el ticket"
+    },
+    "UPDATE": {
+      "SUCCESS": "Ticket actualizado",
+      "ERROR": "Hubo un error al actualizar el ticket"
+    },
+    "DELETE": {
+      "TITLE": "Eliminar ticket",
+      "DESCRIPTION": "¿Seguro que quieres eliminar este ticket? Esta acción no se puede deshacer.",
+      "CONFIRM": "Eliminar",
+      "SUCCESS": "Ticket eliminado",
+      "ERROR": "Hubo un error al eliminar el ticket"
+    }
+  }
+}
