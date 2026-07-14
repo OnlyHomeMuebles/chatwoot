@@ -22,12 +22,17 @@
       "ASSIGNEE": "Asignado a",
       "CREATED_AT": "Creado"
     },
+    "CONVERSATION": {
+      "EMPTY": "No hay tickets vinculados a esta conversación",
+      "CREATE": "Crear ticket"
+    },
     "CREATE": {
       "TITLE": "Crear ticket",
       "FORM_TITLE_LABEL": "Título",
       "FORM_TITLE_PLACEHOLDER": "¿Cuál es el problema?",
       "FORM_DESCRIPTION_LABEL": "Descripción",
       "FORM_DESCRIPTION_PLACEHOLDER": "Agrega más detalles (opcional)",
+      "FORM_STATUS_LABEL": "Estado",
       "CONFIRM": "Crear",
       "SUCCESS": "Ticket creado correctamente",
       "ERROR": "Hubo un error al crear el ticket"

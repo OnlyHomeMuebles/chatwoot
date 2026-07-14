@@ -3,10 +3,7 @@ class Api::V1::Accounts::TicketsController < Api::V1::Accounts::BaseController
   before_action :check_authorization
 
   def index
-    @tickets = Current.account.tickets.includes(:assignee, :creator).latest
-    @tickets = @tickets.where(status: params[:status]) if params[:status].present? && Ticket.statuses.key?(params[:status])
-    @tickets = @tickets.assigned_to(Current.user) if params[:mine].present?
-    @tickets = @tickets.where(assignee_id: params[:assignee_id]) if params[:assignee_id].present?
+    @tickets = apply_filters(Current.account.tickets.includes(:assignee, :creator).latest)
   end
 
   def show; end
@@ -33,6 +30,20 @@ class Api::V1::Accounts::TicketsController < Api::V1::Accounts::BaseController
   end
 
   private
+
+  def apply_filters(scope)
+    scope = filter_by_status(scope)
+    scope = scope.assigned_to(Current.user) if params[:mine].present?
+    scope = scope.where(assignee_id: params[:assignee_id]) if params[:assignee_id].present?
+    scope = scope.where(conversation_id: params[:conversation_id]) if params[:conversation_id].present?
+    scope
+  end
+
+  def filter_by_status(scope)
+    return scope unless params[:status].present? && Ticket.statuses.key?(params[:status])
+
+    scope.where(status: params[:status])
+  end
 
   # authorize the record when we have one so the policy can apply
   # per-ticket rules (e.g. agents deleting their own tickets)
