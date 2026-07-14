@@ -1,14 +1,18 @@
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
+import Input from 'dashboard/components-next/input/Input.vue';
+import TextArea from 'dashboard/components-next/textarea/TextArea.vue';
+import Select from 'dashboard/components-next/select/Select.vue';
 
 const props = defineProps({
+  // when present, the created ticket gets linked to this conversation
   conversationId: {
     type: [Number, String],
-    required: true,
+    default: null,
   },
 });
 
@@ -22,6 +26,13 @@ const newTicket = ref({ title: '', description: '', status: 'open' });
 
 const uiFlags = useMapGetter('tickets/getUIFlags');
 
+const statusOptions = computed(() =>
+  STATUSES.map(status => ({
+    value: status,
+    label: t(`TICKETS.STATUS.${status.toUpperCase()}`),
+  }))
+);
+
 const open = () => {
   newTicket.value = { title: '', description: '', status: 'open' };
   dialogRef.value.open();
@@ -30,9 +41,9 @@ const open = () => {
 const createTicket = async () => {
   if (!newTicket.value.title) return;
   try {
-    await store.dispatch('tickets/create', {
-      ticket: { ...newTicket.value, conversation_id: props.conversationId },
-    });
+    const ticket = { ...newTicket.value };
+    if (props.conversationId) ticket.conversation_id = props.conversationId;
+    await store.dispatch('tickets/create', { ticket });
     useAlert(t('TICKETS.CREATE.SUCCESS'));
     dialogRef.value.close();
   } catch (error) {
@@ -53,35 +64,25 @@ defineExpose({ open });
     @confirm="createTicket"
   >
     <div class="flex flex-col gap-4">
-      <label class="flex flex-col gap-1 text-sm text-n-slate-12">
-        {{ t('TICKETS.CREATE.FORM_TITLE_LABEL') }}
-        <input
-          v-model="newTicket.title"
-          type="text"
-          class="px-3 py-2 rounded-lg outline-none bg-n-alpha-black2 text-n-slate-12"
-          :placeholder="t('TICKETS.CREATE.FORM_TITLE_PLACEHOLDER')"
-        />
-      </label>
-      <label class="flex flex-col gap-1 text-sm text-n-slate-12">
-        {{ t('TICKETS.CREATE.FORM_DESCRIPTION_LABEL') }}
-        <textarea
-          v-model="newTicket.description"
-          rows="3"
-          class="px-3 py-2 rounded-lg outline-none resize-none bg-n-alpha-black2 text-n-slate-12"
-          :placeholder="t('TICKETS.CREATE.FORM_DESCRIPTION_PLACEHOLDER')"
-        />
-      </label>
-      <label class="flex flex-col gap-1 text-sm text-n-slate-12">
-        {{ t('TICKETS.CREATE.FORM_STATUS_LABEL') }}
-        <select
-          v-model="newTicket.status"
-          class="px-3 py-2 rounded-lg outline-none cursor-pointer bg-n-alpha-black2 text-n-slate-12"
-        >
-          <option v-for="status in STATUSES" :key="status" :value="status">
-            {{ t(`TICKETS.STATUS.${status.toUpperCase()}`) }}
-          </option>
-        </select>
-      </label>
+      <Input
+        v-model="newTicket.title"
+        :label="t('TICKETS.CREATE.FORM_TITLE_LABEL')"
+        :placeholder="t('TICKETS.CREATE.FORM_TITLE_PLACEHOLDER')"
+        autofocus
+      />
+      <TextArea
+        v-model="newTicket.description"
+        :label="t('TICKETS.CREATE.FORM_DESCRIPTION_LABEL')"
+        :placeholder="t('TICKETS.CREATE.FORM_DESCRIPTION_PLACEHOLDER')"
+        :max-length="2000"
+        auto-height
+      />
+      <div class="flex flex-col gap-1">
+        <span class="mb-0.5 text-sm font-medium text-n-slate-12">
+          {{ t('TICKETS.CREATE.FORM_STATUS_LABEL') }}
+        </span>
+        <Select v-model="newTicket.status" :options="statusOptions" />
+      </div>
     </div>
   </Dialog>
 </template>

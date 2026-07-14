@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import Button from 'dashboard/components-next/button/Button.vue';
+import Select from 'dashboard/components-next/select/Select.vue';
 import CreateTicketDialog from 'dashboard/components/widgets/conversation/CreateTicketDialog.vue';
 
 const props = defineProps({
@@ -32,22 +33,26 @@ const conversationTickets = computed(() =>
   )
 );
 
-const statusBadgeClass = status => {
+const statusOptions = computed(() =>
+  STATUSES.map(status => ({
+    value: status,
+    label: t(`TICKETS.STATUS.${status.toUpperCase()}`),
+  }))
+);
+
+const statusDotClass = status => {
   const classes = {
-    open: 'bg-n-teal-3 text-n-teal-11',
-    pending: 'bg-n-amber-3 text-n-amber-11',
-    resolved: 'bg-n-blue-3 text-n-blue-11',
-    closed: 'bg-n-slate-3 text-n-slate-11',
+    open: 'bg-n-teal-9',
+    pending: 'bg-n-amber-9',
+    resolved: 'bg-n-blue-9',
+    closed: 'bg-n-slate-9',
   };
   return classes[status] || classes.open;
 };
 
-const updateStatus = async (ticket, event) => {
+const updateStatus = async (ticket, status) => {
   try {
-    await store.dispatch('tickets/update', {
-      id: ticket.id,
-      status: event.target.value,
-    });
+    await store.dispatch('tickets/update', { id: ticket.id, status });
     useAlert(t('TICKETS.UPDATE.SUCCESS'));
   } catch (error) {
     useAlert(t('TICKETS.UPDATE.ERROR'));
@@ -63,21 +68,22 @@ const updateStatus = async (ticket, event) => {
     <div
       v-for="ticket in conversationTickets"
       :key="ticket.id"
-      class="flex items-center justify-between gap-2 p-2 rounded-lg bg-n-alpha-1"
+      class="flex flex-col gap-1.5 p-2 rounded-lg bg-n-alpha-1"
     >
-      <p class="min-w-0 text-sm font-medium truncate text-n-slate-12">
-        {{ ticket.ticket_number }} · {{ ticket.title }}
-      </p>
-      <select
-        :value="ticket.status"
-        class="px-2 py-1 text-xs font-medium border-0 rounded-lg cursor-pointer shrink-0"
-        :class="statusBadgeClass(ticket.status)"
-        @change="updateStatus(ticket, $event)"
-      >
-        <option v-for="status in STATUSES" :key="status" :value="status">
-          {{ t(`TICKETS.STATUS.${status.toUpperCase()}`) }}
-        </option>
-      </select>
+      <div class="flex items-center gap-1.5 min-w-0">
+        <span
+          class="rounded-full size-2 shrink-0"
+          :class="statusDotClass(ticket.status)"
+        />
+        <p class="min-w-0 mb-0 text-sm font-medium truncate text-n-slate-12">
+          {{ ticket.ticket_number }} · {{ ticket.title }}
+        </p>
+      </div>
+      <Select
+        :options="statusOptions"
+        :model-value="ticket.status"
+        @update:model-value="status => updateStatus(ticket, status)"
+      />
     </div>
     <Button
       :label="t('TICKETS.CONVERSATION.CREATE')"

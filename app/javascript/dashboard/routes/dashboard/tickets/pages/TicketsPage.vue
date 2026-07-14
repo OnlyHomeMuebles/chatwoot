@@ -4,8 +4,14 @@ import { useI18n } from 'vue-i18n';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import { dynamicTime } from 'shared/helpers/timeHelper';
+import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
+import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
+import Select from 'dashboard/components-next/select/Select.vue';
+import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
+import TabBar from 'dashboard/components-next/tabbar/TabBar.vue';
+import CreateTicketDialog from 'dashboard/components/widgets/conversation/CreateTicketDialog.vue';
 
 const store = useStore();
 const { t } = useI18n();
@@ -17,7 +23,6 @@ const showMineOnly = ref(false);
 const createDialogRef = ref(null);
 const deleteDialogRef = ref(null);
 const ticketToDelete = ref(null);
-const newTicket = ref({ title: '', description: '' });
 
 const tickets = useMapGetter('tickets/getTickets');
 const uiFlags = useMapGetter('tickets/getUIFlags');
@@ -28,6 +33,34 @@ onMounted(() => {
   store.dispatch('tickets/get');
   store.dispatch('agents/get');
 });
+
+const statusTabs = computed(() => [
+  { label: t('TICKETS.FILTERS.ALL'), value: 'all' },
+  ...STATUSES.map(status => ({
+    label: t(`TICKETS.STATUS.${status.toUpperCase()}`),
+    value: status,
+  })),
+]);
+
+const activeTabIndex = computed(() =>
+  statusTabs.value.findIndex(tab => tab.value === statusFilter.value)
+);
+
+const onTabChange = tab => {
+  statusFilter.value = tab.value;
+};
+
+const statusOptions = computed(() =>
+  STATUSES.map(status => ({
+    value: status,
+    label: t(`TICKETS.STATUS.${status.toUpperCase()}`),
+  }))
+);
+
+const assigneeOptions = computed(() => [
+  { value: '', label: t('TICKETS.UNASSIGNED') },
+  ...agents.value.map(agent => ({ value: agent.id, label: agent.name })),
+]);
 
 const filteredTickets = computed(() => {
   let list = tickets.value;
@@ -42,49 +75,30 @@ const filteredTickets = computed(() => {
   return list;
 });
 
-const statusBadgeClass = status => {
+const statusDotClass = status => {
   const classes = {
-    open: 'bg-n-teal-3 text-n-teal-11',
-    pending: 'bg-n-amber-3 text-n-amber-11',
-    resolved: 'bg-n-blue-3 text-n-blue-11',
-    closed: 'bg-n-slate-3 text-n-slate-11',
+    open: 'bg-n-teal-9',
+    pending: 'bg-n-amber-9',
+    resolved: 'bg-n-blue-9',
+    closed: 'bg-n-slate-9',
   };
   return classes[status] || classes.open;
 };
 
-const openCreateDialog = () => {
-  newTicket.value = { title: '', description: '' };
-  createDialogRef.value.open();
-};
-
-const createTicket = async () => {
-  if (!newTicket.value.title) return;
+const updateStatus = async (ticket, status) => {
   try {
-    await store.dispatch('tickets/create', { ticket: newTicket.value });
-    useAlert(t('TICKETS.CREATE.SUCCESS'));
-    createDialogRef.value.close();
-  } catch (error) {
-    useAlert(t('TICKETS.CREATE.ERROR'));
-  }
-};
-
-const updateStatus = async (ticket, event) => {
-  try {
-    await store.dispatch('tickets/update', {
-      id: ticket.id,
-      status: event.target.value,
-    });
+    await store.dispatch('tickets/update', { id: ticket.id, status });
     useAlert(t('TICKETS.UPDATE.SUCCESS'));
   } catch (error) {
     useAlert(t('TICKETS.UPDATE.ERROR'));
   }
 };
 
-const updateAssignee = async (ticket, event) => {
+const updateAssignee = async (ticket, assigneeId) => {
   try {
     await store.dispatch('tickets/assign', {
       id: ticket.id,
-      assigneeId: event.target.value || null,
+      assigneeId: assigneeId || null,
     });
     useAlert(t('TICKETS.UPDATE.SUCCESS'));
   } catch (error) {
@@ -122,39 +136,22 @@ const deleteTicket = async () => {
         :label="t('TICKETS.NEW_TICKET')"
         icon="i-lucide-plus"
         sm
-        @click="openCreateDialog"
+        @click="createDialogRef.open()"
       />
     </header>
 
-    <div class="flex items-center gap-2 px-6 py-3 border-b border-n-weak">
-      <button
-        class="px-3 py-1 text-sm rounded-lg"
-        :class="
-          statusFilter === 'all'
-            ? 'bg-n-brand/10 text-n-blue-11'
-            : 'text-n-slate-11 hover:bg-n-alpha-2'
-        "
-        @click="statusFilter = 'all'"
-      >
-        {{ t('TICKETS.FILTERS.ALL') }}
-      </button>
-      <button
-        v-for="status in STATUSES"
-        :key="status"
-        class="px-3 py-1 text-sm rounded-lg"
-        :class="
-          statusFilter === status
-            ? 'bg-n-brand/10 text-n-blue-11'
-            : 'text-n-slate-11 hover:bg-n-alpha-2'
-        "
-        @click="statusFilter = status"
-      >
-        {{ t(`TICKETS.STATUS.${status.toUpperCase()}`) }}
-      </button>
+    <div
+      class="flex flex-wrap items-center gap-3 px-6 py-3 border-b border-n-weak"
+    >
+      <TabBar
+        :tabs="statusTabs"
+        :initial-active-tab="activeTabIndex"
+        @tab-changed="onTabChange"
+      />
       <label
-        class="flex items-center gap-1.5 ml-auto text-sm text-n-slate-11 cursor-pointer"
+        class="flex items-center gap-2 ml-auto text-sm cursor-pointer text-n-slate-11"
       >
-        <input v-model="showMineOnly" type="checkbox" class="cursor-pointer" />
+        <Checkbox v-model="showMineOnly" />
         {{ t('TICKETS.FILTERS.MINE') }}
       </label>
     </div>
@@ -164,7 +161,7 @@ const deleteTicket = async () => {
         v-if="uiFlags.isFetching"
         class="flex items-center justify-center py-12 text-n-slate-11"
       >
-        {{ t('TICKETS.LOADING') }}
+        <Spinner :size="24" />
       </div>
       <div
         v-else-if="!filteredTickets.length"
@@ -203,42 +200,46 @@ const deleteTicket = async () => {
               {{ ticket.ticket_number }}
             </td>
             <td class="px-4 py-3">
-              <p class="font-medium text-n-slate-12">{{ ticket.title }}</p>
-              <p v-if="ticket.description" class="text-n-slate-11 line-clamp-1">
+              <p class="mb-0 font-medium text-n-slate-12">
+                {{ ticket.title }}
+              </p>
+              <p
+                v-if="ticket.description"
+                class="mb-0 text-n-slate-11 line-clamp-1"
+              >
                 {{ ticket.description }}
               </p>
             </td>
             <td class="px-4 py-3">
-              <select
-                :value="ticket.status"
-                class="px-2 py-1 text-xs font-medium border-0 rounded-lg cursor-pointer"
-                :class="statusBadgeClass(ticket.status)"
-                @change="updateStatus(ticket, $event)"
-              >
-                <option
-                  v-for="status in STATUSES"
-                  :key="status"
-                  :value="status"
-                >
-                  {{ t(`TICKETS.STATUS.${status.toUpperCase()}`) }}
-                </option>
-              </select>
+              <div class="flex items-center gap-2">
+                <span
+                  class="rounded-full size-2 shrink-0"
+                  :class="statusDotClass(ticket.status)"
+                />
+                <Select
+                  :options="statusOptions"
+                  :model-value="ticket.status"
+                  @update:model-value="status => updateStatus(ticket, status)"
+                />
+              </div>
             </td>
             <td class="px-4 py-3">
-              <select
-                :value="ticket.assignee ? ticket.assignee.id : ''"
-                class="px-2 py-1 text-xs rounded-lg cursor-pointer bg-n-alpha-2 text-n-slate-12 border-0"
-                @change="updateAssignee(ticket, $event)"
-              >
-                <option value="">{{ t('TICKETS.UNASSIGNED') }}</option>
-                <option
-                  v-for="agent in agents"
-                  :key="agent.id"
-                  :value="agent.id"
-                >
-                  {{ agent.name }}
-                </option>
-              </select>
+              <div class="flex items-center gap-2">
+                <Avatar
+                  v-if="ticket.assignee"
+                  :name="ticket.assignee.name"
+                  :src="ticket.assignee.thumbnail"
+                  :size="24"
+                  rounded-full
+                />
+                <Select
+                  :options="assigneeOptions"
+                  :model-value="ticket.assignee ? ticket.assignee.id : ''"
+                  @update:model-value="
+                    assigneeId => updateAssignee(ticket, assigneeId)
+                  "
+                />
+              </div>
             </td>
             <td class="px-4 py-3 text-n-slate-11">
               {{ dynamicTime(new Date(ticket.created_at).getTime() / 1000) }}
@@ -257,35 +258,7 @@ const deleteTicket = async () => {
       </table>
     </div>
 
-    <Dialog
-      ref="createDialogRef"
-      :title="t('TICKETS.CREATE.TITLE')"
-      :confirm-button-label="t('TICKETS.CREATE.CONFIRM')"
-      :is-loading="uiFlags.isCreating"
-      :disable-confirm-button="!newTicket.title"
-      @confirm="createTicket"
-    >
-      <div class="flex flex-col gap-4">
-        <label class="flex flex-col gap-1 text-sm text-n-slate-12">
-          {{ t('TICKETS.CREATE.FORM_TITLE_LABEL') }}
-          <input
-            v-model="newTicket.title"
-            type="text"
-            class="px-3 py-2 rounded-lg outline-none bg-n-alpha-black2 text-n-slate-12"
-            :placeholder="t('TICKETS.CREATE.FORM_TITLE_PLACEHOLDER')"
-          />
-        </label>
-        <label class="flex flex-col gap-1 text-sm text-n-slate-12">
-          {{ t('TICKETS.CREATE.FORM_DESCRIPTION_LABEL') }}
-          <textarea
-            v-model="newTicket.description"
-            rows="4"
-            class="px-3 py-2 rounded-lg outline-none resize-none bg-n-alpha-black2 text-n-slate-12"
-            :placeholder="t('TICKETS.CREATE.FORM_DESCRIPTION_PLACEHOLDER')"
-          />
-        </label>
-      </div>
-    </Dialog>
+    <CreateTicketDialog ref="createDialogRef" />
 
     <Dialog
       ref="deleteDialogRef"
