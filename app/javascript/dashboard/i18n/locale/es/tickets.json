@@ -46,7 +46,8 @@
       "DESCRIPTION": "¿Seguro que quieres eliminar este ticket? Esta acción no se puede deshacer.",
       "CONFIRM": "Eliminar",
       "SUCCESS": "Ticket eliminado",
-      "ERROR": "Hubo un error al eliminar el ticket"
+      "ERROR": "Hubo un error al eliminar el ticket",
+      "FORBIDDEN": "No tienes permiso para eliminar este ticket. Solo pueden hacerlo su creador, el agente asignado o un administrador."
     }
   }
 }

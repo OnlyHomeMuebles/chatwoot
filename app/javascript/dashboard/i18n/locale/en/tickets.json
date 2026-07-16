@@ -46,7 +46,8 @@
       "DESCRIPTION": "Are you sure you want to delete this ticket? This action cannot be undone.",
       "CONFIRM": "Delete",
       "SUCCESS": "Ticket deleted",
-      "ERROR": "There was an error deleting the ticket"
+      "ERROR": "There was an error deleting the ticket",
+      "FORBIDDEN": "You don't have permission to delete this ticket. Only its creator, the assigned agent or an administrator can delete it."
     }
   }
 }

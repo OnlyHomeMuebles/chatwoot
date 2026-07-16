@@ -6,6 +6,7 @@ import { useAlert } from 'dashboard/composables';
 import { dynamicTime } from 'shared/helpers/timeHelper';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
+import Icon from 'dashboard/components-next/icon/Icon.vue';
 import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
@@ -116,7 +117,10 @@ const deleteTicket = async () => {
     await store.dispatch('tickets/delete', ticketToDelete.value.id);
     useAlert(t('TICKETS.DELETE.SUCCESS'));
   } catch (error) {
-    useAlert(t('TICKETS.DELETE.ERROR'));
+    const isForbidden = error?.response?.status === 401;
+    useAlert(
+      isForbidden ? t('TICKETS.DELETE.FORBIDDEN') : t('TICKETS.DELETE.ERROR')
+    );
   } finally {
     deleteDialogRef.value.close();
     ticketToDelete.value = null;
@@ -232,6 +236,12 @@ const deleteTicket = async () => {
                   :size="24"
                   rounded-full
                 />
+                <span
+                  v-else
+                  class="flex items-center justify-center rounded-full size-6 shrink-0 bg-n-alpha-2"
+                >
+                  <Icon icon="i-lucide-user" class="size-3.5 text-n-slate-10" />
+                </span>
                 <Select
                   :options="assigneeOptions"
                   :model-value="ticket.assignee ? ticket.assignee.id : ''"

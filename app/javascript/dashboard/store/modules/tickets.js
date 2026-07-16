@@ -68,11 +68,11 @@ export const actions = {
   },
   delete: async ({ commit }, id) => {
     commit(types.SET_TICKET_UI_FLAG, { isDeleting: true });
+    // no catch: rethrow the original axios error so callers can
+    // inspect the response status (e.g. permission denied)
     try {
       await TicketsAPI.delete(id);
       commit(types.DELETE_TICKET, id);
-    } catch (error) {
-      throw new Error(error);
     } finally {
       commit(types.SET_TICKET_UI_FLAG, { isDeleting: false });
     }
