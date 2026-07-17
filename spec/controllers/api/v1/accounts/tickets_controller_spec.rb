@@ -121,16 +121,16 @@ RSpec.describe 'Tickets API', type: :request do
       end
     end
 
-    context 'when it is an agent and the ticket is assigned to them' do
-      it 'deletes the ticket' do
+    context 'when it is an agent and the ticket is only assigned to them' do
+      it 'returns unauthorized' do
         assigned_ticket = create(:ticket, account: account, assignee: agent)
 
         delete "/api/v1/accounts/#{account.id}/tickets/#{assigned_ticket.id}",
                headers: agent.create_new_auth_token,
                as: :json
 
-        expect(response).to have_http_status(:success)
-        expect(Ticket.exists?(assigned_ticket.id)).to be(false)
+        expect(response).to have_http_status(:unauthorized)
+        expect(Ticket.exists?(assigned_ticket.id)).to be(true)
       end
     end
 

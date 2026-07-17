@@ -20,14 +20,14 @@ class TicketPolicy < ApplicationPolicy
   end
 
   def destroy?
-    @account_user.administrator? || ticket_owner?
+    @account_user.administrator? || ticket_creator?
   end
 
   private
 
-  # agents can delete tickets they created or that are assigned to them
-  def ticket_owner?
-    record.is_a?(Ticket) && [record.creator_id, record.assignee_id].compact.include?(@user.id)
+  # agents can only delete tickets they created themselves
+  def ticket_creator?
+    record.is_a?(Ticket) && record.creator_id == @user.id
   end
 end
 

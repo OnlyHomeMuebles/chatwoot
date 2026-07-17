@@ -47,7 +47,7 @@
       "CONFIRM": "Eliminar",
       "SUCCESS": "Ticket eliminado",
       "ERROR": "Hubo un error al eliminar el ticket",
-      "FORBIDDEN": "No tienes permiso para eliminar este ticket. Solo pueden hacerlo su creador, el agente asignado o un administrador."
+      "FORBIDDEN": "No tienes permiso para eliminar este ticket."
     }
   }
 }
