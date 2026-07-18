@@ -44,13 +44,13 @@ export const actions = {
       commit(types.SET_TICKET_UI_FLAG, { isCreating: false });
     }
   },
+  // update/assign have no catch on purpose: the original axios error is
+  // rethrown so callers can inspect the response status (permissions)
   update: async ({ commit }, { id, ...updateObj }) => {
     commit(types.SET_TICKET_UI_FLAG, { isUpdating: true });
     try {
       const response = await TicketsAPI.update(id, { ticket: updateObj });
       commit(types.EDIT_TICKET, response.data);
-    } catch (error) {
-      throw new Error(error);
     } finally {
       commit(types.SET_TICKET_UI_FLAG, { isUpdating: false });
     }
@@ -60,8 +60,6 @@ export const actions = {
     try {
       const response = await TicketsAPI.assign(id, assigneeId);
       commit(types.EDIT_TICKET, response.data);
-    } catch (error) {
-      throw new Error(error);
     } finally {
       commit(types.SET_TICKET_UI_FLAG, { isUpdating: false });
     }

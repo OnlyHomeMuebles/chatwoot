@@ -55,7 +55,11 @@ const updateStatus = async (ticket, status) => {
     await store.dispatch('tickets/update', { id: ticket.id, status });
     useAlert(t('TICKETS.UPDATE.SUCCESS'));
   } catch (error) {
-    useAlert(t('TICKETS.UPDATE.ERROR'));
+    useAlert(
+      error?.response?.status === 401
+        ? t('TICKETS.UPDATE.FORBIDDEN')
+        : t('TICKETS.UPDATE.ERROR')
+    );
   }
 };
 </script>

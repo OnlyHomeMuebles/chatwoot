@@ -39,7 +39,8 @@
     },
     "UPDATE": {
       "SUCCESS": "Ticket actualizado",
-      "ERROR": "Hubo un error al actualizar el ticket"
+      "ERROR": "Hubo un error al actualizar el ticket",
+      "FORBIDDEN": "No tienes permiso para modificar este ticket."
     },
     "DELETE": {
       "TITLE": "Eliminar ticket",

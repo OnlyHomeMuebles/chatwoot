@@ -67,9 +67,9 @@ RSpec.describe 'Tickets API', type: :request do
   end
 
   describe 'POST /api/v1/accounts/{account.id}/tickets/{id}/assign' do
-    let!(:ticket) { create(:ticket, account: account) }
+    let!(:ticket) { create(:ticket, account: account, creator: agent) }
 
-    context 'when it is an authenticated user' do
+    context 'when it is the ticket creator' do
       it 'assigns an agent of the account' do
         post "/api/v1/accounts/#{account.id}/tickets/#{ticket.id}/assign",
              params: { assignee_id: agent.id },
@@ -91,6 +91,65 @@ RSpec.describe 'Tickets API', type: :request do
 
         expect(response).to have_http_status(:success)
         expect(ticket.reload.assignee_id).to be_nil
+      end
+    end
+
+    context 'when it is an agent unrelated to the ticket' do
+      it 'returns unauthorized' do
+        other_agent = create(:user, account: account, role: :agent)
+
+        post "/api/v1/accounts/#{account.id}/tickets/#{ticket.id}/assign",
+             params: { assignee_id: other_agent.id },
+             headers: other_agent.create_new_auth_token,
+             as: :json
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(ticket.reload.assignee_id).to be_nil
+      end
+    end
+  end
+
+  describe 'PATCH /api/v1/accounts/{account.id}/tickets/{id}' do
+    let!(:ticket) { create(:ticket, account: account, creator: agent) }
+
+    context 'when it is the assigned agent' do
+      it 'updates the status' do
+        assignee = create(:user, account: account, role: :agent)
+        ticket.update!(assignee: assignee)
+
+        patch "/api/v1/accounts/#{account.id}/tickets/#{ticket.id}",
+              params: { ticket: { status: 'resolved' } },
+              headers: assignee.create_new_auth_token,
+              as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(ticket.reload.status).to eq('resolved')
+      end
+    end
+
+    context 'when it is an agent unrelated to the ticket' do
+      it 'returns unauthorized' do
+        other_agent = create(:user, account: account, role: :agent)
+
+        patch "/api/v1/accounts/#{account.id}/tickets/#{ticket.id}",
+              params: { ticket: { status: 'closed' } },
+              headers: other_agent.create_new_auth_token,
+              as: :json
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(ticket.reload.status).to eq('open')
+      end
+    end
+
+    context 'when it is an administrator' do
+      it 'updates any ticket' do
+        patch "/api/v1/accounts/#{account.id}/tickets/#{ticket.id}",
+              params: { ticket: { status: 'closed' } },
+              headers: administrator.create_new_auth_token,
+              as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(ticket.reload.status).to eq('closed')
       end
     end
   end

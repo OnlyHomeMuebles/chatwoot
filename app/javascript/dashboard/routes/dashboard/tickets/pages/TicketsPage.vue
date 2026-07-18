@@ -86,12 +86,17 @@ const statusDotClass = status => {
   return classes[status] || classes.open;
 };
 
+const updateErrorMessage = error =>
+  error?.response?.status === 401
+    ? t('TICKETS.UPDATE.FORBIDDEN')
+    : t('TICKETS.UPDATE.ERROR');
+
 const updateStatus = async (ticket, status) => {
   try {
     await store.dispatch('tickets/update', { id: ticket.id, status });
     useAlert(t('TICKETS.UPDATE.SUCCESS'));
   } catch (error) {
-    useAlert(t('TICKETS.UPDATE.ERROR'));
+    useAlert(updateErrorMessage(error));
   }
 };
 
@@ -103,7 +108,7 @@ const updateAssignee = async (ticket, assigneeId) => {
     });
     useAlert(t('TICKETS.UPDATE.SUCCESS'));
   } catch (error) {
-    useAlert(t('TICKETS.UPDATE.ERROR'));
+    useAlert(updateErrorMessage(error));
   }
 };
 

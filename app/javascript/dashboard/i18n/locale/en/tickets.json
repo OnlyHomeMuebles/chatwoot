@@ -39,7 +39,8 @@
     },
     "UPDATE": {
       "SUCCESS": "Ticket updated",
-      "ERROR": "There was an error updating the ticket"
+      "ERROR": "There was an error updating the ticket",
+      "FORBIDDEN": "You don't have permission to modify this ticket."
     },
     "DELETE": {
       "TITLE": "Delete ticket",
