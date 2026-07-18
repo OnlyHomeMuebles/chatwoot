@@ -50,11 +50,16 @@ const statusDotClass = status => {
   return classes[status] || classes.open;
 };
 
+// bumping this key remounts the selects so they snap back to the
+// real value when the server rejects a change (e.g. no permission)
+const selectsRefreshKey = ref(0);
+
 const updateStatus = async (ticket, status) => {
   try {
     await store.dispatch('tickets/update', { id: ticket.id, status });
     useAlert(t('TICKETS.UPDATE.SUCCESS'));
   } catch (error) {
+    selectsRefreshKey.value += 1;
     useAlert(
       error?.response?.status === 401
         ? t('TICKETS.UPDATE.FORBIDDEN')
@@ -84,6 +89,7 @@ const updateStatus = async (ticket, status) => {
         </p>
       </div>
       <Select
+        :key="`status-${ticket.id}-${selectsRefreshKey}`"
         :options="statusOptions"
         :model-value="ticket.status"
         @update:model-value="status => updateStatus(ticket, status)"

@@ -91,11 +91,16 @@ const updateErrorMessage = error =>
     ? t('TICKETS.UPDATE.FORBIDDEN')
     : t('TICKETS.UPDATE.ERROR');
 
+// bumping this key remounts the row selects so they snap back to the
+// real value when the server rejects a change (e.g. no permission)
+const selectsRefreshKey = ref(0);
+
 const updateStatus = async (ticket, status) => {
   try {
     await store.dispatch('tickets/update', { id: ticket.id, status });
     useAlert(t('TICKETS.UPDATE.SUCCESS'));
   } catch (error) {
+    selectsRefreshKey.value += 1;
     useAlert(updateErrorMessage(error));
   }
 };
@@ -108,6 +113,7 @@ const updateAssignee = async (ticket, assigneeId) => {
     });
     useAlert(t('TICKETS.UPDATE.SUCCESS'));
   } catch (error) {
+    selectsRefreshKey.value += 1;
     useAlert(updateErrorMessage(error));
   }
 };
@@ -226,6 +232,7 @@ const deleteTicket = async () => {
                   :class="statusDotClass(ticket.status)"
                 />
                 <Select
+                  :key="`status-${ticket.id}-${selectsRefreshKey}`"
                   :options="statusOptions"
                   :model-value="ticket.status"
                   @update:model-value="status => updateStatus(ticket, status)"
@@ -248,6 +255,7 @@ const deleteTicket = async () => {
                   <Icon icon="i-lucide-user" class="size-3.5 text-n-slate-10" />
                 </span>
                 <Select
+                  :key="`assignee-${ticket.id}-${selectsRefreshKey}`"
                   :options="assigneeOptions"
                   :model-value="ticket.assignee ? ticket.assignee.id : ''"
                   @update:model-value="
