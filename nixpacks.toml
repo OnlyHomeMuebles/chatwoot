@@ -1,0 +1,15 @@
+[variables]
+NIXPACKS_NODE_VERSION = "23"
+NIXPACKS_METADATA = "rails"
+BUNDLE_WITHOUT = "development:test"
+NODE_ENV = "production"
+RAILS_ENV = "production"
+RAILS_SERVE_STATIC_FILES = "true"
+RAILS_LOG_TO_STDOUT = "true"
+PATH = "/usr/local/bin:/usr/bin:/bin"
+ENABLE_ACCOUNT_SEEDING = "true"
+NODE_OPTIONS = "--max-old-space-size=8192"
+
+
+[start]
+cmd = "bash deployment/start.sh"

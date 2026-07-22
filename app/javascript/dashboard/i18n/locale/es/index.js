@@ -38,6 +38,7 @@ import settings from './settings.json';
 import signup from './signup.json';
 import sla from './sla.json';
 import teamsSettings from './teamsSettings.json';
+import tickets from './tickets.json';
 import whatsappTemplates from './whatsappTemplates.json';
 
 export default {
@@ -81,5 +82,6 @@ export default {
   ...signup,
   ...sla,
   ...teamsSettings,
+  ...tickets,
   ...whatsappTemplates,
 };
