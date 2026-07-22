@@ -39,6 +39,29 @@ namespace :knowledge do
 end
 
 namespace :knowledge do
+  desc 'Demo end-to-end: agente LLM + tool RAG. rake "knowledge:agent_demo[tiene garantia mi sofa]"'
+  task :agent_demo, [:question] => :environment do |_t, args|
+    question = args[:question].presence || 'Compre una cama de madera hace 8 meses y el enchapado se levanto. Tiene garantia?'
+
+    Agents.configure { |config| config.openai_api_key = ENV.fetch('OPENAI_API_KEY') }
+
+    agent = Agents::Agent.new(
+      name: 'Asistente Only Home (demo)',
+      instructions: 'Eres un asistente de soporte de Only Home, tienda de muebles en Colombia. ' \
+                    'Antes de responder usa SIEMPRE la herramienta search_knowledge_base y basa tu ' \
+                    'respuesta unicamente en lo que devuelva, mencionando la fuente. Si la base de ' \
+                    'conocimiento no tiene la respuesta, dilo honestamente. Responde en espanol, breve.',
+      model: 'gpt-4.1-mini',
+      tools: [KnowledgeBaseSearchTool.new]
+    )
+
+    result = Agents::Runner.with_agents(agent).run(question, context: { account_id: Account.first.id })
+    puts "PREGUNTA: #{question}"
+    puts "RESPUESTA: #{result.output}"
+  end
+end
+
+namespace :knowledge do
   desc 'Search the knowledge base: rake "knowledge:search[como funciona la garantia]"'
   task :search, [:query] => :environment do |_t, args|
     abort 'Usage: rake "knowledge:search[query]"' if args[:query].blank?
