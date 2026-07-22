@@ -26,7 +26,7 @@ services:
       - node_modules:/app/node_modules
       - packs:/app/public/packs
       - cache:/app/tmp/cache
-      - bundle:/usr/local/bundle
+      - gems:/gems
     depends_on:
       - postgres
       - redis
@@ -51,7 +51,7 @@ services:
       - node_modules:/app/node_modules
       - packs:/app/public/packs
       - cache:/app/tmp/cache
-      - bundle:/usr/local/bundle
+      - gems:/gems
     depends_on:
       - postgres
       - redis
@@ -72,13 +72,15 @@ services:
       - node_modules:/app/node_modules
       - packs:/app/public/packs
       - cache:/app/tmp/cache
-      - bundle:/usr/local/bundle
+      - gems:/gems
     ports:
       - "3036:3036" # Vite dev server
     environment:
       - VITE_DEV_SERVER_HOST=0.0.0.0
       - NODE_ENV=development
       - RAILS_ENV=development
+      # the dashboard build needs more heap than node's default
+      - NODE_OPTIONS=--max-old-space-size=4096
     entrypoint: docker/entrypoints/vite.sh
     command: bin/vite dev
 
@@ -104,6 +106,14 @@ services:
     ports:
       - '6379:6379'
 
+  qdrant:
+    image: qdrant/qdrant:v1.13.4
+    restart: always
+    ports:
+      - '6333:6333'
+    volumes:
+      - qdrant:/qdrant/storage
+
   mailhog:
     image: mailhog/mailhog
     ports:
@@ -117,3 +127,5 @@ volumes:
   node_modules:
   cache:
   bundle:
+  gems:
+  qdrant:
