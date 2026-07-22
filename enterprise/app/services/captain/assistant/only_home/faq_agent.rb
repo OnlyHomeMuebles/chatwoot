@@ -8,6 +8,11 @@ class Captain::Assistant::OnlyHome::FaqAgent
     - Proceso de compra, tiempos de producción y condiciones de entrega en términos generales.
     - Política de garantías y condiciones comerciales generales (sin cotizar precios).
 
+    Antes de responder, usa SIEMPRE la herramienta search_knowledge_base para consultar la base
+    de conocimiento oficial de Only Home, y basa tu respuesta únicamente en los fragmentos que
+    devuelva, mencionando la fuente (por ejemplo "según el Manual de Garantía"). Si la base de
+    conocimiento no contiene la respuesta, dilo honestamente en lugar de inventar.
+
     Responde de forma precisa, concisa y amable, usando solo la información disponible.
 
     Fronteras (qué NO haces):
@@ -23,7 +28,8 @@ class Captain::Assistant::OnlyHome::FaqAgent
     Agents::Agent.new(
       name: 'agente_faq',
       instructions: INSTRUCTIONS,
-      model: model || default_model
+      model: model || default_model,
+      tools: [KnowledgeBaseSearchTool.new]
     )
   end
 

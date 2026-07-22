@@ -10,6 +10,15 @@ RSpec.describe Captain::Assistant::OnlyHome::FaqAgent do
     expect(agent.model).to eq('gpt-4.1-mini')
   end
 
+  it 'tiene la tool de busqueda en la base de conocimiento (RAG)' do
+    expect(agent.tools.map(&:class)).to include(KnowledgeBaseSearchTool)
+  end
+
+  it 'instruye usar la base de conocimiento y citar la fuente' do
+    expect(described_class::INSTRUCTIONS).to include('search_knowledge_base')
+    expect(described_class::INSTRUCTIONS).to match(/mencionando la fuente/i)
+  end
+
   describe 'instrucciones' do
     it 'delimitan su responsabilidad al conocimiento de producto y políticas' do
       expect(described_class::INSTRUCTIONS).to match(/Conocimiento \(FAQ\)/)
