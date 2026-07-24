@@ -53,6 +53,24 @@ RSpec.describe OnlyHome::ChatwootClient do
     client.update_custom_attributes(42, { 'ciudad' => 'Bogotá' })
   end
 
+  it 'asigna la conversación a un equipo (handoff humano)' do
+    expect(HTTParty).to receive(:post).with(
+      'http://cw.test/api/v1/accounts/7/conversations/42/assignments',
+      hash_including(body: { team_id: 9 }.to_json)
+    ).and_return(ok)
+
+    client.assign(42, team_id: 9)
+  end
+
+  it 'cambia el estado de la conversación (ej. open para un humano)' do
+    expect(HTTParty).to receive(:post).with(
+      'http://cw.test/api/v1/accounts/7/conversations/42/toggle_status',
+      hash_including(body: { status: 'open' }.to_json)
+    ).and_return(ok)
+
+    client.update_status(42, 'open')
+  end
+
   it 'lanza ApiError ante una respuesta no exitosa' do
     allow(HTTParty).to receive(:post).and_return(http_response(success: false, code: 401, body: 'unauthorized'))
 

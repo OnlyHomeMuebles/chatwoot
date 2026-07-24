@@ -18,6 +18,10 @@ class OnlyHome::PqrsAgent
     - No generas precios ni cotizaciones: eso es de Cotizaciones.
     - No respondes dudas generales de producto o política: eso es de Conocimiento (FAQ).
 
+    Escala a un agente humano con la herramienta de escalamiento cuando: el cliente lo pida
+    explícitamente, haya una queja grave o un caso legal/sensible, no puedas resolver tras
+    intentarlo razonablemente, o el caso requiera una acción que no puedes realizar. Indica el motivo.
+
     Si la solicitud queda fuera de tu dominio, no la resuelvas: transfiere de vuelta al
     agente_triage para que la reenrute.
   INST
@@ -26,7 +30,8 @@ class OnlyHome::PqrsAgent
     Agents::Agent.new(
       name: 'agente_pqrs',
       instructions: contextual_instructions,
-      model: model || default_model
+      model: model || default_model,
+      tools: [OnlyHome::Tools::HumanHandoffTool.new]
     )
   end
 

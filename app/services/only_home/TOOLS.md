@@ -32,6 +32,16 @@ Autenticación por header `api_access_token` (token de un usuario o de un Agent 
 | `OnlyHome::Tools::PrivateNoteTool` | Deja una nota privada interna | `POST /api/v1/accounts/:account_id/conversations/:id/messages` con `private: true` |
 | `OnlyHome::Tools::AddLabelTool` | Agrega una etiqueta (conserva las existentes) | `GET` + `POST /api/v1/accounts/:account_id/conversations/:id/labels` (lee las actuales y envía la unión) |
 | `OnlyHome::Tools::UpdateAttributeTool` | Guarda un atributo personalizado | `POST /api/v1/accounts/:account_id/conversations/:id/custom_attributes` |
+| `OnlyHome::Tools::HumanHandoffTool` | Escala a un humano: nota con motivo, etiqueta `escalado-humano`, (opcional) asigna a equipo y reabre | `messages` (nota) + `labels` + `assignments` + `toggle_status` |
+
+## Escalamiento a humano (INT-02)
+
+`HumanHandoffTool` es equivalente al handoff a humano de Captain. Cuando un agente no puede resolver,
+lo invoca con un `reason`: deja el motivo como **nota privada**, agrega la etiqueta `escalado-humano`,
+opcionalmente asigna a un equipo (`tool_context.state[:human_team_id]`) y **reabre la conversación**
+(`status: open`) para que un humano la tome con todo el contexto. Los especialistas la llevan adjunta y
+sus instrucciones definen **cuándo derivar** (petición explícita del cliente, queja grave/legal, no poder
+resolver tras intentarlo, o casos que requieren acción humana).
 
 ## Uso
 

@@ -43,6 +43,16 @@ class OnlyHome::ChatwootClient
     post("conversations/#{conversation_id}/custom_attributes", { custom_attributes: attributes })
   end
 
+  # POST /conversations/:id/assignments — assign to an agent or a team (for human handoff).
+  def assign(conversation_id, assignee_id: nil, team_id: nil)
+    post("conversations/#{conversation_id}/assignments", { assignee_id: assignee_id, team_id: team_id }.compact)
+  end
+
+  # POST /conversations/:id/toggle_status — e.g. set 'open' so a human agent picks it up.
+  def update_status(conversation_id, status)
+    post("conversations/#{conversation_id}/toggle_status", { status: status })
+  end
+
   private
 
   def post(path, body)

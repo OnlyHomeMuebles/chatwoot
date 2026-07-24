@@ -25,5 +25,13 @@ RSpec.describe OnlyHome::FaqAgent do
     it 'devuelven el control al triage cuando la solicitud no es de su dominio' do
       expect(described_class::INSTRUCTIONS).to include('agente_triage')
     end
+
+    it 'definen criterios de cuándo escalar a un humano' do
+      expect(described_class::INSTRUCTIONS).to match(/Escala a un agente humano/i)
+    end
+  end
+
+  it 'incluye la herramienta de escalamiento a humano' do
+    expect(agent.tools.map(&:class)).to include(OnlyHome::Tools::HumanHandoffTool)
   end
 end
