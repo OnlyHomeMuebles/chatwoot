@@ -32,6 +32,11 @@ class OnlyHome::ChatwootClient
     Array(get("conversations/#{conversation_id}/labels")['payload'])
   end
 
+  # GET /conversations/:id/messages — messages of the conversation (used to give the copilot context).
+  def conversation_messages(conversation_id)
+    Array(get("conversations/#{conversation_id}/messages")['payload'])
+  end
+
   # POST /conversations/:id/labels — the endpoint REPLACES the set, so merge to add without removing.
   def add_labels(conversation_id, new_labels)
     merged = (labels(conversation_id) + Array(new_labels)).uniq

@@ -71,6 +71,14 @@ RSpec.describe OnlyHome::ChatwootClient do
     client.update_status(42, 'open')
   end
 
+  it 'lee los mensajes de la conversación (contexto del copiloto)' do
+    allow(HTTParty).to receive(:get)
+      .with('http://cw.test/api/v1/accounts/7/conversations/42/messages', anything)
+      .and_return(http_response(success: true, parsed: { 'payload' => [{ 'content' => 'hola' }] }))
+
+    expect(client.conversation_messages(42)).to eq([{ 'content' => 'hola' }])
+  end
+
   it 'lanza ApiError ante una respuesta no exitosa' do
     allow(HTTParty).to receive(:post).and_return(http_response(success: false, code: 401, body: 'unauthorized'))
 
