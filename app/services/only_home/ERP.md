@@ -41,7 +41,7 @@ it_behaves_like 'un adaptador de ERP'
 ## Hoja de ruta (épica 4B)
 
 - **ERP-01** Contrato ← *(hecho)*
-- **ERP-02** Datos simulados de prueba
+- **ERP-02** Datos simulados de prueba ← *(hecho)* — `OnlyHome::Erp::SimulatedData`: casos reales (cliente al día, con pendiente, en mora, mezcla) con los objetos del contrato
 - **ERP-03** Adaptador simulado (implementa el contrato con los datos simulados)
 - **ERP-07** Tabla de campos requeridos por consulta
 - (luego) ERP-04 interruptor por configuración · ERP-05 adaptador real · ERP-06 consultas como Tools · ERP-08 cédula en radicación · ERP-09 notificaciones
