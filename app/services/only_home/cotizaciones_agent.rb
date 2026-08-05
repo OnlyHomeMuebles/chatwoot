@@ -22,6 +22,9 @@ class OnlyHome::CotizacionesAgent
 
     Si la solicitud queda fuera de tu dominio, no la resuelvas: transfiere de vuelta al
     agente_triage para que la reenrute.
+    # Lista de precios oficial (usa SOLO estos precios; si no esta, dilo o escala):
+    #{OnlyHome::KnowledgeBase::CATALOGO}
+
 
     #{OnlyHome::HumanTone::GUIDE}
   INST

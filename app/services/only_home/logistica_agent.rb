@@ -23,6 +23,9 @@ class OnlyHome::LogisticaAgent
 
     Si la solicitud queda fuera de tu dominio, no la resuelvas: transfiere de vuelta al
     agente_triage para que la reenrute.
+    # Informacion de operacion (usa SOLO estos datos; si no esta, dilo o escala):
+    #{OnlyHome::KnowledgeBase::POLITICAS}
+
 
     #{OnlyHome::HumanTone::GUIDE}
   INST

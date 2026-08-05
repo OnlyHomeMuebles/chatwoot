@@ -21,6 +21,11 @@ class OnlyHome::FaqAgent
 
     Si la solicitud queda fuera de tu dominio, no la resuelvas: transfiere de vuelta al
     agente_triage para que la reenrute al especialista correcto.
+    # Informacion oficial de Only Home (usa SOLO estos datos; si algo no esta aqui, dilo con honestidad o escala):
+    #{OnlyHome::KnowledgeBase::CATALOGO}
+
+    #{OnlyHome::KnowledgeBase::POLITICAS}
+
 
     #{OnlyHome::HumanTone::GUIDE}
   INST
