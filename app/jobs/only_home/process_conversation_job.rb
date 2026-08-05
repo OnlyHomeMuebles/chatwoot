@@ -27,9 +27,14 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
     ENV['GEMINI_API_KEY'].to_s.strip.present?
   end
 
+  # Gemini se consume por su endpoint compatible con OpenAI: el proveedor nativo :gemini rechaza el
+  # rol 'function' que genera el handoff entre agentes; el endpoint OpenAI maneja bien las herramientas.
   def configure_llm
     if gemini?
-      Agents.configure { |config| config.gemini_api_key = ENV.fetch('GEMINI_API_KEY') }
+      Agents.configure do |config|
+        config.openai_api_key = ENV.fetch('GEMINI_API_KEY')
+        config.openai_api_base = ENV.fetch('GEMINI_OPENAI_BASE', 'https://generativelanguage.googleapis.com/v1beta/openai')
+      end
     else
       Agents.configure { |config| config.ollama_api_base = ENV.fetch('OLLAMA_API_BASE', 'http://localhost:11434/v1') }
     end
@@ -37,7 +42,7 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
 
   def llm_options
     if gemini?
-      { model: 'gemini-2.0-flash', provider: :gemini, assume_model_exists: true }
+      { model: ENV.fetch('GEMINI_MODEL', 'gemini-flash-latest'), provider: :openai, assume_model_exists: true }
     else
       { model: ENV.fetch('OLLAMA_MODEL', 'llama3.2'), provider: :ollama, assume_model_exists: true }
     end
