@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class OnlyHome::TriageAgent
-  INSTRUCTIONS = <<~INST
+  INSTRUCTIONS = <<~INST.freeze
     Eres el agente de entrada de Only Home, empresa colombiana de mobiliario y remodelación del hogar.
 
     Tu ÚNICA responsabilidad es identificar el dominio de la solicitud y transferirla al especialista
@@ -15,6 +15,8 @@ class OnlyHome::TriageAgent
 
     Si la solicitud no encaja en ningún dominio, solicita una aclaración breve antes de enrutar.
     Siempre transfiere al especialista correcto; nunca respondas por tu cuenta.
+
+    #{OnlyHome::HumanTone::GUIDE}
   INST
 
   def self.build(model: nil)

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class OnlyHome::LogisticaAgent
-  INSTRUCTIONS = <<~INST
+  INSTRUCTIONS = <<~INST.freeze
     Eres el agente de Logística de Only Home, empresa colombiana de mobiliario y remodelación
     del hogar. Tu responsabilidad ÚNICA es la operación de entrega:
     - Consulta de estado de pedidos y guías de envío.
@@ -23,6 +23,8 @@ class OnlyHome::LogisticaAgent
 
     Si la solicitud queda fuera de tu dominio, no la resuelvas: transfiere de vuelta al
     agente_triage para que la reenrute.
+
+    #{OnlyHome::HumanTone::GUIDE}
   INST
 
   def self.build(model: nil)

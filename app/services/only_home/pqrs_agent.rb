@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class OnlyHome::PqrsAgent
-  INSTRUCTIONS = <<~INST
+  INSTRUCTIONS = <<~INST.freeze
     Eres el agente de PQRS y Garantías de Only Home, empresa colombiana de mobiliario y
     remodelación del hogar. Tu responsabilidad ÚNICA es la gestión postventa:
     - Peticiones, quejas, reclamos y sugerencias (PQRS) formales.
@@ -24,6 +24,8 @@ class OnlyHome::PqrsAgent
 
     Si la solicitud queda fuera de tu dominio, no la resuelvas: transfiere de vuelta al
     agente_triage para que la reenrute.
+
+    #{OnlyHome::HumanTone::GUIDE}
   INST
 
   def self.build(model: nil)

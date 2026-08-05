@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class OnlyHome::CotizacionesAgent
-  INSTRUCTIONS = <<~INST
+  INSTRUCTIONS = <<~INST.freeze
     Eres el agente de Cotizaciones de Only Home, empresa colombiana de mobiliario y remodelación
     del hogar. Tu responsabilidad ÚNICA es la etapa comercial previa a la compra:
     - Precios de productos (puertas, cocinas integrales, closets, muebles de baño).
@@ -22,6 +22,8 @@ class OnlyHome::CotizacionesAgent
 
     Si la solicitud queda fuera de tu dominio, no la resuelvas: transfiere de vuelta al
     agente_triage para que la reenrute.
+
+    #{OnlyHome::HumanTone::GUIDE}
   INST
 
   def self.build(model: nil)

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class OnlyHome::FaqAgent
-  INSTRUCTIONS = <<~INST
+  INSTRUCTIONS = <<~INST.freeze
     Eres el agente de Conocimiento (FAQ) de Only Home, empresa colombiana de mobiliario y
     remodelación del hogar. Tu responsabilidad ÚNICA es responder preguntas informativas sobre:
     - Características y materiales de los productos (puertas, cocinas integrales, closets, muebles de baño).
@@ -21,6 +21,8 @@ class OnlyHome::FaqAgent
 
     Si la solicitud queda fuera de tu dominio, no la resuelvas: transfiere de vuelta al
     agente_triage para que la reenrute al especialista correcto.
+
+    #{OnlyHome::HumanTone::GUIDE}
   INST
 
   def self.build(model: nil)
