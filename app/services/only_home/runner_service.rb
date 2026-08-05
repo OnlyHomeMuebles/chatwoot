@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
 class OnlyHome::RunnerService
-  def initialize(model: nil)
+  def initialize(model: nil, provider: nil, assume_model_exists: false)
     @model = model
+    @provider = provider
+    @assume_model_exists = assume_model_exists
   end
 
   def run(message, context: {})
@@ -12,11 +14,12 @@ class OnlyHome::RunnerService
   private
 
   def build_agents
-    triage       = OnlyHome::TriageAgent.build(model: @model)
-    faq          = OnlyHome::FaqAgent.build(model: @model)
-    pqrs         = OnlyHome::PqrsAgent.build(model: @model)
-    logistica    = OnlyHome::LogisticaAgent.build(model: @model)
-    cotizaciones = OnlyHome::CotizacionesAgent.build(model: @model)
+    opts = { model: @model, provider: @provider, assume_model_exists: @assume_model_exists }
+    triage       = OnlyHome::TriageAgent.build(**opts)
+    faq          = OnlyHome::FaqAgent.build(**opts)
+    pqrs         = OnlyHome::PqrsAgent.build(**opts)
+    logistica    = OnlyHome::LogisticaAgent.build(**opts)
+    cotizaciones = OnlyHome::CotizacionesAgent.build(**opts)
 
     triage.register_handoffs(faq, pqrs, logistica, cotizaciones)
     faq.register_handoffs(triage)

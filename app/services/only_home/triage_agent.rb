@@ -19,11 +19,13 @@ class OnlyHome::TriageAgent
     #{OnlyHome::HumanTone::GUIDE}
   INST
 
-  def self.build(model: nil)
+  def self.build(model: nil, provider: nil, assume_model_exists: false)
     Agents::Agent.new(
       name: 'agente_triage',
       instructions: INSTRUCTIONS,
-      model: model || default_model
+      model: model || default_model,
+      provider: provider,
+      assume_model_exists: assume_model_exists
     )
   end
 

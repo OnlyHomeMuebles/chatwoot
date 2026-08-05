@@ -26,11 +26,13 @@ class OnlyHome::CotizacionesAgent
     #{OnlyHome::HumanTone::GUIDE}
   INST
 
-  def self.build(model: nil)
+  def self.build(model: nil, provider: nil, assume_model_exists: false)
     Agents::Agent.new(
       name: 'agente_cotizaciones',
       instructions: contextual_instructions,
       model: model || default_model,
+      provider: provider,
+      assume_model_exists: assume_model_exists,
       tools: [OnlyHome::Tools::HumanHandoffTool.new]
     )
   end
