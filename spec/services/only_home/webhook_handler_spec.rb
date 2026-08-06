@@ -9,8 +9,8 @@ RSpec.describe OnlyHome::WebhookHandler do
       message_type: 'incoming',
       private: false,
       id: 555,
-      content: '¿Cuánto cuesta una cocina integral?',
-      conversation: { id: 7, account_id: 1 },
+      content: '¿Cuánto cuesta el Sofá Modular Santorini?',
+      conversation: { id: 7, account_id: 1, status: 'pending' },
       account: { id: 1 }
     }
   end
@@ -20,7 +20,12 @@ RSpec.describe OnlyHome::WebhookHandler do
   it 'encola el procesamiento con el contexto de la conversación para un mensaje entrante' do
     expect { described_class.new(incoming_payload).process }
       .to have_enqueued_job(OnlyHome::ProcessConversationJob)
-      .with(account_id: 1, conversation_id: 7, content: '¿Cuánto cuesta una cocina integral?')
+      .with(account_id: 1, conversation_id: 7, content: '¿Cuánto cuesta el Sofá Modular Santorini?')
+  end
+
+  it 'no responde si la conversación ya fue escalada a un humano (estado open)' do
+    expect { described_class.new(incoming_payload.merge(conversation: { id: 7, account_id: 1, status: 'open' })).process }
+      .not_to have_enqueued_job(OnlyHome::ProcessConversationJob)
   end
 
   it 'ignora los mensajes salientes (los del propio agente)' do

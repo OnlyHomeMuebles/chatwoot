@@ -13,6 +13,7 @@ class OnlyHome::WebhookHandler
 
   def process
     return unless incoming_message?
+    return unless bot_should_handle?
     return unless first_delivery?
 
     OnlyHome::ProcessConversationJob.perform_later(
@@ -30,6 +31,14 @@ class OnlyHome::WebhookHandler
       !ActiveModel::Type::Boolean.new.cast(@payload[:private]) &&
       content.present? &&
       conversation_display_id.present?
+  end
+
+  # El bot solo atiende conversaciones en estado 'pending' (territorio del bot). Cuando se escala a
+  # un humano o se resuelve, el estado pasa a 'open'/'resolved' y el bot debe quedarse callado para
+  # no pisar al agente humano. Si el estado no viene en el payload, se asume territorio del bot.
+  def bot_should_handle?
+    status = @payload.dig(:conversation, :status)
+    status.blank? || status == 'pending'
   end
 
   # Redis SET NX returns "OK" only the first time; nil on webhook retries with the same message id.

@@ -11,6 +11,9 @@ class OnlyHome::ConversationMemory
   # Se descartan `state` (trae el cliente HTTP, no serializable) y `last_updated` (Time).
   PERSISTED_KEYS = %i[conversation_history current_agent turn_count].freeze
   TTL = 3.days.to_i
+  # Tope de mensajes que se conservan del hilo para no inflar el prompt (ni el costo) sin límite en
+  # conversaciones muy largas. Se mantienen los más recientes, que es lo relevante para continuar.
+  MAX_HISTORY = 40
 
   def initialize(account_id:, conversation_id:)
     @key = "only_home:agent_memory:#{account_id}:#{conversation_id}"
@@ -26,11 +29,15 @@ class OnlyHome::ConversationMemory
     context
   end
 
-  # Guarda solo las claves serializables del contexto devuelto por el run, renovando la expiración.
+  # Guarda solo las claves serializables del contexto devuelto por el run, recortando el historial
+  # a los mensajes más recientes y renovando la expiración.
   def save(context)
     return if context.blank?
 
-    Redis::Alfred.set(@key, context.slice(*PERSISTED_KEYS).to_json, ex: TTL)
+    persisted = context.slice(*PERSISTED_KEYS)
+    history = persisted[:conversation_history]
+    persisted[:conversation_history] = history.last(MAX_HISTORY) if history.is_a?(Array)
+    Redis::Alfred.set(@key, persisted.to_json, ex: TTL)
   end
 
   private

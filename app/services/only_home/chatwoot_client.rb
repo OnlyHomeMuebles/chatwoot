@@ -58,6 +58,11 @@ class OnlyHome::ChatwootClient
     post("conversations/#{conversation_id}/toggle_status", { status: status })
   end
 
+  # POST /conversations/:id/toggle_typing_status — show/hide the "typing…" indicator to the customer.
+  def toggle_typing(conversation_id, on:)
+    post("conversations/#{conversation_id}/toggle_typing_status", { typing_status: on ? 'on' : 'off' })
+  end
+
   private
 
   def post(path, body)
