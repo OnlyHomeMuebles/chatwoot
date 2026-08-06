@@ -12,10 +12,15 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
   def perform(account_id:, conversation_id:, content:)
     configure_llm
     client = OnlyHome::ChatwootClient.new(account_id: account_id)
-    result = OnlyHome::RunnerService.new(**llm_options).run(
-      content,
-      context: { state: { conversation_id: conversation_id, chatwoot_client: client } }
-    )
+    memory = OnlyHome::ConversationMemory.new(account_id: account_id, conversation_id: conversation_id)
+
+    # Se restaura el hilo previo (si lo hay) y se inyecta el estado de ejecución (no serializable),
+    # de modo que el agente continúe la conversación en vez de arrancar de cero en cada mensaje.
+    context = memory.load
+    context[:state] = { conversation_id: conversation_id, chatwoot_client: client }
+
+    result = OnlyHome::RunnerService.new(**llm_options).run(content, context: context)
+    memory.save(result.context)
 
     reply = result.output.to_s
     client.create_message(conversation_id, content: reply, message_type: 'outgoing') if reply.present?
