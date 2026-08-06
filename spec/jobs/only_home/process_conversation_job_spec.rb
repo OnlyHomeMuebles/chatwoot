@@ -48,6 +48,19 @@ RSpec.describe OnlyHome::ProcessConversationJob do
     described_class.perform_now(account_id: 1, conversation_id: 7, content: 'hola')
   end
 
+  it 'reintenta ante un error de cuota/tasa y responde cuando el segundo intento tiene éxito' do
+    allow_any_instance_of(described_class).to receive(:sleep)
+    rate_limited = instance_double(Agents::RunResult, output: nil, context: {},
+                                                      error: RuntimeError.new('You exceeded your current quota. Please retry in 2s.'))
+    ok = instance_double(Agents::RunResult, output: 'Aquí está la info 💙', context: { turn_count: 1 })
+    allow(runner).to receive(:run).and_return(rate_limited, ok)
+
+    expect(client).to receive(:create_message).with(7, content: 'Aquí está la info 💙', message_type: 'outgoing')
+    expect(memory).to receive(:save).with({ turn_count: 1 })
+
+    described_class.perform_now(account_id: 1, conversation_id: 7, content: 'hola')
+  end
+
   it 'responde con un mensaje de respaldo si el runner falla, sin guardar memoria' do
     allow(runner).to receive(:run).and_raise(StandardError, 'boom')
 
