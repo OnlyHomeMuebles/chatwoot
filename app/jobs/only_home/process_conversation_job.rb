@@ -91,14 +91,24 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
     nil
   end
 
-  def gemini?
-    ENV['GEMINI_API_KEY'].to_s.strip.present?
+  # Cerebro del agente según la key disponible: Groq (preferido: preciso y con cupo gratis amplio),
+  # luego Gemini, y como último recurso un modelo local (Ollama). Groq y Gemini se consumen por su
+  # endpoint compatible con OpenAI, que maneja bien el rol 'function' del handoff entre agentes.
+  def llm_provider
+    return :groq if ENV['GROQ_API_KEY'].to_s.strip.present?
+    return :gemini if ENV['GEMINI_API_KEY'].to_s.strip.present?
+
+    :ollama
   end
 
-  # Gemini se consume por su endpoint compatible con OpenAI: el proveedor nativo :gemini rechaza el
-  # rol 'function' que genera el handoff entre agentes; el endpoint OpenAI maneja bien las herramientas.
   def configure_llm
-    if gemini?
+    case llm_provider
+    when :groq
+      Agents.configure do |config|
+        config.openai_api_key = ENV.fetch('GROQ_API_KEY')
+        config.openai_api_base = ENV.fetch('GROQ_API_BASE', 'https://api.groq.com/openai/v1')
+      end
+    when :gemini
       Agents.configure do |config|
         config.openai_api_key = ENV.fetch('GEMINI_API_KEY')
         config.openai_api_base = ENV.fetch('GEMINI_OPENAI_BASE', 'https://generativelanguage.googleapis.com/v1beta/openai')
@@ -109,7 +119,10 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
   end
 
   def llm_options
-    if gemini?
+    case llm_provider
+    when :groq
+      { model: ENV.fetch('GROQ_MODEL', 'llama-3.3-70b-versatile'), provider: :openai, assume_model_exists: true }
+    when :gemini
       { model: ENV.fetch('GEMINI_MODEL', 'gemini-flash-latest'), provider: :openai, assume_model_exists: true }
     else
       { model: ENV.fetch('OLLAMA_MODEL', 'llama3.2'), provider: :ollama, assume_model_exists: true }
