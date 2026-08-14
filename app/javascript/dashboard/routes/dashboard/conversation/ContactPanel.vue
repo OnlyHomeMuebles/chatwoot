@@ -16,6 +16,7 @@ import ConversationParticipant from './ConversationParticipant.vue';
 import ContactInfo from './contact/ContactInfo.vue';
 import ContactNotes from './contact/ContactNotes.vue';
 import ConversationInfo from './ConversationInfo.vue';
+import ConversationTickets from './ConversationTickets.vue';
 import CustomAttributes from './customAttributes/CustomAttributes.vue';
 import SharedFiles from './SharedFiles.vue';
 import Draggable from 'vuedraggable';
@@ -183,6 +184,21 @@ onMounted(() => {
                 :conversation-id="conversationId"
                 :inbox-id="inboxId"
               />
+            </AccordionItem>
+          </div>
+          <div
+            v-else-if="element.name === 'conversation_tickets'"
+            class="conversation--actions"
+          >
+            <AccordionItem
+              :title="$t('CONVERSATION_SIDEBAR.ACCORDION.TICKETS')"
+              :is-open="isContactSidebarItemOpen('is_conv_tickets_open')"
+              compact
+              @toggle="
+                value => toggleSidebarUIState('is_conv_tickets_open', value)
+              "
+            >
+              <ConversationTickets :conversation-id="conversationId" />
             </AccordionItem>
           </div>
           <div v-else-if="element.name === 'conversation_info'">

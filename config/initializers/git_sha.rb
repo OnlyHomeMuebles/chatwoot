@@ -1,6 +1,6 @@
 # Define a method to fetch the git commit hash
 def fetch_git_sha
-  sha = `git rev-parse HEAD` if File.directory?('.git')
+  sha = `git rev-parse HEAD 2>/dev/null` if File.directory?('.git') && system('which git > /dev/null 2>&1')
   if sha.present?
     sha.strip
   elsif File.exist?('.git_sha')

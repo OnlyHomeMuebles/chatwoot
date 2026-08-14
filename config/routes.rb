@@ -66,7 +66,8 @@ Rails.application.routes.draw do
             resources :assistants do
               member do
                 post :playground
-                get :stats
+                get :metrics
+                get :faq_stats
                 get :summary
                 get :drilldown
               end
@@ -77,7 +78,13 @@ Rails.application.routes.draw do
               resources :scenarios
             end
             resources :agent_sessions, only: [:show]
-            resources :assistant_responses
+            resources :assistant_responses do
+              get :drilldown, on: :member
+            end
+            resources :faq_suggestions, only: [:index, :show, :update] do
+              post :approve, on: :member
+              post :dismiss, on: :member
+            end
             resources :message_reports, only: [:create]
             resources :bulk_actions, only: [:create]
             resources :copilot_threads, only: [:index, :create] do
@@ -88,6 +95,7 @@ Rails.application.routes.draw do
             end
             resources :documents, only: [:index, :show, :create, :destroy] do
               post :sync, on: :member
+              get :drilldown, on: :member
             end
             resource :tasks, only: [], controller: 'tasks' do
               post :rewrite
@@ -168,6 +176,7 @@ Rails.application.routes.draw do
               post :update_last_seen
               post :unread
               post :custom_attributes
+              post :destroy_custom_attributes
               get :attachments
               get :inbox_assistant
               get :reporting_events if ChatwootApp.enterprise?
@@ -229,6 +238,7 @@ Rails.application.routes.draw do
             end
             member do
               post :start
+              post :retry, action: :retry_import
               post :abandon
               get :error_logs
               get :skip_logs
@@ -273,9 +283,11 @@ Rails.application.routes.draw do
             get :assignable_agents, on: :member
             get :campaigns, on: :member
             get :agent_bot, on: :member
+            get :message_templates, on: :member
             post :set_agent_bot, on: :member
             delete :avatar, on: :member
             post :sync_templates, on: :member
+            put :whatsapp_business_management_token, on: :member
             get :health, on: :member
             post :register_webhook, on: :member
             post :reset_secret, on: :member
@@ -313,6 +325,12 @@ Rails.application.routes.draw do
             end
           end
           resource :notification_settings, only: [:show, :update]
+
+          resources :tickets, only: [:index, :show, :create, :update, :destroy] do
+            member do
+              post :assign
+            end
+          end
 
           resources :teams do
             resources :team_members, only: [:index, :create] do
