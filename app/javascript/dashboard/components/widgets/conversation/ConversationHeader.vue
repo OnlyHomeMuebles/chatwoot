@@ -6,6 +6,8 @@ import { useElementSize } from '@vueuse/core';
 import BackButton from '../BackButton.vue';
 import InboxName from '../InboxName.vue';
 import MoreActions from './MoreActions.vue';
+import CreateTicketDialog from './CreateTicketDialog.vue';
+import Button from 'dashboard/components-next/button/Button.vue';
 import Avatar from 'next/avatar/Avatar.vue';
 import SLACardLabel from './components/SLACardLabel.vue';
 import ConversationCallButton from './ConversationCallButton.vue';
@@ -32,6 +34,7 @@ const { t } = useI18n();
 const store = useStore();
 const route = useRoute();
 const conversationHeader = ref(null);
+const createTicketDialogRef = ref(null);
 const { width } = useElementSize(conversationHeader);
 const { isAWebWidgetInbox } = useInbox();
 
@@ -173,7 +176,19 @@ const copyConversationId = async () => {
         class="hidden md:flex"
       />
       <ConversationCallButton :inbox="inbox" :chat="currentChat" />
+      <Button
+        v-tooltip="t('TICKETS.CONVERSATION.CREATE')"
+        icon="i-lucide-ticket"
+        slate
+        faded
+        sm
+        @click="createTicketDialogRef.open()"
+      />
       <MoreActions :conversation-id="currentChat.id" />
     </div>
+    <CreateTicketDialog
+      ref="createTicketDialogRef"
+      :conversation-id="currentChat.id"
+    />
   </div>
 </template>

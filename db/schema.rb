@@ -1470,6 +1470,25 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_07_101420) do
     t.index ["name", "account_id"], name: "index_teams_on_name_and_account_id", unique: true
   end
 
+  create_table "tickets", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.integer "display_id", null: false
+    t.string "title", null: false
+    t.text "description"
+    t.integer "status", default: 0, null: false
+    t.bigint "assignee_id"
+    t.bigint "creator_id"
+    t.bigint "conversation_id"
+    t.datetime "resolved_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "display_id"], name: "index_tickets_on_account_id_and_display_id", unique: true
+    t.index ["account_id", "status"], name: "index_tickets_on_account_id_and_status"
+    t.index ["account_id"], name: "index_tickets_on_account_id"
+    t.index ["assignee_id", "account_id"], name: "index_tickets_on_assignee_id_and_account_id"
+    t.index ["conversation_id"], name: "index_tickets_on_conversation_id"
+  end
+
   create_table "user_sessions", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.string "client_id", null: false
@@ -1590,6 +1609,21 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_07_101420) do
       before(:insert).
       for_each(:row) do
     "NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);"
+  end
+
+  create_trigger("ticket_dpid_before_insert", :generated => true, :compatibility => 1).
+      on("accounts").
+      name("ticket_dpid_before_insert").
+      after(:insert).
+      for_each(:row) do
+    "execute format('create sequence IF NOT EXISTS ticket_dpid_seq_%s', NEW.id);"
+  end
+
+  create_trigger("tickets_before_insert_row_tr", :generated => true, :compatibility => 1).
+      on("tickets").
+      before(:insert).
+      for_each(:row) do
+    "NEW.display_id := nextval('ticket_dpid_seq_' || NEW.account_id);"
   end
 
 end
