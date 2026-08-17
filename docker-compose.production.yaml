@@ -1,63 +1,193 @@
-version: '3'
+version: '3.8'
 
 services:
-  base: &base
-    image: chatwoot/chatwoot:latest
-    env_file: .env ## Change this file for customized env variables
-    volumes:
-      - storage_data:/app/storage
-
   rails:
-    <<: *base
-    depends_on:
-      - postgres
-      - redis
+    image: chatwoot/chatwoot:latest
+    restart: unless-stopped
+    container_name: chatwoot-rails
     ports:
-      - '127.0.0.1:3000:3000'
+      - "3000:3000"
     environment:
-      - NODE_ENV=production
-      - RAILS_ENV=production
+      # Rails Configuration
+      - NODE_ENV=${NODE_ENV:-production}
+      - RAILS_ENV=${RAILS_ENV:-production}
+      - RAILS_LOG_TO_STDOUT=${RAILS_LOG_TO_STDOUT:-true}
+      - RAILS_MAX_THREADS=${RAILS_MAX_THREADS:-5}
+      - RAILS_MIN_THREADS=${RAILS_MIN_THREADS:-5}
+      - RAILS_SERVE_STATIC_FILES=${RAILS_SERVE_STATIC_FILES:-true}
+      - RAILS_ASSUME_SSL=${RAILS_ASSUME_SSL:-false}
+      - RAILS_TRUSTED_PROXIES=${RAILS_TRUSTED_PROXIES:-0.0.0.0/0}
+      - RACK_ENV=${RACK_ENV:-production}
+      - RACK_TIMEOUT_SERVICE_TIMEOUT=${RACK_TIMEOUT_SERVICE_TIMEOUT:-0}
+
+      # Secrets
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - RAILS_MASTER_KEY=${RAILS_MASTER_KEY}
+
+      # Database & Cache (URLs EXTERNAS)
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_CACHE_URL=${REDIS_CACHE_URL}
+      - REDIS_SIDEKIQ_URL=${REDIS_SIDEKIQ_URL}
+
+      # Application Setup
       - INSTALLATION_ENV=docker
+      - INSTALLATION_NAME=${INSTALLATION_NAME}
+      - DEFAULT_LOCALE=${DEFAULT_LOCALE:-es}
+      - FORCE_SSL=${FORCE_SSL:-true}
+      - PORT=${PORT:-3000}
+      - WEB_CONCURRENCY=${WEB_CONCURRENCY:-2}
+
+      # Frontend
+      - FRONTEND_URL=${FRONTEND_URL}
+      - CHATWOOT_HUB_URL=${CHATWOOT_HUB_URL}
+
+      # S3 Configuration
+      - ACTIVE_STORAGE_SERVICE=${ACTIVE_STORAGE_SERVICE}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+
+      # SMTP Configuration
+      - MAILER_SENDER_EMAIL=${MAILER_SENDER_EMAIL}
+      - SMTP_DOMAIN=${SMTP_DOMAIN}
+      - SMTP_ADDRESS=${SMTP_ADDRESS}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_AUTHENTICATION=${SMTP_AUTHENTICATION:-plain}
+      - SMTP_ENABLE_STARTTLS_AUTO=${SMTP_ENABLE_STARTTLS_AUTO:-true}
+      - SMTP_OPENSSL_VERIFY_MODE=${SMTP_OPENSSL_VERIFY_MODE:-peer}
+      - MAILER_INBOUND_EMAIL_DOMAIN=${MAILER_INBOUND_EMAIL_DOMAIN}
+      - RAILS_INBOUND_EMAIL_SERVICE=${RAILS_INBOUND_EMAIL_SERVICE:-ses}
+
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+
+      # Rate Limiting
+      - ENABLE_RACK_ATTACK=${ENABLE_RACK_ATTACK:-true}
+      - RACK_ATTACK_LIMIT=${RACK_ATTACK_LIMIT:-3000}
+      - RATE_LIMIT_CONTACT_SEARCH=${RATE_LIMIT_CONTACT_SEARCH:-100}
+
+      # Sidekiq
+      - SIDEKIQ_CONCURRENCY=${SIDEKIQ_CONCURRENCY:-10}
+
+      # Webhooks
+      - WEBHOOKS_TRIGGER_TIMEOUT=${WEBHOOKS_TRIGGER_TIMEOUT:-40}
+
+      # API
+      - ENABLE_API_CORS=${ENABLE_API_CORS:-false}
+
+      # Redis Configuration
+      - REDIS_DISABLE_CLIENT_COMMAND=${REDIS_DISABLE_CLIENT_COMMAND:-false}
+
+      # Facebook
+      - FB_APP_ID=${FB_APP_ID}
+      - FB_APP_SECRET=${FB_APP_SECRET}
+      - FB_VERIFY_TOKEN=${FB_VERIFY_TOKEN}
+      - FACEBOOK_API_VERSION=${FACEBOOK_API_VERSION:-v21.0}
+
+      # Encryption Keys
+      - ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=${ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY}
+      - ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY=${ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY}
+      - ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT=${ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT}
+
+      # Image Quality
+      - PAGE_QUALITY=${PAGE_QUALITY:-90}
+
+      # Node Configuration
+      - NODE_OPTIONS=${NODE_OPTIONS:---max-old-space-size=8192}
+
+      # Vite Configuration
+      - VITE_RUBY_HOST=${VITE_RUBY_HOST:-0.0.0.0}
+      - VITE_RUBY_PORT=${VITE_RUBY_PORT:-3036}
+
+      # Seeding
+      - ENABLE_ACCOUNT_SEEDING=${ENABLE_ACCOUNT_SEEDING:-true}
+
+      # Other Configuration
+      - USE_INBOX_AVATAR_FOR_BOT=${USE_INBOX_AVATAR_FOR_BOT:-true}
+      - FOUNDRY_WEBHOOK_SECRET=${FOUNDRY_WEBHOOK_SECRET}
+      - FOUNDRY_WIDGET_KEY=${FOUNDRY_WIDGET_KEY}
+      - FOUNDRY_WIDGET_SECRET=${FOUNDRY_WIDGET_SECRET}
+
+    env_file:
+      - .env
+
     entrypoint: docker/entrypoints/rails.sh
     command: ['bundle', 'exec', 'rails', 's', '-p', '3000', '-b', '0.0.0.0']
-    restart: always
 
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/v1/health_check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Sidekiq Background Jobs
   sidekiq:
-    <<: *base
-    depends_on:
-      - postgres
-      - redis
+    image: chatwoot/chatwoot:latest
+    restart: unless-stopped
+    container_name: chatwoot-sidekiq
     environment:
-      - NODE_ENV=production
-      - RAILS_ENV=production
+      # Rails Configuration
+      - NODE_ENV=${NODE_ENV:-production}
+      - RAILS_ENV=${RAILS_ENV:-production}
+      - RAILS_LOG_TO_STDOUT=${RAILS_LOG_TO_STDOUT:-true}
+
+      # Secrets
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - RAILS_MASTER_KEY=${RAILS_MASTER_KEY}
+
+      # Database & Cache (URLs EXTERNAS)
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_CACHE_URL=${REDIS_CACHE_URL}
+      - REDIS_SIDEKIQ_URL=${REDIS_SIDEKIQ_URL}
+
+      # Application Setup
       - INSTALLATION_ENV=docker
+      - INSTALLATION_NAME=${INSTALLATION_NAME}
+      - DEFAULT_LOCALE=${DEFAULT_LOCALE:-es}
+
+      # S3 Configuration
+      - ACTIVE_STORAGE_SERVICE=${ACTIVE_STORAGE_SERVICE}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+
+      # SMTP Configuration
+      - MAILER_SENDER_EMAIL=${MAILER_SENDER_EMAIL}
+      - SMTP_DOMAIN=${SMTP_DOMAIN}
+      - SMTP_ADDRESS=${SMTP_ADDRESS}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_AUTHENTICATION=${SMTP_AUTHENTICATION:-plain}
+      - SMTP_ENABLE_STARTTLS_AUTO=${SMTP_ENABLE_STARTTLS_AUTO:-true}
+
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+
+      # Sidekiq
+      - SIDEKIQ_CONCURRENCY=${SIDEKIQ_CONCURRENCY:-10}
+
+      # Webhooks
+      - WEBHOOKS_TRIGGER_TIMEOUT=${WEBHOOKS_TRIGGER_TIMEOUT:-40}
+
+      # Encryption Keys
+      - ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=${ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY}
+      - ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY=${ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY}
+      - ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT=${ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT}
+
+      # Node Configuration
+      - NODE_OPTIONS=${NODE_OPTIONS:---max-old-space-size=8192}
+
+      # Other Configuration
+      - USE_INBOX_AVATAR_FOR_BOT=${USE_INBOX_AVATAR_FOR_BOT:-true}
+      - ENABLE_ACCOUNT_SEEDING=${ENABLE_ACCOUNT_SEEDING:-true}
+
+    env_file:
+      - .env
+
     command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
-    restart: always
-
-  postgres:
-    image: pgvector/pgvector:pg16
-    restart: always
-    ports:
-      - '127.0.0.1:5432:5432'
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_DB=chatwoot
-      - POSTGRES_USER=postgres
-      # Please provide your own password.
-      - POSTGRES_PASSWORD=
-
-  redis:
-    image: redis:alpine
-    restart: always
-    command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\""]
-    env_file: .env
-    volumes:
-      - redis_data:/data
-    ports:
-      - '127.0.0.1:6379:6379'
-
-volumes:
-  storage_data:
-  postgres_data:
-  redis_data:
