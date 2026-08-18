@@ -20,6 +20,7 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
 
   def perform(account_id:, conversation_id:, content:)
     configure_llm
+    @account_id = account_id
     client = OnlyHome::ChatwootClient.new(account_id: account_id)
     memory = OnlyHome::ConversationMemory.new(account_id: account_id, conversation_id: conversation_id)
 
@@ -58,6 +59,7 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
     result = nil
     MAX_LLM_ATTEMPTS.times do |attempt|
       context = memory.load
+      context[:account_id] = @account_id
       context[:state] = { conversation_id: conversation_id, chatwoot_client: client, knowledge: knowledge }
       result = OnlyHome::RunnerService.new(**llm_options, single: single_mode?).run(content, context: context)
       return result if result.output.to_s.strip.present?
@@ -99,8 +101,9 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
   # Con :ollama se activa el modo RAG (agente único + conocimiento recuperado); ver single_mode?.
   def llm_provider
     explicit = ENV['ONLY_HOME_LLM_PROVIDER'].to_s.strip.downcase
-    return explicit.to_sym if %w[ollama gemini groq].include?(explicit)
+    return explicit.to_sym if %w[ollama gemini groq openai].include?(explicit)
     return :gemini if ENV['GEMINI_API_KEY'].to_s.strip.present?
+    return :openai if ENV['OPENAI_API_KEY'].to_s.strip.present?
     return :groq if ENV['GROQ_API_KEY'].to_s.strip.present?
 
     :ollama
@@ -123,6 +126,8 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
         config.openai_api_key = ENV.fetch('GEMINI_API_KEY')
         config.openai_api_base = ENV.fetch('GEMINI_OPENAI_BASE', 'https://generativelanguage.googleapis.com/v1beta/openai')
       end
+    when :openai
+      Agents.configure { |config| config.openai_api_key = ENV.fetch('OPENAI_API_KEY') }
     else
       Agents.configure { |config| config.ollama_api_base = ENV.fetch('OLLAMA_API_BASE', 'http://localhost:11434/v1') }
     end
@@ -134,6 +139,8 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
       { model: ENV.fetch('GROQ_MODEL', 'llama-3.3-70b-versatile'), provider: :openai, assume_model_exists: true }
     when :gemini
       { model: ENV.fetch('GEMINI_MODEL', 'gemini-flash-latest'), provider: :openai, assume_model_exists: true }
+    when :openai
+      { model: ENV.fetch('ONLY_HOME_OPENAI_MODEL', 'gpt-4.1-mini'), provider: :openai, assume_model_exists: true }
     else
       { model: ENV.fetch('OLLAMA_MODEL', 'qwen2.5:14b'), provider: :ollama, assume_model_exists: true }
     end
