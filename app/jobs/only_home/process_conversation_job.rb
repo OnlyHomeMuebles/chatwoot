@@ -35,7 +35,10 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
   # Corre el multiagente restaurando el hilo previo. Ante un fallo del LLM devuelve un mensaje de
   # respaldo para que el cliente nunca quede sin respuesta, y no persiste un estado a medias.
   def generate_reply(client, memory, conversation_id, content)
-    result = run_with_retries(client, memory, conversation_id, content)
+    # Modo RAG local: recupera SOLO los fragmentos relevantes del conocimiento y se los inyecta al
+    # agente único, para que un modelo local pequeño responda con precisión.
+    knowledge = single_mode? ? OnlyHome::KnowledgeRetriever.context_for(content) : nil
+    result = run_with_retries(client, memory, conversation_id, content, knowledge)
 
     if result && result.output.to_s.strip.present?
       memory.save(result.context)
@@ -51,12 +54,12 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
 
   # Reintenta ante errores de cuota/tasa (límite por minuto del free tier), reconstruyendo el
   # contexto desde la memoria en cada intento (no se persiste nada hasta que hay una salida válida).
-  def run_with_retries(client, memory, conversation_id, content)
+  def run_with_retries(client, memory, conversation_id, content, knowledge)
     result = nil
     MAX_LLM_ATTEMPTS.times do |attempt|
       context = memory.load
-      context[:state] = { conversation_id: conversation_id, chatwoot_client: client }
-      result = OnlyHome::RunnerService.new(**llm_options).run(content, context: context)
+      context[:state] = { conversation_id: conversation_id, chatwoot_client: client, knowledge: knowledge }
+      result = OnlyHome::RunnerService.new(**llm_options, single: single_mode?).run(content, context: context)
       return result if result.output.to_s.strip.present?
 
       delay = retry_delay(result.error)
@@ -91,14 +94,21 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
     nil
   end
 
-  # Cerebro del agente según la key disponible: Groq (preferido: preciso y con cupo gratis amplio),
-  # luego Gemini, y como último recurso un modelo local (Ollama). Groq y Gemini se consumen por su
-  # endpoint compatible con OpenAI, que maneja bien el rol 'function' del handoff entre agentes.
+  # Cerebro del agente. Se puede forzar con ONLY_HOME_LLM_PROVIDER=ollama|gemini|groq. Si no, usa la
+  # API disponible (Gemini/Groq) y, como último recurso, el modelo OPEN SOURCE local (Ollama).
+  # Con :ollama se activa el modo RAG (agente único + conocimiento recuperado); ver single_mode?.
   def llm_provider
-    return :groq if ENV['GROQ_API_KEY'].to_s.strip.present?
+    explicit = ENV['ONLY_HOME_LLM_PROVIDER'].to_s.strip.downcase
+    return explicit.to_sym if %w[ollama gemini groq].include?(explicit)
     return :gemini if ENV['GEMINI_API_KEY'].to_s.strip.present?
+    return :groq if ENV['GROQ_API_KEY'].to_s.strip.present?
 
     :ollama
+  end
+
+  # El modo RAG (recuperar conocimiento + agente único) se usa con el modelo local open source.
+  def single_mode?
+    llm_provider == :ollama
   end
 
   def configure_llm
@@ -125,7 +135,7 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
     when :gemini
       { model: ENV.fetch('GEMINI_MODEL', 'gemini-flash-latest'), provider: :openai, assume_model_exists: true }
     else
-      { model: ENV.fetch('OLLAMA_MODEL', 'llama3.2'), provider: :ollama, assume_model_exists: true }
+      { model: ENV.fetch('OLLAMA_MODEL', 'qwen2.5:14b'), provider: :ollama, assume_model_exists: true }
     end
   end
 end
