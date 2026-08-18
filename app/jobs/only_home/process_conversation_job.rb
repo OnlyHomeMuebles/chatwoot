@@ -36,10 +36,7 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
   # Corre el multiagente restaurando el hilo previo. Ante un fallo del LLM devuelve un mensaje de
   # respaldo para que el cliente nunca quede sin respuesta, y no persiste un estado a medias.
   def generate_reply(client, memory, conversation_id, content)
-    # Modo RAG local: recupera SOLO los fragmentos relevantes del conocimiento y se los inyecta al
-    # agente único, para que un modelo local pequeño responda con precisión.
-    knowledge = single_mode? ? OnlyHome::KnowledgeRetriever.context_for(content) : nil
-    result = run_with_retries(client, memory, conversation_id, content, knowledge)
+    result = run_with_retries(client, memory, conversation_id, content)
 
     if result && result.output.to_s.strip.present?
       memory.save(result.context)
@@ -55,13 +52,13 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
 
   # Reintenta ante errores de cuota/tasa (límite por minuto del free tier), reconstruyendo el
   # contexto desde la memoria en cada intento (no se persiste nada hasta que hay una salida válida).
-  def run_with_retries(client, memory, conversation_id, content, knowledge)
+  def run_with_retries(client, memory, conversation_id, content)
     result = nil
     MAX_LLM_ATTEMPTS.times do |attempt|
       context = memory.load
       context[:account_id] = @account_id
-      context[:state] = { conversation_id: conversation_id, chatwoot_client: client, knowledge: knowledge }
-      result = OnlyHome::RunnerService.new(**llm_options, single: single_mode?).run(content, context: context)
+      context[:state] = { conversation_id: conversation_id, chatwoot_client: client }
+      result = OnlyHome::RunnerService.new(**llm_options).run(content, context: context)
       return result if result.output.to_s.strip.present?
 
       delay = retry_delay(result.error)
@@ -96,9 +93,8 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
     nil
   end
 
-  # Cerebro del agente. Se puede forzar con ONLY_HOME_LLM_PROVIDER=ollama|gemini|groq. Si no, usa la
-  # API disponible (Gemini/Groq) y, como último recurso, el modelo OPEN SOURCE local (Ollama).
-  # Con :ollama se activa el modo RAG (agente único + conocimiento recuperado); ver single_mode?.
+  # Cerebro del agente. Se puede forzar con ONLY_HOME_LLM_PROVIDER=openai|gemini|groq|ollama. Si no,
+  # usa la API disponible (Gemini > OpenAI > Groq) y, como último recurso, el modelo local (Ollama).
   def llm_provider
     explicit = ENV['ONLY_HOME_LLM_PROVIDER'].to_s.strip.downcase
     return explicit.to_sym if %w[ollama gemini groq openai].include?(explicit)
@@ -107,11 +103,6 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
     return :groq if ENV['GROQ_API_KEY'].to_s.strip.present?
 
     :ollama
-  end
-
-  # El modo RAG (recuperar conocimiento + agente único) se usa con el modelo local open source.
-  def single_mode?
-    llm_provider == :ollama
   end
 
   def configure_llm

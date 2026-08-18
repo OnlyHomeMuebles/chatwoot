@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_18_000000) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_18_120000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1319,15 +1319,6 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_18_000000) do
     t.index ["secondary_actor_type", "secondary_actor_id"], name: "uniq_secondary_actor_per_account_notifications"
     t.index ["user_id", "account_id", "snoozed_until", "read_at"], name: "idx_notifications_performance"
     t.index ["user_id"], name: "index_notifications_on_user_id"
-  end
-
-  create_table "only_home_knowledge_chunks", force: :cascade do |t|
-    t.string "category", null: false
-    t.string "source"
-    t.text "content", null: false
-    t.vector "embedding", limit: 768
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
   end
 
   create_table "platform_app_permissibles", force: :cascade do |t|

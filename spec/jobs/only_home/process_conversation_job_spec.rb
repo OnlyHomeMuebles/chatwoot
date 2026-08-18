@@ -16,14 +16,12 @@ RSpec.describe OnlyHome::ProcessConversationJob do
     allow(memory).to receive(:save)
     allow(client).to receive(:create_message)
     allow(client).to receive(:toggle_typing)
-    # Por defecto, modo multiagente (sin RAG local) para tests deterministas y sin dependencias externas.
-    allow(job).to receive(:single_mode?).and_return(false)
   end
 
   it 'corre el runner con el contexto atado a la conversación, publica la respuesta y guarda la memoria' do
     result = instance_double(Agents::RunResult, output: 'Con gusto, te ayudo con eso.', context: { turn_count: 1 })
     expect(runner).to receive(:run)
-      .with('hola', context: { account_id: 1, state: { conversation_id: 7, chatwoot_client: client, knowledge: nil } })
+      .with('hola', context: { account_id: 1, state: { conversation_id: 7, chatwoot_client: client } })
       .and_return(result)
 
     expect(client).to receive(:create_message).with(7, content: 'Con gusto, te ayudo con eso.', message_type: 'outgoing')
@@ -36,22 +34,10 @@ RSpec.describe OnlyHome::ProcessConversationJob do
     allow(memory).to receive(:load).and_return({ conversation_history: [{ role: :user, content: 'antes' }] })
     expect(runner).to receive(:run)
       .with('hola', context: { conversation_history: [{ role: :user, content: 'antes' }], account_id: 1,
-                               state: { conversation_id: 7, chatwoot_client: client, knowledge: nil } })
+                               state: { conversation_id: 7, chatwoot_client: client } })
       .and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
 
     job.perform(account_id: 1, conversation_id: 7, content: 'hola')
-  end
-
-  it 'en modo local (RAG) recupera conocimiento y lo inyecta en el contexto del agente único' do
-    allow(job).to receive(:single_mode?).and_return(true)
-    allow(OnlyHome::KnowledgeRetriever).to receive(:context_for).with('¿garantía?').and_return('Garantía: 10 años en madera.')
-    expect(OnlyHome::RunnerService).to receive(:new).with(hash_including(single: true)).and_return(runner)
-    expect(runner).to receive(:run)
-      .with('¿garantía?', context: { account_id: 1,
-                                     state: { conversation_id: 7, chatwoot_client: client, knowledge: 'Garantía: 10 años en madera.' } })
-      .and_return(instance_double(Agents::RunResult, output: 'Sí, 10 años.', context: {}))
-
-    job.perform(account_id: 1, conversation_id: 7, content: '¿garantía?')
   end
 
   it 'muestra el indicador de escritura y lo apaga al terminar' do
