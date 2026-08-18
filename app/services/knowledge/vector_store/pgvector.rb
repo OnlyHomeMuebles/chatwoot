@@ -8,6 +8,12 @@ class Knowledge::VectorStore::Pgvector < Knowledge::VectorStore::Base
   end
 
   def search(vector, account_id:, limit: 5)
+    # ivfflat sondea por defecto UN solo cluster (probes=1) y su recall es
+    # pobre; con 10 sondas la busqueda es casi exacta a este tamano de base.
+    # Nota operativa: tras una carga masiva hay que re-entrenar el indice
+    # (REINDEX INDEX idx_knowledge_chunks_on_embedding) — ivfflat aprende de
+    # los datos presentes al construirse.
+    Knowledge::Chunk.connection.execute('SET ivfflat.probes = 10')
     Knowledge::Chunk.where(account_id: account_id)
                     .nearest_neighbors(:embedding, vector, distance: 'cosine')
                     .limit(limit)

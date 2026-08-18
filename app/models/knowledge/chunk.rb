@@ -24,9 +24,9 @@ class Knowledge::Chunk < ApplicationRecord
   belongs_to :account
   belongs_to :document, class_name: 'Knowledge::Document', inverse_of: :chunks
 
-  # embeddings are always persisted here as source of truth, so the
-  # pgvector adapter can take over without re-ingesting if the vector
-  # store backend changes (Qdrant today, company database tomorrow)
+  # embeddings live here as the source of truth: search runs directly on
+  # this column (pgvector + neighbor), and any future external backend
+  # could rebuild itself from these rows without re-ingesting
   has_neighbors :embedding, normalize: true
 
   validates :content, presence: true

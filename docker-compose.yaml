@@ -106,14 +106,6 @@ services:
     ports:
       - '6379:6379'
 
-  qdrant:
-    image: qdrant/qdrant:v1.13.4
-    restart: always
-    ports:
-      - '6333:6333'
-    volumes:
-      - qdrant:/qdrant/storage
-
   mailhog:
     image: mailhog/mailhog
     ports:
@@ -128,4 +120,3 @@ volumes:
   cache:
   bundle:
   gems:
-  qdrant:

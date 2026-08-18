@@ -37,12 +37,12 @@ RSpec.describe KnowledgeBaseSearchTool do
     context 'when the vector store is unavailable' do
       it 'returns an error message instead of raising' do
         allow(Knowledge::SearchService).to receive(:new)
-          .and_raise(Knowledge::VectorStore::Error, 'qdrant caido')
+          .and_raise(Knowledge::VectorStore::Error, 'vector store caido')
 
         output = tool.perform(tool_context, query: 'garantia')
 
         expect(output).to include('no esta disponible')
-        expect(output).to include('qdrant caido')
+        expect(output).to include('vector store caido')
       end
     end
   end
