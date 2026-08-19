@@ -10,8 +10,12 @@ RSpec.describe OnlyHome::TriageAgent do
       expect(agent.name).to eq('agente_triage')
     end
 
-    it 'no tiene tools propias (solo enruta)' do
-      expect(Array(agent.tools)).to be_empty
+    it 'lleva la herramienta de escalamiento a humano (para pedidos explícitos o casos sensibles)' do
+      expect(agent.tools.map { |t| t.class.name }).to include('OnlyHome::Tools::HumanHandoffTool')
+    end
+
+    it 'sus instrucciones contemplan escalar cuando el cliente pide un humano' do
+      expect(described_class::INSTRUCTIONS).to include('herramienta de escalamiento')
     end
 
     it 'sus instrucciones mencionan los cuatro dominios' do

@@ -21,6 +21,9 @@ class OnlyHome::Tools::HumanHandoffTool < OnlyHome::Tools::BaseTool
       chatwoot.assign(cid, team_id: team_id) if team_id
       chatwoot.update_status(cid, 'open')
 
+      # Marca la derivación para que el job garantice un mensaje al cliente aunque el agente no
+      # genere texto tras usar la herramienta.
+      tool_context.state[:escalated] = true
       'Conversación derivada a un agente humano.'
     end
   end

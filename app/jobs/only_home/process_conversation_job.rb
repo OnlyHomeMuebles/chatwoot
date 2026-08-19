@@ -13,6 +13,8 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
   # para no dejar al cliente en silencio.
   FALLBACK_REPLY = 'Estoy teniendo un inconveniente técnico en este momento 🙏. ' \
                    'Por favor intenta de nuevo en unos minutos.'
+  # Mensaje al cliente cuando se derivó a un humano pero el agente no dejó texto propio.
+  HANDOFF_REPLY = 'Con gusto te comunico con un asesor de Only Home 💙. En un momento te atienden por aquí.'
   # El free tier del LLM limita por minuto (p. ej. "retry in 2s"); reintentamos con una espera corta
   # antes de rendirnos, para que ese límite pasajero sea transparente para el cliente.
   MAX_LLM_ATTEMPTS = 2
@@ -41,6 +43,8 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
     if result && result.output.to_s.strip.present?
       memory.save(result.context)
       result.output
+    elsif escalated?(result)
+      HANDOFF_REPLY
     else
       Rails.logger.error("[OnlyHome] runner sin salida conv=#{conversation_id}: #{result&.error&.message}")
       FALLBACK_REPLY
@@ -48,6 +52,12 @@ class OnlyHome::ProcessConversationJob < ApplicationJob
   rescue StandardError => e
     Rails.logger.error("[OnlyHome] error procesando conv=#{conversation_id}: #{e.class}: #{e.message}")
     FALLBACK_REPLY
+  end
+
+  # ¿El agente derivó la conversación a un humano durante el run? (lo marca HumanHandoffTool).
+  def escalated?(result)
+    ctx = result&.context
+    ctx.respond_to?(:dig) && ctx.dig(:state, :escalated).present?
   end
 
   # Reintenta ante errores de cuota/tasa (límite por minuto del free tier), reconstruyendo el

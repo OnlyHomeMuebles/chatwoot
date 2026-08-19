@@ -72,6 +72,16 @@ RSpec.describe OnlyHome::ProcessConversationJob do
     job.perform(account_id: 1, conversation_id: 7, content: 'hola')
   end
 
+  it 'publica un mensaje de derivación cuando el agente escala a un humano sin dejar texto propio' do
+    allow(runner).to receive(:run)
+      .and_return(instance_double(Agents::RunResult, output: nil, error: nil, context: { state: { escalated: true } }))
+
+    expect(client).to receive(:create_message)
+      .with(7, content: described_class::HANDOFF_REPLY, message_type: 'outgoing')
+
+    job.perform(account_id: 1, conversation_id: 7, content: 'quiero hablar con una persona')
+  end
+
   it 'responde con un mensaje de respaldo si el runner no produjo salida' do
     allow(runner).to receive(:run).and_return(instance_double(Agents::RunResult, output: nil, context: {}, error: nil))
 

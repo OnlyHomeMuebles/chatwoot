@@ -29,6 +29,10 @@ class OnlyHome::TriageAgent
       la compra, políticas generales (la garantía como información, no para activarla).
 
     Reglas de clasificación:
+    - Si el cliente pide EXPLÍCITAMENTE hablar con una persona/asesor humano, o hay un caso legal o
+      muy sensible (amenaza de demanda, entidad de control, etc.), escala de inmediato con la
+      herramienta de escalamiento (no lo enrutes a un especialista) y dile en una frase cálida que lo
+      estás comunicando con un asesor humano.
     - Si es solo un saludo o algo muy vago ("hola", "buenas", "una pregunta"), salúdalo breve y con
       calidez y pregúntale en qué le puedes ayudar antes de enrutar.
     - Si mezcla varios temas, prioriza el problema/reclamo (agente_pqrs); si no hay reclamo, toma la
@@ -46,7 +50,8 @@ class OnlyHome::TriageAgent
       instructions: INSTRUCTIONS,
       model: model || default_model,
       provider: provider,
-      assume_model_exists: assume_model_exists
+      assume_model_exists: assume_model_exists,
+      tools: [OnlyHome::Tools::HumanHandoffTool.new]
     )
   end
 
