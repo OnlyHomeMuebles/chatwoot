@@ -12,17 +12,17 @@ RSpec.describe OnlyHome::PqrsAgent do
 
   describe 'instrucciones base' do
     it 'delimitan su responsabilidad a la gestión postventa' do
-      expect(described_class::INSTRUCTIONS).to match(/PQRS/)
-      expect(described_class::INSTRUCTIONS).to match(/garantía postventa/i)
+      expect(described_class::INSTRUCTIONS).to match(/postventa/i)
+      expect(described_class::INSTRUCTIONS).to match(/garantía/i)
     end
 
-    it 'declaran las fronteras (no logística, cotizaciones ni FAQ)' do
-      expect(described_class::INSTRUCTIONS).to match(/No consultas el estado/i)
-      expect(described_class::INSTRUCTIONS).to match(/No generas precios/i)
+    it 'prioriza dar siempre una solución concreta al cliente' do
+      expect(described_class::INSTRUCTIONS).to match(/siempre una solución/i)
     end
 
-    it 'devuelve el control al triage fuera de su dominio' do
-      expect(described_class::INSTRUCTIONS).to include('agente_triage')
+    it 'da tiempos reales de garantía y no inventa números de ticket' do
+      expect(described_class::INSTRUCTIONS).to match(/12 a 15 días/i)
+      expect(described_class::INSTRUCTIONS).to match(/inventes un número de ticket/i)
     end
   end
 
