@@ -1,7 +1,7 @@
 # Tool de la gema ai-agents que expone la base de conocimiento de Only Home
 # a los agentes LLM. Sin estado propio: todo el contexto de ejecucion llega
 # via tool_context (thread-safe segun el contrato de Agents::Tool).
-class KnowledgeBaseSearchTool < Agents::Tool
+class Helic3::KnowledgeBaseSearchTool < Agents::Tool
   def self.name
     'search_knowledge_base'
   end
@@ -17,11 +17,11 @@ class KnowledgeBaseSearchTool < Agents::Tool
     account = resolve_account(tool_context)
     return 'No hay una cuenta configurada para la busqueda de conocimiento.' if account.blank?
 
-    results = Knowledge::SearchService.new(account).search(query, limit: MAX_RESULTS)
+    results = Helic3::Knowledge::SearchService.new(account).search(query, limit: MAX_RESULTS)
     return 'No se encontro informacion relevante en la base de conocimiento.' if results.empty?
 
     format_results(results)
-  rescue Knowledge::EmbeddingService::EmbeddingError, Knowledge::VectorStore::Error => e
+  rescue Helic3::Knowledge::EmbeddingService::EmbeddingError, Helic3::Knowledge::VectorStore::Error => e
     "La busqueda de conocimiento no esta disponible: #{e.message}"
   end
 
@@ -33,8 +33,8 @@ class KnowledgeBaseSearchTool < Agents::Tool
   end
 
   def format_results(results)
-    document_names = Knowledge::Document.where(id: results.pluck(:document_id).uniq)
-                                        .pluck(:id, :name).to_h
+    document_names = Helic3::Knowledge::Document.where(id: results.pluck(:document_id).uniq)
+                                                .pluck(:id, :name).to_h
 
     results.map.with_index(1) do |result, index|
       source = document_names[result[:document_id]] || 'desconocida'

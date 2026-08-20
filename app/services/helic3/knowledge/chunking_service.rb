@@ -2,7 +2,7 @@
 # Cuts preferably at paragraph or sentence boundaries so fragments stay
 # semantically coherent (mirrors the spirit of Captain's Q&A chunking
 # while staying source-agnostic).
-class Knowledge::ChunkingService
+class Helic3::Knowledge::ChunkingService
   MAX_CHUNK_SIZE = 1200
   OVERLAP = 150
 

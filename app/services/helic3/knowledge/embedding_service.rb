@@ -1,6 +1,6 @@
 # Generates embeddings via RubyLLM using the OPENAI_API_KEY env var
 # (falls back to the Captain installation config key when present).
-class Knowledge::EmbeddingService
+class Helic3::Knowledge::EmbeddingService
   DEFAULT_MODEL = 'text-embedding-3-small'.freeze
 
   class EmbeddingError < StandardError; end
