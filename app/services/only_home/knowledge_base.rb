@@ -161,7 +161,11 @@ module OnlyHome::KnowledgeBase # rubocop:disable Metrics/ModuleLength
     - En varios combos el envío y el armado son gratis en rutas seleccionadas.
 
     Garantía (área de Experiencia al Cliente):
+    - Todos los muebles tienen garantía por defectos de fabricación.
     - Los muebles de madera tienen garantía de hasta 10 años por enfermedad de la madera.
+    - Qué NO cubre la garantía: el desgaste normal por el uso; el mal uso, golpes o daños accidentales;
+      manchas o daños por líquidos; la exposición extrema al sol o a la humedad; y las modificaciones
+      o reparaciones hechas por el cliente o por terceros.
     - Para tramitar una garantía se requiere: factura de compra, fotos del producto donde se
       evidencien los inconvenientes, y los datos del cliente (nombre completo, número de cédula,
       dirección completa y ciudad).
@@ -198,6 +202,22 @@ module OnlyHome::KnowledgeBase # rubocop:disable Metrics/ModuleLength
       ya que los descuentos pueden variar por punto de venta.
     - "¿Qué formas de pago / financiación manejan?" → Efectivo, tarjeta, Sistecrédito y Addi
       (no se maneja pago contra entrega).
+    - "¿Qué garantía tienen y qué cubre?" → Todos los muebles tienen garantía por defectos de
+      fabricación; la madera hasta 10 años por enfermedad de la madera. No cubre desgaste normal,
+      mal uso, golpes/accidentes, daños por líquidos, sol/humedad extremos ni modificaciones del
+      cliente. Para hacerla efectiva: factura + fotos del daño + datos; un técnico visita en 12 a
+      15 días hábiles.
+    - "¿Cómo cuido / limpio mis muebles?" → Madera: límpiala con un paño suave apenas húmedo y sécala;
+      evita el sol directo prolongado, la humedad y los productos abrasivos. Tapizados/tela: aspira o
+      pasa un paño con agua y jabón neutro, sin empapar. Evita apoyar objetos calientes o cortopunzantes.
+    - "¿El armado o la instalación están incluidos?" → En productos sueltos, por lo general el armado
+      corre por cuenta del cliente; en varios combos el envío y el armado son gratis en las rutas
+      seleccionadas.
+    - "¿Hacen muebles totalmente a la medida?" → No se fabrican muebles a la medida. Sí puedes armar
+      las salas modulares (p. ej. Santorini) eligiendo la cantidad de módulos y el color disponible.
+    - "¿Puedo comprar en línea? ¿Y recoger en tienda?" → Sí, puedes comprar en https://www.onlymuebles.com;
+      la entrega se hace con ruta propia. Si prefieres recoger en una tienda, confírmalo directamente
+      con la tienda de tu ciudad, porque depende de la disponibilidad del producto.
   TXT
 
   # Tipos de queja/reclamo que entran a menudo (para orientar al agente de PQRS). Ordenadas por
@@ -219,4 +239,9 @@ module OnlyHome::KnowledgeBase # rubocop:disable Metrics/ModuleLength
     6. Problemas en la entrega física: no fue posible ingresar el producto a la vivienda, novedades de
        dirección o fecha de entrega.
   TXT
+
+  # Texto completo del conocimiento de Only Home, usado para ingerirlo al RAG (búsqueda semántica).
+  def self.full_text
+    [EMPRESA, CATALOGO, COMBOS, TIENDAS, POLITICAS, FAQ, QUEJAS_FRECUENTES].join("\n\n---\n\n")
+  end
 end

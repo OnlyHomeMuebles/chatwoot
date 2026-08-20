@@ -36,6 +36,17 @@ namespace :knowledge do
       puts "#{name}: #{result} (#{document.chunks.count} fragmentos)"
     end
   end
+
+  desc 'Ingest (or refresh) the Only Home knowledge base into the RAG'
+  task ingest_catalog: :environment do
+    account = Account.first
+    document = Knowledge::Document.find_or_initialize_by(account: account, name: 'catalogo_only_home', source_type: :dataset)
+    document.assign_attributes(content: OnlyHome::KnowledgeBase.full_text)
+    document.save!
+
+    result = Knowledge::IngestionService.new(document).perform
+    puts "catalogo_only_home: #{result} (#{document.chunks.count} fragmentos)"
+  end
 end
 
 namespace :knowledge do
