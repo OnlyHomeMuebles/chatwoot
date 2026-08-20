@@ -11,13 +11,13 @@ namespace :knowledge do
     abort 'Usage: rake "knowledge:ingest_url[url,name]"' if args[:url].blank?
 
     account = Account.first
-    content = Knowledge::UrlFetcher.new(args[:url]).fetch
+    content = Helic3::Knowledge::UrlFetcher.new(args[:url]).fetch
 
-    document = Knowledge::Document.find_or_initialize_by(account: account, external_link: args[:url])
+    document = Helic3::Knowledge::Document.find_or_initialize_by(account: account, external_link: args[:url])
     document.assign_attributes(name: args[:name].presence || args[:url], source_type: :url, content: content)
     document.save!
 
-    result = Knowledge::IngestionService.new(document).perform
+    result = Helic3::Knowledge::IngestionService.new(document).perform
     puts "#{document.name}: #{result} (#{document.chunks.count} fragmentos)"
   end
 
@@ -28,23 +28,25 @@ namespace :knowledge do
     account = Account.first
     Dir[Rails.root.join('db/knowledge_seeds/*.csv')].each do |path|
       name = File.basename(path, '.csv')
-      document = Knowledge::Document.find_or_initialize_by(account: account, name: name, source_type: :dataset)
+      document = Helic3::Knowledge::Document.find_or_initialize_by(account: account, name: name, source_type: :dataset)
       document.assign_attributes(content: knowledge_csv_to_text(path))
       document.save!
 
-      result = Knowledge::IngestionService.new(document).perform
+      result = Helic3::Knowledge::IngestionService.new(document).perform
       puts "#{name}: #{result} (#{document.chunks.count} fragmentos)"
     end
   end
+end
 
+namespace :knowledge do
   desc 'Ingest (or refresh) the Only Home knowledge base into the RAG'
   task ingest_catalog: :environment do
     account = Account.first
-    document = Knowledge::Document.find_or_initialize_by(account: account, name: 'catalogo_only_home', source_type: :dataset)
+    document = Helic3::Knowledge::Document.find_or_initialize_by(account: account, name: 'catalogo_only_home', source_type: :dataset)
     document.assign_attributes(content: OnlyHome::KnowledgeBase.full_text)
     document.save!
 
-    result = Knowledge::IngestionService.new(document).perform
+    result = Helic3::Knowledge::IngestionService.new(document).perform
     puts "catalogo_only_home: #{result} (#{document.chunks.count} fragmentos)"
   end
 end
@@ -63,7 +65,7 @@ namespace :knowledge do
                     'respuesta unicamente en lo que devuelva, mencionando la fuente. Si la base de ' \
                     'conocimiento no tiene la respuesta, dilo honestamente. Responde en espanol, breve.',
       model: 'gpt-4.1-mini',
-      tools: [KnowledgeBaseSearchTool.new]
+      tools: [Helic3::KnowledgeBaseSearchTool.new]
     )
 
     result = Agents::Runner.with_agents(agent).run(question, context: { account_id: Account.first.id })
@@ -77,7 +79,7 @@ namespace :knowledge do
   task :search, [:query] => :environment do |_t, args|
     abort 'Usage: rake "knowledge:search[query]"' if args[:query].blank?
 
-    results = Knowledge::SearchService.new(Account.first).search(args[:query])
+    results = Helic3::Knowledge::SearchService.new(Account.first).search(args[:query])
     puts 'Sin resultados' if results.empty?
     results.each do |result|
       puts "score=#{result[:score]&.round(3)} doc=#{result[:document_id]} chunk=#{result[:chunk_id]}"

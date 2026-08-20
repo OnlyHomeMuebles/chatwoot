@@ -43,7 +43,7 @@ class OnlyHome::LogisticaAgent
       model: model || default_model,
       provider: provider,
       assume_model_exists: assume_model_exists,
-      tools: [OnlyHome::Tools::HumanHandoffTool.new, KnowledgeBaseSearchTool.new]
+      tools: [OnlyHome::Tools::HumanHandoffTool.new, Helic3::KnowledgeBaseSearchTool.new]
     )
   end
 

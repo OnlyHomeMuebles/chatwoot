@@ -1,8 +1,8 @@
-# Turns a Knowledge::Document's content into embedded chunks stored in the
+# Turns a Helic3::Knowledge::Document's content into embedded chunks stored in the
 # configured vector store. Re-running is cheap: a content fingerprint
 # (borrowed from Captain's sync design) skips documents that didn't change,
 # which makes ingestion incremental and reproducible.
-class Knowledge::IngestionService
+class Helic3::Knowledge::IngestionService
   BATCH_SIZE = 50
 
   def initialize(document)
@@ -28,12 +28,12 @@ class Knowledge::IngestionService
   private
 
   def reingest_chunks
-    store = Knowledge::VectorStore.adapter
+    store = Helic3::Knowledge::VectorStore.adapter
     store.delete_document(@document)
     @document.chunks.destroy_all
 
-    texts = Knowledge::ChunkingService.new(@document.content).chunks
-    embedder = Knowledge::EmbeddingService.new
+    texts = Helic3::Knowledge::ChunkingService.new(@document.content).chunks
+    embedder = Helic3::Knowledge::EmbeddingService.new
 
     texts.each_slice(BATCH_SIZE).with_index do |batch, batch_index|
       vectors = embedder.embed_batch(batch)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_18_120000) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_20_120000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1177,7 +1177,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_18_120000) do
     t.jsonb "settings", default: {}
   end
 
-  create_table "knowledge_chunks", force: :cascade do |t|
+  create_table "helic3_knowledge_chunks", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "document_id", null: false
     t.text "content", null: false
@@ -1186,12 +1186,12 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_18_120000) do
     t.jsonb "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["account_id"], name: "index_knowledge_chunks_on_account_id"
-    t.index ["document_id"], name: "index_knowledge_chunks_on_document_id"
-    t.index ["embedding"], name: "idx_knowledge_chunks_on_embedding", opclass: :vector_cosine_ops, using: :ivfflat
+    t.index ["account_id"], name: "index_helic3_knowledge_chunks_on_account_id"
+    t.index ["document_id"], name: "index_helic3_knowledge_chunks_on_document_id"
+    t.index ["embedding"], name: "idx_helic3_knowledge_chunks_on_embedding", opclass: :vector_cosine_ops, using: :ivfflat
   end
 
-  create_table "knowledge_documents", force: :cascade do |t|
+  create_table "helic3_knowledge_documents", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "name", null: false
     t.integer "source_type", default: 0, null: false
@@ -1203,8 +1203,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_18_120000) do
     t.datetime "last_ingested_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["account_id", "external_link"], name: "index_knowledge_documents_on_account_id_and_external_link", unique: true
-    t.index ["status"], name: "index_knowledge_documents_on_status"
+    t.index ["account_id", "external_link"], name: "idx_h3_knowledge_documents_account_external_link", unique: true
+    t.index ["status"], name: "index_helic3_knowledge_documents_on_status"
   end
 
   create_table "labels", force: :cascade do |t|

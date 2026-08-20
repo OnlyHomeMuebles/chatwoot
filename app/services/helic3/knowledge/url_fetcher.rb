@@ -1,6 +1,6 @@
 # Fetches a web page and extracts its readable text (scripts, styles and
 # non-content tags stripped) for ingestion.
-class Knowledge::UrlFetcher
+class Helic3::Knowledge::UrlFetcher
   class FetchError < StandardError; end
 
   def initialize(url)

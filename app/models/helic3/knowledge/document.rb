@@ -1,6 +1,6 @@
 # == Schema Information
 #
-# Table name: knowledge_documents
+# Table name: helic3_knowledge_documents
 #
 #  id                  :bigint           not null, primary key
 #  content             :text
@@ -17,14 +17,12 @@
 #
 # Indexes
 #
-#  index_knowledge_documents_on_account_id_and_external_link  (account_id,external_link) UNIQUE
-#  index_knowledge_documents_on_status                        (status)
+#  idx_h3_knowledge_documents_account_external_link  (account_id,external_link) UNIQUE
+#  index_helic3_knowledge_documents_on_status        (status)
 #
-class Knowledge::Document < ApplicationRecord
-  self.table_name = 'knowledge_documents'
-
+class Helic3::Knowledge::Document < ApplicationRecord
   belongs_to :account
-  has_many :chunks, class_name: 'Knowledge::Chunk',
+  has_many :chunks, class_name: 'Helic3::Knowledge::Chunk',
                     dependent: :destroy, inverse_of: :document
 
   enum :source_type, { url: 0, dataset: 1, file: 2 }, prefix: :source
