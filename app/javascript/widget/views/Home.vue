@@ -17,7 +17,6 @@ export default {
   },
   computed: {
     ...mapGetters({
-      availableAgents: 'agent/availableAgents',
       conversationSize: 'conversation/getConversationSize',
       unreadMessageCount: 'conversation/getUnreadMessageCount',
     }),
@@ -36,7 +35,6 @@ export default {
 <template>
   <div class="z-50 flex flex-col justify-end flex-1 w-full p-4 gap-4">
     <TeamAvailability
-      :available-agents="availableAgents"
       :has-conversation="!!conversationSize"
       :unread-count="unreadMessageCount"
       @start-conversation="startConversation"

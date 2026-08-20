@@ -3,7 +3,6 @@ import { toRef } from 'vue';
 import { useRouter } from 'vue-router';
 import FluentIcon from 'shared/components/FluentIcon/Index.vue';
 import HeaderActions from './HeaderActions.vue';
-import AvailabilityContainer from 'widget/components/Availability/AvailabilityContainer.vue';
 import { useAvailability } from 'widget/composables/useAvailability';
 
 const props = defineProps({
@@ -50,12 +49,6 @@ const onBackButtonClick = () => {
               ${isOnline ? 'bg-n-teal-10' : 'hidden'}`"
           />
         </div>
-        <AvailabilityContainer
-          :agents="availableAgents"
-          :show-header="false"
-          :show-avatars="false"
-          text-classes="text-xs leading-3"
-        />
       </div>
     </div>
     <HeaderActions :show-popout-button="showPopoutButton" />
