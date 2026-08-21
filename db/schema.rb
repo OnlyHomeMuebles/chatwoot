@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_20_120000) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_21_150000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1097,6 +1097,159 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_120000) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "helic3_catalogo_categorias", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "nombre", null: false
+    t.string "codigo", null: false
+    t.integer "posicion", default: 0, null: false
+    t.boolean "activo", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "codigo"], name: "idx_h3cat_categorias_account_codigo", unique: true
+    t.index ["account_id"], name: "idx_h3cat_categorias_account"
+  end
+
+  create_table "helic3_catalogo_coberturas_ciudad", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "nombre", null: false
+    t.string "codigo", null: false
+    t.integer "posicion", default: 0, null: false
+    t.boolean "activo", default: true, null: false
+    t.boolean "tecnico_propio", default: false, null: false
+    t.string "origen_ruta"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "codigo"], name: "idx_h3cat_coberturas_ciudad_account_codigo", unique: true
+    t.index ["account_id"], name: "idx_h3cat_coberturas_ciudad_account"
+  end
+
+  create_table "helic3_catalogo_detalles_tipificados", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "nombre", null: false
+    t.string "codigo", null: false
+    t.integer "posicion", default: 0, null: false
+    t.boolean "activo", default: true, null: false
+    t.bigint "motivo_garantia_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "codigo"], name: "idx_h3cat_detalles_tipificados_account_codigo", unique: true
+    t.index ["account_id"], name: "idx_h3cat_detalles_tipificados_account"
+    t.index ["motivo_garantia_id"], name: "idx_h3cat_detalles_motivo"
+  end
+
+  create_table "helic3_catalogo_etapas_pqr", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "nombre", null: false
+    t.string "codigo", null: false
+    t.integer "posicion", default: 0, null: false
+    t.boolean "activo", default: true, null: false
+    t.boolean "detiene_reloj", default: false, null: false
+    t.boolean "visible_cliente", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "codigo"], name: "idx_h3cat_etapas_pqr_account_codigo", unique: true
+    t.index ["account_id"], name: "idx_h3cat_etapas_pqr_account"
+  end
+
+  create_table "helic3_catalogo_motivos_garantia", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "nombre", null: false
+    t.string "codigo", null: false
+    t.integer "posicion", default: 0, null: false
+    t.boolean "activo", default: true, null: false
+    t.string "regla"
+    t.integer "parametro_dias"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "codigo"], name: "idx_h3cat_motivos_garantia_account_codigo", unique: true
+    t.index ["account_id"], name: "idx_h3cat_motivos_garantia_account"
+  end
+
+  create_table "helic3_catalogo_motivos_pqr", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "nombre", null: false
+    t.string "codigo", null: false
+    t.integer "posicion", default: 0, null: false
+    t.boolean "activo", default: true, null: false
+    t.bigint "categoria_id", null: false
+    t.boolean "abre_garantia", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "codigo"], name: "idx_h3cat_motivos_pqr_account_codigo", unique: true
+    t.index ["account_id"], name: "idx_h3cat_motivos_pqr_account"
+    t.index ["categoria_id"], name: "idx_h3cat_motivos_pqr_categoria"
+  end
+
+  create_table "helic3_catalogo_procesos_garantia", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "nombre", null: false
+    t.string "codigo", null: false
+    t.integer "posicion", default: 0, null: false
+    t.boolean "activo", default: true, null: false
+    t.integer "plazo_dias_habiles"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "codigo"], name: "idx_h3cat_procesos_garantia_account_codigo", unique: true
+    t.index ["account_id"], name: "idx_h3cat_procesos_garantia_account"
+  end
+
+  create_table "helic3_catalogo_resultados", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "nombre", null: false
+    t.string "codigo", null: false
+    t.integer "posicion", default: 0, null: false
+    t.boolean "activo", default: true, null: false
+    t.boolean "cierra_pqr", default: false, null: false
+    t.boolean "abre_garantia", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "codigo"], name: "idx_h3cat_resultados_account_codigo", unique: true
+    t.index ["account_id"], name: "idx_h3cat_resultados_account"
+  end
+
+  create_table "helic3_catalogo_tipos", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "nombre", null: false
+    t.string "codigo", null: false
+    t.integer "posicion", default: 0, null: false
+    t.boolean "activo", default: true, null: false
+    t.integer "plazo_dias_habiles"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "codigo"], name: "idx_h3cat_tipos_account_codigo", unique: true
+    t.index ["account_id"], name: "idx_h3cat_tipos_account"
+  end
+
+  create_table "helic3_knowledge_chunks", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "document_id", null: false
+    t.text "content", null: false
+    t.integer "position", default: 0, null: false
+    t.vector "embedding", limit: 1536
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_helic3_knowledge_chunks_on_account_id"
+    t.index ["document_id"], name: "index_helic3_knowledge_chunks_on_document_id"
+    t.index ["embedding"], name: "idx_helic3_knowledge_chunks_on_embedding", opclass: :vector_cosine_ops, using: :ivfflat
+  end
+
+  create_table "helic3_knowledge_documents", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "name", null: false
+    t.integer "source_type", default: 0, null: false
+    t.string "external_link"
+    t.text "content"
+    t.string "content_fingerprint"
+    t.integer "status", default: 0, null: false
+    t.jsonb "metadata", default: {}
+    t.datetime "last_ingested_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "external_link"], name: "idx_h3_knowledge_documents_account_external_link", unique: true
+    t.index ["status"], name: "index_helic3_knowledge_documents_on_status"
+  end
+
   create_table "inbox_assignment_policies", force: :cascade do |t|
     t.bigint "inbox_id", null: false
     t.bigint "assignment_policy_id", null: false
@@ -1175,36 +1328,6 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.jsonb "settings", default: {}
-  end
-
-  create_table "helic3_knowledge_chunks", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.bigint "document_id", null: false
-    t.text "content", null: false
-    t.integer "position", default: 0, null: false
-    t.vector "embedding", limit: 1536
-    t.jsonb "metadata", default: {}
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["account_id"], name: "index_helic3_knowledge_chunks_on_account_id"
-    t.index ["document_id"], name: "index_helic3_knowledge_chunks_on_document_id"
-    t.index ["embedding"], name: "idx_helic3_knowledge_chunks_on_embedding", opclass: :vector_cosine_ops, using: :ivfflat
-  end
-
-  create_table "helic3_knowledge_documents", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.string "name", null: false
-    t.integer "source_type", default: 0, null: false
-    t.string "external_link"
-    t.text "content"
-    t.string "content_fingerprint"
-    t.integer "status", default: 0, null: false
-    t.jsonb "metadata", default: {}
-    t.datetime "last_ingested_at"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["account_id", "external_link"], name: "idx_h3_knowledge_documents_account_external_link", unique: true
-    t.index ["status"], name: "index_helic3_knowledge_documents_on_status"
   end
 
   create_table "labels", force: :cascade do |t|
@@ -1644,6 +1767,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_120000) do
   add_foreign_key "campaign_recipients", "campaigns", on_delete: :cascade
   add_foreign_key "campaign_recipients", "contacts", on_delete: :cascade
   add_foreign_key "campaign_recipients", "inboxes", on_delete: :cascade
+  add_foreign_key "helic3_catalogo_detalles_tipificados", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
+  add_foreign_key "helic3_catalogo_motivos_pqr", "helic3_catalogo_categorias", column: "categoria_id"
   add_foreign_key "inboxes", "portals"
   add_foreign_key "user_sessions", "users"
   # no candidate create_trigger statement could be found, creating an adapter-specific one
