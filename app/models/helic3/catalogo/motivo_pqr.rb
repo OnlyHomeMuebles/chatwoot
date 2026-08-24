@@ -1,19 +1,23 @@
-# Que esta pidiendo el cliente. Cada motivo pertenece a una categoria y su
-# marca abre_garantia decide si el caso deriva un expediente de garantia.
+# Que esta pidiendo el cliente. Cada motivo pertenece a una categoria; su
+# marca abre_garantia decide si el caso deriva expediente de garantia con
+# tres estados (CAT-02, frente C): nunca, siempre, o segun el analisis del
+# caso ("Error de despacho" solo abre garantia si el analisis lo confirma).
+# plazo_dias_habiles cubre los motivos con plazo legal propio (retracto: 5).
 # == Schema Information
 #
 # Table name: helic3_catalogo_motivos_pqr
 #
-#  id            :bigint           not null, primary key
-#  abre_garantia :boolean          default(FALSE), not null
-#  activo        :boolean          default(TRUE), not null
-#  codigo        :string           not null
-#  nombre        :string           not null
-#  posicion      :integer          default(0), not null
-#  created_at    :datetime         not null
-#  updated_at    :datetime         not null
-#  account_id    :bigint           not null
-#  categoria_id  :bigint           not null
+#  id                 :bigint           not null, primary key
+#  abre_garantia      :integer          default("nunca"), not null
+#  activo             :boolean          default(TRUE), not null
+#  codigo             :string           not null
+#  nombre             :string           not null
+#  plazo_dias_habiles :integer
+#  posicion           :integer          default(0), not null
+#  created_at         :datetime         not null
+#  updated_at         :datetime         not null
+#  account_id         :bigint           not null
+#  categoria_id       :bigint           not null
 #
 # Indexes
 #
@@ -32,4 +36,8 @@ class Helic3::Catalogo::MotivoPqr < ApplicationRecord
   include Helic3::Catalogo::Comun
 
   belongs_to :categoria, class_name: 'Helic3::Catalogo::Categoria', inverse_of: :motivos_pqr
+
+  enum :abre_garantia, { nunca: 0, siempre: 1, segun_analisis: 2 }, prefix: :abre_garantia
+
+  validates :plazo_dias_habiles, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
 end

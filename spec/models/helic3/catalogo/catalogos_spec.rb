@@ -87,16 +87,40 @@ RSpec.describe 'Helic3::Catalogo' do
       let(:descrito) { described_class }
 
       def construir(cuenta)
-        motivo = Helic3::Catalogo::MotivoGarantia.find_or_create_by!(account: cuenta, nombre: 'Calidad', codigo: 'calidad')
-        described_class.new(account: cuenta, nombre: 'Valor', codigo: 'valor', motivo_garantia: motivo)
+        described_class.new(account: cuenta, nombre: 'Valor', codigo: 'valor')
       end
     end
 
-    it 'no se puede guardar sin su motivo asociado (criterio 3)' do
+    it 'puede existir sin motivo de garantia: es un catalogo autonomo (CAT-02, frente A)' do
       account = create(:account)
       detalle = described_class.new(account: account, nombre: 'Tela motosa', codigo: 'tela_motosa')
-      expect(detalle).not_to be_valid
-      expect(detalle.errors[:motivo_garantia]).to be_present
+      expect(detalle).to be_valid
+    end
+  end
+
+  describe Helic3::Catalogo::Parametro do
+    let(:account) { create(:account) }
+
+    it 'exige clave, valor y unidad conocida' do
+      parametro = described_class.new(account: account, clave: 'plazo_total_garantia',
+                                      valor: '30', unidad: 'dias_habiles')
+      expect(parametro).to be_valid
+
+      parametro.unidad = 'siglos'
+      expect(parametro).not_to be_valid
+    end
+
+    it 'no permite dos claves iguales en la misma cuenta' do
+      described_class.create!(account: account, clave: 'plazo_retracto', valor: '5', unidad: 'dias_habiles')
+      repetido = described_class.new(account: account, clave: 'plazo_retracto', valor: '9', unidad: 'dias_habiles')
+      expect(repetido).not_to be_valid
+    end
+
+    it 'interpreta el valor segun la unidad' do
+      entero = described_class.new(valor: '30')
+      booleano = described_class.new(valor: 'true')
+      expect(entero.valor_entero).to eq(30)
+      expect(booleano.valor_booleano).to be(true)
     end
   end
 end

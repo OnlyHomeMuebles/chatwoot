@@ -7,7 +7,9 @@ namespace :catalogos do
     resumen.each { |catalogo, total| puts format('%<c>-22s %<t>d filas', c: catalogo, t: total) }
     puts 'Semilla aplicada. Correrla de nuevo no duplica (criterio 5).'
   end
+end
 
+namespace :catalogos do
   desc 'Lista un catalogo: rake "catalogos:listar[motivos_garantia]"'
   task :listar, [:catalogo] => :environment do |_t, args|
     modelos = {
@@ -21,7 +23,13 @@ namespace :catalogos do
       'motivos_pqr' => Helic3::Catalogo::MotivoPqr,
       'resultados' => Helic3::Catalogo::Resultado
     }
-    modelo = modelos[args[:catalogo]] or abort "Catalogos: #{modelos.keys.join(', ')}"
+    if args[:catalogo] == 'parametros'
+      Helic3::Catalogo::Parametro.where(account: Account.first).order(:clave).each do |p|
+        puts format('%<clave>-34s %<valor>-8s %<unidad>s', clave: p.clave, valor: p.valor, unidad: p.unidad)
+      end
+      next
+    end
+    modelo = modelos[args[:catalogo]] or abort "Catalogos: #{modelos.keys.join(', ')}, parametros"
     modelo.where(account: Account.first).order(:posicion).each do |fila|
       puts format('%<pos>3d %<cod>-32s %<nom>s%<off>s',
                   pos: fila.posicion, cod: fila.codigo, nom: fila.nombre,

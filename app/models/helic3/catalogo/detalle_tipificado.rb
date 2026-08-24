@@ -1,5 +1,8 @@
-# La falla fisica concreta del producto. Nunca existe sin su motivo de
-# garantia asociado (criterio 3 de CAT-01).
+# La falla fisica concreta del producto. Es un catalogo AUTONOMO (CAT-02,
+# frente A): el detalle sale de la descripcion y las fotos, mientras que el
+# motivo de garantia sale de una regla de fecha — "tela motosa" puede ocurrir
+# a los 20 o a los 200 dias, bajo motivos distintos. La asociacion es
+# opcional y de apoyo, nunca una pertenencia obligatoria.
 # == Schema Information
 #
 # Table name: helic3_catalogo_detalles_tipificados
@@ -12,7 +15,7 @@
 #  created_at         :datetime         not null
 #  updated_at         :datetime         not null
 #  account_id         :bigint           not null
-#  motivo_garantia_id :bigint           not null
+#  motivo_garantia_id :bigint
 #
 # Indexes
 #
@@ -31,5 +34,5 @@ class Helic3::Catalogo::DetalleTipificado < ApplicationRecord
   include Helic3::Catalogo::Comun
 
   belongs_to :motivo_garantia, class_name: 'Helic3::Catalogo::MotivoGarantia',
-                               inverse_of: :detalles_tipificados
+                               inverse_of: :detalles_tipificados, optional: true
 end

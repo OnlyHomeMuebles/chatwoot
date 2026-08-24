@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_21_150000) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_24_130000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1129,7 +1129,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_21_150000) do
     t.string "codigo", null: false
     t.integer "posicion", default: 0, null: false
     t.boolean "activo", default: true, null: false
-    t.bigint "motivo_garantia_id", null: false
+    t.bigint "motivo_garantia_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id", "codigo"], name: "idx_h3cat_detalles_tipificados_account_codigo", unique: true
@@ -1172,12 +1172,24 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_21_150000) do
     t.integer "posicion", default: 0, null: false
     t.boolean "activo", default: true, null: false
     t.bigint "categoria_id", null: false
-    t.boolean "abre_garantia", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "abre_garantia", default: 0, null: false
+    t.integer "plazo_dias_habiles"
     t.index ["account_id", "codigo"], name: "idx_h3cat_motivos_pqr_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_motivos_pqr_account"
     t.index ["categoria_id"], name: "idx_h3cat_motivos_pqr_categoria"
+  end
+
+  create_table "helic3_catalogo_parametros", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "clave", null: false
+    t.string "valor", null: false
+    t.string "unidad", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "clave"], name: "idx_h3cat_parametros_account_clave", unique: true
+    t.index ["account_id"], name: "idx_h3cat_parametros_account"
   end
 
   create_table "helic3_catalogo_procesos_garantia", force: :cascade do |t|
@@ -1203,6 +1215,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_21_150000) do
     t.boolean "abre_garantia", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "aprobacion_humana", default: false, null: false
     t.index ["account_id", "codigo"], name: "idx_h3cat_resultados_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_resultados_account"
   end
