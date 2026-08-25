@@ -89,13 +89,20 @@ RSpec.describe Helic3::Catalogo::SeederService do
     expect(chapilla.motivo_garantia).to be_nil
   end
 
-  it 'siembra el septimo proceso y conserva los plazos confirmados' do
+  it 'siembra los 7 estados de producto con los plazos confirmados' do
     service.sembrar!
 
     plazos = Helic3::Catalogo::ProcesoGarantia.where(account: account)
                                               .pluck(:codigo, :plazo_dias_habiles).to_h
     expect(plazos).to include('visita_tecnica' => 8, 'recoleccion' => 15, 'cambio_producto' => 20,
-                              'reparacion_y_devolucion' => nil)
+                              'garantia_negada' => nil, 'reparacion_fabrica' => nil)
+  end
+
+  it 'marca como terminales solo los desenlaces finales del producto' do
+    service.sembrar!
+
+    terminales = Helic3::Catalogo::ProcesoGarantia.where(account: account, es_terminal: true).pluck(:codigo)
+    expect(terminales).to match_array(%w[entrega_producto devolucion_dinero garantia_negada])
   end
 
   it 'define el origen de la ruta segun la cobertura tecnica de la ciudad' do

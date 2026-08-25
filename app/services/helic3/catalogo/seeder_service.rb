@@ -93,18 +93,20 @@ class Helic3::Catalogo::SeederService
     'Desiste de la garantía', 'Cambio de patas', 'Golpes y rayones', 'Enfermedad en madera', 'Descosidos'
   ].freeze
 
-  # correo del area (6 procesos) + plazos del criterio 6 de CAT-01. El
-  # septimo, "Reparación y devolución", lo describio Only Home (addendum
-  # 24/08); su interpretacion como septimo proceso es un supuesto declarado
-  # en PENDIENTES.md. Los plazos que siguen null estan alli documentados.
+  # los 7 estados de producto de la maquina de estados (insumos del Sprint 3,
+  # lista del 19/08): el septimo es "Garantía negada", terminal desde el
+  # dictamen. Terminales = entrega, devolucion de dinero y garantia negada
+  # (el cambio de producto NO es terminal: termina en la entrega). El plazo
+  # de "Reparación en fábrica" es dinamico (= saldo del presupuesto), por
+  # eso queda null: lo resuelve PLZ-01.
   PROCESOS_GARANTIA = [
     { nombre: 'Visita técnica', codigo: 'visita_tecnica', plazo_dias_habiles: 8 },
     { nombre: 'Recolección', codigo: 'recoleccion', plazo_dias_habiles: 15 },
-    { nombre: 'Cambio de producto', codigo: 'cambio_producto', plazo_dias_habiles: 20 },
     { nombre: 'Reparación en fábrica', codigo: 'reparacion_fabrica' },
-    { nombre: 'Entrega de producto', codigo: 'entrega_producto' },
-    { nombre: 'Devolución de dinero', codigo: 'devolucion_dinero' },
-    { nombre: 'Reparación y devolución', codigo: 'reparacion_y_devolucion' }
+    { nombre: 'Cambio de producto', codigo: 'cambio_producto', plazo_dias_habiles: 20 },
+    { nombre: 'Entrega de producto', codigo: 'entrega_producto', es_terminal: true },
+    { nombre: 'Devolución de dinero', codigo: 'devolucion_dinero', es_terminal: true },
+    { nombre: 'Garantía negada', codigo: 'garantia_negada', es_terminal: true }
   ].freeze
 
   # origen de la ruta (addendum 24/08): con tecnico propio la garantia

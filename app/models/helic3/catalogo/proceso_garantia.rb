@@ -1,6 +1,9 @@
-# El estado operativo interno de la garantia. Cada proceso lleva su plazo
-# propio en dias habiles como dato (criterio 6): visita tecnica 8,
-# recoleccion 15, cambio de producto 20.
+# El estado operativo de CADA PRODUCTO de una garantia (decision del 25/08:
+# la garantia no tiene estado propio — tiene productos y una condicion de
+# cierre). El plazo es un parametro de programacion dentro del presupuesto
+# de 30 dias, como dato: visita tecnica 8, recoleccion 15, cambio 20.
+# es_terminal marca los desenlaces finales: la garantia cierra cuando todos
+# sus productos llegan a un proceso terminal.
 # == Schema Information
 #
 # Table name: helic3_catalogo_procesos_garantia
@@ -8,6 +11,7 @@
 #  id                 :bigint           not null, primary key
 #  activo             :boolean          default(TRUE), not null
 #  codigo             :string           not null
+#  es_terminal        :boolean          default(FALSE), not null
 #  nombre             :string           not null
 #  plazo_dias_habiles :integer
 #  posicion           :integer          default(0), not null

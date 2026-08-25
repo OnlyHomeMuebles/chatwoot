@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_24_130000) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_25_120000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1201,6 +1201,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_24_130000) do
     t.integer "plazo_dias_habiles"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "es_terminal", default: false, null: false
     t.index ["account_id", "codigo"], name: "idx_h3cat_procesos_garantia_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_procesos_garantia_account"
   end
@@ -1261,6 +1262,68 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_24_130000) do
     t.datetime "updated_at", null: false
     t.index ["account_id", "external_link"], name: "idx_h3_knowledge_documents_account_external_link", unique: true
     t.index ["status"], name: "index_helic3_knowledge_documents_on_status"
+  end
+
+  create_table "helic3_knowledge_faq_suggestions", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "conversation_id"
+    t.bigint "document_id"
+    t.string "question", null: false
+    t.text "answer", null: false
+    t.integer "status", default: 0, null: false
+    t.string "fingerprint", null: false
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "fingerprint"], name: "idx_h3_knowledge_faq_suggestions_account_fingerprint", unique: true
+    t.index ["account_id", "status"], name: "index_helic3_knowledge_faq_suggestions_on_account_id_and_status"
+    t.index ["account_id"], name: "index_helic3_knowledge_faq_suggestions_on_account_id"
+    t.index ["conversation_id"], name: "index_helic3_knowledge_faq_suggestions_on_conversation_id"
+  end
+
+  create_table "helic3_pqrs_centros_operacion", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "nombre", null: false
+    t.boolean "prioritario", default: false, null: false
+    t.integer "sla_dias"
+    t.boolean "cobertura_tecnica", default: false, null: false
+    t.boolean "activo", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "nombre"], name: "index_helic3_pqrs_centros_operacion_on_account_id_and_nombre", unique: true
+    t.index ["account_id"], name: "index_helic3_pqrs_centros_operacion_on_account_id"
+  end
+
+  create_table "helic3_pqrs_detalles", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "motivo_id", null: false
+    t.string "nombre", null: false
+    t.boolean "activo", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "motivo_id", "nombre"], name: "idx_h3_pqrs_detalles_account_motivo_nombre", unique: true
+    t.index ["account_id"], name: "index_helic3_pqrs_detalles_on_account_id"
+    t.index ["motivo_id"], name: "index_helic3_pqrs_detalles_on_motivo_id"
+  end
+
+  create_table "helic3_pqrs_motivos", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "nombre", null: false
+    t.boolean "activo", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "nombre"], name: "index_helic3_pqrs_motivos_on_account_id_and_nombre", unique: true
+    t.index ["account_id"], name: "index_helic3_pqrs_motivos_on_account_id"
+  end
+
+  create_table "helic3_pqrs_procesos", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "nombre", null: false
+    t.boolean "activo", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "nombre"], name: "index_helic3_pqrs_procesos_on_account_id_and_nombre", unique: true
+    t.index ["account_id"], name: "index_helic3_pqrs_procesos_on_account_id"
   end
 
   create_table "inbox_assignment_policies", force: :cascade do |t|
@@ -1678,7 +1741,13 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_24_130000) do
     t.datetime "resolved_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "pqrs_tipo"
+    t.string "pqrs_categoria"
+    t.string "pqrs_prioridad"
+    t.jsonb "pqrs_metadata", default: {}
+    t.string "pqrs_numero_orden"
     t.index ["account_id", "display_id"], name: "index_tickets_on_account_id_and_display_id", unique: true
+    t.index ["account_id", "pqrs_tipo"], name: "index_tickets_on_account_id_and_pqrs_tipo"
     t.index ["account_id", "status"], name: "index_tickets_on_account_id_and_status"
     t.index ["account_id"], name: "index_tickets_on_account_id"
     t.index ["assignee_id", "account_id"], name: "index_tickets_on_assignee_id_and_account_id"
@@ -1782,6 +1851,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_24_130000) do
   add_foreign_key "campaign_recipients", "inboxes", on_delete: :cascade
   add_foreign_key "helic3_catalogo_detalles_tipificados", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
   add_foreign_key "helic3_catalogo_motivos_pqr", "helic3_catalogo_categorias", column: "categoria_id"
+  add_foreign_key "helic3_pqrs_detalles", "helic3_pqrs_motivos", column: "motivo_id"
   add_foreign_key "inboxes", "portals"
   add_foreign_key "user_sessions", "users"
   # no candidate create_trigger statement could be found, creating an adapter-specific one

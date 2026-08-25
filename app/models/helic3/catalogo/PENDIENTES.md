@@ -8,8 +8,9 @@ fuente esperada. La estructura está completa; lo pendiente es DATO.
 |---|---|---|
 | DetalleTipificado | El PDF de asignación habla de 28 detalles "acordados con producción"; el correo del 04/08 entregó 31 (sembrados, literales, erratas incluidas: "Chapilla leventada", "Productos decolorado"). Conciliar cuál lista rige | Producción / Jhan |
 | CoberturaCiudad | Confirmar si Palmira y Buenaventura tienen técnico propio: el diseño dice "Eje Cafetero y Valle" y el correo solo nombró Armenia, Manizales, Pereira y Cali (las sembradas) | Operaciones |
-| ProcesoGarantia | Plazos de 4 procesos quedaron null a propósito (solo visita 8, recolección 15 y cambio 20 están confirmados): Reparación en fábrica, Entrega de producto, Devolución de dinero, Reparación y devolución | Área de servicio |
-| ProcesoGarantia | SUPUESTO DECLARADO: el "séptimo proceso" del addendum se interpretó como "Reparación y devolución" (la etapa que Only Home describió y no estaba sembrada). Confirmar la interpretación | Jhan |
+| ProcesoGarantia | [P] Confirmar si el **desistimiento del cliente** cuenta también como terminal (hoy se resuelve con la decisión del ítem, no con un proceso). Marcarlo sería una fila más, no código | Only Home / Jhan |
+| ProcesoGarantia | El plazo de "Reparación en fábrica" es dinámico (= saldo del presupuesto de 30 días) y por eso queda null: lo calcula PLZ-01. Entrega, devolución y garantía negada no llevan plazo por ser terminales | Resuelto por diseño (insumos Sprint 3) |
+| GarantiaItem (futuro) | [P] La ruta alterna cuando el cliente se niega a la recolección (deriva a cambio mano a mano). Se resuelve marcando filas del catálogo cuando se confirme | Only Home / Jhan |
 
 ## Resuelto por el addendum del 24/08 (ya sembrado)
 
@@ -23,6 +24,12 @@ fuente esperada. La estructura está completa; lo pendiente es DATO.
 - El mapeo detalle→motivo se ELIMINÓ por diseño (frente A): son ejes
   independientes, el detalle es catálogo autónomo.
 - Parámetros de operación: tabla nueva con los 9 valores del addendum.
+- El séptimo proceso quedó resuelto por los insumos del Sprint 3 (máquina de
+  estados, lista del 19/08): es **"Garantía negada"**, terminal desde el
+  dictamen. El supuesto anterior ("Reparación y devolución") se descartó.
+- `es_terminal` marcado como dato en los 3 desenlaces finales: entrega del
+  producto, devolución de dinero y garantía negada. El cambio de producto NO
+  es terminal (termina en la entrega).
 
 ## Regla de la semilla desde CAT-02
 
