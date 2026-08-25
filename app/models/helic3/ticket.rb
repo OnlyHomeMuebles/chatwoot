@@ -23,7 +23,7 @@
 #  index_tickets_on_assignee_id_and_account_id  (assignee_id,account_id)
 #  index_tickets_on_conversation_id             (conversation_id)
 #
-class Ticket < ApplicationRecord
+class Helic3::Ticket < ApplicationRecord
   belongs_to :account
   belongs_to :assignee, class_name: 'User', optional: true, inverse_of: :assigned_tickets
   belongs_to :creator, class_name: 'User', optional: true, inverse_of: :created_tickets
@@ -78,8 +78,8 @@ class Ticket < ApplicationRecord
   end
 
   trigger.before(:insert).for_each(:row) do
-    "NEW.display_id := nextval('ticket_dpid_seq_' || NEW.account_id);"
+    "NEW.display_id := nextval('helic3_ticket_dpid_seq_' || NEW.account_id);"
   end
 end
 
-Ticket.prepend_mod_with('Ticket')
+Helic3::Ticket.prepend_mod_with('Helic3::Ticket')

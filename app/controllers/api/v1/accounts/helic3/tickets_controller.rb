@@ -1,4 +1,4 @@
-class Api::V1::Accounts::TicketsController < Api::V1::Accounts::BaseController
+class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseController
   before_action :fetch_ticket, only: [:show, :update, :destroy, :assign]
   before_action :check_authorization
 
@@ -40,7 +40,7 @@ class Api::V1::Accounts::TicketsController < Api::V1::Accounts::BaseController
   end
 
   def filter_by_status(scope)
-    return scope unless params[:status].present? && Ticket.statuses.key?(params[:status])
+    return scope unless params[:status].present? && Helic3::Ticket.statuses.key?(params[:status])
 
     scope.where(status: params[:status])
   end
@@ -48,7 +48,7 @@ class Api::V1::Accounts::TicketsController < Api::V1::Accounts::BaseController
   # authorize the record when we have one so the policy can apply
   # per-ticket rules (e.g. agents deleting their own tickets)
   def check_authorization
-    @ticket.present? ? authorize(@ticket) : super
+    @ticket.present? ? authorize(@ticket) : authorize(Helic3::Ticket)
   end
 
   def fetch_ticket
