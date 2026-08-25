@@ -5,10 +5,10 @@ RSpec.describe 'Tickets API', type: :request do
   let(:agent) { create(:user, account: account, role: :agent) }
   let(:administrator) { create(:user, account: account, role: :administrator) }
 
-  describe 'GET /api/v1/accounts/{account.id}/tickets' do
+  describe 'GET /api/v1/accounts/{account.id}/helic3/tickets' do
     context 'when it is an unauthenticated user' do
       it 'returns unauthorized' do
-        get "/api/v1/accounts/#{account.id}/tickets"
+        get "/api/v1/accounts/#{account.id}/helic3/tickets"
 
         expect(response).to have_http_status(:unauthorized)
       end
@@ -18,7 +18,7 @@ RSpec.describe 'Tickets API', type: :request do
       let!(:ticket) { create(:ticket, account: account) }
 
       it 'returns all the tickets of the account' do
-        get "/api/v1/accounts/#{account.id}/tickets",
+        get "/api/v1/accounts/#{account.id}/helic3/tickets",
             headers: agent.create_new_auth_token,
             as: :json
 
@@ -30,7 +30,7 @@ RSpec.describe 'Tickets API', type: :request do
       it 'filters by status' do
         create(:ticket, account: account, status: :resolved)
 
-        get "/api/v1/accounts/#{account.id}/tickets",
+        get "/api/v1/accounts/#{account.id}/helic3/tickets",
             params: { status: 'resolved' },
             headers: agent.create_new_auth_token,
             as: :json
@@ -42,10 +42,10 @@ RSpec.describe 'Tickets API', type: :request do
     end
   end
 
-  describe 'POST /api/v1/accounts/{account.id}/tickets' do
+  describe 'POST /api/v1/accounts/{account.id}/helic3/tickets' do
     context 'when it is an authenticated user' do
       it 'creates a ticket with a sequential ticket number and sets the creator' do
-        post "/api/v1/accounts/#{account.id}/tickets",
+        post "/api/v1/accounts/#{account.id}/helic3/tickets",
              params: { ticket: { title: 'Printer on fire', description: 'Third floor' } },
              headers: agent.create_new_auth_token,
              as: :json
@@ -56,7 +56,7 @@ RSpec.describe 'Tickets API', type: :request do
       end
 
       it 'rejects a ticket without title' do
-        post "/api/v1/accounts/#{account.id}/tickets",
+        post "/api/v1/accounts/#{account.id}/helic3/tickets",
              params: { ticket: { description: 'no title' } },
              headers: agent.create_new_auth_token,
              as: :json
@@ -66,12 +66,12 @@ RSpec.describe 'Tickets API', type: :request do
     end
   end
 
-  describe 'POST /api/v1/accounts/{account.id}/tickets/{id}/assign' do
+  describe 'POST /api/v1/accounts/{account.id}/helic3/tickets/{id}/assign' do
     let!(:ticket) { create(:ticket, account: account, creator: agent) }
 
     context 'when it is the ticket creator' do
       it 'assigns an agent of the account' do
-        post "/api/v1/accounts/#{account.id}/tickets/#{ticket.id}/assign",
+        post "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}/assign",
              params: { assignee_id: agent.id },
              headers: agent.create_new_auth_token,
              as: :json
@@ -84,7 +84,7 @@ RSpec.describe 'Tickets API', type: :request do
       it 'unassigns when assignee_id is empty' do
         ticket.update!(assignee: agent)
 
-        post "/api/v1/accounts/#{account.id}/tickets/#{ticket.id}/assign",
+        post "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}/assign",
              params: { assignee_id: nil },
              headers: agent.create_new_auth_token,
              as: :json
@@ -98,7 +98,7 @@ RSpec.describe 'Tickets API', type: :request do
       it 'returns unauthorized' do
         other_agent = create(:user, account: account, role: :agent)
 
-        post "/api/v1/accounts/#{account.id}/tickets/#{ticket.id}/assign",
+        post "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}/assign",
              params: { assignee_id: other_agent.id },
              headers: other_agent.create_new_auth_token,
              as: :json
@@ -109,7 +109,7 @@ RSpec.describe 'Tickets API', type: :request do
     end
   end
 
-  describe 'PATCH /api/v1/accounts/{account.id}/tickets/{id}' do
+  describe 'PATCH /api/v1/accounts/{account.id}/helic3/tickets/{id}' do
     let!(:ticket) { create(:ticket, account: account, creator: agent) }
 
     context 'when it is the assigned agent' do
@@ -117,7 +117,7 @@ RSpec.describe 'Tickets API', type: :request do
         assignee = create(:user, account: account, role: :agent)
         ticket.update!(assignee: assignee)
 
-        patch "/api/v1/accounts/#{account.id}/tickets/#{ticket.id}",
+        patch "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
               params: { ticket: { status: 'resolved' } },
               headers: assignee.create_new_auth_token,
               as: :json
@@ -131,7 +131,7 @@ RSpec.describe 'Tickets API', type: :request do
       it 'returns unauthorized' do
         other_agent = create(:user, account: account, role: :agent)
 
-        patch "/api/v1/accounts/#{account.id}/tickets/#{ticket.id}",
+        patch "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
               params: { ticket: { status: 'closed' } },
               headers: other_agent.create_new_auth_token,
               as: :json
@@ -143,7 +143,7 @@ RSpec.describe 'Tickets API', type: :request do
 
     context 'when it is an administrator' do
       it 'updates any ticket' do
-        patch "/api/v1/accounts/#{account.id}/tickets/#{ticket.id}",
+        patch "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
               params: { ticket: { status: 'closed' } },
               headers: administrator.create_new_auth_token,
               as: :json
@@ -154,12 +154,12 @@ RSpec.describe 'Tickets API', type: :request do
     end
   end
 
-  describe 'DELETE /api/v1/accounts/{account.id}/tickets/{id}' do
+  describe 'DELETE /api/v1/accounts/{account.id}/helic3/tickets/{id}' do
     let!(:ticket) { create(:ticket, account: account) }
 
     context 'when it is an agent and the ticket is not theirs' do
       it 'returns unauthorized' do
-        delete "/api/v1/accounts/#{account.id}/tickets/#{ticket.id}",
+        delete "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
                headers: agent.create_new_auth_token,
                as: :json
 
@@ -171,12 +171,12 @@ RSpec.describe 'Tickets API', type: :request do
       it 'deletes the ticket' do
         own_ticket = create(:ticket, account: account, creator: agent)
 
-        delete "/api/v1/accounts/#{account.id}/tickets/#{own_ticket.id}",
+        delete "/api/v1/accounts/#{account.id}/helic3/tickets/#{own_ticket.id}",
                headers: agent.create_new_auth_token,
                as: :json
 
         expect(response).to have_http_status(:success)
-        expect(Ticket.exists?(own_ticket.id)).to be(false)
+        expect(Helic3::Ticket.exists?(own_ticket.id)).to be(false)
       end
     end
 
@@ -184,23 +184,23 @@ RSpec.describe 'Tickets API', type: :request do
       it 'returns unauthorized' do
         assigned_ticket = create(:ticket, account: account, assignee: agent)
 
-        delete "/api/v1/accounts/#{account.id}/tickets/#{assigned_ticket.id}",
+        delete "/api/v1/accounts/#{account.id}/helic3/tickets/#{assigned_ticket.id}",
                headers: agent.create_new_auth_token,
                as: :json
 
         expect(response).to have_http_status(:unauthorized)
-        expect(Ticket.exists?(assigned_ticket.id)).to be(true)
+        expect(Helic3::Ticket.exists?(assigned_ticket.id)).to be(true)
       end
     end
 
     context 'when it is an administrator' do
       it 'deletes any ticket' do
-        delete "/api/v1/accounts/#{account.id}/tickets/#{ticket.id}",
+        delete "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
                headers: administrator.create_new_auth_token,
                as: :json
 
         expect(response).to have_http_status(:success)
-        expect(Ticket.exists?(ticket.id)).to be(false)
+        expect(Helic3::Ticket.exists?(ticket.id)).to be(false)
       end
     end
   end

@@ -337,9 +337,11 @@ Rails.application.routes.draw do
           end
           resource :notification_settings, only: [:show, :update]
 
-          resources :tickets, only: [:index, :show, :create, :update, :destroy] do
-            member do
-              post :assign
+          namespace :helic3 do
+            resources :tickets, only: [:index, :show, :create, :update, :destroy] do
+              member do
+                post :assign
+              end
             end
           end
 

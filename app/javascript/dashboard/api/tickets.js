@@ -3,7 +3,7 @@ import ApiClient from './ApiClient';
 
 class TicketsAPI extends ApiClient {
   constructor() {
-    super('tickets', { accountScoped: true });
+    super('helic3/tickets', { accountScoped: true });
   }
 
   assign(ticketId, assigneeId) {

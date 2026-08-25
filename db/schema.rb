@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_20_120000) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_25_120000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1097,6 +1097,55 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_120000) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "helic3_knowledge_chunks", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "document_id", null: false
+    t.text "content", null: false
+    t.integer "position", default: 0, null: false
+    t.vector "embedding", limit: 1536
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_helic3_knowledge_chunks_on_account_id"
+    t.index ["document_id"], name: "index_helic3_knowledge_chunks_on_document_id"
+    t.index ["embedding"], name: "idx_helic3_knowledge_chunks_on_embedding", opclass: :vector_cosine_ops, using: :ivfflat
+  end
+
+  create_table "helic3_knowledge_documents", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "name", null: false
+    t.integer "source_type", default: 0, null: false
+    t.string "external_link"
+    t.text "content"
+    t.string "content_fingerprint"
+    t.integer "status", default: 0, null: false
+    t.jsonb "metadata", default: {}
+    t.datetime "last_ingested_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "external_link"], name: "idx_h3_knowledge_documents_account_external_link", unique: true
+    t.index ["status"], name: "index_helic3_knowledge_documents_on_status"
+  end
+
+  create_table "helic3_tickets", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.integer "display_id", null: false
+    t.string "title", null: false
+    t.text "description"
+    t.integer "status", default: 0, null: false
+    t.bigint "assignee_id"
+    t.bigint "creator_id"
+    t.bigint "conversation_id"
+    t.datetime "resolved_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "display_id"], name: "index_helic3_tickets_on_account_id_and_display_id", unique: true
+    t.index ["account_id", "status"], name: "index_helic3_tickets_on_account_id_and_status"
+    t.index ["account_id"], name: "index_helic3_tickets_on_account_id"
+    t.index ["assignee_id", "account_id"], name: "index_helic3_tickets_on_assignee_id_and_account_id"
+    t.index ["conversation_id"], name: "index_helic3_tickets_on_conversation_id"
+  end
+
   create_table "inbox_assignment_policies", force: :cascade do |t|
     t.bigint "inbox_id", null: false
     t.bigint "assignment_policy_id", null: false
@@ -1175,36 +1224,6 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.jsonb "settings", default: {}
-  end
-
-  create_table "helic3_knowledge_chunks", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.bigint "document_id", null: false
-    t.text "content", null: false
-    t.integer "position", default: 0, null: false
-    t.vector "embedding", limit: 1536
-    t.jsonb "metadata", default: {}
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["account_id"], name: "index_helic3_knowledge_chunks_on_account_id"
-    t.index ["document_id"], name: "index_helic3_knowledge_chunks_on_document_id"
-    t.index ["embedding"], name: "idx_helic3_knowledge_chunks_on_embedding", opclass: :vector_cosine_ops, using: :ivfflat
-  end
-
-  create_table "helic3_knowledge_documents", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.string "name", null: false
-    t.integer "source_type", default: 0, null: false
-    t.string "external_link"
-    t.text "content"
-    t.string "content_fingerprint"
-    t.integer "status", default: 0, null: false
-    t.jsonb "metadata", default: {}
-    t.datetime "last_ingested_at"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["account_id", "external_link"], name: "idx_h3_knowledge_documents_account_external_link", unique: true
-    t.index ["status"], name: "index_helic3_knowledge_documents_on_status"
   end
 
   create_table "labels", force: :cascade do |t|
@@ -1530,25 +1549,6 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_120000) do
     t.index ["name", "account_id"], name: "index_teams_on_name_and_account_id", unique: true
   end
 
-  create_table "tickets", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.integer "display_id", null: false
-    t.string "title", null: false
-    t.text "description"
-    t.integer "status", default: 0, null: false
-    t.bigint "assignee_id"
-    t.bigint "creator_id"
-    t.bigint "conversation_id"
-    t.datetime "resolved_at"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["account_id", "display_id"], name: "index_tickets_on_account_id_and_display_id", unique: true
-    t.index ["account_id", "status"], name: "index_tickets_on_account_id_and_status"
-    t.index ["account_id"], name: "index_tickets_on_account_id"
-    t.index ["assignee_id", "account_id"], name: "index_tickets_on_assignee_id_and_account_id"
-    t.index ["conversation_id"], name: "index_tickets_on_conversation_id"
-  end
-
   create_table "user_sessions", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.string "client_id", null: false
@@ -1648,35 +1648,35 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_120000) do
   add_foreign_key "user_sessions", "users"
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.ticket_dpid_before_insert()
+CREATE OR REPLACE FUNCTION public.helic3_ticket_dpid_before_insert()
  RETURNS trigger
  LANGUAGE plpgsql
 AS $function$
 BEGIN
-    execute format('create sequence IF NOT EXISTS ticket_dpid_seq_%s', NEW.id);
+    execute format('create sequence IF NOT EXISTS helic3_ticket_dpid_seq_%s', NEW.id);
     RETURN NULL;
 END;
 $function$
   SQL
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER ticket_dpid_before_insert AFTER INSERT ON \"accounts\" FOR EACH ROW EXECUTE FUNCTION ticket_dpid_before_insert()")
+  execute("CREATE TRIGGER helic3_ticket_dpid_before_insert AFTER INSERT ON \"accounts\" FOR EACH ROW EXECUTE FUNCTION helic3_ticket_dpid_before_insert()")
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.tickets_before_insert_row_tr()
+CREATE OR REPLACE FUNCTION public.helic3_tickets_before_insert_row_tr()
  RETURNS trigger
  LANGUAGE plpgsql
 AS $function$
 BEGIN
-    NEW.display_id := nextval('ticket_dpid_seq_' || NEW.account_id);
+    NEW.display_id := nextval('helic3_ticket_dpid_seq_' || NEW.account_id);
     RETURN NEW;
 END;
 $function$
   SQL
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER tickets_before_insert_row_tr BEFORE INSERT ON \"tickets\" FOR EACH ROW EXECUTE FUNCTION tickets_before_insert_row_tr()")
+  execute("CREATE TRIGGER helic3_tickets_before_insert_row_tr BEFORE INSERT ON \"helic3_tickets\" FOR EACH ROW EXECUTE FUNCTION helic3_tickets_before_insert_row_tr()")
 
   create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).
       on("accounts").
