@@ -8,7 +8,7 @@ class Helic3::Knowledge::UrlFetcher
   end
 
   def fetch
-    response = HTTParty.get(@url, headers: { 'User-Agent' => 'OnlyHome-KnowledgeBot/1.0' }, timeout: 30)
+    response = HTTParty.get(@url, headers: { 'User-Agent' => 'Helic3-KnowledgeBot/1.0' }, timeout: 30)
     raise FetchError, "Failed to fetch #{@url}: HTTP #{response.code}" unless response.success?
 
     extract_text(response.body)
