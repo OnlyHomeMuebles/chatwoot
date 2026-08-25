@@ -95,8 +95,7 @@ class User < ApplicationRecord
                                             dependent: :nullify, inverse_of: :review_notes_updated_by
   has_many :conversation_participants, dependent: :destroy_async
   has_many :participating_conversations, through: :conversation_participants, source: :conversation
-  has_many :assigned_tickets, foreign_key: 'assignee_id', class_name: 'Helic3::Ticket', dependent: :nullify, inverse_of: :assignee
-  has_many :created_tickets, foreign_key: 'creator_id', class_name: 'Helic3::Ticket', dependent: :nullify, inverse_of: :creator
+  include Helic3::UserTicketable
 
   has_many :inbox_members, dependent: :destroy_async
   has_many :inboxes, through: :inbox_members, source: :inbox
