@@ -15,11 +15,26 @@
 class Helic3::CalendarioHabil
   ZONA = 'America/Bogota'
 
-  # Festivos de fecha fija (mes, día). No se trasladan.
-  FIJOS = [[1, 1], [5, 1], [7, 20], [8, 7], [12, 8], [12, 25]].freeze
+  # Festivos de fecha fija { [mes, día] => nombre }. No se trasladan.
+  FIJOS = {
+    [1, 1] => 'Año Nuevo',
+    [5, 1] => 'Día del Trabajo',
+    [7, 20] => 'Día de la Independencia',
+    [8, 7] => 'Batalla de Boyacá',
+    [12, 8] => 'Inmaculada Concepción',
+    [12, 25] => 'Navidad'
+  }.freeze
 
-  # Festivos que la Ley 51 traslada al lunes siguiente (mes, día base).
-  TRASLADABLES = [[1, 6], [3, 19], [6, 29], [8, 15], [10, 12], [11, 1], [11, 11]].freeze
+  # Festivos que la Ley 51 traslada al lunes siguiente { [mes, día base] => nombre }.
+  TRASLADABLES = {
+    [1, 6] => 'Reyes Magos',
+    [3, 19] => 'San José',
+    [6, 29] => 'San Pedro y San Pablo',
+    [8, 15] => 'Asunción de la Virgen',
+    [10, 12] => 'Día de la Raza',
+    [11, 1] => 'Todos los Santos',
+    [11, 11] => 'Independencia de Cartagena'
+  }.freeze
 
   # Festivos móviles contados en días desde el Domingo de Resurrección.
   # :traslada indica si la Ley 51 los corre al lunes siguiente.
@@ -41,7 +56,7 @@ class Helic3::CalendarioHabil
   end
 
   # Devuelve el calendario resuelto del año como { Date => nombre }, ordenado por
-  # fecha, para poder auditarlo. Se cachea por año.
+  # fecha y congelado, para poder auditarlo. Se cachea por año.
   def festivos(anio)
     @festivos_por_anio[anio] ||= calcular_festivos(anio)
   end
@@ -83,20 +98,25 @@ class Helic3::CalendarioHabil
   def calcular_festivos(anio)
     festivos = {}
 
-    FIJOS.each { |mes, dia| festivos[Date.new(anio, mes, dia)] = nombre_fijo(mes, dia) }
-
-    TRASLADABLES.each do |mes, dia|
-      festivos[trasladar_a_lunes(Date.new(anio, mes, dia))] = nombre_trasladable(mes, dia)
-    end
+    FIJOS.each { |(mes, dia), nombre| agregar(festivos, Date.new(anio, mes, dia), nombre) }
+    TRASLADABLES.each { |(mes, dia), nombre| agregar(festivos, trasladar_a_lunes(Date.new(anio, mes, dia)), nombre) }
 
     pascua = domingo_de_resurreccion(anio)
     MOVILES.each do |movil|
       fecha = pascua + movil[:offset]
       fecha = trasladar_a_lunes(fecha) if movil[:traslada]
-      festivos[fecha] = movil[:nombre]
+      agregar(festivos, fecha, movil[:nombre])
     end
 
-    festivos.sort.to_h
+    festivos.sort.to_h.freeze
+  end
+
+  # Registra un festivo en el mapa. Algunos años dos festivos legales coinciden en
+  # la misma fecha (p. ej. San Pedro y el Sagrado Corazón); en Colombia eso es un
+  # solo día no laboral, así que se conserva la fecha una vez pero se guardan ambos
+  # nombres en vez de perder uno silenciosamente.
+  def agregar(festivos, fecha, nombre)
+    festivos[fecha] = festivos.key?(fecha) ? "#{festivos[fecha]} / #{nombre}" : nombre
   end
 
   # Corre la fecha al lunes siguiente (si ya es lunes, se queda). Siempre hacia
@@ -123,28 +143,5 @@ class Helic3::CalendarioHabil
     mes = (h + l - (7 * m) + 114) / 31
     dia = ((h + l - (7 * m) + 114) % 31) + 1
     Date.new(anio, mes, dia)
-  end
-
-  def nombre_fijo(mes, dia)
-    {
-      [1, 1] => 'Año Nuevo',
-      [5, 1] => 'Día del Trabajo',
-      [7, 20] => 'Día de la Independencia',
-      [8, 7] => 'Batalla de Boyacá',
-      [12, 8] => 'Inmaculada Concepción',
-      [12, 25] => 'Navidad'
-    }[[mes, dia]]
-  end
-
-  def nombre_trasladable(mes, dia)
-    {
-      [1, 6] => 'Reyes Magos',
-      [3, 19] => 'San José',
-      [6, 29] => 'San Pedro y San Pablo',
-      [8, 15] => 'Asunción de la Virgen',
-      [10, 12] => 'Día de la Raza',
-      [11, 1] => 'Todos los Santos',
-      [11, 11] => 'Independencia de Cartagena'
-    }[[mes, dia]]
   end
 end

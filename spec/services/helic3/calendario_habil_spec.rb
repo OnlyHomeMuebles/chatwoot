@@ -35,6 +35,15 @@ RSpec.describe Helic3::CalendarioHabil do
 
       expect(fechas).to eq(fechas.sort)
     end
+
+    it 'conserva ambos nombres cuando dos festivos coinciden en la misma fecha' do
+      # En 2025, San Pedro y San Pablo (29-jun, domingo) y el Sagrado Corazón
+      # (móvil por Pascua) caen ambos el lunes 30-jun: es un solo día no laboral.
+      festivos = calendario.festivos(2025)
+
+      expect(festivos.size).to eq(17)
+      expect(festivos[Date.new(2025, 6, 30)]).to include('San Pedro', 'Sagrado Corazón')
+    end
   end
 
   describe '#es_habil?' do
