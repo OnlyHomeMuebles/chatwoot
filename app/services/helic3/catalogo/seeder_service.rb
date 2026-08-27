@@ -13,7 +13,16 @@
 #
 # Lo que sigue sin confirmar esta en app/models/helic3/catalogo/PENDIENTES.md.
 class Helic3::Catalogo::SeederService
-  CATEGORIAS = %w[Garantía Servicio Comercial Logística Facturación Información].freeze
+  # codigos explicitos (no derivados del nombre): los motivos de PQR los
+  # referencian, y un ajuste de redaccion del nombre no debe romper la semilla
+  CATEGORIAS = [
+    { nombre: 'Garantía', codigo: 'garantia' },
+    { nombre: 'Servicio', codigo: 'servicio' },
+    { nombre: 'Comercial', codigo: 'comercial' },
+    { nombre: 'Logística', codigo: 'logistica' },
+    { nombre: 'Facturación', codigo: 'facturacion' },
+    { nombre: 'Información', codigo: 'informacion' }
+  ].freeze
 
   # plazo legal por tipo (addendum 24/08): P, Q y R responden en 15 dias
   # habiles; sugerencia y felicitacion no tienen plazo legal (null a proposito)
@@ -132,7 +141,7 @@ class Helic3::Catalogo::SeederService
   end
 
   def sembrar!
-    sembrar_simple(Helic3::Catalogo::Categoria, CATEGORIAS)
+    sembrar_con_atributos(Helic3::Catalogo::Categoria, CATEGORIAS)
     sembrar_con_atributos(Helic3::Catalogo::Tipo, TIPOS)
     sembrar_con_atributos(Helic3::Catalogo::EtapaPqr, ETAPAS_PQR)
     sembrar_motivos_pqr

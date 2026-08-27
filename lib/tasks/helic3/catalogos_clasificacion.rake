@@ -1,11 +1,16 @@
 # CAT-01: siembra y consulta de los catalogos de clasificacion.
 namespace :catalogos do
-  desc 'Siembra los catalogos de clasificacion con los valores confirmados (idempotente)'
-  task sembrar: :environment do
-    account = Account.first
-    resumen = Helic3::Catalogo::SeederService.new(account).sembrar!
-    resumen.each { |catalogo, total| puts format('%<c>-22s %<t>d filas', c: catalogo, t: total) }
-    puts 'Semilla aplicada. Correrla de nuevo no duplica (criterio 5).'
+  desc 'Siembra los catalogos (idempotente). Todas las cuentas, o una: rake "catalogos:sembrar[7]"'
+  task :sembrar, [:account_id] => :environment do |_t, args|
+    cuentas = args[:account_id].present? ? [Account.find(args[:account_id])] : Account.all
+    abort 'No hay cuentas en la base de datos: nada que sembrar.' if cuentas.none?
+
+    cuentas.each do |account|
+      puts "== Cuenta #{account.id} · #{account.name}"
+      resumen = Helic3::Catalogo::SeederService.new(account).sembrar!
+      resumen.each { |catalogo, total| puts format('   %<c>-22s %<t>d filas', c: catalogo, t: total) }
+    end
+    puts 'Semilla aplicada. Correrla de nuevo no duplica ni pisa ediciones.'
   end
 end
 
