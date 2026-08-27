@@ -1,5 +1,14 @@
 {
   "$schema": "https://schema.railpack.com",
+  "buildAptPackages": ["libglib2.0-0", "libvips42"],
+  "steps": {
+    "build": {
+      "commands": [
+        "SECRET_KEY_BASE=precompile_placeholder RAILS_ENV=production SKIP_BROWSERSLIST_UPDATE=true NODE_OPTIONS='--max-old-space-size=4096' bundle exec rake assets:precompile",
+        "bundle exec bootsnap precompile app/ lib/"
+      ]
+    }
+  },
   "deploy": {
     "startCommand": "bash deployment/start.sh"
   }

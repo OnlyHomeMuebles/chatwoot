@@ -1,5 +1,20 @@
+# Nixpacks configuration for Dokploy
+# 
+# IMPORTANTE - Para asegurar builds frescos en cada deploy automatizado:
+# 
+# En Dokploy, configura lo siguiente:
+# 1. Ve a la configuración del deployment
+# 2. En "Build Settings", activa "Clean Cache"
+#    Esto fuerza a Nixpacks a reconstruir todas las capas en cada deploy,
+#    asegurando que los cambios de código siempre se incluyan en el build
+# 
+# Alternativamente, puedes configurar una variable de entorno en Dokploy:
+# - Nombre: BUILD_CACHE_BUSTER
+# - Valor: $GIT_COMMIT_SHA (Dokploy debería expandir esto automáticamente)
+# Esto invalidará el caché cuando cambie el commit SHA
+
 [variables]
-NIXPACKS_NODE_VERSION = "23"
+NIXPACKS_NODE_VERSION = "24"
 NIXPACKS_METADATA = "rails"
 BUNDLE_WITHOUT = "development:test"
 NODE_ENV = "production"
@@ -7,9 +22,11 @@ RAILS_ENV = "production"
 RAILS_SERVE_STATIC_FILES = "true"
 RAILS_LOG_TO_STDOUT = "true"
 PATH = "/usr/local/bin:/usr/bin:/bin"
+LD_LIBRARY_PATH = "/usr/lib:/usr/local/lib"
 ENABLE_ACCOUNT_SEEDING = "true"
-NODE_OPTIONS = "--max-old-space-size=8192"
-
+# Node.js heap cap for builds: 4096 leaves headroom without letting V8 defer GC into host OOM.
+# Keep in sync with railpack.json.
+NODE_OPTIONS = "--max-old-space-size=4096"
 
 [start]
 cmd = "bash deployment/start.sh"
