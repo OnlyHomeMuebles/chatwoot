@@ -7,18 +7,18 @@ require 'httparty'
 # external system over HTTP, authenticating with an `api_access_token` (a User or AgentBot token).
 #
 # Config comes from ENV (overridable for tests):
-#   HELIC3_CHATWOOT_BASE_URL   (falls back to FRONTEND_URL, then http://localhost:3000)
-#   HELIC3_CHATWOOT_ACCOUNT_ID
-#   HELIC3_CHATWOOT_API_TOKEN
+#   ONLY_HOME_CHATWOOT_BASE_URL   (falls back to FRONTEND_URL, then http://localhost:3000)
+#   ONLY_HOME_CHATWOOT_ACCOUNT_ID
+#   ONLY_HOME_CHATWOOT_API_TOKEN
 class Helic3::ChatwootClient
   class ApiError < StandardError; end
 
   DEFAULT_TIMEOUT = 10
 
   def initialize(base_url: nil, account_id: nil, api_access_token: nil)
-    @base_url = (base_url || ENV['HELIC3_CHATWOOT_BASE_URL'] || ENV['FRONTEND_URL'] || 'http://localhost:3000').chomp('/')
-    @account_id = account_id || ENV.fetch('HELIC3_CHATWOOT_ACCOUNT_ID')
-    @api_access_token = api_access_token || ENV.fetch('HELIC3_CHATWOOT_API_TOKEN')
+    @base_url = (base_url || ENV['ONLY_HOME_CHATWOOT_BASE_URL'] || ENV['FRONTEND_URL'] || 'http://localhost:3000').chomp('/')
+    @account_id = account_id || ENV.fetch('ONLY_HOME_CHATWOOT_ACCOUNT_ID')
+    @api_access_token = api_access_token || ENV.fetch('ONLY_HOME_CHATWOOT_API_TOKEN')
   end
 
   # POST /conversations/:id/messages — outgoing reply (public) or private note.

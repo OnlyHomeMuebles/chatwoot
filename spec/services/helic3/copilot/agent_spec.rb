@@ -16,6 +16,6 @@ RSpec.describe Helic3::Copilot::Agent do
   end
 
   it 'incluye la herramienta para leer la conversación' do
-    expect(agent.tools.map(&:class)).to include(Helic3::Tools::GetConversationTool)
+    expect(agent.tools.map(&:class)).to include(Helic3::Agents::Tools::GetConversationTool)
   end
 end

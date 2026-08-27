@@ -4,7 +4,7 @@ Tools de la gema `ai-agents` (subclases de `Agents::Tool`) que permiten a los ag
 sobre una conversación real de Chatwoot mediante la **Application API** (HTTP). Se adjuntan a un
 agente vía `tools: [...]` en `Agents::Agent.new`.
 
-Todas heredan de `Helic3::Tools::BaseTool`, que:
+Todas heredan de `Helic3::Agents::Tools::BaseTool`, que:
 - Lee el `conversation_id` desde el estado del run (`tool_context.state[:conversation_id]`).
 - Usa el cliente `Helic3::ChatwootClient` (inyectable en el estado como `:chatwoot_client`; si no, se
   construye desde ENV).
@@ -20,19 +20,19 @@ Autenticación por header `api_access_token` (token de un usuario o de un Agent 
 
 | Variable | Descripción |
 |---|---|
-| `HELIC3_CHATWOOT_BASE_URL` | URL base de Chatwoot (fallback: `FRONTEND_URL`, luego `http://localhost:3000`) |
-| `HELIC3_CHATWOOT_ACCOUNT_ID` | ID de la cuenta |
-| `HELIC3_CHATWOOT_API_TOKEN` | Token de acceso de la Application API |
+| `ONLY_HOME_CHATWOOT_BASE_URL` | URL base de Chatwoot (fallback: `FRONTEND_URL`, luego `http://localhost:3000`) |
+| `ONLY_HOME_CHATWOOT_ACCOUNT_ID` | ID de la cuenta |
+| `ONLY_HOME_CHATWOOT_API_TOKEN` | Token de acceso de la Application API |
 
 ## Qué API usa cada tool
 
 | Tool | Acción | Endpoint de la Application API |
 |---|---|---|
-| `Helic3::Tools::RespondTool` | Responde al cliente (mensaje público) | `POST /api/v1/accounts/:account_id/conversations/:id/messages` con `message_type: outgoing` |
-| `Helic3::Tools::PrivateNoteTool` | Deja una nota privada interna | `POST /api/v1/accounts/:account_id/conversations/:id/messages` con `private: true` |
-| `Helic3::Tools::AddLabelTool` | Agrega una etiqueta (conserva las existentes) | `GET` + `POST /api/v1/accounts/:account_id/conversations/:id/labels` (lee las actuales y envía la unión) |
-| `Helic3::Tools::UpdateAttributeTool` | Guarda un atributo personalizado | `POST /api/v1/accounts/:account_id/conversations/:id/custom_attributes` |
-| `Helic3::Tools::HumanHandoffTool` | Escala a un humano: nota con motivo, etiqueta `escalado-humano`, (opcional) asigna a equipo y reabre | `messages` (nota) + `labels` + `assignments` + `toggle_status` |
+| `Helic3::Agents::Tools::RespondTool` | Responde al cliente (mensaje público) | `POST /api/v1/accounts/:account_id/conversations/:id/messages` con `message_type: outgoing` |
+| `Helic3::Agents::Tools::PrivateNoteTool` | Deja una nota privada interna | `POST /api/v1/accounts/:account_id/conversations/:id/messages` con `private: true` |
+| `Helic3::Agents::Tools::AddLabelTool` | Agrega una etiqueta (conserva las existentes) | `GET` + `POST /api/v1/accounts/:account_id/conversations/:id/labels` (lee las actuales y envía la unión) |
+| `Helic3::Agents::Tools::UpdateAttributeTool` | Guarda un atributo personalizado | `POST /api/v1/accounts/:account_id/conversations/:id/custom_attributes` |
+| `Helic3::Agents::Tools::HumanHandoffTool` | Escala a un humano: nota con motivo, etiqueta `escalado-humano`, (opcional) asigna a equipo y reabre | `messages` (nota) + `labels` + `assignments` + `toggle_status` |
 
 ## Escalamiento a humano (INT-02)
 
@@ -47,10 +47,10 @@ resolver tras intentarlo, o casos que requieren acción humana).
 
 ```ruby
 tools = [
-  Helic3::Tools::RespondTool.new,
-  Helic3::Tools::PrivateNoteTool.new,
-  Helic3::Tools::AddLabelTool.new,
-  Helic3::Tools::UpdateAttributeTool.new
+  Helic3::Agents::Tools::RespondTool.new,
+  Helic3::Agents::Tools::PrivateNoteTool.new,
+  Helic3::Agents::Tools::AddLabelTool.new,
+  Helic3::Agents::Tools::UpdateAttributeTool.new
 ]
 agent = Agents::Agent.new(name: 'agente_faq', instructions: '...', tools: tools)
 # En tiempo de ejecución, el estado del run debe incluir el id de la conversación:

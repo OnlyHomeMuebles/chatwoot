@@ -1,7 +1,7 @@
 # Only Home — Webhook de Chatwoot → sistema agéntico (MA-04)
 
 Conecta un **mensaje entrante** de Chatwoot con el sistema multiagente: Chatwoot envía el evento
-`message_created` a un endpoint OSS, que dispara el `Helic3::RunnerService` y publica la respuesta
+`message_created` a un endpoint OSS, que dispara el `Helic3::Agents::RunnerService` y publica la respuesta
 del agente en la conversación.
 
 ## Flujo
@@ -12,7 +12,7 @@ Cliente escribe en Chatwoot
   → POST /webhooks/helic3            (Webhooks::Helic3Controller)
   → Helic3::WebhookHandler            (filtra + idempotencia)
   → Helic3::ProcessConversationJob    (async)
-  → Helic3::RunnerService.run(..., context: { state: { conversation_id } })
+  → Helic3::Agents::RunnerService.run(..., context: { state: { conversation_id } })
   → respuesta del agente publicada en la conversación (RespondTool / Application API)
 ```
 
@@ -37,7 +37,7 @@ Cliente escribe en Chatwoot
 1. Crear un **Agent Bot** (`bot_type: webhook`) con `outgoing_url = https://<app>/webhooks/helic3`.
 2. Asignarlo a la bandeja (inbox) que debe atender el agente (`agent_bot_inbox` activo).
 3. Las variables de entorno para que el job publique la respuesta:
-   - `HELIC3_CHATWOOT_BASE_URL`, `HELIC3_CHATWOOT_ACCOUNT_ID`, `HELIC3_CHATWOOT_API_TOKEN`
+   - `ONLY_HOME_CHATWOOT_BASE_URL`, `ONLY_HOME_CHATWOOT_ACCOUNT_ID`, `ONLY_HOME_CHATWOOT_API_TOKEN`
      (idealmente el token del propio Agent Bot).
 
 ## Bloqueo de webhook en modo test/local (ya identificado)

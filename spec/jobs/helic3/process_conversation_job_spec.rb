@@ -4,14 +4,14 @@ require 'rails_helper'
 
 RSpec.describe Helic3::ProcessConversationJob do
   let(:client) { instance_double(Helic3::ChatwootClient) }
-  let(:runner) { instance_double(Helic3::RunnerService) }
-  let(:memory) { instance_double(Helic3::ConversationMemory) }
+  let(:runner) { instance_double(Helic3::Agents::RunnerService) }
+  let(:memory) { instance_double(Helic3::Agents::ConversationMemory) }
   let(:job) { described_class.new }
 
   before do
     allow(Helic3::ChatwootClient).to receive(:new).and_return(client)
-    allow(Helic3::RunnerService).to receive(:new).and_return(runner)
-    allow(Helic3::ConversationMemory).to receive(:new).and_return(memory)
+    allow(Helic3::Agents::RunnerService).to receive(:new).and_return(runner)
+    allow(Helic3::Agents::ConversationMemory).to receive(:new).and_return(memory)
     allow(memory).to receive(:load).and_return({})
     allow(memory).to receive(:save)
     allow(client).to receive(:create_message)

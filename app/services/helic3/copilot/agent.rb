@@ -13,7 +13,7 @@ class Helic3::Copilot::Agent
     Antes de sugerir, usa la herramienta de contexto para leer la conversación actual.
     Escribes PARA el agente: propones, no envías nada al cliente. Sé claro y conciso, en español.
 
-    #{Helic3::HumanTone::GUIDE}
+    #{Helic3::Agents::HumanTone::GUIDE}
   INST
 
   def self.build(model: nil)
@@ -21,7 +21,7 @@ class Helic3::Copilot::Agent
       name: 'copiloto_helic3',
       instructions: INSTRUCTIONS,
       model: model || default_model,
-      tools: [Helic3::Tools::GetConversationTool.new]
+      tools: [Helic3::Agents::Tools::GetConversationTool.new]
     )
   end
 

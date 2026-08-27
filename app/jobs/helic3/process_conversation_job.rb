@@ -24,7 +24,7 @@ class Helic3::ProcessConversationJob < ApplicationJob
     configure_llm
     @account_id = account_id
     client = Helic3::ChatwootClient.new(account_id: account_id)
-    memory = Helic3::ConversationMemory.new(account_id: account_id, conversation_id: conversation_id)
+    memory = Helic3::Agents::ConversationMemory.new(account_id: account_id, conversation_id: conversation_id)
 
     start_typing(client, conversation_id)
     reply = generate_reply(client, memory, conversation_id, content)
@@ -68,7 +68,7 @@ class Helic3::ProcessConversationJob < ApplicationJob
       context = memory.load
       context[:account_id] = @account_id
       context[:state] = { conversation_id: conversation_id, chatwoot_client: client }
-      result = Helic3::RunnerService.new(**llm_options).run(content, context: context)
+      result = Helic3::Agents::RunnerService.new(**llm_options).run(content, context: context)
       return result if result.output.to_s.strip.present?
 
       delay = retry_delay(result.error)
@@ -103,10 +103,10 @@ class Helic3::ProcessConversationJob < ApplicationJob
     nil
   end
 
-  # Cerebro del agente. Se puede forzar con HELIC3_LLM_PROVIDER=openai|gemini|groq|ollama. Si no,
+  # Cerebro del agente. Se puede forzar con ONLY_HOME_LLM_PROVIDER=openai|gemini|groq|ollama. Si no,
   # usa la API disponible (Gemini > OpenAI > Groq) y, como último recurso, el modelo local (Ollama).
   def llm_provider
-    explicit = ENV['HELIC3_LLM_PROVIDER'].to_s.strip.downcase
+    explicit = ENV['ONLY_HOME_LLM_PROVIDER'].to_s.strip.downcase
     return explicit.to_sym if %w[ollama gemini groq openai].include?(explicit)
     return :gemini if ENV['GEMINI_API_KEY'].to_s.strip.present?
     return :openai if ENV['OPENAI_API_KEY'].to_s.strip.present?
@@ -141,7 +141,7 @@ class Helic3::ProcessConversationJob < ApplicationJob
     when :gemini
       { model: ENV.fetch('GEMINI_MODEL', 'gemini-flash-latest'), provider: :openai, assume_model_exists: true }
     when :openai
-      { model: ENV.fetch('HELIC3_OPENAI_MODEL', 'gpt-4.1-mini'), provider: :openai, assume_model_exists: true }
+      { model: ENV.fetch('ONLY_HOME_OPENAI_MODEL', 'gpt-4.1-mini'), provider: :openai, assume_model_exists: true }
     else
       { model: ENV.fetch('OLLAMA_MODEL', 'qwen2.5:14b'), provider: :ollama, assume_model_exists: true }
     end

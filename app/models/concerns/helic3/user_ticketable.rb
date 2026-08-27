@@ -1,5 +1,5 @@
 # Asociaciones de tickets para User (agente que crea o al que se asigna un ticket).
-# Vive bajo helic3/; el modelo User solo hace `include`.
+# Vive bajo helic3/; el include se hace desde config/initializers/helic3_ticketable.rb.
 module Helic3::UserTicketable
   extend ActiveSupport::Concern
 

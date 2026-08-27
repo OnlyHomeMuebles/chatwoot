@@ -43,7 +43,7 @@ namespace :knowledge do
   task ingest_catalog: :environment do
     account = Account.first
     document = Helic3::Knowledge::Document.find_or_initialize_by(account: account, name: 'catalogo_helic3', source_type: :dataset)
-    document.assign_attributes(content: Helic3::KnowledgeBase.full_text)
+    document.assign_attributes(content: Helic3::Agents::PoliticasEstaticas.full_text)
     document.save!
 
     result = Helic3::Knowledge::IngestionService.new(document).perform

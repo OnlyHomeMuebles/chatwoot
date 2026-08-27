@@ -29,7 +29,7 @@ sugerencia = service.suggest(
 - El servicio corre el agente copiloto con el contexto atado al `conversation_id`. El copiloto usa
   `GetConversationTool` para leer la conversación y luego redacta la sugerencia.
 - `history:` permite continuidad entre turnos del copiloto; `chatwoot_client:` es inyectable (por
-  defecto se construye desde ENV: `HELIC3_CHATWOOT_*`).
+  defecto se construye desde ENV: `ONLY_HOME_CHATWOOT_*`).
 
 ## Diferencias con el Copilot de Captain
 
