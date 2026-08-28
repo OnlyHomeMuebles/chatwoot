@@ -61,4 +61,79 @@ RSpec.describe Helic3::Ticket, type: :model do
       expect(ticket.resolved_at).to be_nil
     end
   end
+
+  describe 'clasificacion y relojes (EXP-01)' do
+    let(:account) { create(:account) }
+    let(:respondida) do
+      Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Respondida', codigo: 'respondida',
+                                         detiene_reloj: true)
+    end
+    let(:garantia) do
+      Helic3::Catalogo::Categoria.create!(account: account, nombre: 'Garantía', codigo: 'garantia')
+    end
+    let(:informacion) do
+      Helic3::Catalogo::Categoria.create!(account: account, nombre: 'Información', codigo: 'informacion',
+                                          genera_radicado: false)
+    end
+
+    it 'se crea sin clasificar y se clasifica despues, sin que ninguna validacion lo impida' do
+      queja = Helic3::Catalogo::Tipo.create!(account: account, nombre: 'Queja', codigo: 'queja',
+                                             plazo_dias_habiles: 15)
+      ticket = create(:ticket, account: account)
+
+      expect(ticket.categoria).to be_nil
+
+      ticket.update!(categoria: garantia, tipo: queja)
+      expect(ticket.reload.tipo.plazo_dias_habiles).to eq(15)
+    end
+
+    it 'rechaza clasificar con un catalogo de otra cuenta' do
+      ajena = Helic3::Catalogo::Categoria.create!(account: create(:account), nombre: 'Garantía', codigo: 'garantia')
+      ticket = build(:ticket, account: account, categoria: ajena)
+
+      expect(ticket).not_to be_valid
+      expect(ticket.errors[:categoria]).to be_present
+    end
+
+    it 'responder! sella la fecha y deja el expediente en la etapa que detiene el reloj' do
+      respondida
+      ticket = create(:ticket, account: account, categoria: garantia)
+
+      ticket.responder!
+
+      expect(ticket.respondida_at).to be_present
+      expect(ticket.etapa.codigo).to eq('respondida')
+      expect(ticket).to be_reloj_detenido
+    end
+
+    it 'un expediente respondido queda cerrado para el plazo legal aunque siga abierto operativamente' do
+      respondida
+      # la garantia sigue viva: el status operativo NO se toca al responder
+      ticket = create(:ticket, account: account, categoria: garantia, status: :open)
+
+      ticket.responder!
+
+      expect(ticket.reload).to be_open
+      expect(ticket).to be_reloj_detenido
+    end
+
+    it 'un expediente de Informacion no recibe numero de radicado visible' do
+      con_radicado = create(:ticket, account: account, categoria: garantia)
+      sin_radicado = create(:ticket, account: account, categoria: informacion)
+
+      expect(con_radicado.numero_radicado).to be_present
+      expect(sin_radicado.numero_radicado).to be_nil
+      # el display_id interno existe igual: el historial se conserva
+      expect(sin_radicado.display_id).to be_present
+    end
+
+    it 'excluye a Informacion del conteo frente a la SIC' do
+      pqr = create(:ticket, account: account, categoria: garantia)
+      consulta = create(:ticket, account: account, categoria: informacion)
+      sin_clasificar = create(:ticket, account: account)
+
+      expect(described_class.cuenta_para_sic).to include(pqr, sin_clasificar)
+      expect(described_class.cuenta_para_sic).not_to include(consulta)
+    end
+  end
 end

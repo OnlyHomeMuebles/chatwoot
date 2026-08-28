@@ -21,7 +21,9 @@ class Helic3::Catalogo::SeederService
     { nombre: 'Comercial', codigo: 'comercial' },
     { nombre: 'Logística', codigo: 'logistica' },
     { nombre: 'Facturación', codigo: 'facturacion' },
-    { nombre: 'Información', codigo: 'informacion' }
+    # Informacion no genera radicado ni plazo (EXP-01): el expediente se crea
+    # para conservar historial, sin numero visible y fuera del conteo SIC.
+    { nombre: 'Información', codigo: 'informacion', genera_radicado: false }
   ].freeze
 
   # plazo legal por tipo (addendum 24/08): P, Q y R responden en 15 dias
