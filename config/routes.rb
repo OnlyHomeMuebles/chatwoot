@@ -337,9 +337,11 @@ Rails.application.routes.draw do
           end
           resource :notification_settings, only: [:show, :update]
 
-          resources :tickets, only: [:index, :show, :create, :update, :destroy] do
-            member do
-              post :assign
+          namespace :helic3 do
+            resources :tickets, only: [:index, :show, :create, :update, :destroy] do
+              member do
+                post :assign
+              end
             end
           end
 
@@ -670,7 +672,11 @@ Rails.application.routes.draw do
   post 'webhooks/line/:line_channel_id', to: 'webhooks/line#process_payload'
   post 'webhooks/telegram/:bot_token', to: 'webhooks/telegram#process_payload'
   post 'webhooks/sms/:phone_number', to: 'webhooks/sms#process_payload'
-  post 'webhooks/only_home', to: 'webhooks/only_home#process_payload'
+  post 'webhooks/helic3', to: 'webhooks/helic3#process_payload'
+  # Ruta heredada: n8n y el Agent Bot en producción aún apuntan a /webhooks/only_home.
+  # Se mantiene apuntando al controller nuevo hasta migrar esas integraciones; no se elimina
+  # todavía para no romper el despliegue.
+  post 'webhooks/only_home', to: 'webhooks/helic3#process_payload'
   get 'webhooks/whatsapp/:phone_number', to: 'webhooks/whatsapp#verify'
   post 'webhooks/whatsapp/:phone_number', to: 'webhooks/whatsapp#process_payload'
   get 'webhooks/instagram', to: 'webhooks/instagram#verify'
