@@ -11,6 +11,8 @@ fuente esperada. La estructura está completa; lo pendiente es DATO.
 | ProcesoGarantia | [P] Confirmar si el **desistimiento del cliente** cuenta también como terminal (hoy se resuelve con la decisión del ítem, no con un proceso). Marcarlo sería una fila más, no código | Only Home / Jhan |
 | ProcesoGarantia | El plazo de "Reparación en fábrica" es dinámico (= saldo del presupuesto de 30 días) y por eso queda null: lo calcula PLZ-01. Entrega, devolución y garantía negada no llevan plazo por ser terminales | Resuelto por diseño (insumos Sprint 3) |
 | GarantiaItem (futuro) | [P] La ruta alterna cuando el cliente se niega a la recolección (deriva a cambio mano a mano). Se resuelve marcando filas del catálogo cuando se confirme | Only Home / Jhan |
+| Parametro | El consecutivo del radicado de garantía (GAR-01) es configurable pero NO se siembra: Only Home no decide si continúa el consecutivo actual o arranca uno nuevo (atado a la migración de histórico, diferida). Claves: `radicado_garantia_prefijo` (unidad texto) y `radicado_garantia_inicio` (unidad cantidad; la lee el trigger al crear la secuencia de la cuenta). Sin configurar: sin prefijo y arranca en 1 | Only Home / Karen |
+| Parametro | Los umbrales del semáforo (`umbral_verde`, `umbral_amarillo`) siguen sin valores confirmados; propuesta enviada a Jhan (verde ≥15, amarillo 5–14, rojo <5) | Jhan / Karen |
 
 ## Resuelto por el addendum del 24/08 (ya sembrado)
 
