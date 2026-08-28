@@ -2,6 +2,38 @@
 # (motivo y detalle) y el estado (proceso) viven AQUI, nunca en la garantia:
 # la cama puede ir a reparacion mientras al nochero se le niega la garantia,
 # bajo el mismo numero de radicado.
+# == Schema Information
+#
+# Table name: helic3_garantia_items
+#
+#  id                    :bigint           not null, primary key
+#  decision              :string
+#  producto_nombre       :string           not null
+#  producto_referencia   :string
+#  resuelto_at           :datetime
+#  created_at            :datetime         not null
+#  updated_at            :datetime         not null
+#  account_id            :bigint           not null
+#  detalle_tipificado_id :bigint
+#  garantia_id           :bigint           not null
+#  motivo_garantia_id    :bigint
+#  proceso_id            :bigint
+#
+# Indexes
+#
+#  idx_h3_gitems_account   (account_id)
+#  idx_h3_gitems_detalle   (detalle_tipificado_id)
+#  idx_h3_gitems_garantia  (garantia_id)
+#  idx_h3_gitems_motivo    (motivo_garantia_id)
+#  idx_h3_gitems_proceso   (proceso_id)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (detalle_tipificado_id => helic3_catalogo_detalles_tipificados.id)
+#  fk_rails_...  (garantia_id => helic3_garantias.id)
+#  fk_rails_...  (motivo_garantia_id => helic3_catalogo_motivos_garantia.id)
+#  fk_rails_...  (proceso_id => helic3_catalogo_procesos_garantia.id)
+#
 class Helic3::GarantiaItem < ApplicationRecord
   belongs_to :account
   belongs_to :garantia, class_name: 'Helic3::Garantia', inverse_of: :items

@@ -7,6 +7,33 @@
 # nunca se almacena — se deriva de los items en el momento de preguntarlo.
 # Una copia almacenada puede mentir si un item avanza y la copia no se
 # refresca; una derivada no tiene como desincronizarse.
+# == Schema Information
+#
+# Table name: helic3_garantias
+#
+#  id                       :bigint           not null, primary key
+#  abierta_at               :datetime         not null
+#  cerrada_at               :datetime
+#  presupuesto_dias_habiles :integer
+#  created_at               :datetime         not null
+#  updated_at               :datetime         not null
+#  account_id               :bigint           not null
+#  cobertura_ciudad_id      :bigint
+#  display_id               :integer          not null
+#  ticket_id                :bigint           not null
+#
+# Indexes
+#
+#  idx_h3_garantias_account       (account_id)
+#  idx_h3_garantias_account_dpid  (account_id,display_id) UNIQUE
+#  idx_h3_garantias_cobertura     (cobertura_ciudad_id)
+#  idx_h3_garantias_ticket        (ticket_id)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (cobertura_ciudad_id => helic3_catalogo_coberturas_ciudad.id)
+#  fk_rails_...  (ticket_id => helic3_tickets.id)
+#
 class Helic3::Garantia < ApplicationRecord
   # plural espanol explicito: la regla latina de Rails para "-ia" (como
   # criteria) dejaria la tabla en singular
