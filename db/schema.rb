@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_25_130000) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_28_130000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1235,6 +1235,41 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_25_130000) do
     t.index ["account_id"], name: "idx_h3cat_tipos_account"
   end
 
+  create_table "helic3_garantia_items", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "garantia_id", null: false
+    t.string "producto_nombre", null: false
+    t.string "producto_referencia"
+    t.bigint "motivo_garantia_id"
+    t.bigint "detalle_tipificado_id"
+    t.bigint "proceso_id"
+    t.datetime "resuelto_at"
+    t.string "decision"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "idx_h3_gitems_account"
+    t.index ["detalle_tipificado_id"], name: "idx_h3_gitems_detalle"
+    t.index ["garantia_id"], name: "idx_h3_gitems_garantia"
+    t.index ["motivo_garantia_id"], name: "idx_h3_gitems_motivo"
+    t.index ["proceso_id"], name: "idx_h3_gitems_proceso"
+  end
+
+  create_table "helic3_garantias", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "ticket_id", null: false
+    t.integer "display_id", null: false
+    t.datetime "abierta_at", null: false
+    t.datetime "cerrada_at"
+    t.integer "presupuesto_dias_habiles"
+    t.bigint "cobertura_ciudad_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "display_id"], name: "idx_h3_garantias_account_dpid", unique: true
+    t.index ["account_id"], name: "idx_h3_garantias_account"
+    t.index ["cobertura_ciudad_id"], name: "idx_h3_garantias_cobertura"
+    t.index ["ticket_id"], name: "idx_h3_garantias_ticket"
+  end
+
   create_table "helic3_knowledge_chunks", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "document_id", null: false
@@ -1852,9 +1887,31 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_25_130000) do
   add_foreign_key "campaign_recipients", "inboxes", on_delete: :cascade
   add_foreign_key "helic3_catalogo_detalles_tipificados", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
   add_foreign_key "helic3_catalogo_motivos_pqr", "helic3_catalogo_categorias", column: "categoria_id"
+  add_foreign_key "helic3_garantia_items", "helic3_catalogo_detalles_tipificados", column: "detalle_tipificado_id"
+  add_foreign_key "helic3_garantia_items", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
+  add_foreign_key "helic3_garantia_items", "helic3_catalogo_procesos_garantia", column: "proceso_id"
+  add_foreign_key "helic3_garantia_items", "helic3_garantias", column: "garantia_id"
+  add_foreign_key "helic3_garantias", "helic3_catalogo_coberturas_ciudad", column: "cobertura_ciudad_id"
+  add_foreign_key "helic3_garantias", "helic3_tickets", column: "ticket_id"
   add_foreign_key "helic3_pqrs_detalles", "helic3_pqrs_motivos", column: "motivo_id"
   add_foreign_key "inboxes", "portals"
   add_foreign_key "user_sessions", "users"
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute(<<-SQL)
+CREATE OR REPLACE FUNCTION public.helic3_garantias_before_insert_row_tr()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    EXECUTE format('CREATE SEQUENCE IF NOT EXISTS helic3_garantia_dpid_seq_%s START WITH %s', NEW.account_id, COALESCE((SELECT valor::integer FROM helic3_catalogo_parametros WHERE account_id = NEW.account_id AND clave = 'radicado_garantia_inicio'), 1)); NEW.display_id := nextval('helic3_garantia_dpid_seq_' || NEW.account_id);
+    RETURN NEW;
+END;
+$function$
+  SQL
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER helic3_garantias_before_insert_row_tr BEFORE INSERT ON \"helic3_garantias\" FOR EACH ROW EXECUTE FUNCTION helic3_garantias_before_insert_row_tr()")
+
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute(<<-SQL)
 CREATE OR REPLACE FUNCTION public.helic3_ticket_dpid_before_insert()
