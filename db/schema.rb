@@ -1106,6 +1106,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_28_130000) do
     t.boolean "activo", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "genera_radicado", default: true, null: false
     t.index ["account_id", "codigo"], name: "idx_h3cat_categorias_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_categorias_account"
   end
@@ -1379,6 +1380,20 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_28_130000) do
     t.string "pqrs_prioridad"
     t.jsonb "pqrs_metadata", default: {}
     t.string "pqrs_numero_orden"
+    t.bigint "categoria_id"
+    t.bigint "tipo_id"
+    t.bigint "motivo_pqr_id"
+    t.bigint "resultado_id"
+    t.bigint "etapa_id"
+    t.datetime "radicada_at"
+    t.datetime "respondida_at"
+    t.datetime "cerrada_at"
+    t.datetime "plazo_respuesta_vence_at"
+    t.index ["categoria_id"], name: "idx_h3_tickets_categoria"
+    t.index ["etapa_id"], name: "idx_h3_tickets_etapa"
+    t.index ["motivo_pqr_id"], name: "idx_h3_tickets_motivo_pqr"
+    t.index ["resultado_id"], name: "idx_h3_tickets_resultado"
+    t.index ["tipo_id"], name: "idx_h3_tickets_tipo"
     t.index ["account_id", "display_id"], name: "index_helic3_tickets_on_account_id_and_display_id", unique: true
     t.index ["account_id", "pqrs_tipo"], name: "index_helic3_tickets_on_account_id_and_pqrs_tipo"
     t.index ["account_id", "status"], name: "index_helic3_tickets_on_account_id_and_status"
@@ -1894,6 +1909,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_28_130000) do
   add_foreign_key "helic3_garantias", "helic3_catalogo_coberturas_ciudad", column: "cobertura_ciudad_id"
   add_foreign_key "helic3_garantias", "helic3_tickets", column: "ticket_id"
   add_foreign_key "helic3_pqrs_detalles", "helic3_pqrs_motivos", column: "motivo_id"
+  add_foreign_key "helic3_tickets", "helic3_catalogo_categorias", column: "categoria_id"
+  add_foreign_key "helic3_tickets", "helic3_catalogo_etapas_pqr", column: "etapa_id"
+  add_foreign_key "helic3_tickets", "helic3_catalogo_motivos_pqr", column: "motivo_pqr_id"
+  add_foreign_key "helic3_tickets", "helic3_catalogo_resultados", column: "resultado_id"
+  add_foreign_key "helic3_tickets", "helic3_catalogo_tipos", column: "tipo_id"
   add_foreign_key "inboxes", "portals"
   add_foreign_key "user_sessions", "users"
   # no candidate create_trigger statement could be found, creating an adapter-specific one

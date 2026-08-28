@@ -115,6 +115,13 @@ RSpec.describe Helic3::Catalogo::SeederService do
     expect(bogota).to have_attributes(tecnico_propio: false, origen_ruta: 'recoleccion')
   end
 
+  it 'marca a Informacion como la unica categoria sin radicado (EXP-01)' do
+    service.sembrar!
+
+    sin_radicado = Helic3::Catalogo::Categoria.where(account: account, genera_radicado: false).pluck(:codigo)
+    expect(sin_radicado).to eq(['informacion'])
+  end
+
   it 'siembra los parametros de operacion del addendum (frente B)' do
     service.sembrar!
 
