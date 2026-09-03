@@ -135,7 +135,16 @@ class Helic3::Catalogo::SeederService
     { clave: 'minimo_visitas_ruta', valor: '5', unidad: 'cantidad' },
     { clave: 'umbral_confianza_agente', valor: '85', unidad: 'porcentaje' },
     { clave: 'exigir_direccion_confirmada', valor: 'true', unidad: 'booleano' },
-    { clave: 'mostrar_solo_ticket_garantia', valor: 'true', unidad: 'booleano' }
+    { clave: 'mostrar_solo_ticket_garantia', valor: 'true', unidad: 'booleano' },
+    # Umbrales del semaforo (PRM-01): los lee Helic3::PresupuestoGarantia via
+    # Helic3::ParametrosGarantia. Sin ellos el semaforo no se puede calcular.
+    # Garantia y autonomia van con valor definitivo; los de PQR (8 y 3) son
+    # propuesta pendiente de confirmar con el tech lead antes de integrar.
+    { clave: 'umbral_verde_garantia', valor: '15', unidad: 'dias_habiles' },
+    { clave: 'umbral_amarillo_garantia', valor: '5', unidad: 'dias_habiles' },
+    { clave: 'umbral_verde_pqr', valor: '8', unidad: 'dias_habiles' },
+    { clave: 'umbral_amarillo_pqr', valor: '3', unidad: 'dias_habiles' },
+    { clave: 'autonomia_radicar_pqr', valor: 'propone', unidad: 'texto' }
   ].freeze
 
   def initialize(account)
