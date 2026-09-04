@@ -12,7 +12,7 @@ RSpec.describe Helic3::Catalogo::SeederService do
     expect(resumen).to eq(
       categorias: 6, tipos: 5, etapas_pqr: 4, motivos_pqr: 7, resultados: 7,
       motivos_garantia: 5, detalles_tipificados: 31, procesos_garantia: 7,
-      coberturas_ciudad: 10, parametros: 9
+      coberturas_ciudad: 10, parametros: 14
     )
   end
 
@@ -133,5 +133,47 @@ RSpec.describe Helic3::Catalogo::SeederService do
     expect(total.unidad).to eq('dias_habiles')
     expect(umbral.valor_entero).to eq(85)
     expect(direccion.valor_booleano).to be(true)
+  end
+
+  it 'siembra los cinco umbrales del semaforo y la autonomia (PRM-01, criterio 3)' do
+    service.sembrar!
+
+    esperados = {
+      'umbral_verde_garantia' => %w[15 dias_habiles],
+      'umbral_amarillo_garantia' => %w[5 dias_habiles],
+      'umbral_verde_pqr' => %w[8 dias_habiles],
+      'umbral_amarillo_pqr' => %w[3 dias_habiles],
+      'autonomia_radicar_pqr' => %w[propone texto]
+    }
+    esperados.each do |clave, (valor, unidad)|
+      parametro = Helic3::Catalogo::Parametro.find_by!(account: account, clave: clave)
+      expect(parametro).to have_attributes(valor: valor, unidad: unidad)
+    end
+  end
+
+  it 'todavia no siembra los parametros de radicado de garantia (PRM-01, criterio 4)' do
+    service.sembrar!
+
+    %w[radicado_garantia_prefijo radicado_garantia_inicio].each do |clave|
+      expect(Helic3::Catalogo::Parametro.find_by(account: account, clave: clave)).to be_nil
+    end
+  end
+
+  it 'acepta la unidad texto de autonomia_radicar_pqr (PRM-01, criterio 5)' do
+    service.sembrar!
+
+    autonomia = Helic3::Catalogo::Parametro.find_by!(account: account, clave: 'autonomia_radicar_pqr')
+    expect(autonomia).to be_valid
+    expect(autonomia.unidad).to eq('texto')
+  end
+
+  it 'respeta un umbral editado por consola en la segunda siembra (PRM-01, criterio 2)' do
+    service.sembrar!
+    umbral = Helic3::Catalogo::Parametro.find_by!(account: account, clave: 'umbral_verde_pqr')
+    umbral.update!(valor: '10')
+
+    described_class.new(account).sembrar!
+
+    expect(umbral.reload.valor).to eq('10')
   end
 end
