@@ -32,10 +32,22 @@
       "FORM_TITLE_PLACEHOLDER": "¿Cuál es el problema?",
       "FORM_DESCRIPTION_LABEL": "Descripción",
       "FORM_DESCRIPTION_PLACEHOLDER": "Agrega más detalles (opcional)",
+      "FORM_TYPE_LABEL": "Tipo",
+      "FORM_TYPE_PLACEHOLDER": "Selecciona un tipo",
+      "FORM_MOTIVE_LABEL": "Motivo",
+      "FORM_MOTIVE_PLACEHOLDER": "Selecciona un motivo",
+      "FORM_CATEGORY_DERIVED": "Categoría: {category}",
       "FORM_STATUS_LABEL": "Estado",
       "CONFIRM": "Crear",
       "SUCCESS": "Ticket creado correctamente",
       "ERROR": "Hubo un error al crear el ticket"
+    },
+    "CLOCK": {
+      "NO_RADICADO": "Sin radicado",
+      "REMAINING": "{days} días hábiles restantes",
+      "OVERDUE": "Vencido hace {days} días hábiles",
+      "FROZEN": "Reloj detenido",
+      "DUE": "Vence: {date}"
     },
     "UPDATE": {
       "SUCCESS": "Ticket actualizado",
