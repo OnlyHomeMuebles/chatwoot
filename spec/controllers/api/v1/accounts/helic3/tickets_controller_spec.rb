@@ -183,6 +183,31 @@ RSpec.describe 'Tickets API', type: :request do
       expect(body['status']).to eq('pending')
       expect(body['assignee']['id']).to eq(agent.id)
     end
+
+    # Atomicidad (review de Jhan): los operativos corren dentro de la misma
+    # transaccion que la radicacion. Si fallan, no puede quedar un expediente
+    # radicado (con numero y reloj legal) huerfano.
+    it 'no radica si el assignee es de otra cuenta (rollback completo)' do
+      ajeno = create(:user, account: create(:account))
+
+      expect do
+        post "/api/v1/accounts/#{account.id}/helic3/tickets",
+             params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, assignee_id: ajeno.id } },
+             headers: agent.create_new_auth_token, as: :json
+      end.not_to change(Helic3::Ticket, :count)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it 'no radica si el status es invalido y responde 422, no 500 (rollback completo)' do
+      expect do
+        post "/api/v1/accounts/#{account.id}/helic3/tickets",
+             params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, status: 'inexistente' } },
+             headers: agent.create_new_auth_token, as: :json
+      end.not_to change(Helic3::Ticket, :count)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
   end
 
   describe 'POST /api/v1/accounts/{account.id}/helic3/tickets/{id}/assign' do

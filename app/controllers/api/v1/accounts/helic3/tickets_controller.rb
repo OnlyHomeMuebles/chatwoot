@@ -14,18 +14,26 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
   # que un expediente creado desde el panel arranque con su reloj corriendo igual
   # que uno creado por el agente. La categoria la deriva el servicio del motivo;
   # no se envia desde aqui.
+  #
+  # Todo en UNA transaccion: Radicar abre la suya, pero al anidarla dentro de esta
+  # los operativos (status/assignee) quedan en el mismo alcance. Si su update! falla,
+  # se revierte tambien la radicacion — nunca queda un expediente huerfano con numero
+  # y reloj legal corriendo que nadie atenderia. No se rescata aqui: la excepcion
+  # debe salir de la transaccion para que haya rollback (el rescue_from base responde).
   def create
-    @ticket = Helic3::Casos::Radicar.new(
-      account: Current.account,
-      titulo: create_params[:title],
-      descripcion: create_params[:description],
-      conversation_id: create_params[:conversation_id],
-      tipo: catalogo_de_cuenta(Helic3::Catalogo::Tipo, create_params[:tipo_id]),
-      motivo_pqr: catalogo_de_cuenta(Helic3::Catalogo::MotivoPqr, create_params[:motivo_pqr_id]),
-      creator: Current.user,
-      origen: :humano
-    ).call
-    aplicar_operativos_al_crear
+    Helic3::Ticket.transaction do
+      @ticket = Helic3::Casos::Radicar.new(
+        account: Current.account,
+        titulo: create_params[:title],
+        descripcion: create_params[:description],
+        conversation_id: create_params[:conversation_id],
+        tipo: catalogo_de_cuenta(Helic3::Catalogo::Tipo, create_params[:tipo_id]),
+        motivo_pqr: catalogo_de_cuenta(Helic3::Catalogo::MotivoPqr, create_params[:motivo_pqr_id]),
+        creator: Current.user,
+        origen: :humano
+      ).call
+      aplicar_operativos_al_crear
+    end
   end
 
   def update
@@ -77,11 +85,25 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
     modelo.find_by!(account: Current.account, id: id)
   end
 
-  # status/assignee_id no son parte de la firma de Radicar; se aplican despues de
-  # radicar, sin silenciar lo que el panel pida al crear (ni tocar el servicio).
+  # status/assignee_id no son parte de la firma de Radicar; se aplican dentro de la
+  # transaccion del create, sin silenciar lo que el panel pida al crear (ni tocar
+  # el servicio). Corre bajo la transaccion: si algo falla, se revierte todo.
   def aplicar_operativos_al_crear
     operativos = create_params.slice(:status, :assignee_id).compact_blank
-    @ticket.update!(operativos) if operativos.present?
+    return if operativos.blank?
+
+    validar_status!(operativos[:status])
+    @ticket.update!(operativos)
+  end
+
+  # Un status fuera del enum es un dato del cliente: se rechaza con 422 (via
+  # RecordInvalid), no con el ArgumentError -> 500 que levantaria la asignacion
+  # del enum. Se valida antes de update! para no depender de ese comportamiento.
+  def validar_status!(status)
+    return if status.blank? || Helic3::Ticket.statuses.key?(status)
+
+    @ticket.errors.add(:status, :inclusion, value: status)
+    raise ActiveRecord::RecordInvalid, @ticket
   end
 
   # Datos de radicacion. NO incluye categoria_id: la categoria la deriva Radicar
