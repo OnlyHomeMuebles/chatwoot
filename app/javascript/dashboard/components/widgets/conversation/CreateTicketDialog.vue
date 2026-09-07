@@ -66,7 +66,11 @@ const categoriaDerivada = computed(() => {
 
 const open = () => {
   newTicket.value = emptyTicket();
-  store.dispatch('tickets/getCatalogos');
+  // si los catalogos no cargan, se avisa: sin ellos el operador crearia un
+  // expediente sin clasificar sin saber por que (tipo/motivo no son obligatorios)
+  store
+    .dispatch('tickets/getCatalogos')
+    .catch(() => useAlert(t('TICKETS.CREATE.CATALOGS_ERROR')));
   dialogRef.value.open();
 };
 

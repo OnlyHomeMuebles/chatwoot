@@ -40,7 +40,8 @@
       "FORM_STATUS_LABEL": "Estado",
       "CONFIRM": "Crear",
       "SUCCESS": "Ticket creado correctamente",
-      "ERROR": "Hubo un error al crear el ticket"
+      "ERROR": "Hubo un error al crear el ticket",
+      "CATALOGS_ERROR": "No se pudieron cargar los catálogos de clasificación"
     },
     "CLOCK": {
       "NO_RADICADO": "Sin radicado",

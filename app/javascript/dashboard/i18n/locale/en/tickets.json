@@ -40,7 +40,8 @@
       "FORM_STATUS_LABEL": "Status",
       "CONFIRM": "Create",
       "SUCCESS": "Ticket created successfully",
-      "ERROR": "There was an error creating the ticket"
+      "ERROR": "There was an error creating the ticket",
+      "CATALOGS_ERROR": "The classification catalogs could not be loaded"
     },
     "CLOCK": {
       "NO_RADICADO": "No case number",

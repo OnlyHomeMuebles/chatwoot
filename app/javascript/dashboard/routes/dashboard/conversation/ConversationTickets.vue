@@ -42,7 +42,13 @@ onMounted(async () => {
   fetchDetails();
 });
 
-watch(() => conversationTickets.value.length, fetchDetails);
+// El panel no se remonta al cambiar de chat (ConversationSidebar lo renderiza con
+// v-show y sin :key), solo le cambia el prop. Observamos la identidad de la
+// conversacion, no la cantidad de expedientes: pasar de un chat con 1 expediente a
+// otro con 1 no cambiaba la longitud y el semaforo/dias (que solo llegan por show)
+// se quedaban sin cargar. conversationId no lo toca EDIT_TICKET, asi que show no se
+// redispara solo. No es immediate: el fetch inicial ya lo hace onMounted.
+watch(() => props.conversationId, fetchDetails);
 
 const statusOptions = computed(() =>
   STATUSES.map(status => ({

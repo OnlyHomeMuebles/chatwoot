@@ -48,15 +48,14 @@ export const actions = {
       // Ignore error: el ticket se sigue mostrando con lo que trajo el listado
     }
   },
-  // los catalogos casi no cambian: se traen una vez por sesion y se cachean
+  // los catalogos casi no cambian: se traen una vez por sesion y se cachean.
+  // No se traga el error: si falla, los selectores quedan vacios y el operador
+  // podria crear un expediente sin clasificar sin enterarse. Se propaga para que
+  // el dialogo avise (igual que create), en vez de degradar en silencio.
   getCatalogos: async ({ commit, state: currentState }) => {
     if (currentState.catalogos.tipos.length) return;
-    try {
-      const response = await TicketsAPI.catalogos();
-      commit(types.SET_TICKET_CATALOGOS, response.data);
-    } catch (error) {
-      // Ignore error: los selectores quedan vacios si no se pudieron cargar
-    }
+    const response = await TicketsAPI.catalogos();
+    commit(types.SET_TICKET_CATALOGOS, response.data);
   },
   create: async ({ commit }, ticketObj) => {
     commit(types.SET_TICKET_UI_FLAG, { isCreating: true });
