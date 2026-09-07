@@ -4,6 +4,7 @@ import TicketsAPI from '../../api/tickets';
 
 export const state = {
   records: [],
+  catalogos: { tipos: [], motivos_pqr: [], etapas_pqr: [], resultados: [] },
   uiFlags: {
     isFetching: false,
     isCreating: false,
@@ -19,6 +20,9 @@ export const getters = {
   getTickets(_state) {
     return [..._state.records].sort((t1, t2) => t2.id - t1.id);
   },
+  getCatalogos(_state) {
+    return _state.catalogos;
+  },
 };
 
 export const actions = {
@@ -32,6 +36,26 @@ export const actions = {
     } finally {
       commit(types.SET_TICKET_UI_FLAG, { isFetching: false });
     }
+  },
+  // el detalle trae semaforo y dias_habiles_restantes, que el listado omite (se
+  // derivan y encarecerian cada fila). El panel lo pide por los pocos tickets de
+  // la conversacion para poder pintar el chip del semaforo.
+  show: async ({ commit }, id) => {
+    try {
+      const response = await TicketsAPI.show(id);
+      commit(types.EDIT_TICKET, response.data);
+    } catch (error) {
+      // Ignore error: el ticket se sigue mostrando con lo que trajo el listado
+    }
+  },
+  // los catalogos casi no cambian: se traen una vez por sesion y se cachean.
+  // No se traga el error: si falla, los selectores quedan vacios y el operador
+  // podria crear un expediente sin clasificar sin enterarse. Se propaga para que
+  // el dialogo avise (igual que create), en vez de degradar en silencio.
+  getCatalogos: async ({ commit, state: currentState }) => {
+    if (currentState.catalogos.tipos.length) return;
+    const response = await TicketsAPI.catalogos();
+    commit(types.SET_TICKET_CATALOGOS, response.data);
   },
   create: async ({ commit }, ticketObj) => {
     commit(types.SET_TICKET_UI_FLAG, { isCreating: true });
@@ -89,6 +113,10 @@ export const mutations = {
   [types.SET_TICKETS]: MutationHelpers.set,
   [types.EDIT_TICKET]: MutationHelpers.update,
   [types.DELETE_TICKET]: MutationHelpers.destroy,
+
+  [types.SET_TICKET_CATALOGOS](_state, data) {
+    _state.catalogos = data;
+  },
 };
 
 export default {
