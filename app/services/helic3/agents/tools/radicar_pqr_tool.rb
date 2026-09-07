@@ -47,6 +47,9 @@ class Helic3::Agents::Tools::RadicarPqrTool < Helic3::Agents::Tools::BaseTool
         tipo: tipo, motivo_pqr: motivo, numero_orden: numero_orden, origen: :agente
       ).call
     rescue StandardError => e
+      # el rescate protege el run, pero el rastro queda: CAS-01 exige que un
+      # error de configuracion (cuenta sin sembrar) SE VEA, no que se silencie
+      Rails.logger.error("[Helic3] radicar_pqr fallo account=#{account.id}: #{e.class}: #{e.message}")
       e
     end
     # un fallo del dominio se vuelve texto legible: el run no se tumba

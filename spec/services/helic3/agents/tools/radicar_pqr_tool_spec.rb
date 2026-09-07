@@ -117,6 +117,17 @@ RSpec.describe Helic3::Agents::Tools::RadicarPqrTool do
     expect(Helic3::Ticket.last.numero_radicado).to be_nil
   end
 
+  it 'un fallo del dominio deja rastro en el log ademas de volverse texto para el modelo' do
+    # cuenta sin sembrar: la etapa "nueva" no esta activa y Radicar revienta
+    Helic3::Catalogo::EtapaPqr.find_by(account: account, codigo: 'nueva').update!(activo: false)
+    expect(Rails.logger).to receive(:error)
+      .with(a_string_matching(/\[Helic3\] radicar_pqr fallo account=#{account.id}: ActiveRecord::RecordNotFound/))
+
+    salida = radicar
+
+    expect(salida).to include('No se pudo radicar')
+  end
+
   it 'si el run no trae cuenta, responde legible sin reventar' do
     ctx = Agents::ToolContext.new(run_context: Agents::RunContext.new({ state: {} }))
 
