@@ -17,18 +17,19 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
   def create
     @ticket = Helic3::Casos::Radicar.new(
       account: Current.account,
-      titulo: ticket_params[:title],
-      descripcion: ticket_params[:description],
-      conversation_id: ticket_params[:conversation_id],
-      tipo: catalogo_de_cuenta(Helic3::Catalogo::Tipo, ticket_params[:tipo_id]),
-      motivo_pqr: catalogo_de_cuenta(Helic3::Catalogo::MotivoPqr, ticket_params[:motivo_pqr_id]),
+      titulo: create_params[:title],
+      descripcion: create_params[:description],
+      conversation_id: create_params[:conversation_id],
+      tipo: catalogo_de_cuenta(Helic3::Catalogo::Tipo, create_params[:tipo_id]),
+      motivo_pqr: catalogo_de_cuenta(Helic3::Catalogo::MotivoPqr, create_params[:motivo_pqr_id]),
       creator: Current.user,
       origen: :humano
     ).call
+    aplicar_operativos_al_crear
   end
 
   def update
-    @ticket.update!(ticket_params)
+    @ticket.update!(update_params)
   end
 
   def destroy
@@ -76,8 +77,24 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
     modelo.find_by!(account: Current.account, id: id)
   end
 
-  def ticket_params
-    params.require(:ticket).permit(:title, :description, :status, :assignee_id, :conversation_id,
-                                   :categoria_id, :tipo_id, :motivo_pqr_id, :resultado_id, :etapa_id)
+  # status/assignee_id no son parte de la firma de Radicar; se aplican despues de
+  # radicar, sin silenciar lo que el panel pida al crear (ni tocar el servicio).
+  def aplicar_operativos_al_crear
+    operativos = create_params.slice(:status, :assignee_id).compact_blank
+    @ticket.update!(operativos) if operativos.present?
+  end
+
+  # Datos de radicacion. NO incluye categoria_id: la categoria la deriva Radicar
+  # del motivo, y recibirla abriria una segunda fuente de la misma verdad.
+  def create_params
+    params.require(:ticket).permit(:title, :description, :conversation_id,
+                                   :tipo_id, :motivo_pqr_id, :status, :assignee_id)
+  end
+
+  # Update solo toca lo operativo: estado, asignacion y avance de etapa/resultado.
+  # Corregir la clasificacion ya radicada (tipo/motivo/categoria) queda fuera:
+  # cambiaria la categoria y el plazo sin re-derivarlos (decision de negocio).
+  def update_params
+    params.require(:ticket).permit(:status, :assignee_id, :etapa_id, :resultado_id)
   end
 end

@@ -22,18 +22,24 @@ json.updated_at resource.updated_at
   end
 end
 
-# Reloj y radicado (API-02 + SEM-01): los sellos son columnas; el numero, los
-# dias restantes, el semaforo y el congelamiento se derivan del modelo. Nulos
-# cuando la categoria no genera radicado (p. ej. Informacion).
+# Reloj y radicado (API-02 + SEM-01): los sellos son columnas; el numero y el
+# congelamiento se derivan barato. Nulos cuando la categoria no genera radicado.
 json.numero_radicado resource.numero_radicado
 json.radicada_at resource.radicada_at
 json.respondida_at resource.respondida_at
 json.cerrada_at resource.cerrada_at
 json.plazo_respuesta_vence_at resource.plazo_respuesta_vence_at
-json.dias_habiles_restantes resource.dias_habiles_restantes
-json.semaforo resource.semaforo
 json.reloj_detenido resource.reloj_detenido?
 json.origen resource.pqrs_metadata&.dig('origen')
+
+# semaforo y dias_habiles_restantes SOLO en la vista detallada (show/create): en
+# el listado costarian una lectura de umbrales + calculo de festivos por fila, y
+# en una cuenta sin umbrales sembrados harian fallar TODO el indice con 500. El
+# panel los lee del expediente puntual, no de la lista.
+if local_assigns.fetch(:detallado, true)
+  json.dias_habiles_restantes resource.dias_habiles_restantes
+  json.semaforo resource.semaforo
+end
 
 if resource.assignee.present?
   json.assignee do

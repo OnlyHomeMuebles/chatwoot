@@ -144,6 +144,47 @@ RSpec.describe 'Tickets API', type: :request do
     end
   end
 
+  describe 'robustez del listado y el update (review API-02)' do
+    before { Helic3::Catalogo::SeederService.new(account).sembrar! }
+
+    let(:tipo) { Helic3::Catalogo::Tipo.find_by!(account: account, codigo: 'peticion') }
+    let(:motivo) { Helic3::Catalogo::MotivoPqr.find_by!(account: account, codigo: 'garantia_producto') }
+
+    it 'el listado no expone semaforo ni dias_habiles_restantes (se derivan solo en el detalle)' do
+      Helic3::Casos::Radicar.new(account: account, titulo: 'Caso', motivo_pqr: motivo, origen: :humano).call
+
+      get "/api/v1/accounts/#{account.id}/helic3/tickets", headers: agent.create_new_auth_token, as: :json
+
+      fila = response.parsed_body.first
+      expect(fila).not_to have_key('semaforo')
+      expect(fila).not_to have_key('dias_habiles_restantes')
+    end
+
+    it 'update no reasigna la clasificacion ya radicada (categoria/tipo/motivo)' do
+      ticket = Helic3::Casos::Radicar.new(account: account, titulo: 'Caso', tipo: tipo, motivo_pqr: motivo,
+                                          creator: agent, origen: :humano).call
+      otra_categoria = Helic3::Catalogo::Categoria.find_by!(account: account, codigo: 'logistica')
+
+      patch "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+            params: { ticket: { categoria_id: otra_categoria.id, motivo_pqr_id: nil } },
+            headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(ticket.reload.categoria.codigo).to eq('garantia')
+      expect(ticket.motivo_pqr.codigo).to eq('garantia_producto')
+    end
+
+    it 'create aplica status y assignee despues de radicar, sin ignorarlos' do
+      post "/api/v1/accounts/#{account.id}/helic3/tickets",
+           params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, status: 'pending', assignee_id: agent.id } },
+           headers: agent.create_new_auth_token, as: :json
+
+      body = response.parsed_body
+      expect(body['status']).to eq('pending')
+      expect(body['assignee']['id']).to eq(agent.id)
+    end
+  end
+
   describe 'POST /api/v1/accounts/{account.id}/helic3/tickets/{id}/assign' do
     let!(:ticket) { create(:ticket, account: account, creator: agent) }
 
