@@ -4,7 +4,9 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
 
   def index
     @tickets = apply_filters(
-      Current.account.tickets.includes(:assignee, :creator, :categoria, :tipo, :motivo_pqr, :resultado, :etapa).latest
+      Current.account.tickets
+             .includes(:assignee, :creator, :categoria, :tipo, :motivo_pqr, :resultado, :etapa, :conversation)
+             .latest
     )
   end
 

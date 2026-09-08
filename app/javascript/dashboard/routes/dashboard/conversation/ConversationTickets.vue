@@ -23,9 +23,13 @@ const createDialogRef = ref(null);
 
 const tickets = useMapGetter('tickets/getTickets');
 
+// props.conversationId es el display_id (lo que Chatwoot expone como id de la
+// conversacion en el dashboard). Se compara contra conversation_display_id, no
+// contra conversation_id (que es el id de base de datos): así el panel muestra
+// también los expedientes que radicó el agente, sin manipular ids del dominio.
 const conversationTickets = computed(() =>
   tickets.value.filter(
-    ticket => ticket.conversation_id === Number(props.conversationId)
+    ticket => ticket.conversation_display_id === Number(props.conversationId)
   )
 );
 
@@ -37,18 +41,24 @@ const fetchDetails = () => {
   );
 };
 
-onMounted(async () => {
+// Refresca la LISTA y luego pide el detalle. Volver a pedir la lista es lo que
+// hace aparecer un expediente que el agente radico en otra conversacion mientras
+// el panel ya estaba abierto: tickets/get corre una sola vez al montar, así que
+// sin este refresco ese expediente nunca entraria al store.
+const cargarExpedientes = async () => {
   await store.dispatch('tickets/get');
   fetchDetails();
-});
+};
+
+onMounted(cargarExpedientes);
 
 // El panel no se remonta al cambiar de chat (ConversationSidebar lo renderiza con
 // v-show y sin :key), solo le cambia el prop. Observamos la identidad de la
-// conversacion, no la cantidad de expedientes: pasar de un chat con 1 expediente a
-// otro con 1 no cambiaba la longitud y el semaforo/dias (que solo llegan por show)
-// se quedaban sin cargar. conversationId no lo toca EDIT_TICKET, asi que show no se
-// redispara solo. No es immediate: el fetch inicial ya lo hace onMounted.
-watch(() => props.conversationId, fetchDetails);
+// conversacion (no la cantidad de expedientes: dos chats con un expediente cada
+// uno no cambiaban la longitud y el refresco no disparaba). conversationId no lo
+// tocan las mutaciones de detalle, asi que no hay bucle. No es immediate: el fetch
+// inicial ya lo hace onMounted, asi que al montar se pide la lista una sola vez.
+watch(() => props.conversationId, cargarExpedientes);
 
 const statusOptions = computed(() =>
   STATUSES.map(status => ({

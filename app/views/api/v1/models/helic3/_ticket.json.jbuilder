@@ -5,6 +5,10 @@ json.title resource.title
 json.description resource.description
 json.status resource.status
 json.conversation_id resource.conversation_id
+# El frontend habla en display_id (lo que Chatwoot expone como "id" de la
+# conversacion). Se expone aparte para que la vista compare display con display y
+# nunca manipule el id de base de datos. Nulo si el expediente no tiene conversacion.
+json.conversation_display_id resource.conversation&.display_id
 json.resolved_at resource.resolved_at
 json.created_at resource.created_at
 json.updated_at resource.updated_at
