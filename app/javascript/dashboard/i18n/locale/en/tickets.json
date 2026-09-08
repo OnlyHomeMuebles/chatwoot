@@ -50,6 +50,39 @@
       "FROZEN": "Clock stopped",
       "DUE": "Due: {date}"
     },
+    "INBOX": {
+      "TITLE": "PQR inbox",
+      "EMPTY": "No cases match the filters",
+      "ERROR": "The inbox could not be loaded",
+      "NO_RADICADO": "No case number",
+      "PENDING": "Pending",
+      "COUNT": "{shown} of {total}",
+      "FILTERS": {
+        "SEARCH": "Search by client or case number",
+        "ALL_CATEGORIES": "All categories",
+        "ALL_TYPES": "All types",
+        "ALL_STAGES": "All stages",
+        "ALL_ASSIGNEES": "All assignees",
+        "OVERDUE": "Overdue only"
+      },
+      "COLUMNS": {
+        "CLIENT": "Client",
+        "RADICADO": "Case number",
+        "CLASSIFICATION": "Classification",
+        "STAGE": "Stage",
+        "CLOCK": "Due date",
+        "ASSIGNEE": "Assignee"
+      },
+      "CLOCK": {
+        "FROZEN": "Frozen",
+        "OVERDUE": "Overdue",
+        "DUE": "Due {date}"
+      },
+      "PAGINATION": {
+        "PREV": "Previous",
+        "NEXT": "Next"
+      }
+    },
     "UPDATE": {
       "SUCCESS": "Ticket updated",
       "ERROR": "There was an error updating the ticket",

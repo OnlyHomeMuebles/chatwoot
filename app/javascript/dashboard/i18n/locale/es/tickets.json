@@ -50,6 +50,39 @@
       "FROZEN": "Reloj detenido",
       "DUE": "Vence: {date}"
     },
+    "INBOX": {
+      "TITLE": "Bandeja de PQR",
+      "EMPTY": "No hay expedientes que coincidan con los filtros",
+      "ERROR": "No se pudo cargar la bandeja",
+      "NO_RADICADO": "Sin radicado",
+      "PENDING": "Pendiente",
+      "COUNT": "{shown} de {total}",
+      "FILTERS": {
+        "SEARCH": "Buscar por cliente o radicado",
+        "ALL_CATEGORIES": "Todas las categorías",
+        "ALL_TYPES": "Todos los tipos",
+        "ALL_STAGES": "Todas las etapas",
+        "ALL_ASSIGNEES": "Todos los responsables",
+        "OVERDUE": "Solo vencidas"
+      },
+      "COLUMNS": {
+        "CLIENT": "Cliente",
+        "RADICADO": "Radicado",
+        "CLASSIFICATION": "Clasificación",
+        "STAGE": "Etapa",
+        "CLOCK": "Vencimiento",
+        "ASSIGNEE": "Responsable"
+      },
+      "CLOCK": {
+        "FROZEN": "Congelado",
+        "OVERDUE": "Vencido",
+        "DUE": "Vence {date}"
+      },
+      "PAGINATION": {
+        "PREV": "Anterior",
+        "NEXT": "Siguiente"
+      }
+    },
     "UPDATE": {
       "SUCCESS": "Ticket actualizado",
       "ERROR": "Hubo un error al actualizar el ticket",
