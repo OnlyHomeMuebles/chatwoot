@@ -23,9 +23,13 @@ const createDialogRef = ref(null);
 
 const tickets = useMapGetter('tickets/getTickets');
 
+// props.conversationId es el display_id (lo que Chatwoot expone como id de la
+// conversacion en el dashboard). Se compara contra conversation_display_id, no
+// contra conversation_id (que es el id de base de datos): así el panel muestra
+// también los expedientes que radicó el agente, sin manipular ids del dominio.
 const conversationTickets = computed(() =>
   tickets.value.filter(
-    ticket => ticket.conversation_id === Number(props.conversationId)
+    ticket => ticket.conversation_display_id === Number(props.conversationId)
   )
 );
 
