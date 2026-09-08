@@ -344,6 +344,15 @@ Rails.application.routes.draw do
               end
             end
             resource :catalogos, only: [:show]
+            # Administracion de catalogos y parametros (ADM-01): lectura para
+            # agentes, escritura solo administradores. El :tipo elige el catalogo.
+            namespace :admin do
+              get    'catalogos/:tipo',     to: 'catalogos#index'
+              post   'catalogos/:tipo',     to: 'catalogos#create'
+              patch  'catalogos/:tipo/:id', to: 'catalogos#update'
+              delete 'catalogos/:tipo/:id', to: 'catalogos#destroy'
+              resources :parametros, only: [:index, :update]
+            end
           end
 
           resources :teams do
