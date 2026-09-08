@@ -208,6 +208,43 @@ RSpec.describe 'Tickets API', type: :request do
 
       expect(response).to have_http_status(:unprocessable_entity)
     end
+
+    # CTR-01: el frontend manda el display_id (lo que ve en pantalla); el dominio
+    # guarda el id de base de datos. El controlador traduce en la frontera.
+    it 'traduce el conversation_id de pantalla (display_id) al id de base de datos' do
+      3.times { create(:conversation, account: create(:account)) } # separa el display_id del id de BD
+      conv = create(:conversation, account: account)
+      expect(conv.display_id).not_to eq(conv.id)
+
+      post "/api/v1/accounts/#{account.id}/helic3/tickets",
+           params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, conversation_id: conv.display_id } },
+           headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(Helic3::Ticket.find(response.parsed_body['id']).conversation_id).to eq(conv.id)
+    end
+
+    it 'responde 404 (no 422 sobre cuentas) y no radica si la conversacion no existe' do
+      expect do
+        post "/api/v1/accounts/#{account.id}/helic3/tickets",
+             params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, conversation_id: 999_999 } },
+             headers: agent.create_new_auth_token, as: :json
+      end.not_to change(Helic3::Ticket, :count)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'responde 404 y no radica si la conversacion es de otra cuenta' do
+      ajena = create(:conversation, account: create(:account))
+
+      expect do
+        post "/api/v1/accounts/#{account.id}/helic3/tickets",
+             params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, conversation_id: ajena.display_id } },
+             headers: agent.create_new_auth_token, as: :json
+      end.not_to change(Helic3::Ticket, :count)
+
+      expect(response).to have_http_status(:not_found)
+    end
   end
 
   describe 'POST /api/v1/accounts/{account.id}/helic3/tickets/{id}/assign' do

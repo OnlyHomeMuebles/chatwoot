@@ -26,7 +26,7 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
         account: Current.account,
         titulo: create_params[:title],
         descripcion: create_params[:description],
-        conversation_id: create_params[:conversation_id],
+        conversation_id: conversation_id_de_bd(create_params[:conversation_id]),
         tipo: catalogo_de_cuenta(Helic3::Catalogo::Tipo, create_params[:tipo_id]),
         motivo_pqr: catalogo_de_cuenta(Helic3::Catalogo::MotivoPqr, create_params[:motivo_pqr_id]),
         creator: Current.user,
@@ -57,8 +57,23 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
     scope = filter_by_status(scope)
     scope = scope.assigned_to(Current.user) if params[:mine].present?
     scope = scope.where(assignee_id: params[:assignee_id]) if params[:assignee_id].present?
-    scope = scope.where(conversation_id: params[:conversation_id]) if params[:conversation_id].present?
+    scope = scope.where(conversation_id: conversation_id_de_bd(params[:conversation_id])) if params[:conversation_id].present?
     scope
+  end
+
+  # El frontend habla en display_id (el id publico de la API de Chatwoot, que el
+  # serializador de conversaciones expone bajo el nombre "id"); el dominio guarda
+  # el id de base de datos. La traduccion vive AQUI, en el borde, una sola vez —
+  # igual que la tool del agente (radicar_pqr_tool). Radicar sigue recibiendo el id
+  # de BD y no cambia: traducir es responsabilidad de la frontera, no del dominio.
+  #
+  # Se resuelve SIEMPRE contra la cuenta actual: una conversacion inexistente o de
+  # otra cuenta levanta RecordNotFound (404 "Resource could not be found"), no el
+  # error de validacion del modelo sobre cuentas, que al operador no le dice nada.
+  def conversation_id_de_bd(display_id)
+    return if display_id.blank?
+
+    Current.account.conversations.find_by!(display_id: display_id).id
   end
 
   def filter_by_status(scope)
