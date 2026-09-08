@@ -344,6 +344,10 @@ Rails.application.routes.draw do
               end
             end
             resource :catalogos, only: [:show]
+            # Bandeja de PQR (BAN-01): indice de solo lectura, filtrado y paginado
+            # en servidor. Endpoint propio para no cambiar la forma de la respuesta
+            # que el panel de conversacion ya consume por tickets#index.
+            get 'pqr', to: 'pqr#index'
           end
 
           resources :teams do
