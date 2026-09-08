@@ -13,6 +13,12 @@ class PqrInboxAPI extends ApiClient {
   list(params = {}) {
     return axios.get(this.url, { params });
   }
+
+  // Detalle del expediente (DET-01): consume el show ya existente de tickets, que
+  // trae semaforo, dias_habiles_restantes, los sellos y la clasificacion.
+  detalle(id) {
+    return axios.get(`${this.url.replace(/pqr$/, 'tickets')}/${id}`);
+  }
 }
 
 export default new PqrInboxAPI();

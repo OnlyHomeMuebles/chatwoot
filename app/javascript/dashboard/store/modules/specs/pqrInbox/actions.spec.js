@@ -57,4 +57,33 @@ describe('#actions', () => {
       ]);
     });
   });
+
+  describe('#fetchOne', () => {
+    const detalle = { id: 7, numero_radicado: '#3', semaforo: 'verde' };
+
+    it('carga el expediente en current', async () => {
+      axios.get.mockResolvedValue({ data: detalle });
+      await actions.fetchOne({ commit }, 7);
+
+      expect(commit.mock.calls).toEqual([
+        [types.SET_PQR_INBOX_UI_FLAG, { isFetchingItem: true }],
+        [types.SET_PQR_CURRENT, null],
+        [types.SET_PQR_CURRENT, detalle],
+        [types.SET_PQR_INBOX_UI_FLAG, { isFetchingItem: false }],
+      ]);
+    });
+
+    it('propaga el error (404) sin dejar el flag arriba', async () => {
+      axios.get.mockRejectedValue(new Error('not found'));
+      await expect(actions.fetchOne({ commit }, 99)).rejects.toThrow(
+        'not found'
+      );
+
+      expect(commit.mock.calls).toEqual([
+        [types.SET_PQR_INBOX_UI_FLAG, { isFetchingItem: true }],
+        [types.SET_PQR_CURRENT, null],
+        [types.SET_PQR_INBOX_UI_FLAG, { isFetchingItem: false }],
+      ]);
+    });
+  });
 });
