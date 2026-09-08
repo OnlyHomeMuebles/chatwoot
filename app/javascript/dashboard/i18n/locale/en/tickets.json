@@ -50,6 +50,26 @@
       "FROZEN": "Clock stopped",
       "DUE": "Due: {date}"
     },
+    "ADMIN": {
+      "TITLE": "Catalogs and parameters",
+      "READ_ONLY": "Read only: changes are made by an administrator",
+      "SAVED": "Saved",
+      "ERROR": "Could not save",
+      "FORBIDDEN": "Only administrators can edit",
+      "DEACTIVATE": "Deactivate",
+      "ACTIVATE": "Activate",
+      "ADD": "Add",
+      "NEW_NAME": "Name",
+      "NEW_CODE": "Code",
+      "TABS": {
+        "MOTIVOS_PQR": "PQR motives",
+        "RESULTADOS": "Results",
+        "DETALLES_TIPIFICADOS": "Typified detail",
+        "PROCESOS_GARANTIA": "Warranty processes",
+        "COBERTURAS_CIUDAD": "City coverage",
+        "PARAMETROS": "Parameters"
+      }
+    },
     "UPDATE": {
       "SUCCESS": "Ticket updated",
       "ERROR": "There was an error updating the ticket",

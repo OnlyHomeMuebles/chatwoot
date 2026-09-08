@@ -50,6 +50,26 @@
       "FROZEN": "Reloj detenido",
       "DUE": "Vence: {date}"
     },
+    "ADMIN": {
+      "TITLE": "Catálogos y parámetros",
+      "READ_ONLY": "Solo lectura: los cambios los hace un administrador",
+      "SAVED": "Guardado",
+      "ERROR": "No se pudo guardar",
+      "FORBIDDEN": "Solo los administradores pueden editar",
+      "DEACTIVATE": "Desactivar",
+      "ACTIVATE": "Activar",
+      "ADD": "Agregar",
+      "NEW_NAME": "Nombre",
+      "NEW_CODE": "Código",
+      "TABS": {
+        "MOTIVOS_PQR": "Motivos de PQR",
+        "RESULTADOS": "Resultados",
+        "DETALLES_TIPIFICADOS": "Detalle tipificado",
+        "PROCESOS_GARANTIA": "Procesos de garantía",
+        "COBERTURAS_CIUDAD": "Cobertura por ciudad",
+        "PARAMETROS": "Parámetros"
+      }
+    },
     "UPDATE": {
       "SUCCESS": "Ticket actualizado",
       "ERROR": "Hubo un error al actualizar el ticket",
