@@ -50,6 +50,7 @@ import teamMembers from './modules/teamMembers';
 import teams from './modules/teams';
 import tickets from './modules/tickets';
 import pqrInbox from './modules/pqrInbox';
+import pqrCatalogos from './modules/pqrCatalogos';
 import userNotificationSettings from './modules/userNotificationSettings';
 import webhooks from './modules/webhooks';
 import captainAgentSessions from './captain/agentSessions';
@@ -119,6 +120,7 @@ export default createStore({
     teams,
     tickets,
     pqrInbox,
+    pqrCatalogos,
     userNotificationSettings,
     webhooks,
     captainAgentSessions,
