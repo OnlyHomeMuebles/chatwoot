@@ -13,8 +13,10 @@ export const state = {
     umbralVerde: null,
     umbralAmarillo: null,
   },
+  current: null,
   uiFlags: {
     isFetching: false,
+    isFetchingItem: false,
   },
 };
 
@@ -24,6 +26,9 @@ export const getters = {
   },
   getMeta(_state) {
     return _state.meta;
+  },
+  getCurrent(_state) {
+    return _state.current;
   },
   getUIFlags(_state) {
     return _state.uiFlags;
@@ -49,6 +54,19 @@ export const actions = {
       commit(types.SET_PQR_INBOX_UI_FLAG, { isFetching: false });
     }
   },
+
+  // Detalle de un expediente (DET-01). Se guarda aparte de la lista para que la
+  // pantalla de detalle no dependa de que el expediente este en la pagina actual.
+  fetchOne: async ({ commit }, id) => {
+    commit(types.SET_PQR_INBOX_UI_FLAG, { isFetchingItem: true });
+    commit(types.SET_PQR_CURRENT, null);
+    try {
+      const { data } = await PqrInboxAPI.detalle(id);
+      commit(types.SET_PQR_CURRENT, data);
+    } finally {
+      commit(types.SET_PQR_INBOX_UI_FLAG, { isFetchingItem: false });
+    }
+  },
 };
 
 export const mutations = {
@@ -60,6 +78,9 @@ export const mutations = {
   },
   [types.SET_PQR_INBOX_META](_state, meta) {
     _state.meta = meta;
+  },
+  [types.SET_PQR_CURRENT](_state, record) {
+    _state.current = record;
   },
 };
 

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
@@ -14,7 +15,12 @@ import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 // conversacion: abrir la bandeja no altera lo que el panel ya tenia cargado.
 // Los filtros y la paginacion se resuelven en el servidor (GET helic3/pqr).
 const store = useStore();
+const route = useRoute();
+const router = useRouter();
 const { t } = useI18n();
+
+const irAlDetalle = fila =>
+  router.push(`/app/accounts/${route.params.accountId}/helic3/pqr/${fila.id}`);
 
 const records = useMapGetter('pqrInbox/getRecords');
 const meta = useMapGetter('pqrInbox/getMeta');
@@ -256,7 +262,8 @@ const statusDotClass = status =>
           <tr
             v-for="fila in records"
             :key="fila.id"
-            class="border-b border-n-weak hover:bg-n-alpha-1"
+            class="border-b cursor-pointer border-n-weak hover:bg-n-alpha-1"
+            @click="irAlDetalle(fila)"
           >
             <td class="px-6 py-3">
               <p class="mb-0 font-medium text-n-slate-12">
