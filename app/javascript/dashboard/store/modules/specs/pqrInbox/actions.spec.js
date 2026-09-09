@@ -8,7 +8,13 @@ vi.mock('axios');
 
 const respuesta = {
   data: {
-    meta: { count: 42, current_page: 1 },
+    meta: {
+      count: 42,
+      current_page: 1,
+      per_page: 25,
+      umbral_verde: 8,
+      umbral_amarillo: 3,
+    },
     payload: [
       { id: 7, numero_radicado: '#3', title: 'Sofá rayado' },
       { id: 8, numero_radicado: null, title: 'Consulta' },
@@ -27,7 +33,16 @@ describe('#actions', () => {
       expect(commit.mock.calls).toEqual([
         [types.SET_PQR_INBOX_UI_FLAG, { isFetching: true }],
         [types.SET_PQR_INBOX, respuesta.data.payload],
-        [types.SET_PQR_INBOX_META, { count: 42, currentPage: 1 }],
+        [
+          types.SET_PQR_INBOX_META,
+          {
+            count: 42,
+            currentPage: 1,
+            perPage: 25,
+            umbralVerde: 8,
+            umbralAmarillo: 3,
+          },
+        ],
         [types.SET_PQR_INBOX_UI_FLAG, { isFetching: false }],
       ]);
     });

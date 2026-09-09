@@ -54,6 +54,7 @@
       "TITLE": "PQR inbox",
       "EMPTY": "No cases match the filters",
       "ERROR": "The inbox could not be loaded",
+      "CATALOGS_ERROR": "The classification filters could not be loaded",
       "NO_RADICADO": "No case number",
       "PENDING": "Pending",
       "COUNT": "{shown} of {total}",

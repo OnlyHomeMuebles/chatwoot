@@ -6,7 +6,13 @@ import PqrInboxAPI from '../../api/pqr';
 // tenia cargado. Lleva su propia paginacion y sus propios filtros.
 export const state = {
   records: [],
-  meta: { count: 0, currentPage: 1 },
+  meta: {
+    count: 0,
+    currentPage: 1,
+    perPage: 25,
+    umbralVerde: null,
+    umbralAmarillo: null,
+  },
   uiFlags: {
     isFetching: false,
   },
@@ -35,6 +41,9 @@ export const actions = {
       commit(types.SET_PQR_INBOX_META, {
         count: data.meta.count,
         currentPage: Number(data.meta.current_page),
+        perPage: data.meta.per_page,
+        umbralVerde: data.meta.umbral_verde ?? null,
+        umbralAmarillo: data.meta.umbral_amarillo ?? null,
       });
     } finally {
       commit(types.SET_PQR_INBOX_UI_FLAG, { isFetching: false });

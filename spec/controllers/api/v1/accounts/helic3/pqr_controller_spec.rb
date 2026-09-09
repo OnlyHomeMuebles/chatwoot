@@ -79,12 +79,45 @@ RSpec.describe 'Helic3 Bandeja de PQR (BAN-01)', type: :request do
     expect(response.parsed_body['payload'].map { |f| f['id'] }).to include(objetivo.id)
   end
 
-  it 'pagina: con 30 sembrados la primera pagina trae 25 y el total es 30' do
-    30.times { radicar(motivo_pqr: motivo_garantia) }
+  it 'filtra por tipo' do
+    tipo = Helic3::Catalogo::Tipo.find_by!(account: account, codigo: 'peticion')
+    radicar(motivo_pqr: motivo_garantia, tipo: tipo)
+    radicar(motivo_pqr: motivo_garantia) # sin tipo
+
+    get_pqr(tipo_id: tipo.id)
+
+    payload = response.parsed_body['payload']
+    expect(payload.size).to eq(1)
+    expect(payload.first['tipo']['codigo']).to eq('peticion')
+  end
+
+  it 'filtra por etapa' do
+    nueva = Helic3::Catalogo::EtapaPqr.find_by!(account: account, codigo: 'nueva')
+    otra = Helic3::Catalogo::EtapaPqr.where(account: account).where.not(codigo: 'nueva').first
+    en_nueva = radicar(motivo_pqr: motivo_garantia) # nace en etapa nueva
+    radicar(motivo_pqr: motivo_garantia).update!(etapa: otra)
+
+    get_pqr(etapa_id: nueva.id)
+
+    expect(response.parsed_body['payload'].map { |f| f['id'] }).to eq([en_nueva.id])
+  end
+
+  it 'expone dias_habiles_restantes por fila y los umbrales en el meta (para el color)' do
+    radicar(motivo_pqr: motivo_garantia)
 
     get_pqr
 
-    expect(response.parsed_body['meta']['count']).to eq(30)
+    expect(response.parsed_body['payload'].first).to have_key('dias_habiles_restantes')
+    expect(response.parsed_body['meta']['umbral_verde']).to eq(8)
+    expect(response.parsed_body['meta']['umbral_amarillo']).to eq(3)
+  end
+
+  it 'pagina: con 60 sembrados la primera pagina trae 25 y el total es 60' do
+    60.times { radicar(motivo_pqr: motivo_garantia) }
+
+    get_pqr
+
+    expect(response.parsed_body['meta']['count']).to eq(60)
     expect(response.parsed_body['payload'].size).to eq(25)
   end
 

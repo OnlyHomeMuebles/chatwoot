@@ -5,9 +5,10 @@
 # bandeja quiere UNA pagina de la cuenta con filtros y conteos. Mezclarlos
 # obligaria a cambiar la forma de la respuesta que el panel ya consume.
 #
-# El semaforo NO se filtra ni se calcula aqui: es derivado (dias habiles + festivos)
-# y costaria por fila. Se expone plazo_respuesta_vence_at y el cliente pinta el
-# color con los umbrales del catalogo — la misma regla, una sola vez.
+# El semaforo NO se filtra en SQL (es derivado: dias habiles + festivos). La fila
+# expone dias_habiles_restantes (calculo en memoria, sin consulta) y la respuesta
+# lleva los umbrales del catalogo una sola vez; el cliente pinta el color con esos
+# dos datos, sin duplicar la regla de dias habiles (que vive en el backend).
 class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseController
   RESULTS_PER_PAGE = 25
 
@@ -17,6 +18,7 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
     filtrados = aplicar_filtros(expedientes_de_la_cuenta)
     @pqr = filtrados.order(created_at: :desc).page(pagina_actual).per(RESULTS_PER_PAGE)
     @total = @pqr.total_count
+    @umbrales = umbrales_pqr
   end
 
   private
@@ -30,8 +32,9 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
   # includes de la clasificacion y el responsable para que la fila no dispare una
   # consulta por expediente. conversation:contact alimenta la columna "cliente".
   def expedientes_de_la_cuenta
-    Current.account.tickets.includes(:assignee, :categoria, :tipo, :motivo_pqr, :etapa,
-                                     conversation: :contact)
+    Current.account.tickets.includes(:categoria, :tipo, :motivo_pqr, :etapa,
+                                     { assignee: { avatar_attachment: :blob } },
+                                     { conversation: :contact })
   end
 
   # Filtros por columna directa: cada uno se aplica solo si viene el parametro.
@@ -46,11 +49,13 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
   end
 
   # q busca por nombre del cliente, titulo o numero de radicado (el display_id).
+  # references(:contacts) para que el LEFT JOIN conviva con el includes de arriba.
   def filtrar_por_texto(scope)
     return scope if params[:q].blank?
 
     termino = "%#{params[:q].to_s.strip}%"
     scope.left_joins(conversation: :contact)
+         .references(:contacts)
          .where('contacts.name ILIKE :q OR helic3_tickets.title ILIKE :q OR ' \
                 'CAST(helic3_tickets.display_id AS TEXT) ILIKE :q', q: termino)
   end
@@ -60,6 +65,15 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
     return scope unless ActiveModel::Type::Boolean.new.cast(params[:vencidas])
 
     scope.where(respondida_at: nil).where('plazo_respuesta_vence_at < ?', Time.current)
+  end
+
+  # Umbrales del semaforo PQR, leidos una sola vez por peticion. Si la cuenta aun
+  # no los tiene sembrados, la bandeja no debe caerse: el cliente simplemente no
+  # pinta color hasta que se configuren (nil).
+  def umbrales_pqr
+    Helic3::ParametrosGarantia.desde_catalogo(Current.account, ambito: :pqr)
+  rescue Helic3::ParametrosGarantia::ParametroFaltante
+    nil
   end
 
   def pagina_actual

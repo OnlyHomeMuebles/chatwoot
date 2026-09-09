@@ -22,8 +22,6 @@ const uiFlags = useMapGetter('pqrInbox/getUIFlags');
 const catalogos = useMapGetter('tickets/getCatalogos');
 const agents = useMapGetter('agents/getAgents');
 
-const PER_PAGE = 25;
-
 const filtros = reactive({
   categoria_id: '',
   tipo_id: '',
@@ -47,21 +45,49 @@ const cargar = async () => {
 };
 
 onMounted(() => {
-  store.dispatch('tickets/getCatalogos');
+  // getCatalogos propaga el error a proposito; sin catch quedaria una promesa
+  // rechazada y los filtros vacios sin aviso.
+  store
+    .dispatch('tickets/getCatalogos')
+    .catch(() => useAlert(t('TICKETS.INBOX.CATALOGS_ERROR')));
   store.dispatch('agents/get');
   cargar();
 });
 
-// al cambiar un filtro se vuelve a la primera pagina y se recarga en el servidor
+// Una sola via de recarga: al cambiar un filtro se vuelve a la pagina 1 y se
+// carga; los botones de paginacion llaman cargar() directo. pagina NO tiene watch,
+// para no disparar dos peticiones (era la familia del bug de PAN-01).
+const resetYCargar = () => {
+  pagina.value = 1;
+  cargar();
+};
+
+// Los selectores recargan de inmediato; el buscador de texto con debounce de
+// 300 ms para no disparar una peticion por tecla.
 watch(
-  filtros,
-  () => {
-    pagina.value = 1;
-    cargar();
-  },
-  { deep: true }
+  () => [
+    filtros.categoria_id,
+    filtros.tipo_id,
+    filtros.etapa_id,
+    filtros.assignee_id,
+    filtros.vencidas,
+  ],
+  resetYCargar
 );
-watch(pagina, cargar);
+
+let debounceBusqueda = null;
+watch(
+  () => filtros.q,
+  () => {
+    clearTimeout(debounceBusqueda);
+    debounceBusqueda = setTimeout(resetYCargar, 300);
+  }
+);
+
+const irAPagina = destino => {
+  pagina.value = destino;
+  cargar();
+};
 
 const emptyOption = label => ({ value: '', label });
 
@@ -97,8 +123,33 @@ const assigneeOptions = computed(() => [
 ]);
 
 const totalPaginas = computed(() =>
-  Math.max(1, Math.ceil((meta.value.count || 0) / PER_PAGE))
+  Math.max(1, Math.ceil((meta.value.count || 0) / (meta.value.perPage || 25)))
 );
+
+// El color del semaforo se deriva en el cliente: dias_habiles_restantes (que
+// calcula el servidor) contra los umbrales del catalogo que vienen en el meta.
+// No se duplica la regla de dias habiles; solo el mapeo trivial a color.
+const semaforoDeFila = fila => {
+  const dias = fila.dias_habiles_restantes;
+  const { umbralVerde, umbralAmarillo } = meta.value;
+  if (
+    typeof dias !== 'number' ||
+    umbralVerde == null ||
+    umbralAmarillo == null
+  ) {
+    return null;
+  }
+  if (dias >= umbralVerde) return 'verde';
+  if (dias >= umbralAmarillo) return 'amarillo';
+  return 'rojo';
+};
+
+const semaforoDotClass = semaforo =>
+  ({
+    verde: 'bg-n-teal-9',
+    amarillo: 'bg-n-amber-9',
+    rojo: 'bg-n-ruby-9',
+  })[semaforo] || '';
 
 const rangoTexto = computed(() => {
   const mostrados = records.value.length;
@@ -231,26 +282,36 @@ const statusDotClass = status =>
               {{ fila.etapa?.nombre || '—' }}
             </td>
             <td class="px-4 py-3">
-              <span v-if="fila.reloj_detenido" class="text-n-slate-11">
-                {{ t('TICKETS.INBOX.CLOCK.FROZEN') }}
-              </span>
-              <span
-                v-else-if="estaVencido(fila)"
-                class="font-medium text-n-ruby-11"
+              <div
+                class="flex items-center gap-1.5"
+                :class="fila.reloj_detenido ? 'opacity-60' : ''"
               >
-                {{ t('TICKETS.INBOX.CLOCK.OVERDUE') }}
-              </span>
-              <span
-                v-else-if="fila.plazo_respuesta_vence_at"
-                class="text-n-slate-11"
-              >
-                {{
-                  t('TICKETS.INBOX.CLOCK.DUE', {
-                    date: formatFecha(fila.plazo_respuesta_vence_at),
-                  })
-                }}
-              </span>
-              <span v-else class="text-n-slate-10">—</span>
+                <span
+                  v-if="semaforoDeFila(fila)"
+                  class="rounded-full size-2 shrink-0"
+                  :class="semaforoDotClass(semaforoDeFila(fila))"
+                />
+                <span v-if="fila.reloj_detenido" class="text-n-slate-11">
+                  {{ t('TICKETS.INBOX.CLOCK.FROZEN') }}
+                </span>
+                <span
+                  v-else-if="estaVencido(fila)"
+                  class="font-medium text-n-ruby-11"
+                >
+                  {{ t('TICKETS.INBOX.CLOCK.OVERDUE') }}
+                </span>
+                <span
+                  v-else-if="fila.plazo_respuesta_vence_at"
+                  class="text-n-slate-11"
+                >
+                  {{
+                    t('TICKETS.INBOX.CLOCK.DUE', {
+                      date: formatFecha(fila.plazo_respuesta_vence_at),
+                    })
+                  }}
+                </span>
+                <span v-else class="text-n-slate-10">—</span>
+              </div>
             </td>
             <td class="px-4 py-3">
               <div class="flex items-center gap-2">
@@ -287,7 +348,7 @@ const statusDotClass = status =>
         faded
         xs
         :disabled="pagina <= 1"
-        @click="pagina -= 1"
+        @click="irAPagina(pagina - 1)"
       />
       <span class="text-sm text-n-slate-11"
         >{{ pagina }} / {{ totalPaginas }}</span
@@ -298,7 +359,7 @@ const statusDotClass = status =>
         faded
         xs
         :disabled="pagina >= totalPaginas"
-        @click="pagina += 1"
+        @click="irAPagina(pagina + 1)"
       />
     </div>
   </div>

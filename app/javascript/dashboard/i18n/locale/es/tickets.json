@@ -54,6 +54,7 @@
       "TITLE": "Bandeja de PQR",
       "EMPTY": "No hay expedientes que coincidan con los filtros",
       "ERROR": "No se pudo cargar la bandeja",
+      "CATALOGS_ERROR": "No se pudieron cargar los filtros de clasificación",
       "NO_RADICADO": "Sin radicado",
       "PENDING": "Pendiente",
       "COUNT": "{shown} de {total}",

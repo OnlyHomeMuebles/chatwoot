@@ -22,11 +22,13 @@ json.status ticket.status
   end
 end
 
-# Reloj legal: la fecha de vencimiento y los sellos que el cliente necesita para
-# derivar el semaforo y el estado "vencido"/"congelado" sin recalcular en servidor.
+# Reloj legal: fecha de vencimiento, sellos y los dias habiles restantes (calculo
+# en memoria, sin consulta). Con dias_habiles_restantes + los umbrales del meta el
+# cliente pinta el color del semaforo sin duplicar la regla de dias habiles.
 json.plazo_respuesta_vence_at ticket.plazo_respuesta_vence_at
 json.respondida_at ticket.respondida_at
 json.reloj_detenido ticket.reloj_detenido?
+json.dias_habiles_restantes ticket.dias_habiles_restantes
 
 # Cliente: hoy sale de la conversacion. La cedula/documento llega con datos
 # (DAT-01, de Samuel); hasta entonces va nula, la fila la muestra como pendiente.
@@ -35,9 +37,13 @@ json.cliente do
   json.documento nil
 end
 
+# Responsable: solo id, nombre y avatar. NO se reusa el parcial _agent, que lee
+# availability_status, role y avatar_url (account_users + ActiveStorage por fila).
 if ticket.assignee
   json.assignee do
-    json.partial! 'api/v1/models/agent', formats: [:json], resource: ticket.assignee
+    json.id ticket.assignee.id
+    json.name ticket.assignee.name
+    json.thumbnail ticket.assignee.avatar_url
   end
 else
   json.assignee nil
