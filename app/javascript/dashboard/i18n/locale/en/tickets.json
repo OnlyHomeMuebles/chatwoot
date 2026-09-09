@@ -101,8 +101,25 @@
       "DEACTIVATE": "Deactivate",
       "ACTIVATE": "Activate",
       "ADD": "Add",
+      "SAVE": "Save",
       "NEW_NAME": "Name",
       "NEW_CODE": "Code",
+      "PARAM_REQUIRED": "{param} is required: it cannot be left empty",
+      "ENUM": {
+        "NUNCA": "Never",
+        "SIEMPRE": "Always",
+        "SEGUN_ANALISIS": "Based on review"
+      },
+      "FLAGS": {
+        "CATEGORIA_ID": "Category",
+        "ABRE_GARANTIA": "Opens warranty",
+        "PLAZO_DIAS_HABILES": "Deadline (business days)",
+        "CIERRA_PQR": "Closes the PQR when applied",
+        "APROBACION_HUMANA": "Requires human approval",
+        "ES_TERMINAL": "Is the final stage of the process",
+        "TECNICO_PROPIO": "In-house technician (not outsourced)",
+        "ORIGEN_RUTA": "Route origin"
+      },
       "TABS": {
         "MOTIVOS_PQR": "PQR motives",
         "RESULTADOS": "Results",

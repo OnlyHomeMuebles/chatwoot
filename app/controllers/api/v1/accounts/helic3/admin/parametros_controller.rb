@@ -6,7 +6,8 @@
 # edita. Solo cambian el valor y su unidad. Un valor vacio se rechaza (el dominio
 # lee los parametros obligatorios con error explicito, no con un valor por defecto).
 class Api::V1::Accounts::Helic3::Admin::ParametrosController < Api::V1::Accounts::BaseController
-  before_action :ensure_administrator, only: [:update]
+  # Escritura solo administradores (check_admin_authorization? -> 401). Lectura abierta.
+  before_action :check_admin_authorization?, only: [:update]
   before_action :set_parametro, only: [:update]
 
   def index
@@ -22,12 +23,6 @@ class Api::V1::Accounts::Helic3::Admin::ParametrosController < Api::V1::Accounts
 
   def set_parametro
     @parametro = Helic3::Catalogo::Parametro.find_by!(account: Current.account, id: params[:id])
-  end
-
-  def ensure_administrator
-    return if Current.account_user&.administrator?
-
-    render json: { error: I18n.t('helic3.catalogos.solo_admin') }, status: :unauthorized
   end
 
   def parametro_params

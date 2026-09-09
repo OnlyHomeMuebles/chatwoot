@@ -1,19 +1,19 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
+import Select from 'dashboard/components-next/select/Select.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
-// Catalogos y parametros editables (ADM-01). Karen edita el vocabulario y los
-// tiempos del modulo sin consola. Lectura para agentes; solo los administradores
-// editan (el backend rechaza con 401 si un agente intenta escribir).
+// Catalogos y parametros editables (ADM-01). Karen edita el vocabulario, las
+// marcas de comportamiento y los tiempos del modulo sin consola. Lectura para
+// agentes; solo administradores editan (el backend rechaza con 401).
 const store = useStore();
 const { t } = useI18n();
 
-// tipos que Karen edita (los demas, en lectura, se agregan luego)
 const TIPOS = [
   'motivos_pqr',
   'resultados',
@@ -23,17 +23,89 @@ const TIPOS = [
 ];
 const PARAMETROS = 'parametros';
 
+// Campos propios de cada catalogo, con el CONTROL resuelto por el tipo de columna
+// (no por el nombre): abre_garantia es enum en motivos y booleano en resultados.
+const ENUM_ABRE_GARANTIA = ['nunca', 'siempre', 'segun_analisis'];
+const CAMPOS = {
+  motivos_pqr: [
+    { key: 'categoria_id', tipo: 'categoria', requerido: true },
+    { key: 'abre_garantia', tipo: 'enum', opciones: ENUM_ABRE_GARANTIA },
+    { key: 'plazo_dias_habiles', tipo: 'numero' },
+  ],
+  resultados: [
+    { key: 'cierra_pqr', tipo: 'bool' },
+    { key: 'abre_garantia', tipo: 'bool' },
+    { key: 'aprobacion_humana', tipo: 'bool' },
+  ],
+  detalles_tipificados: [],
+  procesos_garantia: [
+    { key: 'es_terminal', tipo: 'bool' },
+    { key: 'plazo_dias_habiles', tipo: 'numero' },
+  ],
+  coberturas_ciudad: [
+    { key: 'tecnico_propio', tipo: 'bool' },
+    { key: 'origen_ruta', tipo: 'texto' },
+  ],
+};
+
 const tabActivo = ref(TIPOS[0]);
-const nuevo = ref({ nombre: '', codigo: '' });
+const nuevo = reactive({});
 
 const uiFlags = useMapGetter('pqrCatalogos/getUIFlags');
 const getCatalogo = useMapGetter('pqrCatalogos/getCatalogo');
 const parametros = useMapGetter('pqrCatalogos/getParametros');
 const currentRole = useMapGetter('getCurrentRole');
+const catalogosPanel = useMapGetter('tickets/getCatalogos');
 
 const esAdmin = computed(() => currentRole.value === 'administrator');
 const esParametros = computed(() => tabActivo.value === PARAMETROS);
 const registros = computed(() => getCatalogo.value(tabActivo.value));
+const camposActivos = computed(() => CAMPOS[tabActivo.value] || []);
+
+// Categorias para el selector de motivos (API-01 las trae embebidas en los motivos).
+const categoriaOptions = computed(() => {
+  const vistas = new Map();
+  (catalogosPanel.value.motivos_pqr || []).forEach(m => {
+    if (m.categoria) vistas.set(m.categoria.id, m.categoria);
+  });
+  return [...vistas.values()].map(c => ({ value: c.id, label: c.nombre }));
+});
+
+const enumOptions = campo =>
+  campo.opciones.map(op => ({
+    value: op,
+    label: t(`TICKETS.ADMIN.ENUM.${op.toUpperCase()}`),
+  }));
+
+// Modelo editable por fila (para comparar y guardar solo si cambio).
+const ediciones = ref({});
+const soloCampos = registro => {
+  const modelo = { nombre: registro.nombre };
+  camposActivos.value.forEach(c => {
+    modelo[c.key] = registro[c.key];
+  });
+  return modelo;
+};
+watch(
+  registros,
+  nuevos => {
+    const mapa = {};
+    nuevos.forEach(r => {
+      mapa[r.id] = soloCampos(r);
+    });
+    ediciones.value = mapa;
+  },
+  { immediate: true }
+);
+
+const reiniciarNuevo = () => {
+  const base = { nombre: '', codigo: '' };
+  camposActivos.value.forEach(c => {
+    base[c.key] = c.tipo === 'bool' ? false : '';
+  });
+  Object.keys(nuevo).forEach(k => delete nuevo[k]);
+  Object.assign(nuevo, base);
+};
 
 const cargar = () => {
   if (esParametros.value) {
@@ -43,9 +115,16 @@ const cargar = () => {
   }
 };
 
-onMounted(cargar);
+onMounted(() => {
+  store
+    .dispatch('tickets/getCatalogos')
+    .catch(() => useAlert(t('TICKETS.ADMIN.ERROR')));
+  reiniciarNuevo();
+  cargar();
+});
+
 watch(tabActivo, () => {
-  nuevo.value = { nombre: '', codigo: '' };
+  reiniciarNuevo();
   cargar();
 });
 
@@ -70,14 +149,22 @@ const conAviso = async accion => {
   }
 };
 
-const guardarNombre = (registro, nombre) =>
+// Guarda solo los campos que cambiaron; si no cambio nada, no despacha.
+const guardar = registro => {
+  const modelo = ediciones.value[registro.id];
+  const cambios = {};
+  Object.entries(modelo).forEach(([clave, valor]) => {
+    if (valor !== registro[clave]) cambios[clave] = valor;
+  });
+  if (Object.keys(cambios).length === 0) return;
   conAviso(() =>
     store.dispatch('pqrCatalogos/updateCatalogo', {
       tipo: tabActivo.value,
       id: registro.id,
-      data: { nombre },
+      data: cambios,
     })
   );
+};
 
 const alternarActivo = registro =>
   conAviso(() =>
@@ -96,24 +183,36 @@ const eliminar = registro =>
     })
   );
 
+const puedeCrear = computed(() => {
+  if (!nuevo.nombre || !nuevo.codigo) return false;
+  return camposActivos.value.every(c => !c.requerido || nuevo[c.key]);
+});
+
 const crear = () => {
-  if (!nuevo.value.nombre || !nuevo.value.codigo) return;
+  if (!puedeCrear.value) return;
   conAviso(async () => {
     await store.dispatch('pqrCatalogos/createCatalogo', {
       tipo: tabActivo.value,
-      data: { ...nuevo.value },
+      data: { ...nuevo },
     });
-    nuevo.value = { nombre: '', codigo: '' };
+    reiniciarNuevo();
   });
 };
 
-const guardarParametro = (parametro, valor) =>
+// Aviso ANTES de guardar un parametro obligatorio vacio (no solo el error del back).
+const guardarParametro = (parametro, valor) => {
+  if (valor === '' || valor === null) {
+    useAlert(t('TICKETS.ADMIN.PARAM_REQUIRED', { param: parametro.etiqueta }));
+    return;
+  }
+  if (valor === parametro.valor) return;
   conAviso(() =>
     store.dispatch('pqrCatalogos/updateParametro', {
       id: parametro.id,
       data: { valor },
     })
   );
+};
 </script>
 
 <template>
@@ -158,7 +257,7 @@ const guardarParametro = (parametro, valor) =>
         >
           <div class="flex-1">
             <p class="mb-0 text-sm font-medium text-n-slate-12">
-              {{ parametro.clave }}
+              {{ parametro.etiqueta }}
             </p>
             <p class="mb-0 text-xs text-n-slate-11">{{ parametro.unidad }}</p>
           </div>
@@ -172,61 +271,136 @@ const guardarParametro = (parametro, valor) =>
       </div>
 
       <!-- Catalogo -->
-      <div v-else class="flex flex-col max-w-3xl gap-3">
-        <div
-          v-for="registro in registros"
-          :key="registro.id"
-          class="flex items-center gap-3"
-          :class="registro.activo ? '' : 'opacity-50'"
-        >
-          <Input
-            :model-value="registro.nombre"
-            :disabled="!esAdmin"
-            class="flex-1"
-            @blur="e => guardarNombre(registro, e.target.value)"
-          />
-          <span class="w-40 text-xs text-n-slate-11">{{
-            registro.codigo
-          }}</span>
-          <Button
-            :label="
-              registro.activo
-                ? t('TICKETS.ADMIN.DEACTIVATE')
-                : t('TICKETS.ADMIN.ACTIVATE')
-            "
-            :disabled="!esAdmin"
-            faded
-            xs
-            @click="alternarActivo(registro)"
-          />
-          <Button
-            icon="i-lucide-trash-2"
-            :disabled="!esAdmin"
-            ghost
-            ruby
-            xs
-            @click="eliminar(registro)"
-          />
-        </div>
+      <div v-else class="flex flex-col gap-3">
+        <template v-for="registro in registros" :key="registro.id">
+          <div
+            v-if="ediciones[registro.id]"
+            class="flex flex-wrap items-center gap-3 p-3 border rounded-lg border-n-weak"
+            :class="registro.activo ? '' : 'opacity-50'"
+          >
+            <Input
+              v-model="ediciones[registro.id].nombre"
+              :disabled="!esAdmin"
+              class="min-w-40 flex-1"
+            />
+            <span class="text-xs text-n-slate-11">{{ registro.codigo }}</span>
 
+            <!-- Marcas de comportamiento, control por tipo de columna -->
+            <template v-for="campo in camposActivos" :key="campo.key">
+              <label
+                v-if="campo.tipo === 'bool'"
+                class="flex items-center gap-1 text-xs cursor-pointer text-n-slate-11"
+                :title="t(`TICKETS.ADMIN.FLAGS.${campo.key.toUpperCase()}`)"
+              >
+                <input
+                  v-model="ediciones[registro.id][campo.key]"
+                  type="checkbox"
+                  :disabled="!esAdmin"
+                />
+                {{ t(`TICKETS.ADMIN.FLAGS.${campo.key.toUpperCase()}`) }}
+              </label>
+              <Select
+                v-else-if="campo.tipo === 'enum'"
+                v-model="ediciones[registro.id][campo.key]"
+                :options="enumOptions(campo)"
+                :disabled="!esAdmin"
+                class="w-40"
+              />
+              <Select
+                v-else-if="campo.tipo === 'categoria'"
+                v-model="ediciones[registro.id][campo.key]"
+                :options="categoriaOptions"
+                :disabled="!esAdmin"
+                class="w-40"
+              />
+              <Input
+                v-else
+                v-model="ediciones[registro.id][campo.key]"
+                :type="campo.tipo === 'numero' ? 'number' : 'text'"
+                :disabled="!esAdmin"
+                :placeholder="
+                  t(`TICKETS.ADMIN.FLAGS.${campo.key.toUpperCase()}`)
+                "
+                class="w-32"
+              />
+            </template>
+
+            <div v-if="esAdmin" class="flex items-center gap-2 ml-auto">
+              <Button
+                :label="t('TICKETS.ADMIN.SAVE')"
+                sm
+                @click="guardar(registro)"
+              />
+              <Button
+                :label="
+                  registro.activo
+                    ? t('TICKETS.ADMIN.DEACTIVATE')
+                    : t('TICKETS.ADMIN.ACTIVATE')
+                "
+                faded
+                xs
+                @click="alternarActivo(registro)"
+              />
+              <Button
+                icon="i-lucide-trash-2"
+                ghost
+                ruby
+                xs
+                @click="eliminar(registro)"
+              />
+            </div>
+          </div>
+        </template>
+
+        <!-- Alta: nombre, codigo y los campos propios del catalogo -->
         <div
           v-if="esAdmin"
-          class="flex items-center gap-3 pt-3 mt-2 border-t border-n-weak"
+          class="flex flex-wrap items-center gap-3 pt-3 mt-2 border-t border-n-weak"
         >
           <Input
             v-model="nuevo.nombre"
             :placeholder="t('TICKETS.ADMIN.NEW_NAME')"
-            class="flex-1"
+            class="min-w-40 flex-1"
           />
           <Input
             v-model="nuevo.codigo"
             :placeholder="t('TICKETS.ADMIN.NEW_CODE')"
             class="w-40"
           />
+          <template v-for="campo in camposActivos" :key="`nuevo-${campo.key}`">
+            <label
+              v-if="campo.tipo === 'bool'"
+              class="flex items-center gap-1 text-xs cursor-pointer text-n-slate-11"
+            >
+              <input v-model="nuevo[campo.key]" type="checkbox" />
+              {{ t(`TICKETS.ADMIN.FLAGS.${campo.key.toUpperCase()}`) }}
+            </label>
+            <Select
+              v-else-if="campo.tipo === 'enum'"
+              v-model="nuevo[campo.key]"
+              :options="enumOptions(campo)"
+              class="w-40"
+            />
+            <Select
+              v-else-if="campo.tipo === 'categoria'"
+              v-model="nuevo[campo.key]"
+              :options="categoriaOptions"
+              :placeholder="t('TICKETS.ADMIN.FLAGS.CATEGORIA_ID')"
+              class="w-40"
+            />
+            <Input
+              v-else
+              v-model="nuevo[campo.key]"
+              :type="campo.tipo === 'numero' ? 'number' : 'text'"
+              :placeholder="t(`TICKETS.ADMIN.FLAGS.${campo.key.toUpperCase()}`)"
+              class="w-32"
+            />
+          </template>
           <Button
             :label="t('TICKETS.ADMIN.ADD')"
             icon="i-lucide-plus"
             sm
+            :disabled="!puedeCrear"
             :is-loading="uiFlags.isSaving"
             @click="crear"
           />

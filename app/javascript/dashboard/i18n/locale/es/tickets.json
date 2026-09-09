@@ -101,8 +101,25 @@
       "DEACTIVATE": "Desactivar",
       "ACTIVATE": "Activar",
       "ADD": "Agregar",
+      "SAVE": "Guardar",
       "NEW_NAME": "Nombre",
       "NEW_CODE": "Código",
+      "PARAM_REQUIRED": "{param} es obligatorio: no puede quedar vacío",
+      "ENUM": {
+        "NUNCA": "Nunca",
+        "SIEMPRE": "Siempre",
+        "SEGUN_ANALISIS": "Según análisis"
+      },
+      "FLAGS": {
+        "CATEGORIA_ID": "Categoría",
+        "ABRE_GARANTIA": "Abre garantía",
+        "PLAZO_DIAS_HABILES": "Plazo (días hábiles)",
+        "CIERRA_PQR": "Cierra la PQR al aplicarse",
+        "APROBACION_HUMANA": "Requiere aprobación de una persona",
+        "ES_TERMINAL": "Es la etapa final del proceso",
+        "TECNICO_PROPIO": "Técnico propio (no tercerizado)",
+        "ORIGEN_RUTA": "Origen de la ruta"
+      },
       "TABS": {
         "MOTIVOS_PQR": "Motivos de PQR",
         "RESULTADOS": "Resultados",
