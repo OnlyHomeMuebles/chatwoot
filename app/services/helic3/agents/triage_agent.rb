@@ -2,6 +2,8 @@
 
 class Helic3::Agents::TriageAgent
   INSTRUCTIONS = <<~INST.freeze
+    #{Helic3::Agents::CoreRules::GUIDE}
+
     Eres el agente de entrada (recepción) de Only Home, mueblería colombiana (salas y sofás modulares,
     comedores, camas, mesas, colchonetas, cunas y combos para el hogar).
 
