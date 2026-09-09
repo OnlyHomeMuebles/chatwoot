@@ -43,6 +43,10 @@ RSpec.describe 'Tickets API', type: :request do
   end
 
   describe 'POST /api/v1/accounts/{account.id}/helic3/tickets' do
+    # create nace por Helic3::Casos::Radicar (API-02), que necesita la etapa
+    # inicial y el plazo sembrados en la cuenta.
+    before { Helic3::Catalogo::SeederService.new(account).sembrar! }
+
     context 'when it is an authenticated user' do
       it 'creates a ticket with a sequential ticket number and sets the creator' do
         post "/api/v1/accounts/#{account.id}/helic3/tickets",
@@ -63,6 +67,208 @@ RSpec.describe 'Tickets API', type: :request do
 
         expect(response).to have_http_status(:unprocessable_entity)
       end
+    end
+  end
+
+  describe 'POST create con clasificacion y reloj (API-02)' do
+    before { Helic3::Catalogo::SeederService.new(account).sembrar! }
+
+    let(:tipo) { Helic3::Catalogo::Tipo.find_by!(account: account, codigo: 'peticion') }
+    let(:motivo_garantia) { Helic3::Catalogo::MotivoPqr.find_by!(account: account, codigo: 'garantia_producto') }
+    let(:motivo_info) { Helic3::Catalogo::MotivoPqr.find_by!(account: account, codigo: 'informacion_general') }
+
+    def radicar(atributos)
+      post "/api/v1/accounts/#{account.id}/helic3/tickets",
+           params: { ticket: { title: 'Caso' }.merge(atributos) },
+           headers: agent.create_new_auth_token, as: :json
+    end
+
+    it 'deriva la categoria del motivo y devuelve numero de radicado y plazo' do
+      radicar(tipo_id: tipo.id, motivo_pqr_id: motivo_garantia.id)
+
+      expect(response).to have_http_status(:success)
+      body = response.parsed_body
+      expect(body['categoria']['codigo']).to eq('garantia')
+      expect(body['tipo']['codigo']).to eq('peticion')
+      expect(body['motivo_pqr']['codigo']).to eq('garantia_producto')
+      expect(body['numero_radicado']).to be_present
+      expect(body['plazo_respuesta_vence_at']).to be_present
+    end
+
+    it 'incluye semaforo y dias habiles restantes coherentes con el plazo' do
+      radicar(tipo_id: tipo.id, motivo_pqr_id: motivo_garantia.id)
+
+      body = response.parsed_body
+      expect(body['dias_habiles_restantes']).to be_a(Integer).and(be_positive)
+      expect(body['semaforo']).to be_in(%w[verde amarillo rojo])
+    end
+
+    it 'marca el origen humano cuando lo radica una persona' do
+      radicar(tipo_id: tipo.id, motivo_pqr_id: motivo_garantia.id)
+
+      expect(response.parsed_body['origen']).to eq('humano')
+    end
+
+    it 'un expediente de categoria Informacion no lleva numero ni semaforo' do
+      radicar(motivo_pqr_id: motivo_info.id)
+
+      body = response.parsed_body
+      expect(body['categoria']['codigo']).to eq('informacion')
+      expect(body['numero_radicado']).to be_nil
+      expect(body['semaforo']).to be_nil
+    end
+
+    it 'rechaza un id de catalogo de otra cuenta' do
+      otra = create(:account)
+      Helic3::Catalogo::SeederService.new(otra).sembrar!
+      motivo_otra = Helic3::Catalogo::MotivoPqr.find_by!(account: otra, codigo: 'garantia_producto')
+
+      radicar(motivo_pqr_id: motivo_otra.id)
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe 'GET show de un expediente sin clasificar (API-02)' do
+    let!(:ticket) { create(:ticket, account: account) }
+
+    it 'devuelve los cinco objetos de clasificacion en nulo sin romper la vista' do
+      get "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+          headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:success)
+      body = response.parsed_body
+      %w[categoria tipo motivo_pqr resultado etapa].each do |llave|
+        expect(body[llave]).to be_nil
+      end
+    end
+  end
+
+  describe 'robustez del listado y el update (review API-02)' do
+    before { Helic3::Catalogo::SeederService.new(account).sembrar! }
+
+    let(:tipo) { Helic3::Catalogo::Tipo.find_by!(account: account, codigo: 'peticion') }
+    let(:motivo) { Helic3::Catalogo::MotivoPqr.find_by!(account: account, codigo: 'garantia_producto') }
+
+    it 'el listado no expone semaforo ni dias_habiles_restantes (se derivan solo en el detalle)' do
+      Helic3::Casos::Radicar.new(account: account, titulo: 'Caso', motivo_pqr: motivo, origen: :humano).call
+
+      get "/api/v1/accounts/#{account.id}/helic3/tickets", headers: agent.create_new_auth_token, as: :json
+
+      fila = response.parsed_body.first
+      expect(fila).not_to have_key('semaforo')
+      expect(fila).not_to have_key('dias_habiles_restantes')
+    end
+
+    it 'update no reasigna la clasificacion ya radicada (categoria/tipo/motivo)' do
+      ticket = Helic3::Casos::Radicar.new(account: account, titulo: 'Caso', tipo: tipo, motivo_pqr: motivo,
+                                          creator: agent, origen: :humano).call
+      otra_categoria = Helic3::Catalogo::Categoria.find_by!(account: account, codigo: 'logistica')
+
+      patch "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+            params: { ticket: { categoria_id: otra_categoria.id, motivo_pqr_id: nil } },
+            headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(ticket.reload.categoria.codigo).to eq('garantia')
+      expect(ticket.motivo_pqr.codigo).to eq('garantia_producto')
+    end
+
+    it 'create aplica status y assignee despues de radicar, sin ignorarlos' do
+      post "/api/v1/accounts/#{account.id}/helic3/tickets",
+           params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, status: 'pending', assignee_id: agent.id } },
+           headers: agent.create_new_auth_token, as: :json
+
+      body = response.parsed_body
+      expect(body['status']).to eq('pending')
+      expect(body['assignee']['id']).to eq(agent.id)
+    end
+
+    # Atomicidad (review de Jhan): los operativos corren dentro de la misma
+    # transaccion que la radicacion. Si fallan, no puede quedar un expediente
+    # radicado (con numero y reloj legal) huerfano.
+    it 'no radica si el assignee es de otra cuenta (rollback completo)' do
+      ajeno = create(:user, account: create(:account))
+
+      expect do
+        post "/api/v1/accounts/#{account.id}/helic3/tickets",
+             params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, assignee_id: ajeno.id } },
+             headers: agent.create_new_auth_token, as: :json
+      end.not_to change(Helic3::Ticket, :count)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it 'no radica si el status es invalido y responde 422, no 500 (rollback completo)' do
+      expect do
+        post "/api/v1/accounts/#{account.id}/helic3/tickets",
+             params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, status: 'inexistente' } },
+             headers: agent.create_new_auth_token, as: :json
+      end.not_to change(Helic3::Ticket, :count)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    # CTR-01: el frontend manda el display_id (lo que ve en pantalla); el dominio
+    # guarda el id de base de datos. El controlador traduce en la frontera.
+    it 'traduce el conversation_id de pantalla (display_id) al id de base de datos' do
+      3.times { create(:conversation, account: create(:account)) } # separa el display_id del id de BD
+      conv = create(:conversation, account: account)
+      expect(conv.display_id).not_to eq(conv.id)
+
+      post "/api/v1/accounts/#{account.id}/helic3/tickets",
+           params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, conversation_id: conv.display_id } },
+           headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(Helic3::Ticket.find(response.parsed_body['id']).conversation_id).to eq(conv.id)
+    end
+
+    it 'responde 404 (no 422 sobre cuentas) y no radica si la conversacion no existe' do
+      expect do
+        post "/api/v1/accounts/#{account.id}/helic3/tickets",
+             params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, conversation_id: 999_999 } },
+             headers: agent.create_new_auth_token, as: :json
+      end.not_to change(Helic3::Ticket, :count)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'responde 404 y no radica si la conversacion es de otra cuenta' do
+      ajena = create(:conversation, account: create(:account))
+
+      expect do
+        post "/api/v1/accounts/#{account.id}/helic3/tickets",
+             params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, conversation_id: ajena.display_id } },
+             headers: agent.create_new_auth_token, as: :json
+      end.not_to change(Helic3::Ticket, :count)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    # CTR-02: la respuesta expone el display aparte del id de BD, para que la vista
+    # compare display con display sin conocer ids del dominio.
+    it 'expone conversation_id (id de BD) y conversation_display_id (el de pantalla)' do
+      3.times { create(:conversation, account: create(:account)) }
+      conv = create(:conversation, account: account)
+      ticket = Helic3::Casos::Radicar.new(account: account, titulo: 'Caso', motivo_pqr: motivo,
+                                          conversation_id: conv.id, origen: :humano).call
+
+      get "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+          headers: agent.create_new_auth_token, as: :json
+
+      expect(response.parsed_body['conversation_id']).to eq(conv.id)
+      expect(response.parsed_body['conversation_display_id']).to eq(conv.display_id)
+    end
+
+    it 'conversation_display_id es nil cuando el expediente no tiene conversacion' do
+      ticket = Helic3::Casos::Radicar.new(account: account, titulo: 'Sin conversacion', motivo_pqr: motivo,
+                                          origen: :humano).call
+
+      get "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+          headers: agent.create_new_auth_token, as: :json
+
+      expect(response.parsed_body['conversation_display_id']).to be_nil
     end
   end
 

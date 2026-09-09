@@ -32,10 +32,23 @@
       "FORM_TITLE_PLACEHOLDER": "What is the issue?",
       "FORM_DESCRIPTION_LABEL": "Description",
       "FORM_DESCRIPTION_PLACEHOLDER": "Add more details (optional)",
+      "FORM_TYPE_LABEL": "Type",
+      "FORM_TYPE_PLACEHOLDER": "Select a type",
+      "FORM_MOTIVE_LABEL": "Reason",
+      "FORM_MOTIVE_PLACEHOLDER": "Select a reason",
+      "FORM_CATEGORY_DERIVED": "Category: {category}",
       "FORM_STATUS_LABEL": "Status",
       "CONFIRM": "Create",
       "SUCCESS": "Ticket created successfully",
-      "ERROR": "There was an error creating the ticket"
+      "ERROR": "There was an error creating the ticket",
+      "CATALOGS_ERROR": "The classification catalogs could not be loaded"
+    },
+    "CLOCK": {
+      "NO_RADICADO": "No case number",
+      "REMAINING": "{days} business days left",
+      "OVERDUE": "Overdue by {days} business days",
+      "FROZEN": "Clock stopped",
+      "DUE": "Due: {date}"
     },
     "UPDATE": {
       "SUCCESS": "Ticket updated",

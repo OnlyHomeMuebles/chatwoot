@@ -112,7 +112,57 @@ class Helic3::Ticket < ApplicationRecord
     ticket_number if genera_radicado?
   end
 
+  # Los dos lectores del reloj (SEM-01). Derivados siempre: se guarda lo que
+  # PASO (los sellos), se deriva lo que SIGNIFICA (cuanto queda y el color).
+  # Congelamiento: respondido el expediente, la referencia deja de ser "hoy"
+  # y pasa a ser el dia de la respuesta — la pregunta cambia de "cuanto
+  # queda" a "cuanto quedaba al responder", sin almacenar ninguna copia.
+  def dias_habiles_restantes
+    return nil unless plazo_respuesta_vence_at && genera_radicado?
+
+    calendario = Helic3::CalendarioHabil.new
+    vence = fecha_bogota(plazo_respuesta_vence_at)
+    referencia = fecha_de_referencia_del_reloj
+    if vence >= referencia
+      calendario.dias_habiles_entre(referencia, vence)
+    else
+      # vencido: el calendario no sabe de negativos, el expediente si.
+      # "-3" es dato valido (vencido hace tres dias), no un error.
+      -calendario.dias_habiles_entre(vence, referencia)
+    end
+  end
+
+  # verde/amarillo/rojo contra los umbrales del ambito PQR (la escala del
+  # indicador es proporcional al presupuesto que mide); nil si no hay reloj
+  def semaforo
+    restantes = dias_habiles_restantes
+    return nil if restantes.nil?
+
+    umbrales = Helic3::ParametrosGarantia.desde_catalogo(account, ambito: :pqr)
+    if restantes >= umbrales.umbral_verde
+      :verde
+    elsif restantes >= umbrales.umbral_amarillo
+      :amarillo
+    else
+      :rojo
+    end
+  end
+
   private
+
+  def fecha_bogota(momento)
+    momento.in_time_zone(Helic3::CalendarioHabil::ZONA).to_date
+  end
+
+  # la referencia del reloj: hoy mientras corre; el dia de la respuesta
+  # cuando se detuvo (el sello respondida_at es el HECHO que ancla)
+  def fecha_de_referencia_del_reloj
+    if reloj_detenido? && respondida_at
+      fecha_bogota(respondida_at)
+    else
+      Helic3::CalendarioHabil.hoy
+    end
+  end
 
   # display_id is set via a database trigger (per-account sequence),
   # same pattern used by Conversation. Fetch it back after create.

@@ -11,6 +11,12 @@ class TicketsAPI extends ApiClient {
       assignee_id: assigneeId,
     });
   }
+
+  // Catalogos de clasificacion (API-01) para poblar los selectores del panel.
+  // Cuelgan del mismo namespace helic3, al lado de tickets.
+  catalogos() {
+    return axios.get(this.url.replace(/tickets$/, 'catalogos'));
+  }
 }
 
 export default new TicketsAPI();

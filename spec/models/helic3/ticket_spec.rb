@@ -136,4 +136,96 @@ RSpec.describe Helic3::Ticket, type: :model do
       expect(described_class.cuenta_para_sic).not_to include(consulta)
     end
   end
+
+  describe 'los lectores del reloj (SEM-01)' do
+    let(:account) { create(:account) }
+    let(:zona) { Time.find_zone!('America/Bogota') }
+    let(:garantia) do
+      Helic3::Catalogo::Categoria.create!(account: account, nombre: 'Garantía', codigo: 'garantia')
+    end
+    let(:informacion) do
+      Helic3::Catalogo::Categoria.create!(account: account, nombre: 'Información', codigo: 'informacion',
+                                          genera_radicado: false)
+    end
+    let(:respondida) do
+      Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Respondida', codigo: 'respondida',
+                                         detiene_reloj: true)
+    end
+
+    def sembrar_umbrales_pqr
+      { 'plazo_respuesta_pqr' => 15, 'umbral_verde_pqr' => 8, 'umbral_amarillo_pqr' => 3 }
+        .each do |clave, valor|
+        Helic3::Catalogo::Parametro.create!(account: account, clave: clave, valor: valor.to_s,
+                                            unidad: 'dias_habiles')
+      end
+    end
+
+    # expediente radicado el lunes 7/sep/2026 con vencimiento el viernes
+    # 25/sep/2026 (septiembre de 2026 no tiene festivos en Colombia)
+    def expediente
+      @expediente ||= create(:ticket, account: account, categoria: garantia,
+                                      radicada_at: zona.local(2026, 9, 7, 9, 0),
+                                      plazo_respuesta_vence_at: zona.local(2026, 9, 25, 23, 59))
+    end
+
+    it 'recien radicado, con muchos dias por delante, esta en verde' do
+      sembrar_umbrales_pqr
+      travel_to zona.local(2026, 9, 7, 10, 0) do
+        expect(expediente.dias_habiles_restantes).to eq(14)
+        expect(expediente.semaforo).to eq(:verde)
+      end
+    end
+
+    it 'con 4 dias habiles restantes esta en amarillo; con 2, en rojo' do
+      sembrar_umbrales_pqr
+      travel_to zona.local(2026, 9, 21, 10, 0) do # lunes: quedan 22,23,24,25
+        expect(expediente.dias_habiles_restantes).to eq(4)
+        expect(expediente.semaforo).to eq(:amarillo)
+      end
+      travel_to zona.local(2026, 9, 23, 10, 0) do # miercoles: quedan 24,25
+        expect(expediente.dias_habiles_restantes).to eq(2)
+        expect(expediente.semaforo).to eq(:rojo)
+      end
+    end
+
+    it 'vencido devuelve un numero negativo y rojo, sin levantar excepcion' do
+      sembrar_umbrales_pqr
+      travel_to zona.local(2026, 9, 30, 10, 0) do # miercoles, 3 habiles despues del vencimiento
+        expect(expediente.dias_habiles_restantes).to eq(-3)
+        expect(expediente.semaforo).to eq(:rojo)
+      end
+    end
+
+    it 'responder! congela el reloj: dias despues devuelve el mismo numero' do
+      sembrar_umbrales_pqr
+      respondida # responder! necesita la etapa que detiene el reloj
+      congelado = nil
+      travel_to zona.local(2026, 9, 21, 10, 0) do
+        expediente.responder!
+        congelado = expediente.dias_habiles_restantes
+      end
+      travel_to zona.local(2026, 9, 24, 10, 0) do
+        expect(expediente.dias_habiles_restantes).to eq(congelado)
+        expect(congelado).to eq(4)
+      end
+    end
+
+    it 'un expediente de Informacion devuelve nil en ambos, no cero' do
+      consulta = create(:ticket, account: account, categoria: informacion)
+
+      expect(consulta.dias_habiles_restantes).to be_nil
+      expect(consulta.semaforo).to be_nil
+    end
+
+    it 'si falta umbral_verde_pqr, el error nombra esa clave exacta' do
+      { 'plazo_respuesta_pqr' => 15, 'umbral_amarillo_pqr' => 3 }.each do |clave, valor|
+        Helic3::Catalogo::Parametro.create!(account: account, clave: clave, valor: valor.to_s,
+                                            unidad: 'dias_habiles')
+      end
+      travel_to zona.local(2026, 9, 21, 10, 0) do
+        expect { expediente.semaforo }
+          .to raise_error(Helic3::ParametrosGarantia::ParametroFaltante, /umbral_verde_pqr/)
+      end
+    end
+  end
 end

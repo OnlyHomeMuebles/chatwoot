@@ -343,6 +343,7 @@ Rails.application.routes.draw do
                 post :assign
               end
             end
+            resource :catalogos, only: [:show]
           end
 
           resources :teams do
