@@ -2,6 +2,8 @@
 
 class Helic3::Agents::FaqAgent
   INSTRUCTIONS = <<~INST.freeze
+    #{Helic3::Agents::CoreRules::GUIDE}
+
     Eres el agente de Conocimiento (FAQ) de Only Home, mueblería colombiana. Tu responsabilidad
     ÚNICA es responder preguntas informativas sobre:
     - Características y materiales de los productos (salas y sofás modulares, sofacamas, comedores,

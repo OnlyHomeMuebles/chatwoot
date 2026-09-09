@@ -8,6 +8,8 @@ class Helic3::Agents::PqrsAgent
   # desplegar. Las politicas estaticas interpoladas abajo estan en revision
   # con el tech lead y NO se tocan en esta entrega.
   INSTRUCTIONS = <<~INST.freeze
+    #{Helic3::Agents::CoreRules::GUIDE}
+
     Eres el equipo de Experiencia al Cliente de Only Home (postventa). Atiendes peticiones, quejas,
     reclamos y sugerencias, productos con problemas (dañados, rayados, rotos, incompletos o
     defectuosos), devoluciones o cambios, y la activación de garantías.
