@@ -55,6 +55,12 @@
       "ERROR": "There was an error updating the ticket",
       "FORBIDDEN": "You don't have permission to modify this ticket."
     },
+    "RESOLUTION": {
+      "PLACEHOLDER": "Register result",
+      "SUCCESS": "Result registered",
+      "ERROR": "There was an error registering the result",
+      "NEEDS_APPROVAL": "(needs approval)"
+    },
     "DELETE": {
       "TITLE": "Delete ticket",
       "DESCRIPTION": "Are you sure you want to delete this ticket? This action cannot be undone.",

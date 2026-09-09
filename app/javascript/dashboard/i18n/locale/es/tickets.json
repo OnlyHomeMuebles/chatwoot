@@ -55,6 +55,12 @@
       "ERROR": "Hubo un error al actualizar el ticket",
       "FORBIDDEN": "No tienes permiso para modificar este ticket."
     },
+    "RESOLUTION": {
+      "PLACEHOLDER": "Registrar resultado",
+      "SUCCESS": "Resultado registrado",
+      "ERROR": "Hubo un error al registrar el resultado",
+      "NEEDS_APPROVAL": "(requiere aprobación)"
+    },
     "DELETE": {
       "TITLE": "Eliminar ticket",
       "DESCRIPTION": "¿Seguro que quieres eliminar este ticket? Esta acción no se puede deshacer.",

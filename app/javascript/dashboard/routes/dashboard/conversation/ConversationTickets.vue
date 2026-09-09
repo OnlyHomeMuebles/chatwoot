@@ -22,6 +22,7 @@ const STATUSES = ['open', 'pending', 'resolved', 'closed'];
 const createDialogRef = ref(null);
 
 const tickets = useMapGetter('tickets/getTickets');
+const catalogos = useMapGetter('tickets/getCatalogos');
 
 const conversationTickets = computed(() =>
   tickets.value.filter(
@@ -39,6 +40,7 @@ const fetchDetails = () => {
 
 onMounted(async () => {
   await store.dispatch('tickets/get');
+  store.dispatch('tickets/getCatalogos');
   fetchDetails();
 });
 
@@ -105,6 +107,32 @@ const updateStatus = async (ticket, status) => {
       error?.response?.status === 401
         ? t('TICKETS.UPDATE.FORBIDDEN')
         : t('TICKETS.UPDATE.ERROR')
+    );
+  }
+};
+
+// opciones del selector de resultado, leidas del catalogo (RES-01). Se marca
+// con un aviso el que exige aprobacion humana: el operador debe saber que ese
+// resultado niega un derecho o mueve dinero.
+const resultadoOptions = computed(() =>
+  (catalogos.value.resultados || []).map(resultado => ({
+    value: resultado.id,
+    label: resultado.aprobacion_humana
+      ? `${resultado.nombre} ${t('TICKETS.RESOLUTION.NEEDS_APPROVAL')}`
+      : resultado.nombre,
+  }))
+);
+
+const resolver = async (ticket, resultadoId) => {
+  try {
+    await store.dispatch('tickets/resolver', { id: ticket.id, resultadoId });
+    useAlert(t('TICKETS.RESOLUTION.SUCCESS'));
+  } catch (error) {
+    selectsRefreshKey.value += 1;
+    useAlert(
+      error?.response?.status === 401
+        ? t('TICKETS.UPDATE.FORBIDDEN')
+        : t('TICKETS.RESOLUTION.ERROR')
     );
   }
 };
@@ -185,6 +213,16 @@ const updateStatus = async (ticket, status) => {
         :options="statusOptions"
         :model-value="ticket.status"
         @update:model-value="status => updateStatus(ticket, status)"
+      />
+
+      <Select
+        :key="`resultado-${ticket.id}-${selectsRefreshKey}`"
+        :options="resultadoOptions"
+        :model-value="ticket.resultado?.id"
+        :placeholder="t('TICKETS.RESOLUTION.PLACEHOLDER')"
+        @update:model-value="
+          resultadoId => resolver(ticket, resultadoId)
+        "
       />
     </div>
     <Button

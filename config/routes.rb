@@ -342,6 +342,7 @@ Rails.application.routes.draw do
               member do
                 post :assign
               end
+              resource :resolucion, only: [:create], controller: 'resoluciones'
             end
             resource :catalogos, only: [:show]
           end
