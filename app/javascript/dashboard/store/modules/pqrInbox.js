@@ -1,5 +1,6 @@
 import types from '../mutation-types';
 import PqrInboxAPI from '../../api/pqr';
+import TicketsAPI from '../../api/tickets';
 
 // Store propio de la bandeja de PQR (BAN-01). NO reutiliza el del panel de
 // conversacion (tickets.js): abrir la bandeja no debe alterar lo que el panel ya
@@ -61,7 +62,9 @@ export const actions = {
     commit(types.SET_PQR_INBOX_UI_FLAG, { isFetchingItem: true });
     commit(types.SET_PQR_CURRENT, null);
     try {
-      const { data } = await PqrInboxAPI.detalle(id);
+      // Reusa el show de tickets (helic3/tickets/:id) — importar api/tickets.js no
+      // es editar el archivo de Samuel; asi el detalle no arma la URL a mano.
+      const { data } = await TicketsAPI.show(id);
       commit(types.SET_PQR_CURRENT, data);
     } finally {
       commit(types.SET_PQR_INBOX_UI_FLAG, { isFetchingItem: false });
