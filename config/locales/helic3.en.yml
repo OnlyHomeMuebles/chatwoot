@@ -1,0 +1,22 @@
+# Mensajes propios del modulo Helic3 (ADM-01). Archivo propio del modulo: Rails
+# carga todos los archivos de config/locales, asi no se toca el en.yml de upstream.
+en:
+  helic3:
+    catalogos:
+      referenciado: 'This entry is used by existing cases and cannot be deleted. Deactivate it instead.'
+      tipo_desconocido: 'Unknown catalog.'
+    parametros:
+      plazo_respuesta_pqr: 'PQR response deadline'
+      plazo_total_garantia: 'Total warranty deadline'
+      plazo_retracto: 'Withdrawal deadline'
+      umbral_verde_pqr: 'Green threshold (PQR)'
+      umbral_amarillo_pqr: 'Amber threshold (PQR)'
+      umbral_verde_garantia: 'Green threshold (warranty)'
+      umbral_amarillo_garantia: 'Amber threshold (warranty)'
+      autonomia_radicar_pqr: 'PQR filing autonomy'
+      umbral_confianza_agente: 'Agent confidence threshold'
+      meta_interna_garantia: 'Internal warranty goal'
+      minimo_visitas_ruta: 'Minimum visits per route'
+      amparo_garantia: 'Warranty coverage'
+      exigir_direccion_confirmada: 'Require confirmed address'
+      mostrar_solo_ticket_garantia: 'Show only warranty ticket'

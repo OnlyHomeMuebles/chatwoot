@@ -33,7 +33,10 @@ class Api::V1::Accounts::Helic3::Admin::CatalogosController < Api::V1::Accounts:
   }.freeze
 
   before_action :set_catalogo
-  before_action :ensure_administrator, only: [:create, :update, :destroy]
+  # Escritura solo administradores: check_admin_authorization? (de Api::BaseController)
+  # levanta Pundit::NotAuthorizedError y la app responde 401. Lectura queda abierta
+  # a los agentes.
+  before_action :check_admin_authorization?, only: [:create, :update, :destroy]
   before_action :set_registro, only: [:update, :destroy]
 
   def index
@@ -72,14 +75,6 @@ class Api::V1::Accounts::Helic3::Admin::CatalogosController < Api::V1::Accounts:
 
   def set_registro
     @registro = @modelo.find_by!(account: Current.account, id: params[:id])
-  end
-
-  # Solo administradores escriben. Un agente ve la pantalla en lectura; si intenta
-  # escribir recibe 401 y la pantalla lo dice, no falla en silencio.
-  def ensure_administrator
-    return if Current.account_user&.administrator?
-
-    render json: { error: I18n.t('helic3.catalogos.solo_admin') }, status: :unauthorized
   end
 
   def render_could_not_find

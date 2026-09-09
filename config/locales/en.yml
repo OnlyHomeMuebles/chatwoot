@@ -31,11 +31,6 @@
 
 en:
   hello: 'Hello world'
-  helic3:
-    catalogos:
-      solo_admin: 'Only administrators can edit catalogs and parameters.'
-      referenciado: 'This entry is used by existing cases and cannot be deleted. Deactivate it instead.'
-      tipo_desconocido: 'Unknown catalog.'
   inbox:
     reauthorization:
       success: 'Channel reauthorized successfully'
