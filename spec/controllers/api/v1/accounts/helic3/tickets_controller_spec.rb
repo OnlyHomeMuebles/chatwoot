@@ -245,6 +245,31 @@ RSpec.describe 'Tickets API', type: :request do
 
       expect(response).to have_http_status(:not_found)
     end
+
+    # CTR-02: la respuesta expone el display aparte del id de BD, para que la vista
+    # compare display con display sin conocer ids del dominio.
+    it 'expone conversation_id (id de BD) y conversation_display_id (el de pantalla)' do
+      3.times { create(:conversation, account: create(:account)) }
+      conv = create(:conversation, account: account)
+      ticket = Helic3::Casos::Radicar.new(account: account, titulo: 'Caso', motivo_pqr: motivo,
+                                          conversation_id: conv.id, origen: :humano).call
+
+      get "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+          headers: agent.create_new_auth_token, as: :json
+
+      expect(response.parsed_body['conversation_id']).to eq(conv.id)
+      expect(response.parsed_body['conversation_display_id']).to eq(conv.display_id)
+    end
+
+    it 'conversation_display_id es nil cuando el expediente no tiene conversacion' do
+      ticket = Helic3::Casos::Radicar.new(account: account, titulo: 'Sin conversacion', motivo_pqr: motivo,
+                                          origen: :humano).call
+
+      get "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+          headers: agent.create_new_auth_token, as: :json
+
+      expect(response.parsed_body['conversation_display_id']).to be_nil
+    end
   end
 
   describe 'POST /api/v1/accounts/{account.id}/helic3/tickets/{id}/assign' do

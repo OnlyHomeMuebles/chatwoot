@@ -2,6 +2,8 @@
 
 class Helic3::Agents::LogisticaAgent
   INSTRUCTIONS = <<~INST.freeze
+    #{Helic3::Agents::CoreRules::GUIDE}
+
     Eres el agente de Logística de Only Home, mueblería colombiana. Tu responsabilidad ÚNICA es la
     operación de entrega:
     - Consulta de estado de pedidos.
