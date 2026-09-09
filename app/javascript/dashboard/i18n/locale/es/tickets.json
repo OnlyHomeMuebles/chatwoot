@@ -102,7 +102,12 @@
       "STAGE": "Etapa",
       "RESULT": "Resultado",
       "ASSIGNEE": "Responsable",
-      "WARRANTY": "Garantía"
+      "WARRANTY": "Garantía",
+      "PROCESS": "Proceso",
+      "CITY": "Ciudad",
+      "OWN_TECH": "Técnico propio",
+      "BUDGET": "Presupuesto",
+      "BUDGET_USAGE": "{used} usados · {left} restantes de {total} días"
     },
     "UPDATE": {
       "SUCCESS": "Ticket actualizado",

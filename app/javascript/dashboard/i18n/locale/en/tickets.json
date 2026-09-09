@@ -102,7 +102,12 @@
       "STAGE": "Stage",
       "RESULT": "Result",
       "ASSIGNEE": "Assignee",
-      "WARRANTY": "Warranty"
+      "WARRANTY": "Warranty",
+      "PROCESS": "Process",
+      "CITY": "City",
+      "OWN_TECH": "In-house technician",
+      "BUDGET": "Budget",
+      "BUDGET_USAGE": "{used} used · {left} left of {total} days"
     },
     "UPDATE": {
       "SUCCESS": "Ticket updated",

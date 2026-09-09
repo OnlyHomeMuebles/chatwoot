@@ -19,8 +19,13 @@ const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 
+// Ruta por nombre (no armada a mano). La URL lleva el id de base de datos del
+// expediente, no el radicado: sirve para compartir el enlace.
 const irAlDetalle = fila =>
-  router.push(`/app/accounts/${route.params.accountId}/helic3/pqr/${fila.id}`);
+  router.push({
+    name: 'helic3_pqr_detail',
+    params: { accountId: route.params.accountId, id: fila.id },
+  });
 
 const records = useMapGetter('pqrInbox/getRecords');
 const meta = useMapGetter('pqrInbox/getMeta');

@@ -36,8 +36,27 @@ const cargar = async () => {
 onMounted(cargar);
 watch(() => props.id, cargar);
 
-const volverUrl = computed(
-  () => `/app/accounts/${route.params.accountId}/tickets`
+// Ruta por nombre (no armada a mano): la bandeja.
+const volverUrl = computed(() => ({
+  name: 'tickets_index',
+  params: { accountId: route.params.accountId },
+}));
+
+// Barra del presupuesto de garantia: fraccion consumida de los dias habiles.
+const garantia = computed(() => expediente.value?.garantia || null);
+const presupuestoPct = computed(() => {
+  const g = garantia.value;
+  if (!g?.presupuesto_dias_habiles) return 0;
+  const usado = g.presupuesto?.consumidos ?? 0;
+  return Math.min(100, Math.round((usado / g.presupuesto_dias_habiles) * 100));
+});
+const presupuestoDotClass = computed(
+  () =>
+    ({
+      verde: 'bg-n-teal-9',
+      amarillo: 'bg-n-amber-9',
+      rojo: 'bg-n-ruby-9',
+    })[garantia.value?.presupuesto?.semaforo] || 'bg-n-slate-9'
 );
 
 // La PQR de categoria Informacion no tiene plazo legal: no se pinta reloj.
@@ -221,17 +240,95 @@ const formatFecha = valor =>
         }}</span>
       </section>
 
-      <!-- Garantia (de Samuel, GAR-02): se pinta solo si viene en el payload -->
+      <!-- Garantia (contrato de la seccion 3, GAR-02 de Samuel): se pinta contra
+           el payload publicado y NO se pinta cuando garantia es null. -->
       <section
-        v-if="expediente.garantia"
-        class="flex flex-col gap-2 p-4 border rounded-lg border-n-weak"
+        v-if="garantia"
+        class="flex flex-col gap-3 p-4 border rounded-lg border-n-weak"
+        data-testid="bloque-garantia"
       >
-        <h3 class="mb-0 text-sm font-medium text-n-slate-12">
-          {{ t('TICKETS.DETAIL.WARRANTY') }}
-        </h3>
-        <p class="mb-0 text-sm text-n-slate-11">
-          {{ expediente.garantia.numero_radicado }}
-        </p>
+        <div class="flex items-center justify-between">
+          <h3 class="mb-0 text-sm font-medium text-n-slate-12">
+            {{ t('TICKETS.DETAIL.WARRANTY') }}
+          </h3>
+          <span class="text-sm text-n-slate-11">
+            {{ garantia.numero_radicado }}
+          </span>
+        </div>
+
+        <dl class="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+          <div class="flex justify-between">
+            <dt class="text-n-slate-11">{{ t('TICKETS.DETAIL.PROCESS') }}</dt>
+            <dd class="mb-0 text-n-slate-12">
+              {{ garantia.proceso_visible?.nombre || '—' }}
+            </dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-n-slate-11">{{ t('TICKETS.DETAIL.CITY') }}</dt>
+            <dd class="mb-0 text-n-slate-12">
+              {{ garantia.cobertura_ciudad?.nombre || '—' }}
+              <span v-if="garantia.cobertura_ciudad?.tecnico_propio">
+                · {{ t('TICKETS.DETAIL.OWN_TECH') }}
+              </span>
+            </dd>
+          </div>
+        </dl>
+
+        <!-- Presupuesto: barra con consumidos y saldo sobre los dias habiles -->
+        <div v-if="garantia.presupuesto" class="flex flex-col gap-1">
+          <div
+            class="flex items-center justify-between text-xs text-n-slate-11"
+          >
+            <span class="flex items-center gap-1.5">
+              <span
+                class="rounded-full size-2 shrink-0"
+                :class="presupuestoDotClass"
+              />
+              {{ t('TICKETS.DETAIL.BUDGET') }}
+            </span>
+            <span>
+              {{
+                t('TICKETS.DETAIL.BUDGET_USAGE', {
+                  used: garantia.presupuesto.consumidos,
+                  left: garantia.presupuesto.saldo,
+                  total: garantia.presupuesto_dias_habiles,
+                })
+              }}
+            </span>
+          </div>
+          <div class="w-full h-2 rounded-full bg-n-alpha-2">
+            <div
+              class="h-2 rounded-full"
+              :class="presupuestoDotClass"
+              :style="{ width: `${presupuestoPct}%` }"
+            />
+          </div>
+        </div>
+
+        <!-- Items: cada uno con su producto, motivo, detalle y proceso -->
+        <div
+          v-for="item in garantia.items || []"
+          :key="item.id"
+          class="flex flex-col gap-0.5 p-2 text-sm rounded bg-n-alpha-1"
+        >
+          <p class="mb-0 font-medium text-n-slate-12">
+            {{ item.producto_nombre }}
+            <span v-if="item.producto_referencia" class="text-n-slate-11">
+              · {{ item.producto_referencia }}
+            </span>
+          </p>
+          <p class="mb-0 text-xs text-n-slate-11">
+            {{
+              [
+                item.motivo_garantia?.nombre,
+                item.detalle_tipificado?.nombre,
+                item.proceso?.nombre,
+              ]
+                .filter(Boolean)
+                .join(' · ')
+            }}
+          </p>
+        </div>
       </section>
     </div>
   </div>
