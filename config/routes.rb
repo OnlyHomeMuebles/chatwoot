@@ -345,6 +345,9 @@ Rails.application.routes.draw do
               resource :resolucion, only: [:create], controller: 'resoluciones'
               resource :datos, only: [:update], controller: 'datos'
             end
+            resources :garantias, only: [] do
+              resources :items, only: [:update], controller: 'garantia_items'
+            end
             resource :catalogos, only: [:show]
           end
 
