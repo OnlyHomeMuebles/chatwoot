@@ -48,6 +48,7 @@ class Helic3::Agents::Tools::ResolverPqrTool < Helic3::Agents::Tools::BaseTool
     end
     return "No se pudo resolver el expediente: #{resuelto.message}" if resuelto.is_a?(StandardError)
 
+    registrar_datos_ia(ticket, producto_nombre)
     dejar_nota_privada(tool_context, ticket, resultado)
     respuesta_segun_autonomia(account, ticket, resultado)
   end
@@ -57,6 +58,17 @@ class Helic3::Agents::Tools::ResolverPqrTool < Helic3::Agents::Tools::BaseTool
   def resolve_account(tool_context)
     account_id = tool_context.context[:account_id]
     account_id.present? ? Account.find_by(id: account_id) : nil
+  end
+
+  # DAT-01: lo que el agente dedujo entra al expediente con fuente ia, por el
+  # mismo servicio que usa el panel. La precedencia protege al operador: si una
+  # persona ya corrigio el producto, esta escritura ia no lo pisa.
+  def registrar_datos_ia(ticket, producto_nombre)
+    return if producto_nombre.blank?
+
+    Helic3::Casos::RegistrarDatos.new(
+      ticket: ticket, campos: { producto_nombre: producto_nombre }, fuente: :ia
+    ).call
   end
 
   # solo arma el bloque de garantia cuando el resultado la abre; para el resto,

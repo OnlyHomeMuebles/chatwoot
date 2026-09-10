@@ -105,5 +105,26 @@ RSpec.describe Helic3::Agents::Tools::ResolverPqrTool do
       expect(garantia.items.first.producto_nombre).to eq('Sofá Modular')
       expect(garantia.items.first.proceso).to eq(visita)
     end
+
+    it 'guarda el producto que dedujo el agente en la ficha con fuente ia (DAT-01)' do
+      tool.perform(tool_context, ticket_display_id: ticket.display_id.to_s,
+                                 resultado_codigo: 'procede_garantia',
+                                 ciudad_codigo: 'manizales', producto_nombre: 'Sofá Modular')
+
+      datos = ticket.reload.datos
+      expect(datos.producto_nombre).to eq('Sofá Modular')
+      expect(datos.fuentes['producto_nombre']).to eq('ia')
+    end
+
+    it 'no pisa el producto que el operador ya habia corregido a mano' do
+      Helic3::Casos::RegistrarDatos.new(ticket: ticket, campos: { producto_nombre: 'Sofá corregido' },
+                                        fuente: :humano).call
+
+      tool.perform(tool_context, ticket_display_id: ticket.display_id.to_s,
+                                 resultado_codigo: 'procede_garantia',
+                                 ciudad_codigo: 'manizales', producto_nombre: 'Sofá Modular')
+
+      expect(ticket.reload.datos.producto_nombre).to eq('Sofá corregido')
+    end
   end
 end
