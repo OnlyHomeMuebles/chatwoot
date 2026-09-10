@@ -2,10 +2,12 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
+import { useAlert } from 'dashboard/composables';
 import { useRoute } from 'vue-router';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
+import Select from 'dashboard/components-next/select/Select.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
 // Detalle del expediente (DET-01). Consume el show ya existente
@@ -22,7 +24,10 @@ const { t } = useI18n();
 
 const expediente = useMapGetter('pqrInbox/getCurrent');
 const uiFlags = useMapGetter('pqrInbox/getUIFlags');
+const agents = useMapGetter('agents/getAgents');
 const noEncontrado = ref(false);
+
+const STATUSES = ['open', 'pending', 'resolved', 'closed'];
 
 const cargar = async () => {
   noEncontrado.value = false;
@@ -33,8 +38,59 @@ const cargar = async () => {
   }
 };
 
-onMounted(cargar);
+onMounted(() => {
+  store.dispatch('agents/get');
+  cargar();
+});
 watch(() => props.id, cargar);
+
+// Acciones del operador: cambiar estado y reasignar (registrar el resultado NO es
+// de aqui: vive en el panel de conversacion). refreshKey remonta los selectores
+// para que vuelvan al valor real si el servidor rechaza el cambio.
+const refreshKey = ref(0);
+
+const statusOptions = computed(() =>
+  STATUSES.map(status => ({
+    value: status,
+    label: t(`TICKETS.STATUS.${status.toUpperCase()}`),
+  }))
+);
+
+const assigneeOptions = computed(() => [
+  { value: '', label: t('TICKETS.UNASSIGNED') },
+  ...agents.value.map(a => ({ value: a.id, label: a.name })),
+]);
+
+const errorMsg = error =>
+  error?.response?.status === 401
+    ? t('TICKETS.UPDATE.FORBIDDEN')
+    : t('TICKETS.UPDATE.ERROR');
+
+const cambiarEstado = async status => {
+  try {
+    await store.dispatch('pqrInbox/actualizar', {
+      id: props.id,
+      data: { status },
+    });
+    useAlert(t('TICKETS.UPDATE.SUCCESS'));
+  } catch (error) {
+    refreshKey.value += 1;
+    useAlert(errorMsg(error));
+  }
+};
+
+const reasignar = async assigneeId => {
+  try {
+    await store.dispatch('pqrInbox/asignar', {
+      id: props.id,
+      assigneeId: assigneeId || null,
+    });
+    useAlert(t('TICKETS.UPDATE.SUCCESS'));
+  } catch (error) {
+    refreshKey.value += 1;
+    useAlert(errorMsg(error));
+  }
+};
 
 // Ruta por nombre (no armada a mano): la bandeja.
 const volverUrl = computed(() => ({
@@ -238,6 +294,35 @@ const formatFecha = valor =>
         <span v-else class="text-n-slate-11">{{
           t('TICKETS.UNASSIGNED')
         }}</span>
+      </section>
+
+      <!-- Acciones del operador: cambiar estado y reasignar. Registrar el resultado
+           no va aqui (vive en el panel de conversacion). -->
+      <section class="flex flex-wrap items-end gap-4">
+        <div class="flex flex-col gap-1">
+          <span class="text-xs text-n-slate-11">
+            {{ t('TICKETS.TABLE.STATUS') }}
+          </span>
+          <Select
+            :key="`status-${refreshKey}`"
+            :options="statusOptions"
+            :model-value="expediente.status"
+            class="w-40"
+            @update:model-value="cambiarEstado"
+          />
+        </div>
+        <div class="flex flex-col gap-1">
+          <span class="text-xs text-n-slate-11">
+            {{ t('TICKETS.DETAIL.ASSIGNEE') }}
+          </span>
+          <Select
+            :key="`assignee-${refreshKey}`"
+            :options="assigneeOptions"
+            :model-value="expediente.assignee ? expediente.assignee.id : ''"
+            class="w-48"
+            @update:model-value="reasignar"
+          />
+        </div>
       </section>
 
       <!-- Garantia (contrato de la seccion 3, GAR-02 de Samuel): se pinta contra

@@ -70,6 +70,19 @@ export const actions = {
       commit(types.SET_PQR_INBOX_UI_FLAG, { isFetchingItem: false });
     }
   },
+
+  // Acciones del operador desde el detalle: cambiar estado y reasignar. Reusan las
+  // rutas de tickets (update/assign) y refrescan el expediente actual con la
+  // respuesta. Sin catch: el error se propaga para que la pantalla avise.
+  actualizar: async ({ commit }, { id, data }) => {
+    const { data: actualizado } = await TicketsAPI.update(id, { ticket: data });
+    commit(types.SET_PQR_CURRENT, actualizado);
+  },
+
+  asignar: async ({ commit }, { id, assigneeId }) => {
+    const { data: actualizado } = await TicketsAPI.assign(id, assigneeId);
+    commit(types.SET_PQR_CURRENT, actualizado);
+  },
 };
 
 export const mutations = {

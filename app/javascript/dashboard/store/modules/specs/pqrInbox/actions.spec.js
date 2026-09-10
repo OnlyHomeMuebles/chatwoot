@@ -86,4 +86,29 @@ describe('#actions', () => {
       ]);
     });
   });
+
+  describe('#actualizar', () => {
+    it('cambia el estado y refresca el expediente actual', async () => {
+      const actualizado = { id: 7, status: 'pending' };
+      axios.patch.mockResolvedValue({ data: actualizado });
+
+      await actions.actualizar(
+        { commit },
+        { id: 7, data: { status: 'pending' } }
+      );
+
+      expect(commit).toHaveBeenCalledWith(types.SET_PQR_CURRENT, actualizado);
+    });
+  });
+
+  describe('#asignar', () => {
+    it('reasigna y refresca el expediente actual', async () => {
+      const actualizado = { id: 7, assignee: { id: 3 } };
+      axios.post.mockResolvedValue({ data: actualizado });
+
+      await actions.asignar({ commit }, { id: 7, assigneeId: 3 });
+
+      expect(commit).toHaveBeenCalledWith(types.SET_PQR_CURRENT, actualizado);
+    });
+  });
 });
