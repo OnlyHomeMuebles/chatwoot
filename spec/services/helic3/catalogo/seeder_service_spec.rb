@@ -57,6 +57,13 @@ RSpec.describe Helic3::Catalogo::SeederService do
     expect(trasladada.cierra_pqr).to be(false)
   end
 
+  it 'siembra todos los resultados exigiendo admin por defecto (RES-01, respuesta Jhan)' do
+    service.sembrar!
+
+    requiere_admin = Helic3::Catalogo::Resultado.where(account: account).pluck(:requiere_admin)
+    expect(requiere_admin).to all(be(true))
+  end
+
   it 'deja a Respondida como la unica etapa que detiene el reloj legal' do
     service.sembrar!
 

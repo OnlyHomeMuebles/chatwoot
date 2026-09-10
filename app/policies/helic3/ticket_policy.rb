@@ -24,11 +24,17 @@ class Helic3::TicketPolicy < ApplicationPolicy
   end
 
   # resolver es un acto con efecto legal: sella respondida_at, detiene el reloj
-  # ante la SIC y sera el gancho que abra garantia (GAR-02). Mas estricto que un
-  # cambio de estado operativo, por eso NO reusa update?. La puerta del AGENTE
-  # (tool de AGT-03) no pasa por aqui: su limite es autonomia_resolver_pqr.
+  # ante la SIC y es el gancho que abre garantia (GAR-02). Mas estricto que un
+  # cambio de estado operativo, por eso NO reusa update?.
+  #
+  # Esta es la PUERTA GENERAL: quien puede tocar ESTE expediente (admin, creador
+  # o asignado). QUE resultado puede firmar cada uno lo decide requiere_admin
+  # sobre el resultado ya cargado (Helic3::Catalogo::ResultadoPolicy#aplicar?), porque aqui
+  # todavia no se sabe que resultado se aplica (Pundit autoriza el ticket antes).
+  # La puerta del AGENTE (tool de AGT-03) no pasa por aqui: su limite es
+  # autonomia_resolver_pqr.
   def resolver?
-    @account_user.administrator?
+    admin_or_ticket_participant?
   end
 
   private

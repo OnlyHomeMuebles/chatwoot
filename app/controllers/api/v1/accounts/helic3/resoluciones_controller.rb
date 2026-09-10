@@ -10,9 +10,14 @@ class Api::V1::Accounts::Helic3::ResolucionesController < Api::V1::Accounts::Bas
   # Endpoint propio (no update) porque resolver es un acto de dominio con reloj
   # legal, no una edicion de campos sueltos.
   def create
+    resultado = resultado_de_cuenta
+    # segunda puerta: la general (participante del expediente) ya paso en
+    # check_authorization; aqui se pregunta si ESTE resultado exige admin.
+    authorize(resultado, :aplicar?)
+
     @ticket = Helic3::Casos::Resolver.new(
       ticket: @ticket,
-      resultado: resultado_de_cuenta,
+      resultado: resultado,
       actor: Current.user,
       origen: :humano
     ).call
@@ -25,8 +30,10 @@ class Api::V1::Accounts::Helic3::ResolucionesController < Api::V1::Accounts::Bas
     @ticket = Current.account.tickets.find(params[:ticket_id])
   end
 
-  # resolver es solo de administrador (TicketPolicy#resolver?): se nombra la
-  # accion explicitamente, si no Pundit deduciria create? (que es true para todos).
+  # puerta general: quien puede tocar este expediente (TicketPolicy#resolver? =
+  # admin o participante). Se nombra la accion explicitamente, si no Pundit
+  # deduciria create? (que es true para todos). El limite fino por resultado
+  # (requiere_admin) corre en #create, ya con el resultado cargado.
   def check_authorization
     authorize(@ticket, :resolver?)
   end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_28_130000) do
+ActiveRecord::Schema[7.2].define(version: 2026_09_10_120000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1219,6 +1219,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_28_130000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "aprobacion_humana", default: false, null: false
+    t.boolean "requiere_admin", default: true, null: false
     t.index ["account_id", "codigo"], name: "idx_h3cat_resultados_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_resultados_account"
   end

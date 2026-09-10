@@ -54,9 +54,38 @@ RSpec.describe 'Resoluciones API', type: :request do
       end
     end
 
-    context 'when it is an agent (only admins can resolve)' do
-      it 'un agente asignado al expediente NO puede resolver' do
+    context 'when the resultado requires admin (the seeded default)' do
+      it 'un agente asignado al expediente NO puede firmarlo' do
+        # resultado nace con requiere_admin: true (default de la migracion)
         ticket.update!(assignee: agent)
+
+        post "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}/resolucion",
+             params: { resultado_id: resultado.id },
+             headers: agent.create_new_auth_token,
+             as: :json
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(ticket.reload.respondida_at).to be_nil
+      end
+    end
+
+    context 'when the resultado does not require admin' do
+      it 'un agente asignado al expediente SI puede firmarlo' do
+        resultado.update!(requiere_admin: false)
+        ticket.update!(assignee: agent)
+
+        post "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}/resolucion",
+             params: { resultado_id: resultado.id },
+             headers: agent.create_new_auth_token,
+             as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(ticket.reload.resultado).to eq(resultado)
+      end
+
+      it 'un agente ajeno al expediente NO puede firmarlo (la puerta general cierra)' do
+        resultado.update!(requiere_admin: false)
+        # el agente no es ni creador ni asignado: no pasa admin_or_ticket_participant?
 
         post "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}/resolucion",
              params: { resultado_id: resultado.id },
