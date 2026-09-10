@@ -23,6 +23,14 @@ class Helic3::TicketPolicy < ApplicationPolicy
     @account_user.administrator? || ticket_creator?
   end
 
+  # resolver es un acto con efecto legal: sella respondida_at, detiene el reloj
+  # ante la SIC y sera el gancho que abra garantia (GAR-02). Mas estricto que un
+  # cambio de estado operativo, por eso NO reusa update?. La puerta del AGENTE
+  # (tool de AGT-03) no pasa por aqui: su limite es autonomia_resolver_pqr.
+  def resolver?
+    @account_user.administrator?
+  end
+
   private
 
   # agents can only delete tickets they created themselves

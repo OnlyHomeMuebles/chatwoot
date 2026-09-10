@@ -25,8 +25,10 @@ class Api::V1::Accounts::Helic3::ResolucionesController < Api::V1::Accounts::Bas
     @ticket = Current.account.tickets.find(params[:ticket_id])
   end
 
+  # resolver es solo de administrador (TicketPolicy#resolver?): se nombra la
+  # accion explicitamente, si no Pundit deduciria create? (que es true para todos).
   def check_authorization
-    authorize(@ticket)
+    authorize(@ticket, :resolver?)
   end
 
   # Un resultado inexistente o de otra cuenta no existe aqui: RecordNotFound (404),

@@ -8,6 +8,7 @@ RSpec.describe 'Resoluciones API', type: :request do
   end
   let(:ticket) { create(:ticket, account: account) }
   let(:agent) { create(:user, account: account, role: :agent) }
+  let(:administrator) { create(:user, account: account, role: :administrator) }
 
   # la etapa que detiene el reloj debe existir en la BD: responder! la busca con
   # find_by!. No se referencia por nombre en los tests, va en un before.
@@ -25,11 +26,11 @@ RSpec.describe 'Resoluciones API', type: :request do
       end
     end
 
-    context 'when it is an authenticated user' do
+    context 'when it is an administrator' do
       it 'resuelve el expediente: detiene el reloj y devuelve el detalle' do
         post "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}/resolucion",
              params: { resultado_id: resultado.id },
-             headers: agent.create_new_auth_token,
+             headers: administrator.create_new_auth_token,
              as: :json
 
         expect(response).to have_http_status(:success)
@@ -45,20 +46,37 @@ RSpec.describe 'Resoluciones API', type: :request do
 
         post "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}/resolucion",
              params: { resultado_id: ajeno.id },
-             headers: agent.create_new_auth_token,
+             headers: administrator.create_new_auth_token,
              as: :json
 
         expect(response).to have_http_status(:not_found)
         expect(ticket.reload.respondida_at).to be_nil
       end
     end
+
+    context 'when it is an agent (only admins can resolve)' do
+      it 'un agente asignado al expediente NO puede resolver' do
+        ticket.update!(assignee: agent)
+
+        post "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}/resolucion",
+             params: { resultado_id: resultado.id },
+             headers: agent.create_new_auth_token,
+             as: :json
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(ticket.reload.respondida_at).to be_nil
+      end
+    end
   end
 
   describe 'la puerta falsa quedo cerrada (RES-01)' do
+    # con ADMINISTRADOR a proposito: un admin pasa la autorizacion de update?, asi
+    # que si resultado_id sigue nulo es porque update_params NO lo permite (lo que
+    # queremos probar), no porque la autorizacion lo bloqueo.
     it 'un PATCH con resultado_id NO resuelve el expediente' do
       patch "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
             params: { ticket: { resultado_id: resultado.id } },
-            headers: agent.create_new_auth_token,
+            headers: administrator.create_new_auth_token,
             as: :json
 
       expect(ticket.reload.resultado_id).to be_nil
