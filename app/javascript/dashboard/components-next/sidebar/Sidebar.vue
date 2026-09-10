@@ -505,6 +505,13 @@ const menuItems = computed(() => {
           activeOn: ['tickets_index'],
           to: accountScopedRoute('tickets_index'),
         },
+        {
+          name: 'PQR Catalogs',
+          label: t('TICKETS.ADMIN.TITLE'),
+          icon: 'i-lucide-settings-2',
+          activeOn: ['helic3_catalogos_admin'],
+          to: accountScopedRoute('helic3_catalogos_admin'),
+        },
       ],
     },
     {
