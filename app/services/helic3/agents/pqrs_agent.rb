@@ -68,7 +68,8 @@ class Helic3::Agents::PqrsAgent
       tools: [
         Helic3::Agents::Tools::HumanHandoffTool.new,
         Helic3::KnowledgeBaseSearchTool.new,
-        Helic3::Agents::Tools::RadicarPqrTool.new
+        Helic3::Agents::Tools::RadicarPqrTool.new,
+        Helic3::Agents::Tools::ResolverPqrTool.new
       ]
     )
   end

@@ -144,7 +144,8 @@ class Helic3::Catalogo::SeederService
     { clave: 'umbral_amarillo_garantia', valor: '5', unidad: 'dias_habiles' },
     { clave: 'umbral_verde_pqr', valor: '8', unidad: 'dias_habiles' },
     { clave: 'umbral_amarillo_pqr', valor: '3', unidad: 'dias_habiles' },
-    { clave: 'autonomia_radicar_pqr', valor: 'propone', unidad: 'texto' }
+    { clave: 'autonomia_radicar_pqr', valor: 'propone', unidad: 'texto' },
+    { clave: 'autonomia_resolver_pqr', valor: 'propone', unidad: 'texto' }
   ].freeze
 
   def initialize(account)

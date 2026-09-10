@@ -12,7 +12,7 @@ RSpec.describe Helic3::Catalogo::SeederService do
     expect(resumen).to eq(
       categorias: 6, tipos: 5, etapas_pqr: 4, motivos_pqr: 7, resultados: 7,
       motivos_garantia: 5, detalles_tipificados: 31, procesos_garantia: 7,
-      coberturas_ciudad: 10, parametros: 14
+      coberturas_ciudad: 10, parametros: 15
     )
   end
 
