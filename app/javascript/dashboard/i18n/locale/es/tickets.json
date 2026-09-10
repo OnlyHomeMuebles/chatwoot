@@ -52,6 +52,7 @@
     },
     "INBOX": {
       "TITLE": "Bandeja de PQR",
+      "MENU_GROUP": "PQR y garantías",
       "EMPTY": "No hay expedientes que coincidan con los filtros",
       "ERROR": "No se pudo cargar la bandeja",
       "CATALOGS_ERROR": "No se pudieron cargar los filtros de clasificación",
