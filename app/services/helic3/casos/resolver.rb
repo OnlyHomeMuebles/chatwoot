@@ -6,6 +6,8 @@
 # consumidores: lo llama el panel (humano) y la tool del agente (AGT-03).
 # Hermano de Radicar: alli nace el expediente, aqui se resuelve.
 class Helic3::Casos::Resolver
+  # actor: quien resuelve. Se recibe pero aun no se persiste (no hay donde
+  # guardar el autor de la resolucion): lo llenara EVT-01 (bitacora de eventos).
   def initialize(ticket:, resultado:, actor: nil, origen: :humano)
     @ticket = ticket
     @resultado = resultado

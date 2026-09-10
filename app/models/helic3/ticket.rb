@@ -84,6 +84,13 @@ class Helic3::Ticket < ApplicationRecord
   scope :cuenta_para_sic, lambda {
     left_joins(:categoria).where(helic3_catalogo_categorias: { genera_radicado: [true, nil] })
   }
+  # Expedientes con una propuesta del agente esperando aprobacion humana (RES-01).
+  # La propuesta vive en pqrs_metadata, NO en resultado_id: aun no se aplico. Es
+  # la fuente de la cola de decisiones (DEC-01). El operador ? de Postgres pregunta
+  # "tiene la llave"; va con placeholder nombrado para no chocar con el ? de Rails.
+  scope :con_decision_pendiente, lambda {
+    where("pqrs_metadata ? :clave", clave: 'resultado_propuesto_id')
+  }
 
   def ticket_number
     "##{display_id}"

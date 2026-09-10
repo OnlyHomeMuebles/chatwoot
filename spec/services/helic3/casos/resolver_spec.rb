@@ -89,4 +89,17 @@ RSpec.describe Helic3::Casos::Resolver do
       expect(ticket.reload.respondida_at).to eq(sello)
     end
   end
+
+  # fuente de la cola de decisiones (DEC-01)
+  describe '.con_decision_pendiente' do
+    it 'incluye el expediente con propuesta del agente y excluye el resuelto' do
+      pendiente = create(:ticket, account: account)
+      resuelto = create(:ticket, account: account)
+      described_class.new(ticket: pendiente, resultado: garantia_negada, origen: :agente).call
+      described_class.new(ticket: resuelto, resultado: con_info, origen: :humano).call
+
+      expect(Helic3::Ticket.con_decision_pendiente).to include(pendiente)
+      expect(Helic3::Ticket.con_decision_pendiente).not_to include(resuelto)
+    end
+  end
 end
