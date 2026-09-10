@@ -9,6 +9,7 @@ vi.mock('dashboard/composables/store', () => ({
   useStore: () => ({ dispatch: vi.fn().mockResolvedValue() }),
   useMapGetter: getter => {
     if (getter === 'pqrInbox/getUIFlags') return ref({ isFetchingItem: false });
+    if (getter === 'agents/getAgents') return ref([]);
     return expedienteRef; // pqrInbox/getCurrent
   },
 }));
