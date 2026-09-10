@@ -23,8 +23,15 @@
       "CREATED_AT": "Created"
     },
     "CONVERSATION": {
-      "EMPTY": "No tickets linked to this conversation",
-      "CREATE": "Create ticket"
+      "EMPTY": "No PQR records linked to this conversation",
+      "CREATE": "File a PQR"
+    },
+    "FIELDS": {
+      "CATEGORY": "Category",
+      "TYPE": "Type",
+      "MOTIVE": "Motive",
+      "RESULT": "Result",
+      "PENDING": "Pending"
     },
     "CREATE": {
       "TITLE": "Create ticket",
@@ -89,6 +96,12 @@
       "SUCCESS": "Ticket updated",
       "ERROR": "There was an error updating the ticket",
       "FORBIDDEN": "You don't have permission to modify this ticket."
+    },
+    "RESOLUTION": {
+      "PLACEHOLDER": "Register result",
+      "SUCCESS": "Result registered",
+      "ERROR": "There was an error registering the result",
+      "NEEDS_APPROVAL": "(needs approval)"
     },
     "DELETE": {
       "TITLE": "Delete ticket",

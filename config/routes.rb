@@ -342,6 +342,7 @@ Rails.application.routes.draw do
               member do
                 post :assign
               end
+              resource :resolucion, only: [:create], controller: 'resoluciones'
             end
             resource :catalogos, only: [:show]
             # Bandeja de PQR (BAN-01): indice de solo lectura, filtrado y paginado

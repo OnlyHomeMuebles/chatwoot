@@ -130,10 +130,15 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
                                    :tipo_id, :motivo_pqr_id, :status, :assignee_id)
   end
 
-  # Update solo toca lo operativo: estado, asignacion y avance de etapa/resultado.
-  # Corregir la clasificacion ya radicada (tipo/motivo/categoria) queda fuera:
-  # cambiaria la categoria y el plazo sin re-derivarlos (decision de negocio).
+  # Update solo toca lo operativo: estado y asignacion.
+  # resultado_id y etapa_id NO se permiten aqui a proposito (RES-01): resolver es
+  # un acto de dominio que sella respondida_at y detiene el reloj legal, y eso solo
+  # ocurre por POST /resolucion (Helic3::Casos::Resolver). Si se pudiera escribir
+  # resultado_id por un update, el reloj se detendria sin que nadie haya respondido:
+  # dos puertas a la misma verdad terminan contandola distinto.
+  # Corregir la clasificacion ya radicada (tipo/motivo/categoria) tambien queda
+  # fuera: cambiaria la categoria y el plazo sin re-derivarlos (decision de negocio).
   def update_params
-    params.require(:ticket).permit(:status, :assignee_id, :etapa_id, :resultado_id)
+    params.require(:ticket).permit(:status, :assignee_id)
   end
 end

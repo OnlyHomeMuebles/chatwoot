@@ -88,6 +88,18 @@ export const actions = {
       commit(types.SET_TICKET_UI_FLAG, { isUpdating: false });
     }
   },
+  // resolver (RES-01): registra el resultado por el endpoint propio. Sin catch a
+  // proposito, igual que update: se relanza el error de axios para que el panel
+  // pueda revertir el selector si el servidor rechaza (p. ej. sin permiso).
+  resolver: async ({ commit }, { id, resultadoId }) => {
+    commit(types.SET_TICKET_UI_FLAG, { isUpdating: true });
+    try {
+      const response = await TicketsAPI.resolver(id, resultadoId);
+      commit(types.EDIT_TICKET, response.data);
+    } finally {
+      commit(types.SET_TICKET_UI_FLAG, { isUpdating: false });
+    }
+  },
   delete: async ({ commit }, id) => {
     commit(types.SET_TICKET_UI_FLAG, { isDeleting: true });
     // no catch: rethrow the original axios error so callers can

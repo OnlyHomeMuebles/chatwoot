@@ -22,6 +22,7 @@ const STATUSES = ['open', 'pending', 'resolved', 'closed'];
 const createDialogRef = ref(null);
 
 const tickets = useMapGetter('tickets/getTickets');
+const catalogos = useMapGetter('tickets/getCatalogos');
 
 // props.conversationId es el display_id (lo que Chatwoot expone como id de la
 // conversacion en el dashboard). Se compara contra conversation_display_id, no
@@ -47,6 +48,7 @@ const fetchDetails = () => {
 // sin este refresco ese expediente nunca entraria al store.
 const cargarExpedientes = async () => {
   await store.dispatch('tickets/get');
+  store.dispatch('tickets/getCatalogos');
   fetchDetails();
 };
 
@@ -87,13 +89,43 @@ const semaforoDotClass = semaforo => {
   return classes[semaforo] || '';
 };
 
-const clasificacionTexto = ticket =>
-  [ticket.tipo?.nombre, ticket.motivo_pqr?.nombre, ticket.categoria?.nombre]
-    .filter(Boolean)
-    .join(' · ');
+// las cuatro filas de clasificacion con su etiqueta; el valor vacio se muestra
+// como "Pendiente" (no se oculta: que falte es informacion para el operador).
+const clasificacionCampos = ticket => [
+  { label: t('TICKETS.FIELDS.CATEGORY'), value: ticket.categoria?.nombre },
+  { label: t('TICKETS.FIELDS.TYPE'), value: ticket.tipo?.nombre },
+  { label: t('TICKETS.FIELDS.MOTIVE'), value: ticket.motivo_pqr?.nombre },
+  { label: t('TICKETS.FIELDS.RESULT'), value: ticket.resultado?.nombre },
+];
 
 const formatFecha = value =>
   value ? new Date(value).toLocaleDateString() : null;
+
+// Ancho de la barra del plazo legal: proporcion de tiempo transcurrido entre la
+// radicacion y el vencimiento, en dias de CALENDARIO (aritmetica de fechas, no
+// reglas de dias habiles: esas las calcula el backend y llegan como texto). Es un
+// indicador visual; los numeros oficiales salen del JSON, no de aqui.
+const avancePlazo = ticket => {
+  if (!ticket.radicada_at || !ticket.plazo_respuesta_vence_at) return 0;
+
+  const inicio = new Date(ticket.radicada_at).getTime();
+  const fin = new Date(ticket.plazo_respuesta_vence_at).getTime();
+  const ahora = Date.now();
+  if (fin <= inicio) return 100;
+
+  const proporcion = ((ahora - inicio) / (fin - inicio)) * 100;
+  return Math.min(100, Math.max(0, Math.round(proporcion)));
+};
+
+// la barra usa el mismo color del semaforo (fondo con opacidad)
+const semaforoBarClass = semaforo => {
+  const classes = {
+    verde: 'bg-n-teal-9',
+    amarillo: 'bg-n-amber-9',
+    rojo: 'bg-n-ruby-9',
+  };
+  return classes[semaforo] || 'bg-n-slate-9';
+};
 
 const estaVencido = ticket =>
   typeof ticket.dias_habiles_restantes === 'number' &&
@@ -118,6 +150,32 @@ const updateStatus = async (ticket, status) => {
     );
   }
 };
+
+// opciones del selector de resultado, leidas del catalogo (RES-01). Se marca
+// con un aviso el que exige aprobacion humana: el operador debe saber que ese
+// resultado niega un derecho o mueve dinero.
+const resultadoOptions = computed(() =>
+  (catalogos.value.resultados || []).map(resultado => ({
+    value: resultado.id,
+    label: resultado.aprobacion_humana
+      ? `${resultado.nombre} ${t('TICKETS.RESOLUTION.NEEDS_APPROVAL')}`
+      : resultado.nombre,
+  }))
+);
+
+const resolver = async (ticket, resultadoId) => {
+  try {
+    await store.dispatch('tickets/resolver', { id: ticket.id, resultadoId });
+    useAlert(t('TICKETS.RESOLUTION.SUCCESS'));
+  } catch (error) {
+    selectsRefreshKey.value += 1;
+    useAlert(
+      error?.response?.status === 401
+        ? t('TICKETS.UPDATE.FORBIDDEN')
+        : t('TICKETS.RESOLUTION.ERROR')
+    );
+  }
+};
 </script>
 
 <template>
@@ -139,14 +197,41 @@ const updateStatus = async (ticket, status) => {
           {{ ticket.numero_radicado || t('TICKETS.CLOCK.NO_RADICADO') }} ·
           {{ ticket.title }}
         </p>
+        <!-- Chip de la ETAPA (el estado que ve el cliente). Coexiste con el punto
+             de status (estado operativo): son dos cosas distintas a proposito. -->
+        <span
+          v-if="ticket.etapa"
+          class="shrink-0 px-1.5 py-0.5 text-xs rounded-md bg-n-alpha-2 text-n-slate-11"
+        >
+          {{ ticket.etapa.nombre }}
+        </span>
       </div>
 
-      <p
-        v-if="clasificacionTexto(ticket)"
-        class="mb-0 text-xs truncate text-n-slate-11"
+      <!-- Clasificacion como filas con etiqueta; vacia dice "Pendiente". -->
+      <div class="flex flex-col gap-0.5">
+        <p
+          v-for="campo in clasificacionCampos(ticket)"
+          :key="campo.label"
+          class="mb-0 text-xs text-n-slate-11"
+        >
+          <span class="text-n-slate-10">{{ campo.label }}:</span>
+          <span v-if="campo.value" class="text-n-slate-12">{{ campo.value }}</span>
+          <span v-else class="text-n-slate-10">{{ t('TICKETS.FIELDS.PENDING') }}</span>
+        </p>
+      </div>
+
+      <!-- Barra del plazo legal: se atenua cuando el reloj esta detenido. -->
+      <div
+        v-if="ticket.semaforo"
+        class="h-1 w-full rounded-full bg-n-alpha-2 overflow-hidden"
+        :class="ticket.reloj_detenido ? 'opacity-40' : ''"
       >
-        {{ clasificacionTexto(ticket) }}
-      </p>
+        <div
+          class="h-full rounded-full"
+          :class="semaforoBarClass(ticket.semaforo)"
+          :style="{ width: `${avancePlazo(ticket)}%` }"
+        />
+      </div>
 
       <div
         v-if="ticket.semaforo || ticket.plazo_respuesta_vence_at"
@@ -195,6 +280,16 @@ const updateStatus = async (ticket, status) => {
         :options="statusOptions"
         :model-value="ticket.status"
         @update:model-value="status => updateStatus(ticket, status)"
+      />
+
+      <Select
+        :key="`resultado-${ticket.id}-${selectsRefreshKey}`"
+        :options="resultadoOptions"
+        :model-value="ticket.resultado?.id"
+        :placeholder="t('TICKETS.RESOLUTION.PLACEHOLDER')"
+        @update:model-value="
+          resultadoId => resolver(ticket, resultadoId)
+        "
       />
     </div>
     <Button

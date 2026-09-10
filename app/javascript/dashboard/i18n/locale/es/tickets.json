@@ -23,8 +23,15 @@
       "CREATED_AT": "Creado"
     },
     "CONVERSATION": {
-      "EMPTY": "No hay tickets vinculados a esta conversación",
-      "CREATE": "Crear ticket"
+      "EMPTY": "No hay expedientes vinculados a esta conversación",
+      "CREATE": "Radicar PQR"
+    },
+    "FIELDS": {
+      "CATEGORY": "Categoría",
+      "TYPE": "Tipo",
+      "MOTIVE": "Motivo",
+      "RESULT": "Resultado",
+      "PENDING": "Pendiente"
     },
     "CREATE": {
       "TITLE": "Crear ticket",
@@ -89,6 +96,12 @@
       "SUCCESS": "Ticket actualizado",
       "ERROR": "Hubo un error al actualizar el ticket",
       "FORBIDDEN": "No tienes permiso para modificar este ticket."
+    },
+    "RESOLUTION": {
+      "PLACEHOLDER": "Registrar resultado",
+      "SUCCESS": "Resultado registrado",
+      "ERROR": "Hubo un error al registrar el resultado",
+      "NEEDS_APPROVAL": "(requiere aprobación)"
     },
     "DELETE": {
       "TITLE": "Eliminar ticket",
