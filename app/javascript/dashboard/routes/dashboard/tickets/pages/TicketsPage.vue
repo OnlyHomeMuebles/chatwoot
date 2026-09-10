@@ -1,142 +1,184 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
-import { dynamicTime } from 'shared/helpers/timeHelper';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
-import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
-import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
+import Input from 'dashboard/components-next/input/Input.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
-import TabBar from 'dashboard/components-next/tabbar/TabBar.vue';
-import CreateTicketDialog from 'dashboard/components/widgets/conversation/CreateTicketDialog.vue';
 
+// Bandeja de PQR (BAN-01). Usa su store propio (pqrInbox), NO el del panel de
+// conversacion: abrir la bandeja no altera lo que el panel ya tenia cargado.
+// Los filtros y la paginacion se resuelven en el servidor (GET helic3/pqr).
 const store = useStore();
 const { t } = useI18n();
 
-const STATUSES = ['open', 'pending', 'resolved', 'closed'];
-
-const statusFilter = ref('all');
-const showMineOnly = ref(false);
-const createDialogRef = ref(null);
-const deleteDialogRef = ref(null);
-const ticketToDelete = ref(null);
-
-const tickets = useMapGetter('tickets/getTickets');
-const uiFlags = useMapGetter('tickets/getUIFlags');
+const records = useMapGetter('pqrInbox/getRecords');
+const meta = useMapGetter('pqrInbox/getMeta');
+const uiFlags = useMapGetter('pqrInbox/getUIFlags');
+const catalogos = useMapGetter('tickets/getCatalogos');
 const agents = useMapGetter('agents/getAgents');
-const currentUserId = useMapGetter('getCurrentUserID');
+
+const filtros = reactive({
+  categoria_id: '',
+  tipo_id: '',
+  etapa_id: '',
+  assignee_id: '',
+  q: '',
+  vencidas: false,
+});
+const pagina = ref(1);
+
+const cargar = async () => {
+  const params = { page: pagina.value };
+  Object.entries(filtros).forEach(([clave, valor]) => {
+    if (valor !== '' && valor !== false) params[clave] = valor;
+  });
+  try {
+    await store.dispatch('pqrInbox/fetch', params);
+  } catch (error) {
+    useAlert(t('TICKETS.INBOX.ERROR'));
+  }
+};
 
 onMounted(() => {
-  store.dispatch('tickets/get');
+  // getCatalogos propaga el error a proposito; sin catch quedaria una promesa
+  // rechazada y los filtros vacios sin aviso.
+  store
+    .dispatch('tickets/getCatalogos')
+    .catch(() => useAlert(t('TICKETS.INBOX.CATALOGS_ERROR')));
   store.dispatch('agents/get');
+  cargar();
 });
 
-const statusTabs = computed(() => [
-  { label: t('TICKETS.FILTERS.ALL'), value: 'all' },
-  ...STATUSES.map(status => ({
-    label: t(`TICKETS.STATUS.${status.toUpperCase()}`),
-    value: status,
+// Una sola via de recarga: al cambiar un filtro se vuelve a la pagina 1 y se
+// carga; los botones de paginacion llaman cargar() directo. pagina NO tiene watch,
+// para no disparar dos peticiones (era la familia del bug de PAN-01).
+const resetYCargar = () => {
+  pagina.value = 1;
+  cargar();
+};
+
+// Los selectores recargan de inmediato; el buscador de texto con debounce de
+// 300 ms para no disparar una peticion por tecla.
+watch(
+  () => [
+    filtros.categoria_id,
+    filtros.tipo_id,
+    filtros.etapa_id,
+    filtros.assignee_id,
+    filtros.vencidas,
+  ],
+  resetYCargar
+);
+
+let debounceBusqueda = null;
+watch(
+  () => filtros.q,
+  () => {
+    clearTimeout(debounceBusqueda);
+    debounceBusqueda = setTimeout(resetYCargar, 300);
+  }
+);
+
+const irAPagina = destino => {
+  pagina.value = destino;
+  cargar();
+};
+
+const emptyOption = label => ({ value: '', label });
+
+// La categoria no viene como catalogo propio (API-01 la trae embebida en los
+// motivos); se derivan las unicas de ahi para el filtro.
+const categoriaOptions = computed(() => {
+  const vistas = new Map();
+  (catalogos.value.motivos_pqr || []).forEach(motivo => {
+    if (motivo.categoria) vistas.set(motivo.categoria.id, motivo.categoria);
+  });
+  return [
+    emptyOption(t('TICKETS.INBOX.FILTERS.ALL_CATEGORIES')),
+    ...[...vistas.values()].map(c => ({ value: c.id, label: c.nombre })),
+  ];
+});
+
+const tipoOptions = computed(() => [
+  emptyOption(t('TICKETS.INBOX.FILTERS.ALL_TYPES')),
+  ...(catalogos.value.tipos || []).map(x => ({ value: x.id, label: x.nombre })),
+]);
+
+const etapaOptions = computed(() => [
+  emptyOption(t('TICKETS.INBOX.FILTERS.ALL_STAGES')),
+  ...(catalogos.value.etapas_pqr || []).map(x => ({
+    value: x.id,
+    label: x.nombre,
   })),
 ]);
 
-const activeTabIndex = computed(() =>
-  statusTabs.value.findIndex(tab => tab.value === statusFilter.value)
-);
-
-const onTabChange = tab => {
-  statusFilter.value = tab.value;
-};
-
-const statusOptions = computed(() =>
-  STATUSES.map(status => ({
-    value: status,
-    label: t(`TICKETS.STATUS.${status.toUpperCase()}`),
-  }))
-);
-
 const assigneeOptions = computed(() => [
-  { value: '', label: t('TICKETS.UNASSIGNED') },
-  ...agents.value.map(agent => ({ value: agent.id, label: agent.name })),
+  emptyOption(t('TICKETS.INBOX.FILTERS.ALL_ASSIGNEES')),
+  ...agents.value.map(a => ({ value: a.id, label: a.name })),
 ]);
 
-const filteredTickets = computed(() => {
-  let list = tickets.value;
-  if (statusFilter.value !== 'all') {
-    list = list.filter(ticket => ticket.status === statusFilter.value);
+const totalPaginas = computed(() =>
+  Math.max(1, Math.ceil((meta.value.count || 0) / (meta.value.perPage || 25)))
+);
+
+// El color del semaforo se deriva en el cliente: dias_habiles_restantes (que
+// calcula el servidor) contra los umbrales del catalogo que vienen en el meta.
+// No se duplica la regla de dias habiles; solo el mapeo trivial a color.
+const semaforoDeFila = fila => {
+  const dias = fila.dias_habiles_restantes;
+  const { umbralVerde, umbralAmarillo } = meta.value;
+  if (
+    typeof dias !== 'number' ||
+    umbralVerde == null ||
+    umbralAmarillo == null
+  ) {
+    return null;
   }
-  if (showMineOnly.value) {
-    list = list.filter(
-      ticket => ticket.assignee && ticket.assignee.id === currentUserId.value
-    );
-  }
-  return list;
+  if (dias >= umbralVerde) return 'verde';
+  if (dias >= umbralAmarillo) return 'amarillo';
+  return 'rojo';
+};
+
+const semaforoDotClass = semaforo =>
+  ({
+    verde: 'bg-n-teal-9',
+    amarillo: 'bg-n-amber-9',
+    rojo: 'bg-n-ruby-9',
+  })[semaforo] || '';
+
+const rangoTexto = computed(() => {
+  const mostrados = records.value.length;
+  return t('TICKETS.INBOX.COUNT', {
+    shown: mostrados,
+    total: meta.value.count,
+  });
 });
 
-const statusDotClass = status => {
-  const classes = {
+const clasificacionTexto = fila =>
+  [fila.tipo?.nombre, fila.motivo_pqr?.nombre, fila.categoria?.nombre]
+    .filter(Boolean)
+    .join(' · ');
+
+const estaVencido = fila =>
+  !fila.reloj_detenido &&
+  fila.plazo_respuesta_vence_at &&
+  new Date(fila.plazo_respuesta_vence_at) < new Date();
+
+const formatFecha = valor =>
+  valor ? new Date(valor).toLocaleDateString() : null;
+
+const statusDotClass = status =>
+  ({
     open: 'bg-n-teal-9',
     pending: 'bg-n-amber-9',
     resolved: 'bg-n-blue-9',
     closed: 'bg-n-slate-9',
-  };
-  return classes[status] || classes.open;
-};
-
-const updateErrorMessage = error =>
-  error?.response?.status === 401
-    ? t('TICKETS.UPDATE.FORBIDDEN')
-    : t('TICKETS.UPDATE.ERROR');
-
-// bumping this key remounts the row selects so they snap back to the
-// real value when the server rejects a change (e.g. no permission)
-const selectsRefreshKey = ref(0);
-
-const updateStatus = async (ticket, status) => {
-  try {
-    await store.dispatch('tickets/update', { id: ticket.id, status });
-    useAlert(t('TICKETS.UPDATE.SUCCESS'));
-  } catch (error) {
-    selectsRefreshKey.value += 1;
-    useAlert(updateErrorMessage(error));
-  }
-};
-
-const updateAssignee = async (ticket, assigneeId) => {
-  try {
-    await store.dispatch('tickets/assign', {
-      id: ticket.id,
-      assigneeId: assigneeId || null,
-    });
-    useAlert(t('TICKETS.UPDATE.SUCCESS'));
-  } catch (error) {
-    selectsRefreshKey.value += 1;
-    useAlert(updateErrorMessage(error));
-  }
-};
-
-const openDeleteDialog = ticket => {
-  ticketToDelete.value = ticket;
-  deleteDialogRef.value.open();
-};
-
-const deleteTicket = async () => {
-  try {
-    await store.dispatch('tickets/delete', ticketToDelete.value.id);
-    useAlert(t('TICKETS.DELETE.SUCCESS'));
-  } catch (error) {
-    const isForbidden = error?.response?.status === 401;
-    useAlert(
-      isForbidden ? t('TICKETS.DELETE.FORBIDDEN') : t('TICKETS.DELETE.ERROR')
-    );
-  } finally {
-    deleteDialogRef.value.close();
-    ticketToDelete.value = null;
-  }
-};
+  })[status] || 'bg-n-slate-9';
 </script>
 
 <template>
@@ -145,29 +187,32 @@ const deleteTicket = async () => {
       class="flex items-center justify-between px-6 py-4 border-b border-n-weak"
     >
       <h1 class="text-xl font-medium text-n-slate-12">
-        {{ t('TICKETS.HEADER') }}
+        {{ t('TICKETS.INBOX.TITLE') }}
       </h1>
-      <Button
-        :label="t('TICKETS.NEW_TICKET')"
-        icon="i-lucide-plus"
-        sm
-        @click="createDialogRef.open()"
-      />
+      <span class="text-sm text-n-slate-11">{{ rangoTexto }}</span>
     </header>
 
     <div
-      class="flex flex-wrap items-center gap-3 px-6 py-3 border-b border-n-weak"
+      class="flex flex-wrap items-center gap-2 px-6 py-3 border-b border-n-weak"
     >
-      <TabBar
-        :tabs="statusTabs"
-        :initial-active-tab="activeTabIndex"
-        @tab-changed="onTabChange"
+      <Input
+        v-model="filtros.q"
+        :placeholder="t('TICKETS.INBOX.FILTERS.SEARCH')"
+        class="w-56"
       />
+      <Select v-model="filtros.categoria_id" :options="categoriaOptions" />
+      <Select v-model="filtros.tipo_id" :options="tipoOptions" />
+      <Select v-model="filtros.etapa_id" :options="etapaOptions" />
+      <Select v-model="filtros.assignee_id" :options="assigneeOptions" />
       <label
-        class="flex items-center gap-2 ml-auto text-sm cursor-pointer text-n-slate-11"
+        class="flex items-center gap-2 text-sm cursor-pointer text-n-slate-11"
       >
-        <Checkbox v-model="showMineOnly" />
-        {{ t('TICKETS.FILTERS.MINE') }}
+        <input
+          v-model="filtros.vencidas"
+          type="checkbox"
+          class="cursor-pointer"
+        />
+        {{ t('TICKETS.INBOX.FILTERS.OVERDUE') }}
       </label>
     </div>
 
@@ -179,72 +224,101 @@ const deleteTicket = async () => {
         <Spinner :size="24" />
       </div>
       <div
-        v-else-if="!filteredTickets.length"
+        v-else-if="!records.length"
         class="flex items-center justify-center py-12 text-n-slate-11"
       >
-        {{ t('TICKETS.EMPTY_STATE') }}
+        {{ t('TICKETS.INBOX.EMPTY') }}
       </div>
       <table v-else class="w-full text-sm">
         <thead>
           <tr class="text-left border-b text-n-slate-11 border-n-weak">
             <th class="px-6 py-3 font-medium">
-              {{ t('TICKETS.TABLE.NUMBER') }}
+              {{ t('TICKETS.INBOX.COLUMNS.CLIENT') }}
             </th>
             <th class="px-4 py-3 font-medium">
-              {{ t('TICKETS.TABLE.TITLE') }}
+              {{ t('TICKETS.INBOX.COLUMNS.RADICADO') }}
             </th>
             <th class="px-4 py-3 font-medium">
-              {{ t('TICKETS.TABLE.STATUS') }}
+              {{ t('TICKETS.INBOX.COLUMNS.CLASSIFICATION') }}
             </th>
             <th class="px-4 py-3 font-medium">
-              {{ t('TICKETS.TABLE.ASSIGNEE') }}
+              {{ t('TICKETS.INBOX.COLUMNS.STAGE') }}
             </th>
             <th class="px-4 py-3 font-medium">
-              {{ t('TICKETS.TABLE.CREATED_AT') }}
+              {{ t('TICKETS.INBOX.COLUMNS.CLOCK') }}
             </th>
-            <th class="px-4 py-3" />
+            <th class="px-4 py-3 font-medium">
+              {{ t('TICKETS.INBOX.COLUMNS.ASSIGNEE') }}
+            </th>
           </tr>
         </thead>
         <tbody>
           <tr
-            v-for="ticket in filteredTickets"
-            :key="ticket.id"
+            v-for="fila in records"
+            :key="fila.id"
             class="border-b border-n-weak hover:bg-n-alpha-1"
           >
-            <td class="px-6 py-3 font-medium text-n-slate-12">
-              {{ ticket.ticket_number }}
-            </td>
-            <td class="px-4 py-3">
+            <td class="px-6 py-3">
               <p class="mb-0 font-medium text-n-slate-12">
-                {{ ticket.title }}
+                {{ fila.cliente?.nombre || fila.title }}
               </p>
-              <p
-                v-if="ticket.description"
-                class="mb-0 text-n-slate-11 line-clamp-1"
-              >
-                {{ ticket.description }}
+              <p class="mb-0 text-n-slate-11">
+                {{ fila.cliente?.documento || t('TICKETS.INBOX.PENDING') }}
               </p>
             </td>
-            <td class="px-4 py-3">
-              <div class="flex items-center gap-2">
+            <td class="px-4 py-3 font-medium text-n-slate-12">
+              <div class="flex items-center gap-1.5">
                 <span
                   class="rounded-full size-2 shrink-0"
-                  :class="statusDotClass(ticket.status)"
+                  :class="statusDotClass(fila.status)"
                 />
-                <Select
-                  :key="`status-${ticket.id}-${selectsRefreshKey}`"
-                  :options="statusOptions"
-                  :model-value="ticket.status"
-                  @update:model-value="status => updateStatus(ticket, status)"
+                {{ fila.numero_radicado || t('TICKETS.INBOX.NO_RADICADO') }}
+              </div>
+            </td>
+            <td class="px-4 py-3 text-n-slate-11">
+              {{ clasificacionTexto(fila) || t('TICKETS.INBOX.PENDING') }}
+            </td>
+            <td class="px-4 py-3 text-n-slate-11">
+              {{ fila.etapa?.nombre || '—' }}
+            </td>
+            <td class="px-4 py-3">
+              <div
+                class="flex items-center gap-1.5"
+                :class="fila.reloj_detenido ? 'opacity-60' : ''"
+              >
+                <span
+                  v-if="semaforoDeFila(fila)"
+                  class="rounded-full size-2 shrink-0"
+                  :class="semaforoDotClass(semaforoDeFila(fila))"
                 />
+                <span v-if="fila.reloj_detenido" class="text-n-slate-11">
+                  {{ t('TICKETS.INBOX.CLOCK.FROZEN') }}
+                </span>
+                <span
+                  v-else-if="estaVencido(fila)"
+                  class="font-medium text-n-ruby-11"
+                >
+                  {{ t('TICKETS.INBOX.CLOCK.OVERDUE') }}
+                </span>
+                <span
+                  v-else-if="fila.plazo_respuesta_vence_at"
+                  class="text-n-slate-11"
+                >
+                  {{
+                    t('TICKETS.INBOX.CLOCK.DUE', {
+                      date: formatFecha(fila.plazo_respuesta_vence_at),
+                    })
+                  }}
+                </span>
+                <span v-else class="text-n-slate-10">—</span>
               </div>
             </td>
             <td class="px-4 py-3">
               <div class="flex items-center gap-2">
                 <Avatar
-                  v-if="ticket.assignee"
-                  :name="ticket.assignee.name"
-                  :src="ticket.assignee.thumbnail"
+                  v-if="fila.assignee"
+                  :name="fila.assignee.name"
+                  :src="fila.assignee.thumbnail"
                   :size="24"
                   rounded-full
                 />
@@ -254,43 +328,39 @@ const deleteTicket = async () => {
                 >
                   <Icon icon="i-lucide-user" class="size-3.5 text-n-slate-10" />
                 </span>
-                <Select
-                  :key="`assignee-${ticket.id}-${selectsRefreshKey}`"
-                  :options="assigneeOptions"
-                  :model-value="ticket.assignee ? ticket.assignee.id : ''"
-                  @update:model-value="
-                    assigneeId => updateAssignee(ticket, assigneeId)
-                  "
-                />
+                <span class="text-n-slate-11">
+                  {{ fila.assignee?.name || t('TICKETS.UNASSIGNED') }}
+                </span>
               </div>
-            </td>
-            <td class="px-4 py-3 text-n-slate-11">
-              {{ dynamicTime(new Date(ticket.created_at).getTime() / 1000) }}
-            </td>
-            <td class="px-4 py-3 text-right">
-              <Button
-                icon="i-lucide-trash-2"
-                ghost
-                ruby
-                xs
-                @click="openDeleteDialog(ticket)"
-              />
             </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <CreateTicketDialog ref="createDialogRef" />
-
-    <Dialog
-      ref="deleteDialogRef"
-      type="alert"
-      :title="t('TICKETS.DELETE.TITLE')"
-      :description="t('TICKETS.DELETE.DESCRIPTION')"
-      :confirm-button-label="t('TICKETS.DELETE.CONFIRM')"
-      :is-loading="uiFlags.isDeleting"
-      @confirm="deleteTicket"
-    />
+    <div
+      v-if="records.length"
+      class="flex items-center justify-end gap-3 px-6 py-3 border-t border-n-weak"
+    >
+      <Button
+        :label="t('TICKETS.INBOX.PAGINATION.PREV')"
+        icon="i-lucide-chevron-left"
+        faded
+        xs
+        :disabled="pagina <= 1"
+        @click="irAPagina(pagina - 1)"
+      />
+      <span class="text-sm text-n-slate-11"
+        >{{ pagina }} / {{ totalPaginas }}</span
+      >
+      <Button
+        :label="t('TICKETS.INBOX.PAGINATION.NEXT')"
+        icon="i-lucide-chevron-right"
+        faded
+        xs
+        :disabled="pagina >= totalPaginas"
+        @click="irAPagina(pagina + 1)"
+      />
+    </div>
   </div>
 </template>

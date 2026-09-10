@@ -49,6 +49,7 @@ import summaryReports from './modules/summaryReports';
 import teamMembers from './modules/teamMembers';
 import teams from './modules/teams';
 import tickets from './modules/tickets';
+import pqrInbox from './modules/pqrInbox';
 import userNotificationSettings from './modules/userNotificationSettings';
 import webhooks from './modules/webhooks';
 import captainAgentSessions from './captain/agentSessions';
@@ -117,6 +118,7 @@ export default createStore({
     teamMembers,
     teams,
     tickets,
+    pqrInbox,
     userNotificationSettings,
     webhooks,
     captainAgentSessions,

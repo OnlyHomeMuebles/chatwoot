@@ -493,6 +493,21 @@ const menuItems = computed(() => {
       ],
     },
     {
+      name: 'PQR',
+      icon: 'i-lucide-ticket',
+      label: t('TICKETS.INBOX.MENU_GROUP'),
+      activeOn: ['tickets_index'],
+      children: [
+        {
+          name: 'PQR Inbox',
+          label: t('TICKETS.INBOX.TITLE'),
+          icon: 'i-lucide-inbox',
+          activeOn: ['tickets_index'],
+          to: accountScopedRoute('tickets_index'),
+        },
+      ],
+    },
+    {
       name: 'Captain',
       icon: 'i-woot-captain',
       label: t('SIDEBAR.CAPTAIN'),
