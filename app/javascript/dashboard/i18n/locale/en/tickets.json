@@ -23,8 +23,15 @@
       "CREATED_AT": "Created"
     },
     "CONVERSATION": {
-      "EMPTY": "No tickets linked to this conversation",
-      "CREATE": "Create ticket"
+      "EMPTY": "No PQR records linked to this conversation",
+      "CREATE": "File a PQR"
+    },
+    "FIELDS": {
+      "CATEGORY": "Category",
+      "TYPE": "Type",
+      "MOTIVE": "Motive",
+      "RESULT": "Result",
+      "PENDING": "Pending"
     },
     "CREATE": {
       "TITLE": "Create ticket",

@@ -23,8 +23,15 @@
       "CREATED_AT": "Creado"
     },
     "CONVERSATION": {
-      "EMPTY": "No hay tickets vinculados a esta conversación",
-      "CREATE": "Crear ticket"
+      "EMPTY": "No hay expedientes vinculados a esta conversación",
+      "CREATE": "Radicar PQR"
+    },
+    "FIELDS": {
+      "CATEGORY": "Categoría",
+      "TYPE": "Tipo",
+      "MOTIVE": "Motivo",
+      "RESULT": "Resultado",
+      "PENDING": "Pendiente"
     },
     "CREATE": {
       "TITLE": "Crear ticket",
