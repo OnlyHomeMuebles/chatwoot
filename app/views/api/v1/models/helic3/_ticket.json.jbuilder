@@ -53,6 +53,12 @@ if local_assigns.fetch(:detallado, true)
   else
     json.garantia nil
   end
+
+  # Datos del caso con su procedencia (DAT-01): siempre presente; cada campo es
+  # {valor, fuente} o null. resource.datos es nil si aun no se recolecto nada.
+  json.datos do
+    json.partial! 'api/v1/models/helic3/datos', formats: [:json], resource: resource.datos
+  end
 end
 
 if resource.assignee.present?

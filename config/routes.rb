@@ -343,6 +343,7 @@ Rails.application.routes.draw do
                 post :assign
               end
               resource :resolucion, only: [:create], controller: 'resoluciones'
+              resource :datos, only: [:update], controller: 'datos'
             end
             resource :catalogos, only: [:show]
           end

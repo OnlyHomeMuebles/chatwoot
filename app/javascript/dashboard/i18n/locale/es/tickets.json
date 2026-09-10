@@ -73,6 +73,24 @@
       "TITLE": "Garantía",
       "BUDGET": "{used} de {total} días hábiles usados"
     },
+    "DATA": {
+      "TITLE": "Datos del caso",
+      "SAVED": "Dato actualizado",
+      "ERROR": "Hubo un error al guardar el dato",
+      "SOURCE": {
+        "IA": "IA",
+        "ERP": "ERP",
+        "HUMANO": "Manual"
+      },
+      "FIELDS": {
+        "CEDULA": "Cédula",
+        "DIRECCION": "Dirección",
+        "CIUDAD": "Ciudad",
+        "FACTURA_NUMERO": "Factura",
+        "PRODUCTO_NOMBRE": "Producto",
+        "DETALLE": "Detalle"
+      }
+    },
     "DELETE": {
       "TITLE": "Eliminar ticket",
       "DESCRIPTION": "¿Seguro que quieres eliminar este ticket? Esta acción no se puede deshacer.",

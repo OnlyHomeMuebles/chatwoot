@@ -100,6 +100,18 @@ export const actions = {
       commit(types.SET_TICKET_UI_FLAG, { isUpdating: false });
     }
   },
+  // registrarDatos (DAT-01): el operador corrige la ficha; el campo queda con
+  // fuente humano. Sin catch, igual que resolver: se relanza para que el panel
+  // revierta el input si el servidor rechaza.
+  registrarDatos: async ({ commit }, { id, datos }) => {
+    commit(types.SET_TICKET_UI_FLAG, { isUpdating: true });
+    try {
+      const response = await TicketsAPI.registrarDatos(id, datos);
+      commit(types.EDIT_TICKET, response.data);
+    } finally {
+      commit(types.SET_TICKET_UI_FLAG, { isUpdating: false });
+    }
+  },
   delete: async ({ commit }, id) => {
     commit(types.SET_TICKET_UI_FLAG, { isDeleting: true });
     // no catch: rethrow the original axios error so callers can

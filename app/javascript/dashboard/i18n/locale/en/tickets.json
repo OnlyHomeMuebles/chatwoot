@@ -73,6 +73,24 @@
       "TITLE": "Warranty",
       "BUDGET": "{used} of {total} business days used"
     },
+    "DATA": {
+      "TITLE": "Case data",
+      "SAVED": "Data updated",
+      "ERROR": "There was an error saving the data",
+      "SOURCE": {
+        "IA": "AI",
+        "ERP": "ERP",
+        "HUMANO": "Manual"
+      },
+      "FIELDS": {
+        "CEDULA": "ID number",
+        "DIRECCION": "Address",
+        "CIUDAD": "City",
+        "FACTURA_NUMERO": "Invoice",
+        "PRODUCTO_NOMBRE": "Product",
+        "DETALLE": "Detail"
+      }
+    },
     "DELETE": {
       "TITLE": "Delete ticket",
       "DESCRIPTION": "Are you sure you want to delete this ticket? This action cannot be undone.",
