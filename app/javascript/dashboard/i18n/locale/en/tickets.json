@@ -66,7 +66,8 @@
       "PLACEHOLDER": "Register result",
       "SUCCESS": "Result registered",
       "ERROR": "There was an error registering the result",
-      "NEEDS_APPROVAL": "(needs approval)"
+      "NEEDS_APPROVAL": "(needs approval)",
+      "WARRANTY_LOCKED": "(pending warranty form)"
     },
     "WARRANTY": {
       "TITLE": "Warranty",
