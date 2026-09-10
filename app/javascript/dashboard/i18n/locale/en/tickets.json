@@ -68,6 +68,10 @@
       "ERROR": "There was an error registering the result",
       "NEEDS_APPROVAL": "(needs approval)"
     },
+    "WARRANTY": {
+      "TITLE": "Warranty",
+      "BUDGET": "{used} of {total} business days used"
+    },
     "DELETE": {
       "TITLE": "Delete ticket",
       "DESCRIPTION": "Are you sure you want to delete this ticket? This action cannot be undone.",

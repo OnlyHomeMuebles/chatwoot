@@ -2,6 +2,11 @@ class Api::V1::Accounts::Helic3::ResolucionesController < Api::V1::Accounts::Bas
   before_action :fetch_ticket
   before_action :check_authorization
 
+  # Un resultado que abre garantia sin ciudad ni productos no puede radicar un
+  # expediente vacio: Resolver levanta ArgumentError (dominio puro, no sabe de
+  # HTTP) y aqui se traduce a 422 comprensible.
+  rescue_from ArgumentError, with: :render_argument_error
+
   # POST /api/v1/accounts/:account_id/helic3/tickets/:ticket_id/resolucion
   #
   # La UNICA puerta para registrar el resultado de una PQR. Delega en
@@ -19,7 +24,8 @@ class Api::V1::Accounts::Helic3::ResolucionesController < Api::V1::Accounts::Bas
       ticket: @ticket,
       resultado: resultado,
       actor: Current.user,
-      origen: :humano
+      origen: :humano,
+      garantia: datos_garantia
     ).call
     render 'api/v1/accounts/helic3/tickets/show', formats: [:json]
   end
@@ -28,6 +34,39 @@ class Api::V1::Accounts::Helic3::ResolucionesController < Api::V1::Accounts::Bas
 
   def fetch_ticket
     @ticket = Current.account.tickets.find(params[:ticket_id])
+  end
+
+  # Bloque opcional de garantia (GAR-02): nil si no viene. El controlador traduce
+  # ids -> objetos de la cuenta (un id ajeno no existe aqui: 404), igual que con
+  # el resultado. Resolver solo lo usa cuando el resultado abre garantia.
+  def datos_garantia
+    bloque = params[:garantia]
+    return if bloque.blank?
+
+    {
+      cobertura_ciudad: catalogo_de_cuenta(Helic3::Catalogo::CoberturaCiudad, bloque[:cobertura_ciudad_id]),
+      items: Array(bloque[:items]).map { |item| item_de_garantia(item) }
+    }
+  end
+
+  def item_de_garantia(item)
+    {
+      producto_nombre: item[:producto_nombre],
+      producto_referencia: item[:producto_referencia],
+      motivo_garantia: catalogo_de_cuenta(Helic3::Catalogo::MotivoGarantia, item[:motivo_garantia_id]),
+      detalle_tipificado: catalogo_de_cuenta(Helic3::Catalogo::DetalleTipificado, item[:detalle_tipificado_id])
+    }
+  end
+
+  # id acotado a la cuenta: un id de otra cuenta no existe aqui (404). Nil si no vino.
+  def catalogo_de_cuenta(modelo, id)
+    return if id.blank?
+
+    modelo.find_by!(account: Current.account, id: id)
+  end
+
+  def render_argument_error(error)
+    render json: { error: error.message }, status: :unprocessable_entity
   end
 
   # puerta general: quien puede tocar este expediente (TicketPolicy#resolver? =

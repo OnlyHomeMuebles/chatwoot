@@ -291,6 +291,38 @@ const resolver = async (ticket, resultadoId) => {
           resultadoId => resolver(ticket, resultadoId)
         "
       />
+
+      <!-- Garantia (GAR-02): el radicado que cuelga del expediente. Solo lectura;
+           se abre al resolver con "Procede garantia". No se pinta si no hay. -->
+      <div
+        v-if="ticket.garantia"
+        class="flex flex-col gap-1 p-2 rounded-lg bg-n-alpha-2"
+      >
+        <p class="mb-0 text-xs font-medium text-n-slate-12">
+          {{ t('TICKETS.WARRANTY.TITLE') }}
+          {{ ticket.garantia.numero_radicado }}
+        </p>
+        <p
+          v-if="ticket.garantia.proceso_visible"
+          class="mb-0 text-xs text-n-slate-11"
+        >
+          {{ ticket.garantia.proceso_visible.nombre }}
+        </p>
+        <div class="flex items-center gap-1 text-xs">
+          <span
+            class="rounded-full size-2 shrink-0"
+            :class="semaforoDotClass(ticket.garantia.presupuesto.semaforo)"
+          />
+          <span class="text-n-slate-11">
+            {{
+              t('TICKETS.WARRANTY.BUDGET', {
+                used: ticket.garantia.presupuesto.consumidos,
+                total: ticket.garantia.presupuesto_dias_habiles,
+              })
+            }}
+          </span>
+        </div>
+      </div>
     </div>
     <Button
       :label="t('TICKETS.CONVERSATION.CREATE')"

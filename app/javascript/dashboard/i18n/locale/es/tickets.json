@@ -68,6 +68,10 @@
       "ERROR": "Hubo un error al registrar el resultado",
       "NEEDS_APPROVAL": "(requiere aprobación)"
     },
+    "WARRANTY": {
+      "TITLE": "Garantía",
+      "BUDGET": "{used} de {total} días hábiles usados"
+    },
     "DELETE": {
       "TITLE": "Eliminar ticket",
       "DESCRIPTION": "¿Seguro que quieres eliminar este ticket? Esta acción no se puede deshacer.",
