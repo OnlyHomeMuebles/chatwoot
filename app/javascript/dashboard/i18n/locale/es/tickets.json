@@ -85,6 +85,30 @@
         "NEXT": "Siguiente"
       }
     },
+    "DETAIL": {
+      "TITLE": "Detalle del expediente",
+      "NOT_FOUND": "No se encontró el expediente",
+      "PQR_CLOCK": "Reloj de la PQR",
+      "CLOCK_FROZEN": "Quedaban {days} días hábiles al responder",
+      "CLOCK_OVERDUE": "Vencido hace {days} días hábiles",
+      "CLOCK_REMAINING": "{days} días hábiles restantes",
+      "FILED_AT": "Radicada",
+      "DUE_AT": "Vence",
+      "ANSWERED_AT": "Respondida",
+      "CLASSIFICATION": "Clasificación",
+      "TYPE": "Tipo",
+      "MOTIVE": "Motivo",
+      "CATEGORY": "Categoría",
+      "STAGE": "Etapa",
+      "RESULT": "Resultado",
+      "ASSIGNEE": "Responsable",
+      "WARRANTY": "Garantía",
+      "PROCESS": "Proceso",
+      "CITY": "Ciudad",
+      "OWN_TECH": "Técnico propio",
+      "BUDGET": "Presupuesto",
+      "BUDGET_USAGE": "{used} usados · {left} restantes de {total} días"
+    },
     "UPDATE": {
       "SUCCESS": "Ticket actualizado",
       "ERROR": "Hubo un error al actualizar el ticket",

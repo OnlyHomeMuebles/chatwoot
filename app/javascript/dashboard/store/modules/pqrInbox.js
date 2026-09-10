@@ -1,5 +1,6 @@
 import types from '../mutation-types';
 import PqrInboxAPI from '../../api/pqr';
+import TicketsAPI from '../../api/tickets';
 
 // Store propio de la bandeja de PQR (BAN-01). NO reutiliza el del panel de
 // conversacion (tickets.js): abrir la bandeja no debe alterar lo que el panel ya
@@ -13,8 +14,10 @@ export const state = {
     umbralVerde: null,
     umbralAmarillo: null,
   },
+  current: null,
   uiFlags: {
     isFetching: false,
+    isFetchingItem: false,
   },
 };
 
@@ -24,6 +27,9 @@ export const getters = {
   },
   getMeta(_state) {
     return _state.meta;
+  },
+  getCurrent(_state) {
+    return _state.current;
   },
   getUIFlags(_state) {
     return _state.uiFlags;
@@ -49,6 +55,34 @@ export const actions = {
       commit(types.SET_PQR_INBOX_UI_FLAG, { isFetching: false });
     }
   },
+
+  // Detalle de un expediente (DET-01). Se guarda aparte de la lista para que la
+  // pantalla de detalle no dependa de que el expediente este en la pagina actual.
+  fetchOne: async ({ commit }, id) => {
+    commit(types.SET_PQR_INBOX_UI_FLAG, { isFetchingItem: true });
+    commit(types.SET_PQR_CURRENT, null);
+    try {
+      // Reusa el show de tickets (helic3/tickets/:id) — importar api/tickets.js no
+      // es editar el archivo de Samuel; asi el detalle no arma la URL a mano.
+      const { data } = await TicketsAPI.show(id);
+      commit(types.SET_PQR_CURRENT, data);
+    } finally {
+      commit(types.SET_PQR_INBOX_UI_FLAG, { isFetchingItem: false });
+    }
+  },
+
+  // Acciones del operador desde el detalle: cambiar estado y reasignar. Reusan las
+  // rutas de tickets (update/assign) y refrescan el expediente actual con la
+  // respuesta. Sin catch: el error se propaga para que la pantalla avise.
+  actualizar: async ({ commit }, { id, data }) => {
+    const { data: actualizado } = await TicketsAPI.update(id, { ticket: data });
+    commit(types.SET_PQR_CURRENT, actualizado);
+  },
+
+  asignar: async ({ commit }, { id, assigneeId }) => {
+    const { data: actualizado } = await TicketsAPI.assign(id, assigneeId);
+    commit(types.SET_PQR_CURRENT, actualizado);
+  },
 };
 
 export const mutations = {
@@ -60,6 +94,9 @@ export const mutations = {
   },
   [types.SET_PQR_INBOX_META](_state, meta) {
     _state.meta = meta;
+  },
+  [types.SET_PQR_CURRENT](_state, record) {
+    _state.current = record;
   },
 };
 

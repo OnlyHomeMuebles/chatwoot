@@ -85,6 +85,30 @@
         "NEXT": "Next"
       }
     },
+    "DETAIL": {
+      "TITLE": "Case detail",
+      "NOT_FOUND": "Case not found",
+      "PQR_CLOCK": "PQR clock",
+      "CLOCK_FROZEN": "{days} business days were left when answered",
+      "CLOCK_OVERDUE": "Overdue by {days} business days",
+      "CLOCK_REMAINING": "{days} business days left",
+      "FILED_AT": "Filed",
+      "DUE_AT": "Due",
+      "ANSWERED_AT": "Answered",
+      "CLASSIFICATION": "Classification",
+      "TYPE": "Type",
+      "MOTIVE": "Motive",
+      "CATEGORY": "Category",
+      "STAGE": "Stage",
+      "RESULT": "Result",
+      "ASSIGNEE": "Assignee",
+      "WARRANTY": "Warranty",
+      "PROCESS": "Process",
+      "CITY": "City",
+      "OWN_TECH": "In-house technician",
+      "BUDGET": "Budget",
+      "BUDGET_USAGE": "{used} used · {left} left of {total} days"
+    },
     "UPDATE": {
       "SUCCESS": "Ticket updated",
       "ERROR": "There was an error updating the ticket",
