@@ -16,7 +16,7 @@ class Api::V1::Accounts::Helic3::Admin::CatalogosController < Api::V1::Accounts:
     },
     'resultados' => {
       modelo: Helic3::Catalogo::Resultado,
-      campos: %i[nombre codigo activo posicion abre_garantia aprobacion_humana cierra_pqr]
+      campos: %i[nombre codigo activo posicion abre_garantia aprobacion_humana cierra_pqr requiere_admin]
     },
     'detalles_tipificados' => {
       modelo: Helic3::Catalogo::DetalleTipificado,
@@ -43,8 +43,11 @@ class Api::V1::Accounts::Helic3::Admin::CatalogosController < Api::V1::Accounts:
     @registros = @modelo.where(account: Current.account).order(:posicion)
   end
 
+  # compact_blank: un campo vacio del formulario (un enum sin elegir, una ruta sin
+  # texto) no se asigna, para que la columna use su default o quede NULL en vez de
+  # castear "" -> nil sobre una columna NOT NULL (que reventaria con 500).
   def create
-    @registro = @modelo.create!(catalogo_params.merge(account: Current.account))
+    @registro = @modelo.create!(catalogo_params.compact_blank.merge(account: Current.account))
     render :show, status: :created
   end
 

@@ -33,6 +33,17 @@ RSpec.describe 'Helic3 administracion de catalogos (ADM-01)', type: :request do
       expect(Helic3::Catalogo::MotivoPqr.find_by(account: account, codigo: 'retracto')).to be_present
     end
 
+    # Un enum enviado vacio (el select sin tocar) no debe reventar con 500: el campo
+    # en blanco se descarta y la columna usa su default.
+    it 'crear sin elegir abre_garantia no rompe' do
+      post base,
+           params: { catalogo: { nombre: 'Retracto', codigo: 'retracto',
+                                 categoria_id: categoria.id, abre_garantia: '' } },
+           headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:created)
+    end
+
     it 'un agente que intenta escribir recibe 401' do
       post base,
            params: { catalogo: { nombre: 'Retracto', codigo: 'retracto', categoria_id: categoria.id } },

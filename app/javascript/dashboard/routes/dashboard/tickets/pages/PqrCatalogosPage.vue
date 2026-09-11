@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import Button from 'dashboard/components-next/button/Button.vue';
+import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
@@ -36,6 +37,7 @@ const CAMPOS = {
     { key: 'cierra_pqr', tipo: 'bool' },
     { key: 'abre_garantia', tipo: 'bool' },
     { key: 'aprobacion_humana', tipo: 'bool' },
+    { key: 'requiere_admin', tipo: 'bool' },
   ],
   detalles_tipificados: [],
   procesos_garantia: [
@@ -101,7 +103,11 @@ watch(
 const reiniciarNuevo = () => {
   const base = { nombre: '', codigo: '' };
   camposActivos.value.forEach(c => {
-    base[c.key] = c.tipo === 'bool' ? false : '';
+    // el enum arranca en su primera opcion (no en '', que el select pinta como la
+    // primera pero manda vacio y revienta la columna NOT NULL al crear)
+    if (c.tipo === 'bool') base[c.key] = false;
+    else if (c.tipo === 'enum') [base[c.key]] = c.opciones;
+    else base[c.key] = '';
   });
   Object.keys(nuevo).forEach(k => delete nuevo[k]);
   Object.assign(nuevo, base);
@@ -175,13 +181,27 @@ const alternarActivo = registro =>
     })
   );
 
-const eliminar = registro =>
+// Borrar pide confirmacion: un clic en la basura no debe borrar de una (coherente
+// con la doctrina de desactivar-no-borrar del propio controlador).
+const dialogoBorrar = ref(null);
+const registroABorrar = ref(null);
+
+const pedirBorrado = registro => {
+  registroABorrar.value = registro;
+  dialogoBorrar.value.open();
+};
+
+const eliminar = () => {
+  const registro = registroABorrar.value;
+  dialogoBorrar.value.close();
+  if (!registro) return;
   conAviso(() =>
     store.dispatch('pqrCatalogos/deleteCatalogo', {
       tipo: tabActivo.value,
       id: registro.id,
     })
   );
+};
 
 const puedeCrear = computed(() => {
   if (!nuevo.nombre || !nuevo.codigo) return false;
@@ -343,10 +363,11 @@ const guardarParametro = (parametro, valor) => {
               />
               <Button
                 icon="i-lucide-trash-2"
+                data-testid="btn-borrar"
                 ghost
                 ruby
                 xs
-                @click="eliminar(registro)"
+                @click="pedirBorrado(registro)"
               />
             </div>
           </div>
@@ -407,5 +428,14 @@ const guardarParametro = (parametro, valor) => {
         </div>
       </div>
     </div>
+
+    <Dialog
+      ref="dialogoBorrar"
+      type="alert"
+      :title="t('TICKETS.ADMIN.DELETE_TITLE')"
+      :description="t('TICKETS.ADMIN.DELETE_DESCRIPTION')"
+      :confirm-button-label="t('TICKETS.ADMIN.DELETE_CONFIRM')"
+      @confirm="eliminar"
+    />
   </div>
 </template>
