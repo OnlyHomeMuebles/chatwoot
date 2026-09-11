@@ -54,6 +54,55 @@ RSpec.describe 'Resoluciones API', type: :request do
       end
     end
 
+    context 'when the result opens a warranty (GAR-02)' do
+      let(:procede) do
+        Helic3::Catalogo::Resultado.create!(account: account, nombre: 'Procede garantía',
+                                            codigo: 'procede_garantia', cierra_pqr: true,
+                                            abre_garantia: true)
+      end
+      let!(:visita) do
+        Helic3::Catalogo::ProcesoGarantia.create!(account: account, nombre: 'Visita técnica',
+                                                  codigo: 'visita_tecnica', posicion: 0)
+      end
+      let(:manizales) do
+        Helic3::Catalogo::CoberturaCiudad.create!(account: account, nombre: 'Manizales',
+                                                  codigo: 'manizales', tecnico_propio: true,
+                                                  origen_ruta: 'visita_tecnica')
+      end
+
+      before do
+        { plazo_total_garantia: 30, umbral_verde_garantia: 15, umbral_amarillo_garantia: 5 }.each do |clave, valor|
+          Helic3::Catalogo::Parametro.create!(account: account, clave: clave.to_s,
+                                              valor: valor.to_s, unidad: 'dias_habiles')
+        end
+      end
+
+      it 'crea el radicado de garantia y lo devuelve en el JSON' do
+        post "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}/resolucion",
+             params: { resultado_id: procede.id,
+                       garantia: { cobertura_ciudad_id: manizales.id,
+                                   items: [{ producto_nombre: 'Sofá' }] } },
+             headers: administrator.create_new_auth_token,
+             as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(response.parsed_body['garantia']).to be_present
+        expect(response.parsed_body['garantia']['items'].first['producto_nombre']).to eq('Sofá')
+        expect(ticket.reload.garantia.items.first.proceso).to eq(visita)
+      end
+
+      it 'un resultado que abre garantia SIN datos responde 422 y no resuelve' do
+        post "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}/resolucion",
+             params: { resultado_id: procede.id },
+             headers: administrator.create_new_auth_token,
+             as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(ticket.reload.garantia).to be_nil
+        expect(ticket.respondida_at).to be_nil
+      end
+    end
+
     context 'when the resultado requires admin (the seeded default)' do
       it 'un agente asignado al expediente NO puede firmarlo' do
         # resultado nace con requiere_admin: true (default de la migracion)

@@ -43,6 +43,16 @@ json.origen resource.pqrs_metadata&.dig('origen')
 if local_assigns.fetch(:detallado, true)
   json.dias_habiles_restantes resource.dias_habiles_restantes
   json.semaforo resource.semaforo
+
+  # Garantia (GAR-02): el radicado que cuelga del expediente, o nulo si no hay.
+  # Solo en detallado: su presupuesto calcula dias habiles y festivos.
+  if resource.garantia
+    json.garantia do
+      json.partial! 'api/v1/models/helic3/garantia', formats: [:json], resource: resource.garantia
+    end
+  else
+    json.garantia nil
+  end
 end
 
 if resource.assignee.present?

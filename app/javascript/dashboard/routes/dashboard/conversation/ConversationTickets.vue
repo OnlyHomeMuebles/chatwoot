@@ -154,13 +154,29 @@ const updateStatus = async (ticket, status) => {
 // opciones del selector de resultado, leidas del catalogo (RES-01). Se marca
 // con un aviso el que exige aprobacion humana: el operador debe saber que ese
 // resultado niega un derecho o mueve dinero.
+//
+// Candado (GAR-02): mientras no exista el formulario de garantia (que capture
+// ciudad y productos), un resultado que abre garantia SIEMPRE falla con 422
+// desde el panel —el selector solo manda resultado_id—. Se deshabilita con el
+// motivo a la vista en vez de ofrecer un boton que revienta. El agente de IA si
+// puede abrirla (AGT-03, lleva los datos); esto es solo la carencia del panel.
 const resultadoOptions = computed(() =>
-  (catalogos.value.resultados || []).map(resultado => ({
-    value: resultado.id,
-    label: resultado.aprobacion_humana
-      ? `${resultado.nombre} ${t('TICKETS.RESOLUTION.NEEDS_APPROVAL')}`
-      : resultado.nombre,
-  }))
+  (catalogos.value.resultados || []).map(resultado => {
+    if (resultado.abre_garantia) {
+      return {
+        value: resultado.id,
+        label: `${resultado.nombre} ${t('TICKETS.RESOLUTION.WARRANTY_LOCKED')}`,
+        disabled: true,
+      };
+    }
+
+    return {
+      value: resultado.id,
+      label: resultado.aprobacion_humana
+        ? `${resultado.nombre} ${t('TICKETS.RESOLUTION.NEEDS_APPROVAL')}`
+        : resultado.nombre,
+    };
+  })
 );
 
 const resolver = async (ticket, resultadoId) => {
@@ -291,6 +307,38 @@ const resolver = async (ticket, resultadoId) => {
           resultadoId => resolver(ticket, resultadoId)
         "
       />
+
+      <!-- Garantia (GAR-02): el radicado que cuelga del expediente. Solo lectura;
+           se abre al resolver con "Procede garantia". No se pinta si no hay. -->
+      <div
+        v-if="ticket.garantia"
+        class="flex flex-col gap-1 p-2 rounded-lg bg-n-alpha-2"
+      >
+        <p class="mb-0 text-xs font-medium text-n-slate-12">
+          {{ t('TICKETS.WARRANTY.TITLE') }}
+          {{ ticket.garantia.numero_radicado }}
+        </p>
+        <p
+          v-if="ticket.garantia.proceso_visible"
+          class="mb-0 text-xs text-n-slate-11"
+        >
+          {{ ticket.garantia.proceso_visible.nombre }}
+        </p>
+        <div class="flex items-center gap-1 text-xs">
+          <span
+            class="rounded-full size-2 shrink-0"
+            :class="semaforoDotClass(ticket.garantia.presupuesto.semaforo)"
+          />
+          <span class="text-n-slate-11">
+            {{
+              t('TICKETS.WARRANTY.BUDGET', {
+                used: ticket.garantia.presupuesto.consumidos,
+                total: ticket.garantia.presupuesto_dias_habiles,
+              })
+            }}
+          </span>
+        </div>
+      </div>
     </div>
     <Button
       :label="t('TICKETS.CONVERSATION.CREATE')"

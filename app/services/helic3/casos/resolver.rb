@@ -8,11 +8,14 @@
 class Helic3::Casos::Resolver
   # actor: quien resuelve. Se recibe pero aun no se persiste (no hay donde
   # guardar el autor de la resolucion): lo llenara EVT-01 (bitacora de eventos).
-  def initialize(ticket:, resultado:, actor: nil, origen: :humano)
+  # garantia: datos opcionales { cobertura_ciudad:, items: [...] } que solo se
+  # usan cuando el resultado abre garantia (GAR-02).
+  def initialize(ticket:, resultado:, actor: nil, origen: :humano, garantia: nil)
     @ticket = ticket
     @resultado = resultado
     @actor = actor
     @origen = origen
+    @garantia = garantia
   end
 
   def call
@@ -55,9 +58,16 @@ class Helic3::Casos::Resolver
     )
   end
 
-  # GANCHO para GAR-02: cuando el resultado abre garantia, aqui se creara el
-  # radicado de garantia. Hoy no hace nada: RES-01 solo deja el punto de extension.
+  # GAR-02: cuando el resultado abre garantia, se crea el radicado. Un resultado
+  # que abre garantia SIN datos (ciudad + productos) es un 422: no se puede abrir
+  # un radicado vacio. La contradiccion motivo 'nunca' la valida AbrirGarantia.
   def abrir_garantia
-    # GAR-02
+    raise ArgumentError, 'un resultado que abre garantia requiere ciudad y productos' if @garantia.blank?
+
+    Helic3::Casos::AbrirGarantia.new(
+      ticket: @ticket,
+      cobertura_ciudad: @garantia[:cobertura_ciudad],
+      items: @garantia[:items] || []
+    ).call
   end
 end

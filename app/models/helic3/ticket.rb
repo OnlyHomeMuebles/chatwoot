@@ -59,6 +59,10 @@ class Helic3::Ticket < ApplicationRecord
   belongs_to :resultado, class_name: 'Helic3::Catalogo::Resultado', optional: true
   belongs_to :etapa, class_name: 'Helic3::Catalogo::EtapaPqr', optional: true
 
+  # el radicado de garantia que abre este expediente (GAR-02); un expediente
+  # tiene a lo sumo una. La garantia guarda su belongs_to :ticket desde GAR-01.
+  has_one :garantia, class_name: 'Helic3::Garantia', dependent: :destroy, inverse_of: :ticket
+
   CATALOGOS_CLASIFICACION = %i[categoria tipo motivo_pqr resultado etapa].freeze
 
   # status es el estado operativo generico heredado del sistema de tickets de

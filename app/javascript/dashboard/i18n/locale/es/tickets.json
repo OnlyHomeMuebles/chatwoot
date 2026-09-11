@@ -101,7 +101,12 @@
       "PLACEHOLDER": "Registrar resultado",
       "SUCCESS": "Resultado registrado",
       "ERROR": "Hubo un error al registrar el resultado",
-      "NEEDS_APPROVAL": "(requiere aprobación)"
+      "NEEDS_APPROVAL": "(requiere aprobación)",
+      "WARRANTY_LOCKED": "(pendiente del formulario de garantía)"
+    },
+    "WARRANTY": {
+      "TITLE": "Garantía",
+      "BUDGET": "{used} de {total} días hábiles usados"
     },
     "DELETE": {
       "TITLE": "Eliminar ticket",
