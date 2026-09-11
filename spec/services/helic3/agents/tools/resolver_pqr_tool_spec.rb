@@ -93,6 +93,10 @@ RSpec.describe Helic3::Agents::Tools::ResolverPqrTool do
                                                 codigo: 'visita_tecnica', posicion: 0)
       Helic3::Catalogo::CoberturaCiudad.create!(account: account, nombre: 'Manizales', codigo: 'manizales',
                                                 tecnico_propio: true, origen_ruta: 'visita_tecnica')
+      Helic3::Catalogo::MotivoGarantia.create!(account: account, nombre: 'Calidad del producto',
+                                               codigo: 'calidad_producto')
+      Helic3::Catalogo::DetalleTipificado.create!(account: account, nombre: 'Chapilla levantada',
+                                                  codigo: 'chapilla_levantada')
     end
 
     it 'radica la garantia con la ciudad y el producto dados' do
@@ -125,6 +129,45 @@ RSpec.describe Helic3::Agents::Tools::ResolverPqrTool do
                                  ciudad_codigo: 'manizales', producto_nombre: 'Sofá Modular')
 
       expect(ticket.reload.datos.producto_nombre).to eq('Sofá corregido')
+    end
+
+    it 'una ciudad invalida NO crea garantia y devuelve la lista de ciudades vigentes' do
+      salida = nil
+      expect do
+        salida = tool.perform(tool_context, ticket_display_id: ticket.display_id.to_s,
+                                            resultado_codigo: 'procede_garantia',
+                                            ciudad_codigo: 'ciudad_inventada', producto_nombre: 'Sofá')
+      end.not_to change(Helic3::Garantia, :count)
+
+      expect(ticket.reload.resultado).to be_nil
+      expect(salida).to include('manizales')
+    end
+
+    it 'clasifica la garantia con el motivo y el detalle dados por el agente' do
+      tool.perform(tool_context, ticket_display_id: ticket.display_id.to_s,
+                                 resultado_codigo: 'procede_garantia', ciudad_codigo: 'manizales',
+                                 producto_nombre: 'Sofá Modular', producto_referencia: 'REF-9',
+                                 motivo_garantia_codigo: 'calidad_producto',
+                                 detalle_tipificado_codigo: 'chapilla_levantada')
+
+      item = ticket.reload.garantia.items.first
+      expect(item.motivo_garantia.codigo).to eq('calidad_producto')
+      expect(item.detalle_tipificado.codigo).to eq('chapilla_levantada')
+      expect(item.producto_referencia).to eq('REF-9')
+      # el detalle tambien queda en la ficha con fuente ia (DAT-01)
+      expect(ticket.datos.detalle_tipificado.codigo).to eq('chapilla_levantada')
+      expect(ticket.datos.fuentes['detalle_tipificado_id']).to eq('ia')
+    end
+
+    it 'un detalle_tipificado invalido NO crea garantia y devuelve la lista vigente' do
+      salida = nil
+      expect do
+        salida = tool.perform(tool_context, ticket_display_id: ticket.display_id.to_s,
+                                            resultado_codigo: 'procede_garantia', ciudad_codigo: 'manizales',
+                                            producto_nombre: 'Sofá', detalle_tipificado_codigo: 'inventado')
+      end.not_to change(Helic3::Garantia, :count)
+
+      expect(salida).to include('chapilla_levantada')
     end
   end
 end

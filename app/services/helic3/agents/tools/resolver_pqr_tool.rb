@@ -14,20 +14,31 @@ class Helic3::Agents::Tools::ResolverPqrTool < Helic3::Agents::Tools::BaseTool
               'desenlace del caso. Para resultados que requieren aprobacion humana, la tool NO cierra: ' \
               'deja la propuesta para que una persona la apruebe.'
 
-  # ticket_display_id: el expediente a resolver (el numero visible que el agente ya
-  # radico o que el operador le dio en el contexto).
+  # Los codigos validos (resultado, ciudad, motivo de garantia, detalle) los trae
+  # la seccion "Codigos vigentes" del prompt, leida del catalogo de la cuenta: NO
+  # se nombran aqui para no clavar un valor de negocio en el codigo. Ante un codigo
+  # invalido, la tool responde la lista vigente para reintentar en la misma corrida.
   param :ticket_display_id, type: 'string',
                             desc: 'Numero del expediente PQR a resolver (el que se radico antes).'
   param :resultado_codigo, type: 'string',
-                           desc: 'Codigo del resultado segun el catalogo de la cuenta (resuelta_info, ' \
-                                 'procede_garantia...). Ante un codigo invalido, responde la lista vigente.'
+                           desc: 'Codigo del resultado, de la lista vigente del sistema. Ante un codigo ' \
+                                 'invalido, responde la lista vigente.'
   # solo para el caso de garantia; opcionales para el resto de resultados
   param :ciudad_codigo, type: 'string', required: false,
-                        desc: 'Codigo de la ciudad de cobertura; obligatorio si el resultado abre garantia.'
+                        desc: 'Codigo de la ciudad de cobertura; OBLIGATORIO si el resultado abre garantia.'
   param :producto_nombre, type: 'string', required: false,
                           desc: 'Nombre del producto en garantia; obligatorio si el resultado abre garantia.'
+  param :producto_referencia, type: 'string', required: false,
+                              desc: 'Referencia o codigo del producto, si el cliente la da (texto libre).'
+  param :motivo_garantia_codigo, type: 'string', required: false,
+                                 desc: 'Codigo del motivo de garantia que clasifica el caso, de la lista vigente.'
+  param :detalle_tipificado_codigo, type: 'string', required: false,
+                                    desc: 'Codigo del detalle tipificado (el defecto), de la lista vigente.'
 
-  def perform(tool_context, ticket_display_id:, resultado_codigo:, ciudad_codigo: nil, producto_nombre: nil)
+  # rubocop:disable Metrics/ParameterLists
+  def perform(tool_context, ticket_display_id:, resultado_codigo:, ciudad_codigo: nil,
+              producto_nombre: nil, producto_referencia: nil,
+              motivo_garantia_codigo: nil, detalle_tipificado_codigo: nil)
     account = resolve_account(tool_context)
     return 'No hay una cuenta configurada para resolver.' if account.blank?
 
@@ -37,21 +48,22 @@ class Helic3::Agents::Tools::ResolverPqrTool < Helic3::Agents::Tools::BaseTool
     resultado = Helic3::Catalogo::Resultado.activos.find_by(account: account, codigo: resultado_codigo)
     return resultados_invalidos(account) if resultado.nil?
 
-    resuelto = begin
-      Helic3::Casos::Resolver.new(
-        ticket: ticket, resultado: resultado, origen: :agente,
-        garantia: datos_garantia(account, resultado, ciudad_codigo, producto_nombre)
-      ).call
-    rescue StandardError => e
-      Rails.logger.error("[Helic3] resolver_pqr fallo account=#{account.id}: #{e.class}: #{e.message}")
-      e
-    end
+    # construir_garantia devuelve el bloque de garantia, nil si el resultado no la
+    # abre, o un String de recuperacion si un codigo de garantia es invalido.
+    codigos = { ciudad_codigo: ciudad_codigo, producto_nombre: producto_nombre,
+                producto_referencia: producto_referencia, motivo_garantia_codigo: motivo_garantia_codigo,
+                detalle_tipificado_codigo: detalle_tipificado_codigo }
+    garantia = construir_garantia(account, resultado, codigos)
+    return garantia if garantia.is_a?(String)
+
+    resuelto = ejecutar_resolver(account, ticket, resultado, garantia)
     return "No se pudo resolver el expediente: #{resuelto.message}" if resuelto.is_a?(StandardError)
 
-    registrar_datos_ia(ticket, producto_nombre)
+    registrar_datos_ia(ticket, producto_nombre, detalle_de(garantia))
     dejar_nota_privada(tool_context, ticket, resultado)
     respuesta_segun_autonomia(account, ticket, resultado)
   end
+  # rubocop:enable Metrics/ParameterLists
 
   private
 
@@ -60,24 +72,65 @@ class Helic3::Agents::Tools::ResolverPqrTool < Helic3::Agents::Tools::BaseTool
     account_id.present? ? Account.find_by(id: account_id) : nil
   end
 
-  # DAT-01: lo que el agente dedujo entra al expediente con fuente ia, por el
-  # mismo servicio que usa el panel. La precedencia protege al operador: si una
-  # persona ya corrigio el producto, esta escritura ia no lo pisa.
-  def registrar_datos_ia(ticket, producto_nombre)
-    return if producto_nombre.blank?
-
-    Helic3::Casos::RegistrarDatos.new(
-      ticket: ticket, campos: { producto_nombre: producto_nombre }, fuente: :ia
-    ).call
-  end
-
-  # solo arma el bloque de garantia cuando el resultado la abre; para el resto,
-  # nil (Resolver ni lo mira). La ciudad se resuelve contra el catalogo.
-  def datos_garantia(account, resultado, ciudad_codigo, producto_nombre)
+  # Arma el bloque de garantia SOLO si el resultado la abre. Los codigos de
+  # garantia (ciudad, y si vienen motivo y detalle) deben existir en el catalogo
+  # ANTES de tocar el dominio: una ciudad invalida crearia un radicado sin ciudad
+  # ni proceso, en silencio. Devuelve: nil (no abre garantia), el hash de garantia,
+  # o un String de recuperacion con la lista vigente si un codigo es invalido.
+  def construir_garantia(account, resultado, codigos)
     return nil unless resultado.abre_garantia?
 
-    ciudad = Helic3::Catalogo::CoberturaCiudad.find_by(account: account, codigo: ciudad_codigo)
-    { cobertura_ciudad: ciudad, items: [{ producto_nombre: producto_nombre }] }
+    ciudad = Helic3::Catalogo::CoberturaCiudad.activos.find_by(account: account, codigo: codigos[:ciudad_codigo])
+    return ciudades_invalidas(account) if ciudad.nil?
+
+    motivo = catalogo_opcional(Helic3::Catalogo::MotivoGarantia, account, codigos[:motivo_garantia_codigo])
+    return motivos_garantia_invalidos(account) if invalido?(codigos[:motivo_garantia_codigo], motivo)
+
+    detalle = catalogo_opcional(Helic3::Catalogo::DetalleTipificado, account, codigos[:detalle_tipificado_codigo])
+    return detalles_invalidos(account) if invalido?(codigos[:detalle_tipificado_codigo], detalle)
+
+    { cobertura_ciudad: ciudad,
+      items: [{ producto_nombre: codigos[:producto_nombre], producto_referencia: codigos[:producto_referencia],
+                motivo_garantia: motivo, detalle_tipificado: detalle }] }
+  end
+
+  # el detalle que se guardo en la garantia, para replicarlo en la ficha con ia
+  def detalle_de(garantia)
+    garantia.is_a?(Hash) ? garantia[:items].first[:detalle_tipificado] : nil
+  end
+
+  # una corrida: convierte el fallo de dominio en el propio error (texto para el
+  # modelo) sin tumbar el run, y deja rastro en el log.
+  def ejecutar_resolver(account, ticket, resultado, garantia)
+    Helic3::Casos::Resolver.new(ticket: ticket, resultado: resultado, origen: :agente, garantia: garantia).call
+  rescue StandardError => e
+    Rails.logger.error("[Helic3] resolver_pqr fallo account=#{account.id}: #{e.class}: #{e.message}")
+    e
+  end
+
+  # DAT-01: lo que el agente dedujo (producto y detalle) entra al expediente con
+  # fuente ia, por el mismo servicio que usa el panel. La precedencia protege al
+  # operador: si una persona ya corrigio un campo, esta escritura ia no lo pisa.
+  def registrar_datos_ia(ticket, producto_nombre, detalle)
+    campos = {}
+    campos[:producto_nombre] = producto_nombre if producto_nombre.present?
+    campos[:detalle_tipificado_id] = detalle.id if detalle
+    return if campos.empty?
+
+    Helic3::Casos::RegistrarDatos.new(ticket: ticket, campos: campos, fuente: :ia).call
+  end
+
+  # resuelve un codigo OPCIONAL de catalogo: nil si no vino; la fila si existe; y
+  # nil tambien si vino uno que no existe (invalido? lo detecta para cortar).
+  def catalogo_opcional(modelo, account, codigo)
+    return nil if codigo.blank?
+
+    modelo.activos.find_by(account: account, codigo: codigo)
+  end
+
+  # vino un codigo pero no resolvio: hay que cortar y devolver la lista vigente.
+  def invalido?(codigo, registro)
+    codigo.present? && registro.nil?
   end
 
   # el operador ve que decidio el agente sin abrir otra pantalla
@@ -122,7 +175,23 @@ class Helic3::Agents::Tools::ResolverPqrTool < Helic3::Agents::Tools::BaseTool
   # recuperacion barata: el modelo se inventa un codigo, y la respuesta le da la
   # lista vigente (leida del catalogo) para que reintente en la misma corrida.
   def resultados_invalidos(account)
-    codigos = Helic3::Catalogo::Resultado.activos.where(account: account).pluck(:codigo).join(', ')
-    "No se resolvio. resultado_codigo invalido; resultados vigentes: #{codigos}. Reintenta con uno de la lista."
+    lista_vigente(account, Helic3::Catalogo::Resultado, 'resultado_codigo', 'resultados')
+  end
+
+  def ciudades_invalidas(account)
+    lista_vigente(account, Helic3::Catalogo::CoberturaCiudad, 'ciudad_codigo', 'ciudades')
+  end
+
+  def motivos_garantia_invalidos(account)
+    lista_vigente(account, Helic3::Catalogo::MotivoGarantia, 'motivo_garantia_codigo', 'motivos de garantia')
+  end
+
+  def detalles_invalidos(account)
+    lista_vigente(account, Helic3::Catalogo::DetalleTipificado, 'detalle_tipificado_codigo', 'detalles tipificados')
+  end
+
+  def lista_vigente(account, modelo, parametro, etiqueta)
+    codigos = modelo.activos.where(account: account).pluck(:codigo).join(', ')
+    "No se resolvio. #{parametro} invalido; #{etiqueta} vigentes: #{codigos}. Reintenta con uno de la lista."
   end
 end

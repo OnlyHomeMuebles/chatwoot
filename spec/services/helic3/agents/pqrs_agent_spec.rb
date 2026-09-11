@@ -63,6 +63,10 @@ RSpec.describe Helic3::Agents::PqrsAgent do
                                                       codigo: 'garantia')
       Helic3::Catalogo::MotivoPqr.create!(account: account, nombre: 'Garantía de producto',
                                           codigo: 'garantia_producto', categoria: categoria)
+      Helic3::Catalogo::Resultado.create!(account: account, nombre: 'Resuelta con información',
+                                          codigo: 'resuelta_info', cierra_pqr: true)
+      Helic3::Catalogo::CoberturaCiudad.create!(account: account, nombre: 'Manizales', codigo: 'manizales',
+                                                tecnico_propio: true, origen_ruta: 'visita_tecnica')
     end
 
     def prompt
@@ -85,6 +89,18 @@ RSpec.describe Helic3::Agents::PqrsAgent do
     it 'inyecta los codigos vigentes para la herramienta de radicacion' do
       expect(prompt).to include('tipo_codigo: reclamo')
       expect(prompt).to include('garantia_producto')
+    end
+
+    it 'inyecta los codigos vigentes para resolver_pqr, leidos del catalogo (AGT-03)' do
+      expect(prompt).to include('resultado_codigo: resuelta_info')
+      expect(prompt).to include('ciudad_codigo')
+      expect(prompt).to include('manizales')
+    end
+
+    it 'un resultado nuevo en el catalogo aparece en el prompt sin tocar codigo' do
+      Helic3::Catalogo::Resultado.create!(account: account, nombre: 'Trasladada', codigo: 'trasladada_otra_area')
+
+      expect(prompt).to include('trasladada_otra_area')
     end
   end
 
