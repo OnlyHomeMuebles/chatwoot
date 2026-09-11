@@ -353,6 +353,15 @@ Rails.application.routes.draw do
             # en servidor. Endpoint propio para no cambiar la forma de la respuesta
             # que el panel de conversacion ya consume por tickets#index.
             get 'pqr', to: 'pqr#index'
+            # Administracion de catalogos y parametros (ADM-01): lectura para
+            # agentes, escritura solo administradores. El :tipo elige el catalogo.
+            namespace :admin do
+              get    'catalogos/:tipo',     to: 'catalogos#index'
+              post   'catalogos/:tipo',     to: 'catalogos#create'
+              patch  'catalogos/:tipo/:id', to: 'catalogos#update'
+              delete 'catalogos/:tipo/:id', to: 'catalogos#destroy'
+              resources :parametros, only: [:index, :update]
+            end
           end
 
           resources :teams do

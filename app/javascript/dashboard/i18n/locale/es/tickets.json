@@ -92,6 +92,47 @@
         "NEXT": "Siguiente"
       }
     },
+    "ADMIN": {
+      "TITLE": "Catálogos y parámetros",
+      "READ_ONLY": "Solo lectura: los cambios los hace un administrador",
+      "SAVED": "Guardado",
+      "ERROR": "No se pudo guardar",
+      "FORBIDDEN": "Solo los administradores pueden editar",
+      "DEACTIVATE": "Desactivar",
+      "ACTIVATE": "Activar",
+      "ADD": "Agregar",
+      "SAVE": "Guardar",
+      "DELETE_TITLE": "Borrar del catálogo",
+      "DELETE_DESCRIPTION": "¿Seguro que quieres borrar este registro? Si está en uso, mejor desactívalo. Esta acción no se puede deshacer.",
+      "DELETE_CONFIRM": "Borrar",
+      "NEW_NAME": "Nombre",
+      "NEW_CODE": "Código",
+      "PARAM_REQUIRED": "{param} es obligatorio: no puede quedar vacío",
+      "ENUM": {
+        "NUNCA": "Nunca",
+        "SIEMPRE": "Siempre",
+        "SEGUN_ANALISIS": "Según análisis"
+      },
+      "FLAGS": {
+        "CATEGORIA_ID": "Categoría",
+        "ABRE_GARANTIA": "Abre garantía",
+        "PLAZO_DIAS_HABILES": "Plazo (días hábiles)",
+        "CIERRA_PQR": "Cierra la PQR al aplicarse",
+        "APROBACION_HUMANA": "Exige que una persona lo apruebe antes de aplicarse",
+        "REQUIERE_ADMIN": "Solo un administrador puede firmarlo",
+        "ES_TERMINAL": "Es la etapa final del proceso",
+        "TECNICO_PROPIO": "Técnico propio (no tercerizado)",
+        "ORIGEN_RUTA": "Origen de la ruta"
+      },
+      "TABS": {
+        "MOTIVOS_PQR": "Motivos de PQR",
+        "RESULTADOS": "Resultados",
+        "DETALLES_TIPIFICADOS": "Detalle tipificado",
+        "PROCESOS_GARANTIA": "Procesos de garantía",
+        "COBERTURAS_CIUDAD": "Cobertura por ciudad",
+        "PARAMETROS": "Parámetros"
+      }
+    },
     "UPDATE": {
       "SUCCESS": "Ticket actualizado",
       "ERROR": "Hubo un error al actualizar el ticket",

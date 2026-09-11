@@ -92,6 +92,47 @@
         "NEXT": "Next"
       }
     },
+    "ADMIN": {
+      "TITLE": "Catalogs and parameters",
+      "READ_ONLY": "Read only: changes are made by an administrator",
+      "SAVED": "Saved",
+      "ERROR": "Could not save",
+      "FORBIDDEN": "Only administrators can edit",
+      "DEACTIVATE": "Deactivate",
+      "ACTIVATE": "Activate",
+      "ADD": "Add",
+      "SAVE": "Save",
+      "DELETE_TITLE": "Delete from catalog",
+      "DELETE_DESCRIPTION": "Are you sure you want to delete this entry? If it is in use, deactivate it instead. This action cannot be undone.",
+      "DELETE_CONFIRM": "Delete",
+      "NEW_NAME": "Name",
+      "NEW_CODE": "Code",
+      "PARAM_REQUIRED": "{param} is required: it cannot be left empty",
+      "ENUM": {
+        "NUNCA": "Never",
+        "SIEMPRE": "Always",
+        "SEGUN_ANALISIS": "Based on review"
+      },
+      "FLAGS": {
+        "CATEGORIA_ID": "Category",
+        "ABRE_GARANTIA": "Opens warranty",
+        "PLAZO_DIAS_HABILES": "Deadline (business days)",
+        "CIERRA_PQR": "Closes the PQR when applied",
+        "APROBACION_HUMANA": "Requires a person to approve it before applying",
+        "REQUIERE_ADMIN": "Only an administrator can sign it off",
+        "ES_TERMINAL": "Is the final stage of the process",
+        "TECNICO_PROPIO": "In-house technician (not outsourced)",
+        "ORIGEN_RUTA": "Route origin"
+      },
+      "TABS": {
+        "MOTIVOS_PQR": "PQR motives",
+        "RESULTADOS": "Results",
+        "DETALLES_TIPIFICADOS": "Typified detail",
+        "PROCESOS_GARANTIA": "Warranty processes",
+        "COBERTURAS_CIUDAD": "City coverage",
+        "PARAMETROS": "Parameters"
+      }
+    },
     "UPDATE": {
       "SUCCESS": "Ticket updated",
       "ERROR": "There was an error updating the ticket",
