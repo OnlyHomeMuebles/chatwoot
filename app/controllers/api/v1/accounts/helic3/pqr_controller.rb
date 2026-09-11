@@ -21,12 +21,32 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
     @umbrales = umbrales_pqr
   end
 
+  # Cola de decisiones (DEC-01): lo que el agente propuso y espera a una persona.
+  # Ordena por urgencia del reloj legal (las vencidas arriba). Es lo que la hace
+  # util. La regla de que exige aprobacion no se escribe aqui: viene de la marca
+  # del catalogo (el agente solo guarda la propuesta cuando el resultado la exige).
+  def decisiones
+    @decisiones = Current.account.tickets
+                         .con_decision_pendiente
+                         .includes(conversation: :contact)
+                         .order(Arel.sql('plazo_respuesta_vence_at ASC NULLS LAST'))
+    @propuestas = propuestas_por_id(@decisiones)
+  end
+
   private
 
-  # Solo lectura, pero se autoriza igual que el resto del modulo para acotar por
-  # politica. ensure_current_account (base) ya acota a la cuenta; no se reimplementa.
+  # Precarga los resultados propuestos (uno por expediente, guardado en
+  # pqrs_metadata) en una sola consulta, para que la fila no dispare un N+1.
+  def propuestas_por_id(decisiones)
+    ids = decisiones.filter_map { |t| t.pqrs_metadata['resultado_propuesto_id'] }.uniq
+    Helic3::Catalogo::Resultado.where(account: Current.account, id: ids).index_by(&:id)
+  end
+
+  # Solo lectura (index y decisiones): se autoriza con index? explicito para no
+  # depender del nombre de la accion (Pundit buscaria decisiones?, que no existe).
+  # ensure_current_account (base) ya acota a la cuenta; no se reimplementa.
   def check_authorization
-    authorize(Helic3::Ticket)
+    authorize(Helic3::Ticket, :index?)
   end
 
   # includes de la clasificacion y el responsable para que la fila no dispare una

@@ -2,6 +2,7 @@ import { frontendURL } from 'dashboard/helper/URLHelper.js';
 
 import TicketsPage from './pages/TicketsPage.vue';
 import PqrCatalogosPage from './pages/PqrCatalogosPage.vue';
+import PqrDecisionesPage from './pages/PqrDecisionesPage.vue';
 
 const ticketsRoutes = {
   routes: [
@@ -21,6 +22,16 @@ const ticketsRoutes = {
         permissions: ['administrator', 'agent'],
       },
       component: PqrCatalogosPage,
+    },
+    {
+      // Cola de decisiones (DEC-01). Agentes la ven; aprobar lo gatea la política
+      // de resolución (un resultado que exige admin rechaza al agente con aviso).
+      path: frontendURL('accounts/:accountId/helic3/pqr/decisiones'),
+      name: 'helic3_pqr_decisiones',
+      meta: {
+        permissions: ['administrator', 'agent'],
+      },
+      component: PqrDecisionesPage,
     },
   ],
 };

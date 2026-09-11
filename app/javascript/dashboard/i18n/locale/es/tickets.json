@@ -133,6 +133,27 @@
         "PARAMETROS": "Parámetros"
       }
     },
+    "DECISIONS": {
+      "TITLE": "Decisiones pendientes",
+      "EMPTY": "No hay decisiones esperando aprobación",
+      "APPROVED": "Decisión aprobada",
+      "ERROR": "No se pudo aprobar la decisión",
+      "FORBIDDEN": "No tienes permiso para aprobar esta decisión",
+      "OVERDUE": "Vencido hace {days} días hábiles",
+      "REMAINING": "{days} días hábiles restantes",
+      "RULE_HUMAN": "Aprobación humana obligatoria",
+      "VIEW": "Ver sustento",
+      "APPROVE": "Aprobar",
+      "CONFIRM_TITLE": "Aprobar la decisión",
+      "CONFIRM_DESCRIPTION": "Se aplicará el resultado \"{result}\". Esto cierra el expediente y detiene el reloj. No le escribe nada al cliente.",
+      "COLUMNS": {
+        "REFERENCE": "Expediente",
+        "PROPOSAL": "Propuesta del agente",
+        "RULE": "Regla",
+        "WAITING_SINCE": "Espera desde",
+        "CLOCK": "Reloj"
+      }
+    },
     "UPDATE": {
       "SUCCESS": "Ticket actualizado",
       "ERROR": "Hubo un error al actualizar el ticket",
