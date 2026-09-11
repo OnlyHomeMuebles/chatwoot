@@ -68,7 +68,8 @@ class Helic3::Agents::PqrsAgent
       tools: [
         Helic3::Agents::Tools::HumanHandoffTool.new,
         Helic3::KnowledgeBaseSearchTool.new,
-        Helic3::Agents::Tools::RadicarPqrTool.new
+        Helic3::Agents::Tools::RadicarPqrTool.new,
+        Helic3::Agents::Tools::ResolverPqrTool.new
       ]
     )
   end
@@ -99,13 +100,16 @@ class Helic3::Agents::PqrsAgent
     account = account_id.present? ? Account.find_by(id: account_id) : nil
     return nil if account.nil?
 
+    [seccion_tiempos(account), seccion_codigos(account)].join("\n")
+  end
+
+  # los plazos oficiales que el agente puede citar, leídos del catálogo
+  def self.seccion_tiempos(account)
     procesos = Helic3::Catalogo::ProcesoGarantia.activos.where(account: account)
                                                 .pluck(:codigo, :plazo_dias_habiles).to_h
     parametros = Helic3::Catalogo::Parametro
                  .where(account: account, clave: %w[amparo_garantia plazo_respuesta_pqr plazo_retracto])
                  .pluck(:clave, :valor).to_h
-    tipos = Helic3::Catalogo::Tipo.activos.where(account: account).pluck(:codigo).join(', ')
-    motivos = Helic3::Catalogo::MotivoPqr.activos.where(account: account).pluck(:codigo).join(', ')
 
     <<~SECCION
       # Tiempos oficiales vigentes (del sistema; usa SOLO estos)
@@ -115,15 +119,32 @@ class Helic3::Agents::PqrsAgent
       - Amparo de la garantía: #{parametros['amparo_garantia']} meses desde la compra.
       - Plazo legal de respuesta de la PQR: #{parametros['plazo_respuesta_pqr']} días hábiles.
       - Retracto de compra: #{parametros['plazo_retracto']} días hábiles.
+    SECCION
+  end
 
+  # los códigos vigentes de las herramientas, UNA consulta por tabla: sin esto el
+  # modelo tendría que adivinar los parámetros de radicar_pqr y resolver_pqr.
+  def self.seccion_codigos(account)
+    codigos = lambda do |modelo|
+      modelo.activos.where(account: account).pluck(:codigo).join(', ')
+    end
+
+    <<~SECCION
       # Códigos vigentes para la herramienta radicar_pqr
-      - tipo_codigo: #{tipos}
-      - motivo_codigo: #{motivos}
+      - tipo_codigo: #{codigos.call(Helic3::Catalogo::Tipo)}
+      - motivo_codigo: #{codigos.call(Helic3::Catalogo::MotivoPqr)}
+
+      # Códigos vigentes para la herramienta resolver_pqr
+      - resultado_codigo: #{codigos.call(Helic3::Catalogo::Resultado)}
+      - ciudad_codigo (obligatorio si el resultado abre garantía): #{codigos.call(Helic3::Catalogo::CoberturaCiudad)}
+      - motivo_garantia_codigo (opcional, clasifica la garantía): #{codigos.call(Helic3::Catalogo::MotivoGarantia)}
+      - detalle_tipificado_codigo (opcional, el defecto reportado): #{codigos.call(Helic3::Catalogo::DetalleTipificado)}
     SECCION
   end
 
   def self.default_model
     InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence || LlmConstants::DEFAULT_MODEL
   end
-  private_class_method :contextual_instructions, :seccion_operativa, :default_model
+  private_class_method :contextual_instructions, :seccion_operativa, :seccion_tiempos,
+                       :seccion_codigos, :default_model
 end
