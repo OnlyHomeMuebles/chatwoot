@@ -192,6 +192,50 @@ const resolver = async (ticket, resultadoId) => {
     );
   }
 };
+
+// DAT-01: los campos de texto de la ficha del caso, editables por el operador.
+// El detalle tipificado (catalogo) va aparte y de solo lectura: lo deduce la IA.
+const DATOS_TEXTO = [
+  'cedula',
+  'direccion',
+  'ciudad',
+  'factura_numero',
+  'producto_nombre',
+];
+
+const datosFuenteLabel = fuente =>
+  fuente ? t(`TICKETS.DATA.SOURCE.${fuente.toUpperCase()}`) : '';
+
+// el color del badge dice de un vistazo el origen: IA, ERP o manual
+const datosFuenteClass = fuente => {
+  const classes = {
+    ia: 'bg-n-blue-3 text-n-blue-11',
+    erp: 'bg-n-amber-3 text-n-amber-11',
+    humano: 'bg-n-teal-3 text-n-teal-11',
+  };
+  return classes[fuente] || 'bg-n-alpha-2 text-n-slate-10';
+};
+
+// al guardar, la fuente de ese campo pasa a humano (lo fija el backend). Un
+// valor vacio no se manda: no borra el que habia, misma regla del servicio.
+const guardarDato = async (ticket, campo, event) => {
+  const valor = event.target.value?.trim();
+  if (!valor) return;
+  try {
+    await store.dispatch('tickets/registrarDatos', {
+      id: ticket.id,
+      datos: { [campo]: valor },
+    });
+    useAlert(t('TICKETS.DATA.SAVED'));
+  } catch (error) {
+    selectsRefreshKey.value += 1;
+    useAlert(
+      error?.response?.status === 401
+        ? t('TICKETS.UPDATE.FORBIDDEN')
+        : t('TICKETS.DATA.ERROR')
+    );
+  }
+};
 </script>
 
 <template>
@@ -336,6 +380,59 @@ const resolver = async (ticket, resultadoId) => {
                 total: ticket.garantia.presupuesto_dias_habiles,
               })
             }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Datos del caso (DAT-01): cada campo con su badge de procedencia
+           (IA/ERP/Manual). Editar un campo lo deja con fuente manual. Vacio se
+           muestra como "Pendiente". El detalle tipificado va de solo lectura. -->
+      <div
+        v-if="ticket.datos"
+        class="flex flex-col gap-1 p-2 rounded-lg bg-n-alpha-2"
+      >
+        <p class="mb-0 text-xs font-medium text-n-slate-12">
+          {{ t('TICKETS.DATA.TITLE') }}
+        </p>
+        <div
+          v-for="campo in DATOS_TEXTO"
+          :key="campo"
+          class="flex items-center gap-1.5"
+        >
+          <span class="w-16 text-xs shrink-0 text-n-slate-10">
+            {{ t(`TICKETS.DATA.FIELDS.${campo.toUpperCase()}`) }}
+          </span>
+          <input
+            :key="`dato-${campo}-${ticket.id}-${selectsRefreshKey}`"
+            :value="ticket.datos[campo] && ticket.datos[campo].valor"
+            :placeholder="t('TICKETS.FIELDS.PENDING')"
+            class="flex-1 min-w-0 px-1.5 py-0.5 text-xs rounded bg-n-surface-1 outline-1 outline -outline-offset-1 outline-n-weak"
+            @change="event => guardarDato(ticket, campo, event)"
+          />
+          <span
+            v-if="ticket.datos[campo] && ticket.datos[campo].fuente"
+            class="shrink-0 px-1 py-0.5 rounded text-[10px]"
+            :class="datosFuenteClass(ticket.datos[campo].fuente)"
+          >
+            {{ datosFuenteLabel(ticket.datos[campo].fuente) }}
+          </span>
+        </div>
+
+        <div
+          v-if="ticket.datos.detalle_tipificado"
+          class="flex items-center gap-1.5"
+        >
+          <span class="w-16 text-xs shrink-0 text-n-slate-10">
+            {{ t('TICKETS.DATA.FIELDS.DETALLE') }}
+          </span>
+          <span class="flex-1 min-w-0 text-xs text-n-slate-12">
+            {{ ticket.datos.detalle_tipificado.valor.nombre }}
+          </span>
+          <span
+            class="shrink-0 px-1 py-0.5 rounded text-[10px]"
+            :class="datosFuenteClass(ticket.datos.detalle_tipificado.fuente)"
+          >
+            {{ datosFuenteLabel(ticket.datos.detalle_tipificado.fuente) }}
           </span>
         </div>
       </div>

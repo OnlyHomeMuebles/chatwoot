@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_09_10_120000) do
+ActiveRecord::Schema[7.2].define(version: 2026_09_10_130000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1364,6 +1364,23 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_10_120000) do
     t.index ["account_id"], name: "index_helic3_pqrs_procesos_on_account_id"
   end
 
+  create_table "helic3_ticket_datos", force: :cascade do |t|
+    t.bigint "ticket_id", null: false
+    t.bigint "account_id", null: false
+    t.string "cedula"
+    t.string "direccion"
+    t.string "ciudad"
+    t.string "factura_numero"
+    t.string "producto_nombre"
+    t.bigint "detalle_tipificado_id"
+    t.jsonb "fuentes", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "idx_h3_ticket_datos_account"
+    t.index ["detalle_tipificado_id"], name: "idx_h3_ticket_datos_detalle"
+    t.index ["ticket_id"], name: "idx_h3_ticket_datos_ticket", unique: true
+  end
+
   create_table "helic3_tickets", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.integer "display_id", null: false
@@ -1910,6 +1927,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_10_120000) do
   add_foreign_key "helic3_garantias", "helic3_catalogo_coberturas_ciudad", column: "cobertura_ciudad_id"
   add_foreign_key "helic3_garantias", "helic3_tickets", column: "ticket_id"
   add_foreign_key "helic3_pqrs_detalles", "helic3_pqrs_motivos", column: "motivo_id"
+  add_foreign_key "helic3_ticket_datos", "accounts"
+  add_foreign_key "helic3_ticket_datos", "helic3_catalogo_detalles_tipificados", column: "detalle_tipificado_id"
+  add_foreign_key "helic3_ticket_datos", "helic3_tickets", column: "ticket_id"
   add_foreign_key "helic3_tickets", "helic3_catalogo_categorias", column: "categoria_id"
   add_foreign_key "helic3_tickets", "helic3_catalogo_etapas_pqr", column: "etapa_id"
   add_foreign_key "helic3_tickets", "helic3_catalogo_motivos_pqr", column: "motivo_pqr_id"

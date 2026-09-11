@@ -20,6 +20,13 @@ class TicketsAPI extends ApiClient {
     });
   }
 
+  // Registra/corrige los datos de la ficha del caso (DAT-01). Lo que el operador
+  // manda aqui queda con fuente 'humano': la mas alta, no la pisa ni la IA ni el
+  // ERP. La regla de precedencia la aplica el backend.
+  registrarDatos(ticketId, datos) {
+    return axios.patch(`${this.url}/${ticketId}/datos`, { datos });
+  }
+
   // Catalogos de clasificacion (API-01) para poblar los selectores del panel.
   // Cuelgan del mismo namespace helic3, al lado de tickets.
   catalogos() {

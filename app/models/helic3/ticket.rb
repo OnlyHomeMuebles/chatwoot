@@ -43,6 +43,14 @@
 #  index_helic3_tickets_on_assignee_id_and_account_id  (assignee_id,account_id)
 #  index_helic3_tickets_on_conversation_id             (conversation_id)
 #
+# Foreign Keys
+#
+#  fk_rails_...  (categoria_id => helic3_catalogo_categorias.id)
+#  fk_rails_...  (etapa_id => helic3_catalogo_etapas_pqr.id)
+#  fk_rails_...  (motivo_pqr_id => helic3_catalogo_motivos_pqr.id)
+#  fk_rails_...  (resultado_id => helic3_catalogo_resultados.id)
+#  fk_rails_...  (tipo_id => helic3_catalogo_tipos.id)
+#
 class Helic3::Ticket < ApplicationRecord
   belongs_to :account
   belongs_to :assignee, class_name: 'User', optional: true, inverse_of: :assigned_tickets
@@ -62,6 +70,9 @@ class Helic3::Ticket < ApplicationRecord
   # el radicado de garantia que abre este expediente (GAR-02); un expediente
   # tiene a lo sumo una. La garantia guarda su belongs_to :ticket desde GAR-01.
   has_one :garantia, class_name: 'Helic3::Garantia', dependent: :destroy, inverse_of: :ticket
+
+  # la ficha de datos del caso (DAT-01): 1:1, con la procedencia por campo.
+  has_one :datos, class_name: 'Helic3::TicketDato', dependent: :destroy, inverse_of: :ticket
 
   CATALOGOS_CLASIFICACION = %i[categoria tipo motivo_pqr resultado etapa].freeze
 
@@ -93,7 +104,7 @@ class Helic3::Ticket < ApplicationRecord
   # la fuente de la cola de decisiones (DEC-01). El operador ? de Postgres pregunta
   # "tiene la llave"; va con placeholder nombrado para no chocar con el ? de Rails.
   scope :con_decision_pendiente, lambda {
-    where("pqrs_metadata ? :clave", clave: 'resultado_propuesto_id')
+    where('pqrs_metadata ? :clave', clave: 'resultado_propuesto_id')
   }
 
   def ticket_number
