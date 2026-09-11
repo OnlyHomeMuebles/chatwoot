@@ -59,6 +59,19 @@ if local_assigns.fetch(:detallado, true)
   json.datos do
     json.partial! 'api/v1/models/helic3/datos', formats: [:json], resource: resource.datos
   end
+
+  # Bitacora de eventos (EVT-01): las transiciones en orden cronologico, para la
+  # tarjeta de actividad de VIS-03. Una consulta sobre el expediente puntual.
+  json.eventos resource.eventos.cronologicos do |evento|
+    json.call(evento, :id, :tipo, :origen, :payload, :created_at)
+    if evento.actor
+      json.actor do
+        json.call(evento.actor, :id, :name)
+      end
+    else
+      json.actor nil
+    end
+  end
 end
 
 if resource.assignee.present?
