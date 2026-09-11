@@ -106,7 +106,11 @@
     },
     "WARRANTY": {
       "TITLE": "Garantía",
-      "BUDGET": "{used} de {total} días hábiles usados"
+      "BUDGET": "{used} de {total} días hábiles usados",
+      "CLOSED": "Garantía cerrada",
+      "ADVANCED": "Proceso actualizado",
+      "ERROR": "Hubo un error al avanzar el proceso",
+      "PROCESS_PLACEHOLDER": "Cambiar proceso"
     },
     "DATA": {
       "TITLE": "Datos del caso",

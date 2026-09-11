@@ -193,6 +193,33 @@ const resolver = async (ticket, resultadoId) => {
   }
 };
 
+// GAR-03: opciones de proceso para avanzar un producto, leidas de la garantia
+// (el serializador las manda con el radicado, ya ordenadas). El proceso terminal
+// cierra el radicado; esa regla la aplica el backend, aqui solo se ofrece.
+const procesoOptions = garantia =>
+  (garantia.procesos || []).map(proceso => ({
+    value: proceso.id,
+    label: proceso.nombre,
+  }));
+
+const avanzarItem = async (garantia, item, procesoId) => {
+  try {
+    await store.dispatch('tickets/avanzarGarantia', {
+      garantiaId: garantia.id,
+      itemId: item.id,
+      procesoId,
+    });
+    useAlert(t('TICKETS.WARRANTY.ADVANCED'));
+  } catch (error) {
+    selectsRefreshKey.value += 1;
+    useAlert(
+      error?.response?.status === 401
+        ? t('TICKETS.UPDATE.FORBIDDEN')
+        : t('TICKETS.WARRANTY.ERROR')
+    );
+  }
+};
+
 // DAT-01: los campos de texto de la ficha del caso, editables por el operador.
 // El detalle tipificado (catalogo) va aparte y de solo lectura: lo deduce la IA.
 const DATOS_TEXTO = [
@@ -381,6 +408,35 @@ const guardarDato = async (ticket, campo, event) => {
               })
             }}
           </span>
+        </div>
+
+        <!-- Cerrada cuando todos los productos resolvieron (GAR-03). -->
+        <p
+          v-if="ticket.garantia.cerrada_at"
+          class="mb-0 text-xs font-medium text-n-teal-11"
+        >
+          {{ t('TICKETS.WARRANTY.CLOSED') }}
+        </p>
+
+        <!-- Un producto por fila con su selector de proceso (GAR-03): moverlo a
+             un proceso terminal cierra el radicado si es el ultimo pendiente. -->
+        <div
+          v-for="item in ticket.garantia.items"
+          :key="item.id"
+          class="flex items-center gap-1.5"
+        >
+          <span class="flex-1 min-w-0 text-xs truncate text-n-slate-12">
+            {{ item.producto_nombre }}
+          </span>
+          <Select
+            :key="`gitem-${item.id}-${selectsRefreshKey}`"
+            :options="procesoOptions(ticket.garantia)"
+            :model-value="item.proceso && item.proceso.id"
+            :placeholder="t('TICKETS.WARRANTY.PROCESS_PLACEHOLDER')"
+            @update:model-value="
+              procesoId => avanzarItem(ticket.garantia, item, procesoId)
+            "
+          />
         </div>
       </div>
 

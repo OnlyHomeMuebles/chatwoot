@@ -27,6 +27,15 @@ class TicketsAPI extends ApiClient {
     return axios.patch(`${this.url}/${ticketId}/datos`, { datos });
   }
 
+  // Avanza un producto de la garantia de proceso (GAR-03). El radicado cierra
+  // solo cuando todos los productos resuelven; eso lo decide el backend.
+  avanzarGarantia(garantiaId, itemId, procesoId) {
+    const base = this.url.replace(/tickets$/, 'garantias');
+    return axios.patch(`${base}/${garantiaId}/items/${itemId}`, {
+      proceso_id: procesoId,
+    });
+  }
+
   // Catalogos de clasificacion (API-01) para poblar los selectores del panel.
   // Cuelgan del mismo namespace helic3, al lado de tickets.
   catalogos() {

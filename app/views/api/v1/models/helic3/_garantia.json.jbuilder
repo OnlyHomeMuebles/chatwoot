@@ -52,3 +52,10 @@ json.items resource.items do |item|
     end
   end
 end
+
+# GAR-03: los procesos a los que un item puede avanzar (catalogo de la cuenta,
+# ya ordenados por posicion). Van con la garantia para que el panel arme el
+# selector sin pedir otro endpoint. es_terminal le dice al panel cual cierra.
+json.procesos Helic3::Catalogo::ProcesoGarantia.activos.where(account: resource.account) do |proceso|
+  json.call(proceso, :id, :codigo, :nombre, :es_terminal)
+end

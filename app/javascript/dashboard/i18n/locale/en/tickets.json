@@ -106,7 +106,11 @@
     },
     "WARRANTY": {
       "TITLE": "Warranty",
-      "BUDGET": "{used} of {total} business days used"
+      "BUDGET": "{used} of {total} business days used",
+      "CLOSED": "Warranty closed",
+      "ADVANCED": "Process updated",
+      "ERROR": "There was an error advancing the process",
+      "PROCESS_PLACEHOLDER": "Change process"
     },
     "DATA": {
       "TITLE": "Case data",
