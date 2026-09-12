@@ -142,8 +142,7 @@
       "PLACEHOLDER": "Registrar resultado",
       "SUCCESS": "Resultado registrado",
       "ERROR": "Hubo un error al registrar el resultado",
-      "NEEDS_APPROVAL": "(requiere aprobación)",
-      "WARRANTY_LOCKED": "(pendiente del formulario de garantía)"
+      "NEEDS_APPROVAL": "(requiere aprobación)"
     },
     "WARRANTY": {
       "TITLE": "Garantía",
@@ -151,7 +150,20 @@
       "CLOSED": "Garantía cerrada",
       "ADVANCED": "Proceso actualizado",
       "ERROR": "Hubo un error al avanzar el proceso",
-      "PROCESS_PLACEHOLDER": "Cambiar proceso"
+      "PROCESS_PLACEHOLDER": "Cambiar proceso",
+      "FORM": {
+        "TITLE": "Abrir garantía",
+        "CONFIRM": "Abrir garantía",
+        "CITY": "Ciudad de cobertura",
+        "CITY_PLACEHOLDER": "Selecciona la ciudad",
+        "PRODUCT": "Producto {n}",
+        "PRODUCT_NAME": "Nombre del producto",
+        "PRODUCT_REF": "Referencia (opcional)",
+        "MOTIVE": "Motivo de garantía",
+        "DETAIL": "Detalle tipificado",
+        "ADD_PRODUCT": "Agregar producto",
+        "ERROR": "No se pudo abrir la garantía"
+      }
     },
     "DATA": {
       "TITLE": "Datos del caso",

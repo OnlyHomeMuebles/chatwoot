@@ -16,3 +16,18 @@ end
 json.resultados @resultados do |resultado|
   json.call(resultado, :id, :codigo, :nombre, :cierra_pqr, :abre_garantia, :aprobacion_humana)
 end
+
+# GAR-05: las tres listas del formulario de apertura de garantia. La ciudad
+# decide la cobertura (y con ella el proceso inicial); motivo y detalle
+# clasifican cada producto.
+json.coberturas_ciudad @coberturas_ciudad do |ciudad|
+  json.call(ciudad, :id, :codigo, :nombre, :tecnico_propio)
+end
+
+json.motivos_garantia @motivos_garantia do |motivo|
+  json.call(motivo, :id, :codigo, :nombre)
+end
+
+json.detalles_tipificados @detalles_tipificados do |detalle|
+  json.call(detalle, :id, :codigo, :nombre)
+end

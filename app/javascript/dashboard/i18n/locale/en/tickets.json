@@ -142,8 +142,7 @@
       "PLACEHOLDER": "Register result",
       "SUCCESS": "Result registered",
       "ERROR": "There was an error registering the result",
-      "NEEDS_APPROVAL": "(needs approval)",
-      "WARRANTY_LOCKED": "(pending warranty form)"
+      "NEEDS_APPROVAL": "(needs approval)"
     },
     "WARRANTY": {
       "TITLE": "Warranty",
@@ -151,7 +150,20 @@
       "CLOSED": "Warranty closed",
       "ADVANCED": "Process updated",
       "ERROR": "There was an error advancing the process",
-      "PROCESS_PLACEHOLDER": "Change process"
+      "PROCESS_PLACEHOLDER": "Change process",
+      "FORM": {
+        "TITLE": "Open warranty",
+        "CONFIRM": "Open warranty",
+        "CITY": "Coverage city",
+        "CITY_PLACEHOLDER": "Select the city",
+        "PRODUCT": "Product {n}",
+        "PRODUCT_NAME": "Product name",
+        "PRODUCT_REF": "Reference (optional)",
+        "MOTIVE": "Warranty reason",
+        "DETAIL": "Typified detail",
+        "ADD_PRODUCT": "Add product",
+        "ERROR": "The warranty could not be opened"
+      }
     },
     "DATA": {
       "TITLE": "Case data",

@@ -14,10 +14,14 @@ class TicketsAPI extends ApiClient {
 
   // Registra el resultado de la PQR (RES-01): la unica puerta para resolver, que
   // detiene el reloj legal. Endpoint propio, no un update de campos sueltos.
-  resolver(ticketId, resultadoId) {
-    return axios.post(`${this.url}/${ticketId}/resolucion`, {
-      resultado_id: resultadoId,
-    });
+  //
+  // Si el resultado abre garantia (GAR-05), el operador manda tambien el bloque
+  // garantia { cobertura_ciudad_id, items: [...] }; es el MISMO endpoint, con un
+  // parametro adicional. Sin garantia se omite y resuelve como siempre.
+  resolver(ticketId, resultadoId, garantia = null) {
+    const payload = { resultado_id: resultadoId };
+    if (garantia) payload.garantia = garantia;
+    return axios.post(`${this.url}/${ticketId}/resolucion`, payload);
   }
 
   // Registra/corrige los datos de la ficha del caso (DAT-01). Lo que el operador

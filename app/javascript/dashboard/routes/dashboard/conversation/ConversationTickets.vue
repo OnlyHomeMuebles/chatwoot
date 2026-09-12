@@ -6,6 +6,7 @@ import { useAlert } from 'dashboard/composables';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import CreateTicketDialog from 'dashboard/components/widgets/conversation/CreateTicketDialog.vue';
+import GarantiaFormDialog from 'dashboard/components/widgets/conversation/GarantiaFormDialog.vue';
 
 const props = defineProps({
   conversationId: {
@@ -20,6 +21,7 @@ const { t } = useI18n();
 const STATUSES = ['open', 'pending', 'resolved', 'closed'];
 
 const createDialogRef = ref(null);
+const garantiaDialogRef = ref(null);
 
 const tickets = useMapGetter('tickets/getTickets');
 const catalogos = useMapGetter('tickets/getCatalogos');
@@ -153,31 +155,31 @@ const updateStatus = async (ticket, status) => {
 
 // opciones del selector de resultado, leidas del catalogo (RES-01). Se marca
 // con un aviso el que exige aprobacion humana: el operador debe saber que ese
-// resultado niega un derecho o mueve dinero.
-//
-// Candado (GAR-02): mientras no exista el formulario de garantia (que capture
-// ciudad y productos), un resultado que abre garantia SIEMPRE falla con 422
-// desde el panel —el selector solo manda resultado_id—. Se deshabilita con el
-// motivo a la vista en vez de ofrecer un boton que revienta. El agente de IA si
-// puede abrirla (AGT-03, lleva los datos); esto es solo la carencia del panel.
+// resultado niega un derecho o mueve dinero. Ya SIN candado (GAR-05): los
+// resultados que abren garantia se pueden elegir; disparan el formulario.
 const resultadoOptions = computed(() =>
-  (catalogos.value.resultados || []).map(resultado => {
-    if (resultado.abre_garantia) {
-      return {
-        value: resultado.id,
-        label: `${resultado.nombre} ${t('TICKETS.RESOLUTION.WARRANTY_LOCKED')}`,
-        disabled: true,
-      };
-    }
-
-    return {
-      value: resultado.id,
-      label: resultado.aprobacion_humana
-        ? `${resultado.nombre} ${t('TICKETS.RESOLUTION.NEEDS_APPROVAL')}`
-        : resultado.nombre,
-    };
-  })
+  (catalogos.value.resultados || []).map(resultado => ({
+    value: resultado.id,
+    label: resultado.aprobacion_humana
+      ? `${resultado.nombre} ${t('TICKETS.RESOLUTION.NEEDS_APPROVAL')}`
+      : resultado.nombre,
+  }))
 );
+
+// GAR-05: al elegir un resultado, si ABRE GARANTIA se abre el formulario (necesita
+// ciudad y productos); si no, se resuelve directo como siempre. En ambos casos se
+// refresca el selector para que quede sincronizado con el valor real del ticket.
+const onResultadoElegido = (ticket, resultadoId) => {
+  const resultado = (catalogos.value.resultados || []).find(
+    r => r.id === resultadoId
+  );
+  selectsRefreshKey.value += 1;
+  if (resultado?.abre_garantia) {
+    garantiaDialogRef.value.open(ticket, resultadoId);
+  } else {
+    resolver(ticket, resultadoId);
+  }
+};
 
 const resolver = async (ticket, resultadoId) => {
   try {
@@ -375,7 +377,7 @@ const guardarDato = async (ticket, campo, event) => {
         :model-value="ticket.resultado?.id"
         :placeholder="t('TICKETS.RESOLUTION.PLACEHOLDER')"
         @update:model-value="
-          resultadoId => resolver(ticket, resultadoId)
+          resultadoId => onResultadoElegido(ticket, resultadoId)
         "
       />
 
@@ -506,5 +508,8 @@ const guardarDato = async (ticket, campo, event) => {
       ref="createDialogRef"
       :conversation-id="conversationId"
     />
+
+    <!-- GAR-05: formulario de apertura de garantia a mano por el operador -->
+    <GarantiaFormDialog ref="garantiaDialogRef" />
   </div>
 </template>

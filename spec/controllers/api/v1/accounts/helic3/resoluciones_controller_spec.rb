@@ -101,6 +101,29 @@ RSpec.describe 'Resoluciones API', type: :request do
         expect(ticket.reload.garantia).to be_nil
         expect(ticket.respondida_at).to be_nil
       end
+
+      it 'abre la garantia con varios productos desde el panel (GAR-05)' do
+        post "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}/resolucion",
+             params: { resultado_id: procede.id,
+                       garantia: { cobertura_ciudad_id: manizales.id,
+                                   items: [{ producto_nombre: 'Sofá' }, { producto_nombre: 'Nochero' }] } },
+             headers: administrator.create_new_auth_token,
+             as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(ticket.reload.garantia.items.pluck(:producto_nombre)).to contain_exactly('Sofá', 'Nochero')
+      end
+
+      it 'con productos pero SIN ciudad responde 422 y no crea garantia (GAR-05)' do
+        post "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}/resolucion",
+             params: { resultado_id: procede.id,
+                       garantia: { items: [{ producto_nombre: 'Sofá' }] } },
+             headers: administrator.create_new_auth_token,
+             as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(ticket.reload.garantia).to be_nil
+      end
     end
 
     context 'when the resultado requires admin (the seeded default)' do
