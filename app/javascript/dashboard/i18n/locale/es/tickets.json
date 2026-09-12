@@ -133,6 +133,48 @@
         "PARAMETROS": "Parámetros"
       }
     },
+    "DECISIONS": {
+      "TITLE": "Decisiones pendientes",
+      "SUBTITLE": "Solo llega a una persona lo que mueve dinero, repone producto o niega una garantía.",
+      "COUNT": "{count} pendientes",
+      "EMPTY": "No hay decisiones esperando aprobación",
+      "APPROVED": "Decisión aprobada",
+      "ERROR": "No se pudo aprobar la decisión",
+      "FORBIDDEN": "No tienes permiso para aprobar esta decisión",
+      "OVERDUE": "Vencido hace {days} días hábiles",
+      "REMAINING": "{days} días hábiles restantes",
+      "DUE_SOON": "Vence pronto",
+      "STOPPED": "Reloj detenido",
+      "RULE_HUMAN": "Aprobación humana obligatoria",
+      "RULE_APPLIED": "Regla aplicada: {rule}",
+      "BASIS": "El agente propone aplicar «{result}» y espera visto bueno. No se le ha escrito nada al cliente.",
+      "VIEW": "Ver sustento",
+      "APPROVE": "Aprobar",
+      "WAITING_SINCE": "Espera desde",
+      "WAITING_AT": "Espera desde {date}",
+      "CONFIRM_TITLE": "Aprobar la decisión",
+      "CONFIRM_DESCRIPTION": "Se aplicará el resultado \"{result}\". Esto cierra el expediente y detiene el reloj. No le escribe nada al cliente.",
+      "GOVERNANCE_TITLE": "Quién puede decidir qué",
+      "GOV": {
+        "REPAIR": "Reparación",
+        "CHANGE": "Cambio",
+        "REPLACE": "Reposición",
+        "REFUND": "Devolución de dinero",
+        "DENY": "Negativa",
+        "RETRACT": "Retracto",
+        "AGENT": "Agente autorizado",
+        "HUMAN": "Aprobación humana",
+        "LEGAL": "Jurídica y documento"
+      },
+      "GOV_NOTE": "Una negativa no la envía el agente: deben quedar el fundamento, la fecha, el responsable y el documento jurídico.",
+      "COLUMNS": {
+        "REFERENCE": "Expediente",
+        "PROPOSAL": "Propuesta del agente",
+        "RULE": "Regla",
+        "WAITING_SINCE": "Espera desde",
+        "CLOCK": "Reloj"
+      }
+    },
     "UPDATE": {
       "SUCCESS": "Ticket actualizado",
       "ERROR": "Hubo un error al actualizar el ticket",
