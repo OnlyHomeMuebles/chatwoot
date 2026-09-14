@@ -59,7 +59,14 @@
     },
     "INBOX": {
       "TITLE": "Bandeja de PQR",
+      "SUBTITLE": "Un radicado por solicitud. La garantía aparece vinculada cuando existe y conserva su propio plazo.",
       "MENU_GROUP": "PQR y garantías",
+      "METRICS": {
+        "FILED": "Radicadas",
+        "ON_TIME": "Dentro del plazo",
+        "UNANSWERED": "Sin responder",
+        "OVERDUE": "Vencidas"
+      },
       "EMPTY": "No hay expedientes que coincidan con los filtros",
       "ERROR": "No se pudo cargar la bandeja",
       "CATALOGS_ERROR": "No se pudieron cargar los filtros de clasificación",
@@ -89,7 +96,8 @@
       },
       "PAGINATION": {
         "PREV": "Anterior",
-        "NEXT": "Siguiente"
+        "NEXT": "Siguiente",
+        "PAGE": "{page} / {total}"
       }
     },
     "ADMIN": {
@@ -131,7 +139,59 @@
         "PROCESOS_GARANTIA": "Procesos de garantía",
         "COBERTURAS_CIUDAD": "Cobertura por ciudad",
         "PARAMETROS": "Parámetros"
+      },
+      "SUBTITLE": "El vocabulario del módulo se administra aquí. Ningún valor está escrito en el código.",
+      "ACTIVE": "Activa",
+      "INACTIVE": "Inactiva",
+      "GROUPS": {
+        "PQR": "PQR",
+        "GARANTIA": "Garantía"
+      },
+      "DESC": {
+        "MOTIVOS_PQR": "El motivo decide si la PQR abre un expediente de garantía.",
+        "RESULTADOS": "Cierra la PQR, abre garantía o exige que decida una persona.",
+        "DETALLES_TIPIFICADOS": "Catálogo autónomo de detalles; no cuelga del motivo.",
+        "PROCESOS_GARANTIA": "Hitos dentro del mismo presupuesto de días hábiles; no reinician el reloj.",
+        "COBERTURAS_CIUDAD": "Con técnico propio la garantía arranca en visita; sin técnico, en recolección.",
+        "PARAMETROS": "Tiempos y umbrales de operación del módulo."
       }
+    },
+    "DETAIL": {
+      "TITLE": "Detalle del expediente",
+      "NOT_FOUND": "No se encontró el expediente",
+      "PQR_CLOCK": "Reloj de la PQR",
+      "CLOCK_FROZEN": "Quedaban {days} días hábiles al responder",
+      "CLOCK_OVERDUE": "Vencido hace {days} días hábiles",
+      "CLOCK_REMAINING": "{days} días hábiles restantes",
+      "FILED_AT": "Radicada",
+      "DUE_AT": "Vence",
+      "ANSWERED_AT": "Respondida",
+      "CLASSIFICATION": "Clasificación",
+      "TYPE": "Tipo",
+      "MOTIVE": "Motivo",
+      "CATEGORY": "Categoría",
+      "STAGE": "Etapa",
+      "RESULT": "Resultado",
+      "ASSIGNEE": "Responsable",
+      "WARRANTY": "Garantía",
+      "PROCESS": "Proceso",
+      "CITY": "Ciudad",
+      "OWN_TECH": "Técnico propio",
+      "BUDGET": "Presupuesto",
+      "BUDGET_USAGE": "{used} usados · {left} restantes de {total} días",
+      "BACK": "Volver a la bandeja",
+      "OPEN_CONVERSATION": "Abrir la conversación",
+      "LEGAL_TITLE": "PQR · expediente legal",
+      "RADICADO": "Radicado",
+      "CLOCK_RUNNING": "Reloj en curso",
+      "CLOCK_STOPPED": "Reloj detenido",
+      "CLOCK_OVERDUE_TAG": "Vencido",
+      "NO_WARRANTY": "Esta PQR no abrió expediente de garantía.",
+      "NEXT_ACTION": "Siguiente acción",
+      "NEXT_FROZEN": "El reloj legal está detenido. El caso puede seguir en gestión operativa.",
+      "NEXT_WARRANTY": "Continuar el proceso de garantía en curso: {process}.",
+      "NEXT_ANSWER": "Responder al cliente detiene el reloj legal de la PQR.",
+      "OPERATOR_ACTIONS": "Acciones"
     },
     "DECISIONS": {
       "TITLE": "Decisiones pendientes",

@@ -19,6 +19,7 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
     @pqr = filtrados.order(created_at: :desc).page(pagina_actual).per(RESULTS_PER_PAGE)
     @total = @pqr.total_count
     @umbrales = umbrales_pqr
+    @metricas = metricas_pqr
   end
 
   # Cola de decisiones (DEC-01): lo que el agente propuso y espera a una persona.
@@ -34,6 +35,19 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
   end
 
   private
+
+  # Metricas del encabezado (BAN-01): conteos de toda la cuenta, no de la pagina
+  # ni del filtro, para que sean KPIs estables. "Vencidas" es la misma regla SQL
+  # que el filtro (sin responder + plazo pasado); nada aqui calcula dias habiles.
+  def metricas_pqr
+    scope = Current.account.tickets
+    total = scope.count
+    sin_responder = scope.where(respondida_at: nil).count
+    vencidas = scope.where(respondida_at: nil)
+                    .where('plazo_respuesta_vence_at < ?', Time.current).count
+    { total: total, sin_responder: sin_responder, vencidas: vencidas,
+      respondidas: total - sin_responder }
+  end
 
   # Precarga los resultados propuestos (uno por expediente, guardado en
   # pqrs_metadata) en una sola consulta, para que la fila no dispare un N+1.

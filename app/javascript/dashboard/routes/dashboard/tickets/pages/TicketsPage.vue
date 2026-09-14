@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
@@ -14,7 +15,17 @@ import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 // conversacion: abrir la bandeja no altera lo que el panel ya tenia cargado.
 // Los filtros y la paginacion se resuelven en el servidor (GET helic3/pqr).
 const store = useStore();
+const route = useRoute();
+const router = useRouter();
 const { t } = useI18n();
+
+// Ruta por nombre (no armada a mano). La URL lleva el id de base de datos del
+// expediente, no el radicado: sirve para compartir el enlace.
+const irAlDetalle = fila =>
+  router.push({
+    name: 'helic3_pqr_detail',
+    params: { accountId: route.params.accountId, id: fila.id },
+  });
 
 const records = useMapGetter('pqrInbox/getRecords');
 const meta = useMapGetter('pqrInbox/getMeta');
@@ -109,14 +120,6 @@ const tipoOptions = computed(() => [
   ...(catalogos.value.tipos || []).map(x => ({ value: x.id, label: x.nombre })),
 ]);
 
-const etapaOptions = computed(() => [
-  emptyOption(t('TICKETS.INBOX.FILTERS.ALL_STAGES')),
-  ...(catalogos.value.etapas_pqr || []).map(x => ({
-    value: x.id,
-    label: x.nombre,
-  })),
-]);
-
 const assigneeOptions = computed(() => [
   emptyOption(t('TICKETS.INBOX.FILTERS.ALL_ASSIGNEES')),
   ...agents.value.map(a => ({ value: a.id, label: a.name })),
@@ -179,22 +182,160 @@ const statusDotClass = status =>
     resolved: 'bg-n-blue-9',
     closed: 'bg-n-slate-9',
   })[status] || 'bg-n-slate-9';
+
+// Tira de metricas (KPIs de la cuenta) que llega en el meta. "Dentro de plazo"
+// es el complemento de las vencidas; no recalcula dias habiles en el cliente.
+const metricas = computed(() => meta.value.metricas);
+const metricasCards = computed(() => {
+  const m = metricas.value;
+  if (!m) return [];
+  const pct = m.total
+    ? Math.round(((m.total - m.vencidas) / m.total) * 100)
+    : 0;
+  return [
+    { label: t('TICKETS.INBOX.METRICS.FILED'), value: m.total },
+    {
+      label: t('TICKETS.INBOX.METRICS.ON_TIME'),
+      value: `${pct}%`,
+      tone: 'good',
+    },
+    { label: t('TICKETS.INBOX.METRICS.UNANSWERED'), value: m.sin_responder },
+    {
+      label: t('TICKETS.INBOX.METRICS.OVERDUE'),
+      value: m.vencidas,
+      tone: m.vencidas ? 'warn' : '',
+    },
+  ];
+});
+const metricaValueClass = tone =>
+  ({ good: 'text-n-teal-11', warn: 'text-n-ruby-11' })[tone] ||
+  'text-n-slate-12';
+
+// Pestañas de etapa: reemplazan el selector de etapa por accesos rápidos.
+const etapaTabs = computed(() => [
+  { value: '', label: t('TICKETS.INBOX.FILTERS.ALL_STAGES') },
+  ...(catalogos.value.etapas_pqr || []).map(x => ({
+    value: x.id,
+    label: x.nombre,
+  })),
+]);
+
+// Etapa como pastilla de color por codigo del catalogo.
+const etapaTagClass = codigo =>
+  ({
+    nueva: 'bg-n-blue-3 text-n-blue-11',
+    en_analisis: 'bg-n-amber-3 text-n-amber-11',
+    respondida: 'bg-n-teal-3 text-n-teal-11',
+    cerrada: 'bg-n-slate-3 text-n-slate-11',
+  })[codigo] || 'bg-n-slate-3 text-n-slate-11';
+
+// Plazo como pastilla de semaforo con los dias habiles restantes.
+const relojPill = fila => {
+  if (fila.reloj_detenido) {
+    return {
+      text: t('TICKETS.INBOX.CLOCK.FROZEN'),
+      cls: 'bg-n-slate-3 text-n-slate-11',
+      dot: 'bg-n-slate-9',
+    };
+  }
+  if (estaVencido(fila)) {
+    const dias =
+      typeof fila.dias_habiles_restantes === 'number'
+        ? Math.abs(fila.dias_habiles_restantes)
+        : null;
+    return {
+      text:
+        dias != null
+          ? t('TICKETS.CLOCK.OVERDUE', { days: dias })
+          : t('TICKETS.INBOX.CLOCK.OVERDUE'),
+      cls: 'bg-n-ruby-3 text-n-ruby-11',
+      dot: 'bg-n-ruby-9',
+    };
+  }
+  if (typeof fila.dias_habiles_restantes === 'number') {
+    const sem = semaforoDeFila(fila);
+    const cls =
+      {
+        verde: 'bg-n-teal-3 text-n-teal-11',
+        amarillo: 'bg-n-amber-3 text-n-amber-11',
+        rojo: 'bg-n-ruby-3 text-n-ruby-11',
+      }[sem] || 'bg-n-slate-3 text-n-slate-11';
+    return {
+      text: t('TICKETS.CLOCK.REMAINING', { days: fila.dias_habiles_restantes }),
+      cls,
+      dot: semaforoDotClass(sem) || 'bg-n-slate-9',
+    };
+  }
+  if (fila.plazo_respuesta_vence_at) {
+    return {
+      text: t('TICKETS.INBOX.CLOCK.DUE', {
+        date: formatFecha(fila.plazo_respuesta_vence_at),
+      }),
+      cls: 'bg-n-slate-3 text-n-slate-11',
+      dot: 'bg-n-slate-9',
+    };
+  }
+  return null;
+};
 </script>
 
 <template>
   <div class="flex flex-col w-full h-full overflow-hidden bg-n-background">
-    <header
-      class="flex items-center justify-between px-6 py-4 border-b border-n-weak"
-    >
-      <h1 class="text-xl font-medium text-n-slate-12">
-        {{ t('TICKETS.INBOX.TITLE') }}
-      </h1>
-      <span class="text-sm text-n-slate-11">{{ rangoTexto }}</span>
+    <header class="flex flex-col gap-4 px-6 py-4 border-b border-n-weak">
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex flex-col gap-1 min-w-0">
+          <h1 class="mb-0 text-xl font-semibold tracking-tight text-n-slate-12">
+            {{ t('TICKETS.INBOX.TITLE') }}
+          </h1>
+          <p class="mb-0 text-sm text-n-slate-11">
+            {{ t('TICKETS.INBOX.SUBTITLE') }}
+          </p>
+        </div>
+        <div class="flex-1" />
+        <span class="text-sm text-n-slate-11">{{ rangoTexto }}</span>
+      </div>
+
+      <!-- Tira de metricas (KPIs de la cuenta) -->
+      <div
+        v-if="metricasCards.length"
+        class="grid grid-cols-2 gap-3 sm:grid-cols-4"
+      >
+        <div
+          v-for="tarjeta in metricasCards"
+          :key="tarjeta.label"
+          class="flex flex-col gap-0.5 p-3 border rounded-xl border-n-weak bg-n-solid-1"
+        >
+          <span class="text-xs text-n-slate-11">{{ tarjeta.label }}</span>
+          <span
+            class="text-2xl font-semibold tabular-nums tracking-tight"
+            :class="metricaValueClass(tarjeta.tone)"
+          >
+            {{ tarjeta.value }}
+          </span>
+        </div>
+      </div>
     </header>
 
+    <!-- Pestañas por etapa + filtros -->
     <div
       class="flex flex-wrap items-center gap-2 px-6 py-3 border-b border-n-weak"
     >
+      <div class="flex gap-1 p-0.5 rounded-lg bg-n-alpha-1">
+        <button
+          v-for="tab in etapaTabs"
+          :key="tab.value"
+          class="px-3 py-1 text-sm font-medium rounded-md"
+          :class="
+            filtros.etapa_id === tab.value
+              ? 'bg-n-solid-1 text-n-slate-12 shadow-sm'
+              : 'text-n-slate-11 hover:text-n-slate-12'
+          "
+          @click="filtros.etapa_id = tab.value"
+        >
+          {{ tab.label }}
+        </button>
+      </div>
+      <div class="flex-1" />
       <Input
         v-model="filtros.q"
         :placeholder="t('TICKETS.INBOX.FILTERS.SEARCH')"
@@ -202,7 +343,6 @@ const statusDotClass = status =>
       />
       <Select v-model="filtros.categoria_id" :options="categoriaOptions" />
       <Select v-model="filtros.tipo_id" :options="tipoOptions" />
-      <Select v-model="filtros.etapa_id" :options="etapaOptions" />
       <Select v-model="filtros.assignee_id" :options="assigneeOptions" />
       <label
         class="flex items-center gap-2 text-sm cursor-pointer text-n-slate-11"
@@ -256,7 +396,12 @@ const statusDotClass = status =>
           <tr
             v-for="fila in records"
             :key="fila.id"
-            class="border-b border-n-weak hover:bg-n-alpha-1"
+            class="border-b cursor-pointer border-n-weak hover:bg-n-alpha-1 focus-visible:bg-n-alpha-1"
+            role="button"
+            tabindex="0"
+            @click="irAlDetalle(fila)"
+            @keydown.enter="irAlDetalle(fila)"
+            @keydown.space.prevent="irAlDetalle(fila)"
           >
             <td class="px-6 py-3">
               <p class="mb-0 font-medium text-n-slate-12">
@@ -278,40 +423,29 @@ const statusDotClass = status =>
             <td class="px-4 py-3 text-n-slate-11">
               {{ clasificacionTexto(fila) || t('TICKETS.INBOX.PENDING') }}
             </td>
-            <td class="px-4 py-3 text-n-slate-11">
-              {{ fila.etapa?.nombre || '—' }}
+            <td class="px-4 py-3">
+              <span
+                v-if="fila.etapa"
+                class="px-2 py-0.5 text-xs font-medium rounded-md"
+                :class="etapaTagClass(fila.etapa.codigo)"
+              >
+                {{ fila.etapa.nombre }}
+              </span>
+              <span v-else class="text-n-slate-10">—</span>
             </td>
             <td class="px-4 py-3">
-              <div
-                class="flex items-center gap-1.5"
-                :class="fila.reloj_detenido ? 'opacity-60' : ''"
+              <span
+                v-if="relojPill(fila)"
+                class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-md"
+                :class="relojPill(fila).cls"
               >
                 <span
-                  v-if="semaforoDeFila(fila)"
-                  class="rounded-full size-2 shrink-0"
-                  :class="semaforoDotClass(semaforoDeFila(fila))"
+                  class="rounded-full size-1.5"
+                  :class="relojPill(fila).dot"
                 />
-                <span v-if="fila.reloj_detenido" class="text-n-slate-11">
-                  {{ t('TICKETS.INBOX.CLOCK.FROZEN') }}
-                </span>
-                <span
-                  v-else-if="estaVencido(fila)"
-                  class="font-medium text-n-ruby-11"
-                >
-                  {{ t('TICKETS.INBOX.CLOCK.OVERDUE') }}
-                </span>
-                <span
-                  v-else-if="fila.plazo_respuesta_vence_at"
-                  class="text-n-slate-11"
-                >
-                  {{
-                    t('TICKETS.INBOX.CLOCK.DUE', {
-                      date: formatFecha(fila.plazo_respuesta_vence_at),
-                    })
-                  }}
-                </span>
-                <span v-else class="text-n-slate-10">—</span>
-              </div>
+                {{ relojPill(fila).text }}
+              </span>
+              <span v-else class="text-n-slate-10">—</span>
             </td>
             <td class="px-4 py-3">
               <div class="flex items-center gap-2">
@@ -350,9 +484,14 @@ const statusDotClass = status =>
         :disabled="pagina <= 1"
         @click="irAPagina(pagina - 1)"
       />
-      <span class="text-sm text-n-slate-11"
-        >{{ pagina }} / {{ totalPaginas }}</span
-      >
+      <span class="text-sm tabular-nums text-n-slate-11">
+        {{
+          t('TICKETS.INBOX.PAGINATION.PAGE', {
+            page: pagina,
+            total: totalPaginas,
+          })
+        }}
+      </span>
       <Button
         :label="t('TICKETS.INBOX.PAGINATION.NEXT')"
         icon="i-lucide-chevron-right"
