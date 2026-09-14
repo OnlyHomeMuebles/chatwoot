@@ -218,9 +218,10 @@ const FUENTES = {
 };
 const badgeFuente = fuente => FUENTES[fuente] || null;
 
+// Los seis campos SIEMPRE se listan (criterio 10): con badge de procedencia si
+// hay valor, y "Pendiente" cuando no lo hay — asi se ve que falta recolectar.
 const datosLista = computed(() => {
-  const d = expediente.value?.datos;
-  if (!d) return [];
+  const d = expediente.value?.datos || {};
   const campos = [
     { key: 'cedula', label: t('TICKETS.DATA.FIELDS.CEDULA') },
     { key: 'direccion', label: t('TICKETS.DATA.FIELDS.DIRECCION') },
@@ -228,38 +229,17 @@ const datosLista = computed(() => {
     { key: 'factura_numero', label: t('TICKETS.DATA.FIELDS.FACTURA_NUMERO') },
     { key: 'producto_nombre', label: t('TICKETS.DATA.FIELDS.PRODUCTO_NOMBRE') },
   ];
-  const filas = campos
-    .filter(c => d[c.key])
-    .map(c => ({
-      label: c.label,
-      valor: d[c.key].valor,
-      fuente: d[c.key].fuente,
-    }));
-  if (d.detalle_tipificado) {
-    filas.push({
-      label: t('TICKETS.DATA.FIELDS.DETALLE'),
-      valor: d.detalle_tipificado.valor?.nombre,
-      fuente: d.detalle_tipificado.fuente,
-    });
-  }
+  const filas = campos.map(c => ({
+    label: c.label,
+    valor: d[c.key]?.valor ?? null,
+    fuente: d[c.key]?.fuente ?? null,
+  }));
+  filas.push({
+    label: t('TICKETS.DATA.FIELDS.DETALLE'),
+    valor: d.detalle_tipificado?.valor?.nombre ?? null,
+    fuente: d.detalle_tipificado?.fuente ?? null,
+  });
   return filas;
-});
-
-// Actividad: linea de tiempo armada con los sellos reales del expediente. El
-// ultimo hito realizado se resalta como el estado vigente.
-const actividad = computed(() => {
-  const e = expediente.value;
-  if (!e) return [];
-  const hitos = [
-    { at: e.radicada_at, titulo: t('TICKETS.DETAIL.ACT_FILED') },
-    {
-      at: garantia.value?.abierta_at,
-      titulo: t('TICKETS.DETAIL.ACT_WARRANTY'),
-    },
-    { at: e.respondida_at, titulo: t('TICKETS.DETAIL.ACT_ANSWERED') },
-    { at: e.cerrada_at, titulo: t('TICKETS.DETAIL.ACT_CLOSED') },
-  ].filter(h => h.at);
-  return hitos.map((h, i) => ({ ...h, ultimo: i === hitos.length - 1 }));
 });
 
 // Siguiente accion: pista derivada del estado real, sin inventar pasos.
@@ -617,9 +597,9 @@ const formatFecha = valor =>
             </div>
           </section>
 
-          <!-- Datos del caso con procedencia (badges IA / ERP / Manual) -->
+          <!-- Datos del caso con procedencia (badges IA / ERP / Manual). Los seis
+               campos se muestran siempre; sin valor dicen "Pendiente" (criterio 10). -->
           <section
-            v-if="datosLista.length"
             class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
             <h3 class="mb-0 text-sm font-medium text-n-slate-12">
@@ -633,45 +613,22 @@ const formatFecha = valor =>
               >
                 <dt class="text-xs text-n-slate-11">{{ dato.label }}</dt>
                 <dd class="flex items-center gap-2 mb-0 text-n-slate-12">
-                  <span class="min-w-0 break-words">{{ dato.valor }}</span>
-                  <span
-                    v-if="badgeFuente(dato.fuente)"
-                    class="px-1.5 py-0.5 text-[10px] font-semibold tracking-wide rounded shrink-0"
-                    :class="badgeFuente(dato.fuente).cls"
-                  >
-                    {{ badgeFuente(dato.fuente).label }}
+                  <template v-if="dato.valor">
+                    <span class="min-w-0 break-words">{{ dato.valor }}</span>
+                    <span
+                      v-if="badgeFuente(dato.fuente)"
+                      class="px-1.5 py-0.5 text-[10px] font-semibold tracking-wide rounded shrink-0"
+                      :class="badgeFuente(dato.fuente).cls"
+                    >
+                      {{ badgeFuente(dato.fuente).label }}
+                    </span>
+                  </template>
+                  <span v-else class="text-n-slate-11">
+                    {{ t('TICKETS.INBOX.PENDING') }}
                   </span>
                 </dd>
               </div>
             </dl>
-          </section>
-
-          <!-- Actividad: linea de tiempo desde los sellos reales -->
-          <section
-            v-if="actividad.length"
-            class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
-          >
-            <h3 class="mb-0 text-sm font-medium text-n-slate-12">
-              {{ t('TICKETS.DETAIL.ACTIVITY') }}
-            </h3>
-            <ol class="flex flex-col gap-3">
-              <li
-                v-for="hito in actividad"
-                :key="hito.titulo"
-                class="flex gap-2.5"
-              >
-                <span
-                  class="mt-1 rounded-full size-2 shrink-0"
-                  :class="hito.ultimo ? 'bg-n-brand' : 'bg-n-teal-9'"
-                />
-                <div class="flex flex-col gap-0.5 min-w-0">
-                  <span class="text-sm text-n-slate-12">{{ hito.titulo }}</span>
-                  <span class="text-xs text-n-slate-11">{{
-                    formatFecha(hito.at)
-                  }}</span>
-                </div>
-              </li>
-            </ol>
           </section>
         </div>
       </div>

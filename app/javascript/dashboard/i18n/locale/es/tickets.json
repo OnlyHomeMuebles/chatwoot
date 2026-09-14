@@ -168,12 +168,7 @@
       "NEXT_FROZEN": "El reloj legal está detenido. El caso puede seguir en gestión operativa.",
       "NEXT_WARRANTY": "Continuar el proceso de garantía en curso: {process}.",
       "NEXT_ANSWER": "Responder al cliente detiene el reloj legal de la PQR.",
-      "OPERATOR_ACTIONS": "Acciones",
-      "ACTIVITY": "Actividad",
-      "ACT_FILED": "Solicitud radicada",
-      "ACT_WARRANTY": "Garantía abierta",
-      "ACT_ANSWERED": "Respuesta enviada",
-      "ACT_CLOSED": "Expediente cerrado"
+      "OPERATOR_ACTIONS": "Acciones"
     },
     "UPDATE": {
       "SUCCESS": "Ticket actualizado",

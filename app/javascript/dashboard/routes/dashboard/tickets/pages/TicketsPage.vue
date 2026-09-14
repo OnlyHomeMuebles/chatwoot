@@ -267,8 +267,12 @@ const statusDotClass = status =>
           <tr
             v-for="fila in records"
             :key="fila.id"
-            class="border-b cursor-pointer border-n-weak hover:bg-n-alpha-1"
+            class="border-b cursor-pointer border-n-weak hover:bg-n-alpha-1 focus-visible:bg-n-alpha-1"
+            role="button"
+            tabindex="0"
             @click="irAlDetalle(fila)"
+            @keydown.enter="irAlDetalle(fila)"
+            @keydown.space.prevent="irAlDetalle(fila)"
           >
             <td class="px-6 py-3">
               <p class="mb-0 font-medium text-n-slate-12">

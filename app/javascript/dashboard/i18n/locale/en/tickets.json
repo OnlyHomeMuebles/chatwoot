@@ -168,12 +168,7 @@
       "NEXT_FROZEN": "The legal clock is stopped. The case may still be in operational handling.",
       "NEXT_WARRANTY": "Continue the warranty process in progress: {process}.",
       "NEXT_ANSWER": "Answering the client stops the PQR legal clock.",
-      "OPERATOR_ACTIONS": "Actions",
-      "ACTIVITY": "Activity",
-      "ACT_FILED": "Request filed",
-      "ACT_WARRANTY": "Warranty opened",
-      "ACT_ANSWERED": "Answer sent",
-      "ACT_CLOSED": "Case closed"
+      "OPERATOR_ACTIONS": "Actions"
     },
     "UPDATE": {
       "SUCCESS": "Ticket updated",
