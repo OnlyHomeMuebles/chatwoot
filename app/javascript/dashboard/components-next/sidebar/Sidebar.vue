@@ -512,6 +512,13 @@ const menuItems = computed(() => {
           activeOn: ['helic3_catalogos_admin'],
           to: accountScopedRoute('helic3_catalogos_admin'),
         },
+        {
+          name: 'PQR Decisiones',
+          label: t('TICKETS.DECISIONS.TITLE'),
+          icon: 'i-lucide-gavel',
+          activeOn: ['helic3_pqr_decisiones'],
+          to: accountScopedRoute('helic3_pqr_decisiones'),
+        },
       ],
     },
     {
