@@ -212,6 +212,16 @@ useEventListener(document, 'touchend', onResizeEnd);
 
 const inboxes = useMapGetter('inboxes/getInboxes');
 const labels = useMapGetter('labels/getLabelsOnSidebar');
+
+// VIS-05: contadores del menú del módulo, solo donde hay consulta real. La bandeja
+// aporta "sin responder" (métrica del listado) y decisiones aporta la cantidad de
+// la cola. Las hojas sin fuente (catálogos) no muestran número.
+const pqrMeta = useMapGetter('pqrInbox/getMeta');
+const pqrDecisiones = useMapGetter('pqrInbox/getDecisiones');
+const pqrSinResponder = computed(
+  () => pqrMeta.value?.metricas?.sin_responder || 0
+);
+const pqrDecisionesPendientes = computed(() => pqrDecisiones.value.length);
 const allUnreadCount = useMapGetter(
   'conversationUnreadCounts/getAllUnreadCount'
 );
@@ -253,6 +263,10 @@ onMounted(() => {
   store.dispatch('attributes/get');
   store.dispatch('customViews/get', 'conversation');
   store.dispatch('customViews/get', 'contact');
+  // VIS-05: conteos del menú del módulo (bandeja "sin responder" y decisiones).
+  // Guardado: en una cuenta sin el módulo el endpoint no responde y no rompe el rail.
+  store.dispatch('pqrInbox/fetch').catch(() => {});
+  store.dispatch('pqrInbox/fetchDecisiones').catch(() => {});
 });
 
 watch([accountId, hasConversationUnreadCounts], fetchConversationUnreadCounts, {
@@ -504,13 +518,7 @@ const menuItems = computed(() => {
           icon: 'i-lucide-inbox',
           activeOn: ['tickets_index'],
           to: accountScopedRoute('tickets_index'),
-        },
-        {
-          name: 'PQR Catalogs',
-          label: t('TICKETS.ADMIN.TITLE'),
-          icon: 'i-lucide-settings-2',
-          activeOn: ['helic3_catalogos_admin'],
-          to: accountScopedRoute('helic3_catalogos_admin'),
+          badgeCount: pqrSinResponder.value,
         },
         {
           name: 'PQR Decisiones',
@@ -518,6 +526,14 @@ const menuItems = computed(() => {
           icon: 'i-lucide-gavel',
           activeOn: ['helic3_pqr_decisiones'],
           to: accountScopedRoute('helic3_pqr_decisiones'),
+          badgeCount: pqrDecisionesPendientes.value,
+        },
+        {
+          name: 'PQR Catalogs',
+          label: t('TICKETS.ADMIN.TITLE'),
+          icon: 'i-lucide-settings-2',
+          activeOn: ['helic3_catalogos_admin'],
+          to: accountScopedRoute('helic3_catalogos_admin'),
         },
       ],
     },
@@ -728,19 +744,6 @@ const menuItems = computed(() => {
           name: 'Reports Bot',
           label: t('SIDEBAR.REPORTS_BOT'),
           to: accountScopedRoute('bot_reports'),
-        },
-      ],
-    },
-    {
-      name: 'Tickets',
-      label: t('SIDEBAR.TICKETS'),
-      icon: 'i-lucide-ticket',
-      children: [
-        {
-          name: 'All Tickets',
-          label: t('SIDEBAR.ALL_TICKETS'),
-          to: accountScopedRoute('tickets_index'),
-          activeOn: ['tickets_index'],
         },
       ],
     },
