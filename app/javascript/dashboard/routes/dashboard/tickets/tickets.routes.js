@@ -3,6 +3,7 @@ import { frontendURL } from 'dashboard/helper/URLHelper.js';
 import TicketsPage from './pages/TicketsPage.vue';
 import PqrCatalogosPage from './pages/PqrCatalogosPage.vue';
 import PqrDetailPage from './pages/PqrDetailPage.vue';
+import PqrDecisionesPage from './pages/PqrDecisionesPage.vue';
 
 const ticketsRoutes = {
   routes: [
@@ -22,6 +23,16 @@ const ticketsRoutes = {
         permissions: ['administrator', 'agent'],
       },
       component: PqrCatalogosPage,
+    },
+    {
+      // Cola de decisiones (DEC-01). Debe ir antes de la ruta con :id para que
+      // "decisiones" no la capture como un id.
+      path: frontendURL('accounts/:accountId/helic3/pqr/decisiones'),
+      name: 'helic3_pqr_decisiones',
+      meta: {
+        permissions: ['administrator', 'agent'],
+      },
+      component: PqrDecisionesPage,
     },
     {
       // Detalle del expediente (DET-01), con URL compartible.

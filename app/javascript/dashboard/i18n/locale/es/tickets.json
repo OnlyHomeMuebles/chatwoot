@@ -170,6 +170,27 @@
       "NEXT_ANSWER": "Responder al cliente detiene el reloj legal de la PQR.",
       "OPERATOR_ACTIONS": "Acciones"
     },
+    "DECISIONS": {
+      "TITLE": "Decisiones pendientes",
+      "SUBTITLE": "Solo llega a una persona lo que mueve dinero, repone producto o niega una garantía.",
+      "COUNT": "{count} pendientes",
+      "EMPTY": "No hay decisiones esperando aprobación",
+      "APPROVED": "Decisión aprobada",
+      "ERROR": "No se pudo aprobar la decisión",
+      "FORBIDDEN": "No tienes permiso para aprobar esta decisión",
+      "OVERDUE": "Vencido hace {days} días hábiles",
+      "REMAINING": "{days} días hábiles restantes",
+      "DUE_SOON": "Vence pronto",
+      "STOPPED": "Reloj detenido",
+      "RULE_HUMAN": "Aprobación humana obligatoria",
+      "RULE_APPLIED": "Regla aplicada: {rule}",
+      "BASIS": "El agente propone aplicar «{result}» y espera visto bueno. No se le ha escrito nada al cliente.",
+      "VIEW": "Ver sustento",
+      "APPROVE": "Aprobar",
+      "WAITING_AT": "Espera desde {date}",
+      "CONFIRM_TITLE": "Aprobar la decisión",
+      "CONFIRM_DESCRIPTION": "Se aplicará el resultado \"{result}\". Esto cierra el expediente y detiene el reloj. No le escribe nada al cliente."
+    },
     "UPDATE": {
       "SUCCESS": "Ticket actualizado",
       "ERROR": "Hubo un error al actualizar el ticket",

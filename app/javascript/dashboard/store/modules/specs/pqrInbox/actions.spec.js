@@ -87,6 +87,23 @@ describe('#actions', () => {
     });
   });
 
+  describe('#fetchDecisiones', () => {
+    it('carga la cola de decisiones', async () => {
+      const cola = [
+        { id: 7, propuesta: { id: 3, nombre: 'No procede garantía' } },
+      ];
+      axios.get.mockResolvedValue({ data: cola });
+
+      await actions.fetchDecisiones({ commit });
+
+      expect(commit.mock.calls).toEqual([
+        [types.SET_PQR_INBOX_UI_FLAG, { isFetchingDecisiones: true }],
+        [types.SET_PQR_DECISIONES, cola],
+        [types.SET_PQR_INBOX_UI_FLAG, { isFetchingDecisiones: false }],
+      ]);
+    });
+  });
+
   describe('#actualizar', () => {
     it('cambia el estado y refresca el expediente actual', async () => {
       const actualizado = { id: 7, status: 'pending' };
@@ -109,6 +126,30 @@ describe('#actions', () => {
       await actions.asignar({ commit }, { id: 7, assigneeId: 3 });
 
       expect(commit).toHaveBeenCalledWith(types.SET_PQR_CURRENT, actualizado);
+    });
+  });
+
+  describe('#aprobarDecision', () => {
+    it('aprueba por la resolucion y recarga la cola', async () => {
+      const dispatch = vi.fn();
+      axios.post.mockResolvedValue({ data: {} });
+
+      await actions.aprobarDecision(
+        { dispatch },
+        { ticketId: 7, resultadoId: 3 }
+      );
+
+      expect(dispatch).toHaveBeenCalledWith('fetchDecisiones');
+    });
+
+    it('propaga el error (401 de un agente) sin recargar', async () => {
+      const dispatch = vi.fn();
+      axios.post.mockRejectedValue({ response: { status: 401 } });
+
+      await expect(
+        actions.aprobarDecision({ dispatch }, { ticketId: 7, resultadoId: 3 })
+      ).rejects.toBeTruthy();
+      expect(dispatch).not.toHaveBeenCalled();
     });
   });
 });
