@@ -65,7 +65,11 @@
         "FILED": "Filed",
         "ON_TIME": "On time",
         "UNANSWERED": "Unanswered",
-        "OVERDUE": "Overdue"
+        "WARRANTY": "Open warranty",
+        "DUE_WEEK": "Due this week",
+        "RATIO": "{n} of {total}",
+        "EXCL_INFO": "Excludes Information",
+        "DUE_WEEK_CTX": "Need a response"
       },
       "EMPTY": "No cases match the filters",
       "ERROR": "The inbox could not be loaded",
@@ -87,18 +91,31 @@
         "CLASSIFICATION": "Classification",
         "STAGE": "Stage",
         "CLOCK": "Due date",
-        "ASSIGNEE": "Assignee"
+        "ASSIGNEE": "Assignee",
+        "MOTIVE": "Motive",
+        "WARRANTY": "Warranty"
       },
       "CLOCK": {
         "FROZEN": "Frozen",
         "OVERDUE": "Overdue",
-        "DUE": "Due {date}"
+        "DUE": "Due {date}",
+        "ANSWERED": "Answered within the deadline"
       },
       "PAGINATION": {
         "PREV": "Previous",
         "NEXT": "Next",
         "PAGE": "{page} / {total}"
-      }
+      },
+      "TABS": {
+        "ALL": "All",
+        "UNANSWERED": "Unanswered",
+        "IN_REVIEW": "In review",
+        "ANSWERED": "Answered"
+      },
+      "NEW": "New PQR",
+      "NEW_DISABLED": "A PQR is filed from a conversation",
+      "EXPORT": "Export",
+      "EXPORT_DISABLED": "Export is coming in a future release"
     },
     "ADMIN": {
       "TITLE": "Catalogs and parameters",

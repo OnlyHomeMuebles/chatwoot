@@ -19,7 +19,9 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
     @pqr = filtrados.order(created_at: :desc).page(pagina_actual).per(RESULTS_PER_PAGE)
     @total = @pqr.total_count
     @umbrales = umbrales_pqr
-    @metricas = metricas_pqr
+    # Metricas sobre el MISMO filtro (VIS-02), en una consulta aparte de la pagina
+    # y sobre un scope limpio (sin includes) para que los conteos no se inflen.
+    @metricas = metricas_pqr(aplicar_filtros(Current.account.tickets))
   end
 
   # Cola de decisiones (DEC-01): lo que el agente propuso y espera a una persona.
@@ -36,17 +38,23 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
 
   private
 
-  # Metricas del encabezado (BAN-01): conteos de toda la cuenta, no de la pagina
-  # ni del filtro, para que sean KPIs estables. "Vencidas" es la misma regla SQL
-  # que el filtro (sin responder + plazo pasado); nada aqui calcula dias habiles.
-  def metricas_pqr
-    scope = Current.account.tickets
-    total = scope.count
-    sin_responder = scope.where(respondida_at: nil).count
-    vencidas = scope.where(respondida_at: nil)
-                    .where('plazo_respuesta_vence_at < ?', Time.current).count
-    { total: total, sin_responder: sin_responder, vencidas: vencidas,
-      respondidas: total - sin_responder }
+  # Metricas del encabezado (VIS-02): cinco conteos en SQL sobre el scope ya
+  # filtrado. Ninguno calcula dias habiles (eso es derivado y caro): "dentro de
+  # plazo" y "vencen esta semana" usan la fecha de vencimiento tal cual la columna.
+  def metricas_pqr(scope)
+    ahora = Time.current
+    {
+      # radicadas del mes, excluyendo categorias sin radicado (cuenta_para_sic)
+      radicadas: scope.cuenta_para_sic.where(created_at: ahora.beginning_of_month..ahora).count,
+      # dentro de plazo: respondidas, o con el plazo aun por vencer
+      dentro_plazo: scope.where('respondida_at IS NOT NULL OR plazo_respuesta_vence_at >= ?', ahora).count,
+      sin_responder: scope.where(respondida_at: nil).count,
+      # abren garantia: las que tienen un radicado de garantia colgando
+      abren_garantia: scope.joins(:garantia).count,
+      # vencen esta semana: sin responder y con el plazo entre hoy y +7 dias
+      vencen_semana: scope.where(respondida_at: nil)
+                          .where(plazo_respuesta_vence_at: ahora..(ahora + 7.days)).count
+    }
   end
 
   # Precarga los resultados propuestos (uno por expediente, guardado en
@@ -63,10 +71,12 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
     authorize(Helic3::Ticket, :index?)
   end
 
-  # includes de la clasificacion y el responsable para que la fila no dispare una
-  # consulta por expediente. conversation:contact alimenta la columna "cliente".
+  # includes de la clasificacion, garantia, datos y el responsable para que la fila
+  # no dispare una consulta por expediente. conversation:contact alimenta "cliente";
+  # datos alimenta documento y ciudad (VIS-02); garantia alimenta su columna.
   def expedientes_de_la_cuenta
-    Current.account.tickets.includes(:categoria, :tipo, :motivo_pqr, :etapa,
+    Current.account.tickets.includes(:categoria, :tipo, :motivo_pqr, :etapa, :datos,
+                                     { garantia: { items: :proceso } },
                                      { assignee: { avatar_attachment: :blob } },
                                      { conversation: :contact })
   end
@@ -79,7 +89,15 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
       params[columna].present? ? acc.where(columna => params[columna]) : acc
     end
     scope = filtrar_por_texto(scope)
+    scope = solo_sin_responder(scope)
     solo_vencidas(scope)
+  end
+
+  # Tab "Sin responder" (VIS-02): sin sello de respuesta. Columna directa, en SQL.
+  def solo_sin_responder(scope)
+    return scope unless ActiveModel::Type::Boolean.new.cast(params[:sin_responder])
+
+    scope.where(respondida_at: nil)
   end
 
   # q busca por nombre del cliente, titulo o numero de radicado (el display_id).
