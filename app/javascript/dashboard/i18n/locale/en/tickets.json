@@ -131,6 +131,21 @@
         "PROCESOS_GARANTIA": "Warranty processes",
         "COBERTURAS_CIUDAD": "City coverage",
         "PARAMETROS": "Parameters"
+      },
+      "SUBTITLE": "The module vocabulary is managed here. No value is hard-coded.",
+      "ACTIVE": "Active",
+      "INACTIVE": "Inactive",
+      "GROUPS": {
+        "PQR": "PQR",
+        "GARANTIA": "Warranty"
+      },
+      "DESC": {
+        "MOTIVOS_PQR": "The motive decides whether the PQR opens a warranty case.",
+        "RESULTADOS": "Closes the PQR, opens a warranty or requires a person to decide.",
+        "DETALLES_TIPIFICADOS": "Standalone catalog of details; not tied to the motive.",
+        "PROCESOS_GARANTIA": "Milestones within the same business-day budget; they do not reset the clock.",
+        "COBERTURAS_CIUDAD": "With an in-house technician the warranty starts with a visit; otherwise, with pickup.",
+        "PARAMETROS": "Operational times and thresholds of the module."
       }
     },
     "UPDATE": {

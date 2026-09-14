@@ -131,6 +131,21 @@
         "PROCESOS_GARANTIA": "Procesos de garantía",
         "COBERTURAS_CIUDAD": "Cobertura por ciudad",
         "PARAMETROS": "Parámetros"
+      },
+      "SUBTITLE": "El vocabulario del módulo se administra aquí. Ningún valor está escrito en el código.",
+      "ACTIVE": "Activa",
+      "INACTIVE": "Inactiva",
+      "GROUPS": {
+        "PQR": "PQR",
+        "GARANTIA": "Garantía"
+      },
+      "DESC": {
+        "MOTIVOS_PQR": "El motivo decide si la PQR abre un expediente de garantía.",
+        "RESULTADOS": "Cierra la PQR, abre garantía o exige que decida una persona.",
+        "DETALLES_TIPIFICADOS": "Catálogo autónomo de detalles; no cuelga del motivo.",
+        "PROCESOS_GARANTIA": "Hitos dentro del mismo presupuesto de días hábiles; no reinician el reloj.",
+        "COBERTURAS_CIUDAD": "Con técnico propio la garantía arranca en visita; sin técnico, en recolección.",
+        "PARAMETROS": "Tiempos y umbrales de operación del módulo."
       }
     },
     "UPDATE": {
