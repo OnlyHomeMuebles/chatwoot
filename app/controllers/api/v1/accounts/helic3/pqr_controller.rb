@@ -28,7 +28,7 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
   def decisiones
     @decisiones = Current.account.tickets
                          .con_decision_pendiente
-                         .includes(conversation: :contact)
+                         .includes(:categoria, :etapa, conversation: :contact)
                          .order(Arel.sql('plazo_respuesta_vence_at ASC NULLS LAST'))
     @propuestas = propuestas_por_id(@decisiones)
   end

@@ -69,56 +69,19 @@ const estadoTag = fila => {
 };
 
 // Sustento derivado del payload real (no un texto inventado): qué propone el
-// agente, la regla que lo trajo y que no se le ha escrito al cliente.
+// agente y que no se le ha escrito al cliente.
 const sustento = fila =>
   t('TICKETS.DECISIONS.BASIS', {
     result: fila.propuesta?.nombre || '—',
   });
 
-// Gobernanza: quién puede decidir qué. Reglas del módulo, no un if de código:
-// el agente ejecuta lo autónomo; lo que mueve dinero o niega pasa a una persona.
-const GOVERNANCE = [
-  {
-    que: t('TICKETS.DECISIONS.GOV.REPAIR'),
-    quien: t('TICKETS.DECISIONS.GOV.AGENT'),
-    cls: 'bg-n-teal-3 text-n-teal-11',
-  },
-  {
-    que: t('TICKETS.DECISIONS.GOV.CHANGE'),
-    quien: t('TICKETS.DECISIONS.GOV.AGENT'),
-    cls: 'bg-n-teal-3 text-n-teal-11',
-  },
-  {
-    que: t('TICKETS.DECISIONS.GOV.REPLACE'),
-    quien: t('TICKETS.DECISIONS.GOV.HUMAN'),
-    cls: 'bg-n-amber-3 text-n-amber-11',
-  },
-  {
-    que: t('TICKETS.DECISIONS.GOV.REFUND'),
-    quien: t('TICKETS.DECISIONS.GOV.HUMAN'),
-    cls: 'bg-n-amber-3 text-n-amber-11',
-  },
-  {
-    que: t('TICKETS.DECISIONS.GOV.DENY'),
-    quien: t('TICKETS.DECISIONS.GOV.LEGAL'),
-    cls: 'bg-n-ruby-3 text-n-ruby-11',
-  },
-  {
-    que: t('TICKETS.DECISIONS.GOV.RETRACT'),
-    quien: t('TICKETS.DECISIONS.GOV.HUMAN'),
-    cls: 'bg-n-amber-3 text-n-amber-11',
-  },
-];
-
-// Ver el sustento abre el expediente en el detalle (DET-01). Ruta por nombre; el
-// catch evita un rechazo si el detalle aún no está en esta rama de integración.
+// Ver el sustento abre el expediente en el detalle (DET-01), por nombre de ruta.
+// Sin catch: si la navegación falla, que se note (el #42 trae la ruta).
 const verSustento = fila => {
-  router
-    .push({
-      name: 'helic3_pqr_detail',
-      params: { accountId: route.params.accountId, id: fila.id },
-    })
-    .catch(() => {});
+  router.push({
+    name: 'helic3_pqr_detail',
+    params: { accountId: route.params.accountId, id: fila.id },
+  });
 };
 
 // Aprobar pide confirmación: aplica un resultado con reloj legal, no es un clic banal.
@@ -187,104 +150,70 @@ const descripcionAprobar = computed(() =>
       <Spinner :size="24" />
     </div>
 
-    <div v-else class="grid grid-cols-1 gap-6 p-6 lg:grid-cols-3">
-      <!-- Columna izquierda: cola de decisiones como tarjetas -->
-      <div class="flex flex-col gap-3 lg:col-span-2">
-        <div
-          v-if="!decisiones.length"
-          class="flex items-center justify-center py-12 text-n-slate-11 border rounded-xl border-n-weak"
-        >
-          {{ t('TICKETS.DECISIONS.EMPTY') }}
-        </div>
-
-        <article
-          v-for="fila in decisiones"
-          :key="fila.id"
-          class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
-        >
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="font-medium tabular-nums text-n-slate-12">
-              {{ fila.numero_radicado || t('TICKETS.INBOX.NO_RADICADO') }}
-            </span>
-            <span class="text-sm text-n-slate-11">
-              {{ fila.cliente?.nombre || fila.title }}
-            </span>
-            <span
-              class="inline-flex items-center gap-1.5 px-2 py-0.5 ms-auto text-xs font-medium rounded-md"
-              :class="estadoTag(fila).cls"
-            >
-              <span class="rounded-full size-1.5 bg-current" />
-              {{ estadoTag(fila).text }}
-            </span>
-          </div>
-
-          <p class="mb-0 text-sm leading-relaxed text-n-slate-11">
-            {{ sustento(fila) }}
-          </p>
-
-          <div class="flex flex-wrap items-center gap-2">
-            <Button
-              :label="t('TICKETS.DECISIONS.APPROVE')"
-              color="teal"
-              size="sm"
-              @click="pedirAprobacion(fila)"
-            />
-            <Button
-              :label="t('TICKETS.DECISIONS.VIEW')"
-              variant="faded"
-              color="slate"
-              size="sm"
-              @click="verSustento(fila)"
-            />
-            <span class="ms-auto text-xs text-n-slate-11">
-              {{
-                t('TICKETS.DECISIONS.WAITING_AT', {
-                  date: formatFecha(fila.propuesto_at),
-                })
-              }}
-            </span>
-          </div>
-
-          <div class="pt-2 text-xs border-t text-n-slate-11 border-n-weak">
-            {{
-              t('TICKETS.DECISIONS.RULE_APPLIED', {
-                rule: t('TICKETS.DECISIONS.RULE_HUMAN'),
-              })
-            }}
-          </div>
-        </article>
+    <div v-else class="flex flex-col w-full max-w-3xl gap-3 p-6 mx-auto">
+      <div
+        v-if="!decisiones.length"
+        class="flex items-center justify-center py-12 text-n-slate-11 border rounded-xl border-n-weak"
+      >
+        {{ t('TICKETS.DECISIONS.EMPTY') }}
       </div>
 
-      <!-- Columna derecha: quién puede decidir qué -->
-      <aside class="flex flex-col gap-4">
-        <section
-          class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
-        >
-          <h2 class="mb-0 text-sm font-medium text-n-slate-12">
-            {{ t('TICKETS.DECISIONS.GOVERNANCE_TITLE') }}
-          </h2>
-          <ul class="flex flex-col gap-2">
-            <li
-              v-for="regla in GOVERNANCE"
-              :key="regla.que"
-              class="flex items-center justify-between gap-2 text-sm"
-            >
-              <span class="text-n-slate-12">{{ regla.que }}</span>
-              <span
-                class="px-2 py-0.5 text-xs font-medium rounded-md shrink-0"
-                :class="regla.cls"
-              >
-                {{ regla.quien }}
-              </span>
-            </li>
-          </ul>
-          <p
-            class="mb-0 p-2.5 text-xs leading-relaxed rounded-lg text-n-amber-11 bg-n-amber-3"
+      <article
+        v-for="fila in decisiones"
+        :key="fila.id"
+        class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
+      >
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="font-medium tabular-nums text-n-slate-12">
+            {{ fila.numero_radicado || t('TICKETS.INBOX.NO_RADICADO') }}
+          </span>
+          <span class="text-sm text-n-slate-11">
+            {{ fila.cliente?.nombre || fila.title }}
+          </span>
+          <span
+            class="inline-flex items-center gap-1.5 px-2 py-0.5 ms-auto text-xs font-medium rounded-md"
+            :class="estadoTag(fila).cls"
           >
-            {{ t('TICKETS.DECISIONS.GOV_NOTE') }}
-          </p>
-        </section>
-      </aside>
+            <span class="rounded-full size-1.5 bg-current" />
+            {{ estadoTag(fila).text }}
+          </span>
+        </div>
+
+        <p class="mb-0 text-sm leading-relaxed text-n-slate-11">
+          {{ sustento(fila) }}
+        </p>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <Button
+            :label="t('TICKETS.DECISIONS.APPROVE')"
+            color="teal"
+            size="sm"
+            @click="pedirAprobacion(fila)"
+          />
+          <Button
+            :label="t('TICKETS.DECISIONS.VIEW')"
+            variant="faded"
+            color="slate"
+            size="sm"
+            @click="verSustento(fila)"
+          />
+          <span class="ms-auto text-xs text-n-slate-11">
+            {{
+              t('TICKETS.DECISIONS.WAITING_AT', {
+                date: formatFecha(fila.propuesto_at),
+              })
+            }}
+          </span>
+        </div>
+
+        <div class="pt-2 text-xs border-t text-n-slate-11 border-n-weak">
+          {{
+            t('TICKETS.DECISIONS.RULE_APPLIED', {
+              rule: t('TICKETS.DECISIONS.RULE_HUMAN'),
+            })
+          }}
+        </div>
+      </article>
     </div>
 
     <Dialog
