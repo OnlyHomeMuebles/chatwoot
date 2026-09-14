@@ -13,6 +13,7 @@ export const state = {
     perPage: 25,
     umbralVerde: null,
     umbralAmarillo: null,
+    metricas: null,
   },
   current: null,
   decisiones: [],
@@ -55,6 +56,7 @@ export const actions = {
         perPage: data.meta.per_page,
         umbralVerde: data.meta.umbral_verde ?? null,
         umbralAmarillo: data.meta.umbral_amarillo ?? null,
+        metricas: data.meta.metricas ?? null,
       });
     } finally {
       commit(types.SET_PQR_INBOX_UI_FLAG, { isFetching: false });

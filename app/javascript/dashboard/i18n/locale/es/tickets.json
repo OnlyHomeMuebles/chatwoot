@@ -59,7 +59,14 @@
     },
     "INBOX": {
       "TITLE": "Bandeja de PQR",
+      "SUBTITLE": "Un radicado por solicitud. La garantía aparece vinculada cuando existe y conserva su propio plazo.",
       "MENU_GROUP": "PQR y garantías",
+      "METRICS": {
+        "FILED": "Radicadas",
+        "ON_TIME": "Dentro del plazo",
+        "UNANSWERED": "Sin responder",
+        "OVERDUE": "Vencidas"
+      },
       "EMPTY": "No hay expedientes que coincidan con los filtros",
       "ERROR": "No se pudo cargar la bandeja",
       "CATALOGS_ERROR": "No se pudieron cargar los filtros de clasificación",
@@ -89,7 +96,8 @@
       },
       "PAGINATION": {
         "PREV": "Anterior",
-        "NEXT": "Siguiente"
+        "NEXT": "Siguiente",
+        "PAGE": "{page} / {total}"
       }
     },
     "ADMIN": {
