@@ -59,7 +59,14 @@
     },
     "INBOX": {
       "TITLE": "PQR inbox",
+      "SUBTITLE": "One case number per request. The warranty is linked when it exists and keeps its own deadline.",
       "MENU_GROUP": "PQR & warranties",
+      "METRICS": {
+        "FILED": "Filed",
+        "ON_TIME": "On time",
+        "UNANSWERED": "Unanswered",
+        "OVERDUE": "Overdue"
+      },
       "EMPTY": "No cases match the filters",
       "ERROR": "The inbox could not be loaded",
       "CATALOGS_ERROR": "The classification filters could not be loaded",
@@ -89,7 +96,8 @@
       },
       "PAGINATION": {
         "PREV": "Previous",
-        "NEXT": "Next"
+        "NEXT": "Next",
+        "PAGE": "{page} / {total}"
       }
     },
     "ADMIN": {

@@ -14,6 +14,7 @@ const respuesta = {
       per_page: 25,
       umbral_verde: 8,
       umbral_amarillo: 3,
+      metricas: { total: 42, sin_responder: 5, vencidas: 2, respondidas: 37 },
     },
     payload: [
       { id: 7, numero_radicado: '#3', title: 'Sofá rayado' },
@@ -41,6 +42,12 @@ describe('#actions', () => {
             perPage: 25,
             umbralVerde: 8,
             umbralAmarillo: 3,
+            metricas: {
+              total: 42,
+              sin_responder: 5,
+              vencidas: 2,
+              respondidas: 37,
+            },
           },
         ],
         [types.SET_PQR_INBOX_UI_FLAG, { isFetching: false }],

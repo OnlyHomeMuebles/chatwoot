@@ -19,9 +19,23 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
     @pqr = filtrados.order(created_at: :desc).page(pagina_actual).per(RESULTS_PER_PAGE)
     @total = @pqr.total_count
     @umbrales = umbrales_pqr
+    @metricas = metricas_pqr
   end
 
   private
+
+  # Metricas del encabezado (BAN-01): conteos de toda la cuenta, no de la pagina
+  # ni del filtro, para que sean KPIs estables. "Vencidas" es la misma regla SQL
+  # que el filtro (sin responder + plazo pasado); nada aqui calcula dias habiles.
+  def metricas_pqr
+    scope = Current.account.tickets
+    total = scope.count
+    sin_responder = scope.where(respondida_at: nil).count
+    vencidas = scope.where(respondida_at: nil)
+                    .where('plazo_respuesta_vence_at < ?', Time.current).count
+    { total: total, sin_responder: sin_responder, vencidas: vencidas,
+      respondidas: total - sin_responder }
+  end
 
   # Solo lectura, pero se autoriza igual que el resto del modulo para acotar por
   # politica. ensure_current_account (base) ya acota a la cuenta; no se reimplementa.

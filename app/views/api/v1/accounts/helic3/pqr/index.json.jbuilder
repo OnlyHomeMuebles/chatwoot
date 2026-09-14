@@ -8,6 +8,13 @@ json.meta do
     json.umbral_verde @umbrales.umbral_verde
     json.umbral_amarillo @umbrales.umbral_amarillo
   end
+  # Metricas del encabezado (BAN-01): conteos de la cuenta para la tira de KPIs.
+  json.metricas do
+    json.total @metricas[:total]
+    json.sin_responder @metricas[:sin_responder]
+    json.vencidas @metricas[:vencidas]
+    json.respondidas @metricas[:respondidas]
+  end
 end
 
 json.payload do
