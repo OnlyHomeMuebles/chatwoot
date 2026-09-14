@@ -14,5 +14,5 @@ json.etapas_pqr @etapas_pqr do |etapa|
 end
 
 json.resultados @resultados do |resultado|
-  json.call(resultado, :id, :codigo, :nombre, :cierra_pqr, :abre_garantia, :aprobacion_humana)
+  json.call(resultado, :id, :codigo, :nombre, :cierra_pqr, :abre_garantia, :aprobacion_humana, :requiere_admin)
 end

@@ -37,6 +37,8 @@ RSpec.describe 'Helic3 Cola de decisiones (DEC-01)', type: :request do
     expect(fila['id']).to eq(ticket.id)
     expect(fila['propuesta']['codigo']).to eq('no_procede_garantia')
     expect(fila['propuesta']['aprobacion_humana']).to be(true)
+    # DEC-02: la regla que se pinta al pie sale del catalogo, no quemada.
+    expect(fila['propuesta']['requiere_admin']).to eq(no_procede.requiere_admin)
   end
 
   it 'una PQR sin propuesta pendiente no aparece' do
