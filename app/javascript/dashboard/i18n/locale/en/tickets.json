@@ -24,7 +24,8 @@
     },
     "CONVERSATION": {
       "EMPTY": "No PQR records linked to this conversation",
-      "CREATE": "File a PQR"
+      "CREATE": "File a PQR",
+      "OPEN_DETAIL": "Open the full case"
     },
     "FIELDS": {
       "CATEGORY": "Category",
@@ -44,6 +45,8 @@
       "FORM_MOTIVE_LABEL": "Reason",
       "FORM_MOTIVE_PLACEHOLDER": "Select a reason",
       "FORM_CATEGORY_DERIVED": "Category: {category}",
+      "FORM_DETAIL_LABEL": "Typified detail",
+      "FORM_DETAIL_PLACEHOLDER": "Select a detail",
       "FORM_STATUS_LABEL": "Status",
       "CONFIRM": "Create",
       "SUCCESS": "Ticket created successfully",
