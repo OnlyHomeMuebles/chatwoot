@@ -81,4 +81,9 @@ RSpec.describe Helic3::Casos::AbrirGarantia do
                      items: [{ producto_nombre: 'Sofá' }, { producto_nombre: 'Nochero' }])
     expect(garantia.items.pluck(:producto_nombre)).to contain_exactly('Sofá', 'Nochero')
   end
+
+  it 'rechaza abrir una garantia sin ciudad de cobertura y no crea nada (GAR-05)' do
+    expect { abrir(ciudad: nil) }.to raise_error(ArgumentError, /ciudad/)
+    expect(ticket.reload.garantia).to be_nil
+  end
 end
