@@ -50,6 +50,16 @@ const CAMPOS = {
   ],
 };
 
+// Menu lateral agrupado por ambito (como el mockup): PQR y Garantia. Parametros
+// va como entrada aparte al final.
+const GRUPOS = [
+  {
+    titulo: 'PQR',
+    items: ['motivos_pqr', 'resultados', 'detalles_tipificados'],
+  },
+  { titulo: 'GARANTIA', items: ['procesos_garantia', 'coberturas_ciudad'] },
+];
+
 const tabActivo = ref(TIPOS[0]);
 const nuevo = reactive({});
 
@@ -127,20 +137,25 @@ onMounted(() => {
     .catch(() => useAlert(t('TICKETS.ADMIN.ERROR')));
   reiniciarNuevo();
   cargar();
+  // Precarga todos los catalogos para que el menu lateral muestre sus conteos.
+  TIPOS.forEach(tipo => store.dispatch('pqrCatalogos/fetchCatalogo', tipo));
+  store.dispatch('pqrCatalogos/fetchParametros');
 });
+
+// Conteo por catalogo para el badge del menu lateral.
+const conteoDe = tipo =>
+  tipo === PARAMETROS
+    ? parametros.value.length
+    : (getCatalogo.value(tipo) || []).length;
+
+const labelDe = tipo => t(`TICKETS.ADMIN.TABS.${tipo.toUpperCase()}`);
+const descripcionDe = tipo => t(`TICKETS.ADMIN.DESC.${tipo.toUpperCase()}`);
+const grupoTitulo = titulo => t(`TICKETS.ADMIN.GROUPS.${titulo}`);
 
 watch(tabActivo, () => {
   reiniciarNuevo();
   cargar();
 });
-
-const tabs = computed(() => [
-  ...TIPOS.map(tipo => ({
-    value: tipo,
-    label: t(`TICKETS.ADMIN.TABS.${tipo.toUpperCase()}`),
-  })),
-  { value: PARAMETROS, label: t('TICKETS.ADMIN.TABS.PARAMETROS') },
-]);
 
 const conAviso = async accion => {
   try {
@@ -238,193 +253,286 @@ const guardarParametro = (parametro, valor) => {
 <template>
   <div class="flex flex-col w-full h-full overflow-hidden bg-n-background">
     <header
-      class="flex items-center justify-between px-6 py-4 border-b border-n-weak"
+      class="flex flex-wrap items-center gap-3 px-6 py-4 border-b border-n-weak shrink-0"
     >
-      <h1 class="text-xl font-medium text-n-slate-12">
-        {{ t('TICKETS.ADMIN.TITLE') }}
-      </h1>
-      <span v-if="!esAdmin" class="text-sm text-n-amber-11">
+      <div class="flex flex-col gap-1 min-w-0">
+        <h1 class="mb-0 text-xl font-semibold tracking-tight text-n-slate-12">
+          {{ t('TICKETS.ADMIN.TITLE') }}
+        </h1>
+        <p class="mb-0 text-sm text-n-slate-11">
+          {{ t('TICKETS.ADMIN.SUBTITLE') }}
+        </p>
+      </div>
+      <div class="flex-1" />
+      <span
+        v-if="!esAdmin"
+        class="px-2 py-1 text-sm rounded-md text-n-amber-11 bg-n-amber-3"
+      >
         {{ t('TICKETS.ADMIN.READ_ONLY') }}
       </span>
     </header>
 
-    <div class="flex flex-wrap gap-2 px-6 py-3 border-b border-n-weak">
-      <Button
-        v-for="tab in tabs"
-        :key="tab.value"
-        :label="tab.label"
-        :color="tabActivo === tab.value ? 'blue' : 'slate'"
-        :faded="tabActivo !== tab.value"
-        sm
-        @click="tabActivo = tab.value"
-      />
-    </div>
-
-    <div class="flex-1 p-6 overflow-y-auto">
-      <div
-        v-if="uiFlags.isFetching"
-        class="flex items-center justify-center py-12 text-n-slate-11"
+    <!-- Dos paneles: menu lateral agrupado + contenido del catalogo -->
+    <div class="flex flex-1 min-h-0">
+      <aside
+        class="flex flex-col w-56 gap-4 p-3 overflow-y-auto border-e border-n-weak shrink-0"
       >
-        <Spinner :size="24" />
-      </div>
-
-      <!-- Parametros -->
-      <div v-else-if="esParametros" class="flex flex-col max-w-2xl gap-3">
         <div
-          v-for="parametro in parametros"
-          :key="parametro.id"
-          class="flex items-center gap-3"
+          v-for="grupo in GRUPOS"
+          :key="grupo.titulo"
+          class="flex flex-col gap-1"
         >
-          <div class="flex-1">
-            <p class="mb-0 text-sm font-medium text-n-slate-12">
-              {{ parametro.etiqueta }}
-            </p>
-            <p class="mb-0 text-xs text-n-slate-11">{{ parametro.unidad }}</p>
-          </div>
-          <Input
-            :model-value="parametro.valor"
-            :disabled="!esAdmin"
-            class="w-32"
-            @blur="e => guardarParametro(parametro, e.target.value)"
-          />
-        </div>
-      </div>
-
-      <!-- Catalogo -->
-      <div v-else class="flex flex-col gap-3">
-        <template v-for="registro in registros" :key="registro.id">
-          <div
-            v-if="ediciones[registro.id]"
-            class="flex flex-wrap items-center gap-3 p-3 border rounded-lg border-n-weak"
-            :class="registro.activo ? '' : 'opacity-50'"
+          <p
+            class="px-2 mb-1 text-[10px] font-semibold tracking-wide uppercase text-n-slate-10"
           >
-            <Input
-              v-model="ediciones[registro.id].nombre"
-              :disabled="!esAdmin"
-              class="min-w-40 flex-1"
-            />
-            <span class="text-xs text-n-slate-11">{{ registro.codigo }}</span>
+            {{ grupoTitulo(grupo.titulo) }}
+          </p>
+          <button
+            v-for="tipo in grupo.items"
+            :key="tipo"
+            class="flex items-center justify-between gap-2 px-2 py-1.5 text-sm rounded-lg"
+            :class="
+              tabActivo === tipo
+                ? 'bg-n-alpha-2 text-n-slate-12 font-medium'
+                : 'text-n-slate-11 hover:bg-n-alpha-1'
+            "
+            @click="tabActivo = tipo"
+          >
+            <span class="truncate">{{ labelDe(tipo) }}</span>
+            <span class="text-xs tabular-nums text-n-slate-10">
+              {{ conteoDe(tipo) }}
+            </span>
+          </button>
+        </div>
+        <div class="flex flex-col gap-1 pt-3 border-t border-n-weak">
+          <button
+            class="flex items-center justify-between gap-2 px-2 py-1.5 text-sm rounded-lg"
+            :class="
+              esParametros
+                ? 'bg-n-alpha-2 text-n-slate-12 font-medium'
+                : 'text-n-slate-11 hover:bg-n-alpha-1'
+            "
+            @click="tabActivo = PARAMETROS"
+          >
+            <span class="truncate">{{ labelDe(PARAMETROS) }}</span>
+            <span class="text-xs tabular-nums text-n-slate-10">
+              {{ conteoDe(PARAMETROS) }}
+            </span>
+          </button>
+        </div>
+      </aside>
 
-            <!-- Marcas de comportamiento, control por tipo de columna -->
-            <template v-for="campo in camposActivos" :key="campo.key">
-              <label
-                v-if="campo.tipo === 'bool'"
-                class="flex items-center gap-1 text-xs cursor-pointer text-n-slate-11"
-                :title="t(`TICKETS.ADMIN.FLAGS.${campo.key.toUpperCase()}`)"
-              >
-                <input
-                  v-model="ediciones[registro.id][campo.key]"
-                  type="checkbox"
-                  :disabled="!esAdmin"
-                />
-                {{ t(`TICKETS.ADMIN.FLAGS.${campo.key.toUpperCase()}`) }}
-              </label>
-              <Select
-                v-else-if="campo.tipo === 'enum'"
-                v-model="ediciones[registro.id][campo.key]"
-                :options="enumOptions(campo)"
-                :disabled="!esAdmin"
-                class="w-40"
-              />
-              <Select
-                v-else-if="campo.tipo === 'categoria'"
-                v-model="ediciones[registro.id][campo.key]"
-                :options="categoriaOptions"
-                :disabled="!esAdmin"
-                class="w-40"
-              />
+      <div class="flex flex-col flex-1 min-w-0">
+        <!-- Cabecera del panel: titulo, descripcion y contador -->
+        <div
+          class="flex items-center gap-3 px-6 py-3 border-b border-n-weak shrink-0"
+        >
+          <div class="flex flex-col gap-0.5 min-w-0">
+            <h2 class="mb-0 text-sm font-medium text-n-slate-12">
+              {{ labelDe(tabActivo) }}
+            </h2>
+            <p class="mb-0 text-xs text-n-slate-11">
+              {{ descripcionDe(tabActivo) }}
+            </p>
+          </div>
+          <div class="flex-1" />
+          <span
+            class="px-2 py-0.5 text-xs font-medium rounded-md bg-n-alpha-1 text-n-slate-11"
+          >
+            {{ conteoDe(tabActivo) }}
+          </span>
+        </div>
+
+        <div class="flex-1 p-6 overflow-y-auto">
+          <div
+            v-if="uiFlags.isFetching"
+            class="flex items-center justify-center py-12 text-n-slate-11"
+          >
+            <Spinner :size="24" />
+          </div>
+
+          <!-- Parametros -->
+          <div v-else-if="esParametros" class="flex flex-col max-w-2xl gap-3">
+            <div
+              v-for="parametro in parametros"
+              :key="parametro.id"
+              class="flex items-center gap-3"
+            >
+              <div class="flex-1">
+                <p class="mb-0 text-sm font-medium text-n-slate-12">
+                  {{ parametro.etiqueta }}
+                </p>
+                <p class="mb-0 text-xs text-n-slate-11">
+                  {{ parametro.unidad }}
+                </p>
+              </div>
               <Input
-                v-else
-                v-model="ediciones[registro.id][campo.key]"
-                :type="campo.tipo === 'numero' ? 'number' : 'text'"
+                :model-value="parametro.valor"
                 :disabled="!esAdmin"
-                :placeholder="
-                  t(`TICKETS.ADMIN.FLAGS.${campo.key.toUpperCase()}`)
-                "
                 class="w-32"
-              />
-            </template>
-
-            <div v-if="esAdmin" class="flex items-center gap-2 ml-auto">
-              <Button
-                :label="t('TICKETS.ADMIN.SAVE')"
-                sm
-                @click="guardar(registro)"
-              />
-              <Button
-                :label="
-                  registro.activo
-                    ? t('TICKETS.ADMIN.DEACTIVATE')
-                    : t('TICKETS.ADMIN.ACTIVATE')
-                "
-                faded
-                xs
-                @click="alternarActivo(registro)"
-              />
-              <Button
-                icon="i-lucide-trash-2"
-                data-testid="btn-borrar"
-                ghost
-                ruby
-                xs
-                @click="pedirBorrado(registro)"
+                @blur="e => guardarParametro(parametro, e.target.value)"
               />
             </div>
           </div>
-        </template>
 
-        <!-- Alta: nombre, codigo y los campos propios del catalogo -->
-        <div
-          v-if="esAdmin"
-          class="flex flex-wrap items-center gap-3 pt-3 mt-2 border-t border-n-weak"
-        >
-          <Input
-            v-model="nuevo.nombre"
-            :placeholder="t('TICKETS.ADMIN.NEW_NAME')"
-            class="min-w-40 flex-1"
-          />
-          <Input
-            v-model="nuevo.codigo"
-            :placeholder="t('TICKETS.ADMIN.NEW_CODE')"
-            class="w-40"
-          />
-          <template v-for="campo in camposActivos" :key="`nuevo-${campo.key}`">
-            <label
-              v-if="campo.tipo === 'bool'"
-              class="flex items-center gap-1 text-xs cursor-pointer text-n-slate-11"
+          <!-- Catalogo -->
+          <div v-else class="flex flex-col gap-3">
+            <template v-for="registro in registros" :key="registro.id">
+              <div
+                v-if="ediciones[registro.id]"
+                class="flex flex-wrap items-center gap-3 p-3 border rounded-lg border-n-weak"
+                :class="registro.activo ? '' : 'opacity-50'"
+              >
+                <Input
+                  v-model="ediciones[registro.id].nombre"
+                  :disabled="!esAdmin"
+                  class="min-w-40 flex-1"
+                />
+                <span class="text-xs tabular-nums text-n-slate-11">
+                  {{ registro.codigo }}
+                </span>
+                <span
+                  class="px-2 py-0.5 text-xs font-medium rounded-md"
+                  :class="
+                    registro.activo
+                      ? 'bg-n-teal-3 text-n-teal-11'
+                      : 'bg-n-slate-3 text-n-slate-11'
+                  "
+                >
+                  {{
+                    registro.activo
+                      ? t('TICKETS.ADMIN.ACTIVE')
+                      : t('TICKETS.ADMIN.INACTIVE')
+                  }}
+                </span>
+
+                <!-- Marcas de comportamiento, control por tipo de columna -->
+                <template v-for="campo in camposActivos" :key="campo.key">
+                  <label
+                    v-if="campo.tipo === 'bool'"
+                    class="flex items-center gap-1 text-xs cursor-pointer text-n-slate-11"
+                    :title="t(`TICKETS.ADMIN.FLAGS.${campo.key.toUpperCase()}`)"
+                  >
+                    <input
+                      v-model="ediciones[registro.id][campo.key]"
+                      type="checkbox"
+                      :disabled="!esAdmin"
+                    />
+                    {{ t(`TICKETS.ADMIN.FLAGS.${campo.key.toUpperCase()}`) }}
+                  </label>
+                  <Select
+                    v-else-if="campo.tipo === 'enum'"
+                    v-model="ediciones[registro.id][campo.key]"
+                    :options="enumOptions(campo)"
+                    :disabled="!esAdmin"
+                    class="w-40"
+                  />
+                  <Select
+                    v-else-if="campo.tipo === 'categoria'"
+                    v-model="ediciones[registro.id][campo.key]"
+                    :options="categoriaOptions"
+                    :disabled="!esAdmin"
+                    class="w-40"
+                  />
+                  <Input
+                    v-else
+                    v-model="ediciones[registro.id][campo.key]"
+                    :type="campo.tipo === 'numero' ? 'number' : 'text'"
+                    :disabled="!esAdmin"
+                    :placeholder="
+                      t(`TICKETS.ADMIN.FLAGS.${campo.key.toUpperCase()}`)
+                    "
+                    class="w-32"
+                  />
+                </template>
+
+                <div v-if="esAdmin" class="flex items-center gap-2 ml-auto">
+                  <Button
+                    :label="t('TICKETS.ADMIN.SAVE')"
+                    sm
+                    @click="guardar(registro)"
+                  />
+                  <Button
+                    :label="
+                      registro.activo
+                        ? t('TICKETS.ADMIN.DEACTIVATE')
+                        : t('TICKETS.ADMIN.ACTIVATE')
+                    "
+                    faded
+                    xs
+                    @click="alternarActivo(registro)"
+                  />
+                  <Button
+                    icon="i-lucide-trash-2"
+                    data-testid="btn-borrar"
+                    ghost
+                    ruby
+                    xs
+                    @click="pedirBorrado(registro)"
+                  />
+                </div>
+              </div>
+            </template>
+
+            <!-- Alta: nombre, codigo y los campos propios del catalogo -->
+            <div
+              v-if="esAdmin"
+              class="flex flex-wrap items-center gap-3 pt-3 mt-2 border-t border-n-weak"
             >
-              <input v-model="nuevo[campo.key]" type="checkbox" />
-              {{ t(`TICKETS.ADMIN.FLAGS.${campo.key.toUpperCase()}`) }}
-            </label>
-            <Select
-              v-else-if="campo.tipo === 'enum'"
-              v-model="nuevo[campo.key]"
-              :options="enumOptions(campo)"
-              class="w-40"
-            />
-            <Select
-              v-else-if="campo.tipo === 'categoria'"
-              v-model="nuevo[campo.key]"
-              :options="categoriaOptions"
-              :placeholder="t('TICKETS.ADMIN.FLAGS.CATEGORIA_ID')"
-              class="w-40"
-            />
-            <Input
-              v-else
-              v-model="nuevo[campo.key]"
-              :type="campo.tipo === 'numero' ? 'number' : 'text'"
-              :placeholder="t(`TICKETS.ADMIN.FLAGS.${campo.key.toUpperCase()}`)"
-              class="w-32"
-            />
-          </template>
-          <Button
-            :label="t('TICKETS.ADMIN.ADD')"
-            icon="i-lucide-plus"
-            sm
-            :disabled="!puedeCrear"
-            :is-loading="uiFlags.isSaving"
-            @click="crear"
-          />
+              <Input
+                v-model="nuevo.nombre"
+                :placeholder="t('TICKETS.ADMIN.NEW_NAME')"
+                class="min-w-40 flex-1"
+              />
+              <Input
+                v-model="nuevo.codigo"
+                :placeholder="t('TICKETS.ADMIN.NEW_CODE')"
+                class="w-40"
+              />
+              <template
+                v-for="campo in camposActivos"
+                :key="`nuevo-${campo.key}`"
+              >
+                <label
+                  v-if="campo.tipo === 'bool'"
+                  class="flex items-center gap-1 text-xs cursor-pointer text-n-slate-11"
+                >
+                  <input v-model="nuevo[campo.key]" type="checkbox" />
+                  {{ t(`TICKETS.ADMIN.FLAGS.${campo.key.toUpperCase()}`) }}
+                </label>
+                <Select
+                  v-else-if="campo.tipo === 'enum'"
+                  v-model="nuevo[campo.key]"
+                  :options="enumOptions(campo)"
+                  class="w-40"
+                />
+                <Select
+                  v-else-if="campo.tipo === 'categoria'"
+                  v-model="nuevo[campo.key]"
+                  :options="categoriaOptions"
+                  :placeholder="t('TICKETS.ADMIN.FLAGS.CATEGORIA_ID')"
+                  class="w-40"
+                />
+                <Input
+                  v-else
+                  v-model="nuevo[campo.key]"
+                  :type="campo.tipo === 'numero' ? 'number' : 'text'"
+                  :placeholder="
+                    t(`TICKETS.ADMIN.FLAGS.${campo.key.toUpperCase()}`)
+                  "
+                  class="w-32"
+                />
+              </template>
+              <Button
+                :label="t('TICKETS.ADMIN.ADD')"
+                icon="i-lucide-plus"
+                sm
+                :disabled="!puedeCrear"
+                :is-loading="uiFlags.isSaving"
+                @click="crear"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
