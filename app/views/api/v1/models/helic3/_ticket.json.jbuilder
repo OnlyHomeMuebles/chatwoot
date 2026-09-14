@@ -35,6 +35,9 @@ json.cerrada_at resource.cerrada_at
 json.plazo_respuesta_vence_at resource.plazo_respuesta_vence_at
 json.reloj_detenido resource.reloj_detenido?
 json.origen resource.pqrs_metadata&.dig('origen')
+# Escalamiento (VIS-03): nivel sobre la MISMA PQR (p. ej. derecho de peticion),
+# guardado en pqrs_metadata. Nulo mientras no exista; no se inventa un valor.
+json.escalamiento resource.pqrs_metadata&.dig('escalamiento')
 
 # semaforo y dias_habiles_restantes SOLO en la vista detallada (show/create): en
 # el listado costarian una lectura de umbrales + calculo de festivos por fila, y

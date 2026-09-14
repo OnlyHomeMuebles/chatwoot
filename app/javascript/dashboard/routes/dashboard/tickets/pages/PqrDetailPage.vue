@@ -9,10 +9,10 @@ import Icon from 'dashboard/components-next/icon/Icon.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
-// Detalle del expediente (DET-01). Consume el show ya existente
-// (GET helic3/tickets/:id) que trae semaforo, dias_habiles_restantes, los sellos,
-// la clasificacion, los datos del caso (con procedencia) y la garantia. Cada
-// bloque se pinta solo si su dato viene en el payload (nil-safe).
+// Detalle del expediente (DET-01 + VIS-03). Consume el show (GET helic3/tickets/:id)
+// que trae los dos relojes separados (PQR legal y garantia), la clasificacion, los
+// datos con procedencia y la garantia con su presupuesto e items. Avanzar de proceso
+// reusa tickets/avanzarGarantia (GAR-03): misma llamada del panel, otra vista.
 const props = defineProps({
   id: { type: [Number, String], required: true },
 });
@@ -43,9 +43,8 @@ onMounted(() => {
 });
 watch(() => props.id, cargar);
 
-// Acciones del operador: cambiar estado y reasignar (registrar el resultado NO es
-// de aqui: vive en el panel de conversacion). refreshKey remonta los selectores
-// para que vuelvan al valor real si el servidor rechaza el cambio.
+// refreshKey remonta los selectores para que vuelvan al valor real si el servidor
+// rechaza el cambio (estado, responsable y avance de proceso).
 const refreshKey = ref(0);
 
 const statusOptions = computed(() =>
@@ -91,10 +90,11 @@ const reasignar = async assigneeId => {
   }
 };
 
-// Ruta por nombre (no armada a mano): la bandeja.
+// Volver a la bandeja conservando los filtros que venian en los query params.
 const volverUrl = computed(() => ({
   name: 'tickets_index',
   params: { accountId: route.params.accountId },
+  query: route.query,
 }));
 
 // Abrir la conversacion de origen: se navega por display_id (lo que Chatwoot
@@ -111,13 +111,12 @@ const conversacionUrl = computed(() =>
     : null
 );
 
-// La clasificacion la propone el agente de IA cuando el expediente nace de un
-// bot (origen ia/captain); en ese caso se marca la tarjeta con el badge IA.
+// La clasificacion la propone el agente de IA cuando el expediente nace de un bot
+// (origen ia/captain); en ese caso se marca la tarjeta con el badge IA.
 const clasificacionEsIA = computed(() =>
   ['ia', 'captain', 'bot'].includes(expediente.value?.origen)
 );
 
-// Ciudad y responsable arman el subtitulo de la cabecera.
 const ciudad = computed(() => expediente.value?.datos?.ciudad?.valor || null);
 
 // Barra del presupuesto de garantia: fraccion consumida de los dias habiles.
@@ -137,11 +136,74 @@ const presupuestoDotClass = computed(
     })[garantia.value?.presupuesto?.semaforo] || 'bg-n-slate-9'
 );
 
-// La PQR de categoria Informacion no tiene plazo legal: no se pinta reloj.
+// La garantia cierra cuando el backend sella cerrada_at (todos los items en un
+// proceso terminal). Cerrada: se oculta el selector de avance.
+const garantiaCerrada = computed(() => !!garantia.value?.cerrada_at);
+const numProductos = computed(() => garantia.value?.items?.length || 0);
+
+// Linea de proceso: el catalogo de procesos activos, marcando el vigente
+// (proceso_visible) y el terminal. Sin historial por proceso (eso llega con
+// EVT-01 en E4): es la ruta del proceso, no una bitacora.
+const procesoTimeline = computed(() => {
+  const g = garantia.value;
+  if (!g?.procesos) return [];
+  const vigenteId = g.proceso_visible?.id;
+  return g.procesos.map(p => ({
+    id: p.id,
+    nombre: p.nombre,
+    esVigente: p.id === vigenteId,
+    esTerminal: p.es_terminal,
+  }));
+});
+
+// Procesos destino para el selector de cada producto (catalogo activo).
+const procesoOptions = computed(() =>
+  (garantia.value?.procesos || []).map(p => ({ value: p.id, label: p.nombre }))
+);
+
+const itemEstado = item =>
+  item.resuelto_at
+    ? {
+        text: t('TICKETS.DETAIL.ITEM_RESOLVED'),
+        cls: 'bg-n-teal-3 text-n-teal-11',
+      }
+    : {
+        text: t('TICKETS.DETAIL.ITEM_IN_PROGRESS'),
+        cls: 'bg-n-blue-3 text-n-blue-11',
+      };
+
+// Avanzar un producto de proceso: misma llamada del panel (GAR-03). Al terminar,
+// se refresca el expediente con datos del servidor (no se recalcula en cliente).
+const avanzarItem = async (item, procesoId) => {
+  if (!procesoId || procesoId === item.proceso?.id) return;
+  try {
+    await store.dispatch('tickets/avanzarGarantia', {
+      garantiaId: garantia.value.id,
+      itemId: item.id,
+      procesoId,
+    });
+    await store.dispatch('pqrInbox/fetchOne', props.id);
+    useAlert(t('TICKETS.WARRANTY.ADVANCED'));
+  } catch (error) {
+    refreshKey.value += 1;
+    useAlert(
+      error?.response?.status === 401
+        ? t('TICKETS.UPDATE.FORBIDDEN')
+        : t('TICKETS.WARRANTY.ERROR')
+    );
+  }
+};
+
+// La PQR de categoria Informacion no tiene plazo legal: no se pinta reloj, y no
+// genera radicado (queda fuera del conteo frente a la SIC).
 const tieneReloj = computed(
   () =>
     !!expediente.value?.plazo_respuesta_vence_at || !!expediente.value?.semaforo
 );
+const sinRadicado = computed(
+  () => !!expediente.value && !expediente.value.numero_radicado
+);
+const escalamiento = computed(() => expediente.value?.escalamiento || null);
 
 const estaVencido = computed(
   () =>
@@ -163,7 +225,6 @@ const semaforoDotClass = computed(
     })[expediente.value?.semaforo] || 'bg-n-slate-9'
 );
 
-// Pastilla de estado del reloj en la cabecera de la tarjeta legal.
 const relojTag = computed(() => {
   if (expediente.value?.reloj_detenido) {
     return {
@@ -204,7 +265,6 @@ const clasificacion = computed(() => {
 });
 
 // Datos del caso con procedencia (DAT-01): cada campo trae { valor, fuente }.
-// El detalle tipificado es catalogo, su valor es un objeto id/codigo/nombre.
 const FUENTES = {
   ia: { label: t('TICKETS.DATA.SOURCE.IA'), cls: 'bg-n-iris-3 text-n-iris-11' },
   erp: {
@@ -218,8 +278,6 @@ const FUENTES = {
 };
 const badgeFuente = fuente => FUENTES[fuente] || null;
 
-// Los seis campos SIEMPRE se listan (criterio 10): con badge de procedencia si
-// hay valor, y "Pendiente" cuando no lo hay — asi se ve que falta recolectar.
 const datosLista = computed(() => {
   const d = expediente.value?.datos || {};
   const campos = [
@@ -242,7 +300,6 @@ const datosLista = computed(() => {
   return filas;
 });
 
-// Siguiente accion: pista derivada del estado real, sin inventar pasos.
 const siguienteAccion = computed(() => {
   if (expediente.value?.reloj_detenido) return t('TICKETS.DETAIL.NEXT_FROZEN');
   if (garantia.value) {
@@ -251,6 +308,32 @@ const siguienteAccion = computed(() => {
     });
   }
   return t('TICKETS.DETAIL.NEXT_ANSWER');
+});
+
+// Actividad: linea de tiempo con los sellos reales del expediente. NO se inventan
+// eventos. EVT-01 (bitacora) la reemplaza en E4 con la traza completa por evento.
+const actividad = computed(() => {
+  const e = expediente.value;
+  if (!e) return [];
+  return [
+    { at: e.radicada_at, titulo: t('TICKETS.DETAIL.ACT_FILED') },
+    {
+      at: garantia.value?.abierta_at,
+      titulo: t('TICKETS.DETAIL.ACT_WARRANTY'),
+    },
+    { at: e.respondida_at, titulo: t('TICKETS.DETAIL.ACT_ANSWERED') },
+    { at: e.cerrada_at, titulo: t('TICKETS.DETAIL.ACT_CLOSED') },
+  ]
+    .filter(h => h.at)
+    .map((h, i, arr) => ({ ...h, ultimo: i === arr.length - 1 }));
+});
+
+// Documentos: el formato del proceso vigente (su generacion aun no existe: la
+// descarga queda deshabilitada). Las evidencias del cliente llegan con FMT/EVT.
+const documentos = computed(() => {
+  const proceso = garantia.value?.proceso_visible?.nombre;
+  if (!proceso) return [];
+  return [{ nombre: t('TICKETS.DETAIL.DOC_FORMAT', { process: proceso }) }];
 });
 
 const formatFecha = valor =>
@@ -277,7 +360,7 @@ const formatFecha = valor =>
     </header>
 
     <div
-      v-if="uiFlags.isFetchingItem"
+      v-if="uiFlags.isFetchingItem && !expediente"
       class="flex items-center justify-center py-16 text-n-slate-11"
     >
       <Spinner :size="24" />
@@ -318,9 +401,27 @@ const formatFecha = valor =>
         </router-link>
       </section>
 
-      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <!-- Avisos de reglas legales -->
+      <section
+        v-if="sinRadicado"
+        class="flex items-start gap-2 p-3 text-sm rounded-lg text-n-blue-11 bg-n-blue-3"
+      >
+        <Icon icon="i-lucide-info" class="mt-0.5 size-4 shrink-0" />
+        {{ t('TICKETS.DETAIL.INFO_NOTICE') }}
+      </section>
+      <section
+        v-if="escalamiento"
+        class="flex items-start gap-2 p-3 text-sm rounded-lg text-n-amber-11 bg-n-amber-3"
+      >
+        <Icon icon="i-lucide-triangle-alert" class="mt-0.5 size-4 shrink-0" />
+        {{
+          t('TICKETS.DETAIL.ESCALATION_NOTICE', { escalation: escalamiento })
+        }}
+      </section>
+
+      <div class="grid grid-cols-1 gap-6 min-[1100px]:grid-cols-3">
         <!-- Columna izquierda: expediente legal + garantia -->
-        <div class="flex flex-col gap-6 lg:col-span-2">
+        <div class="flex flex-col gap-6 min-[1100px]:col-span-2">
           <!-- PQR · expediente legal -->
           <section
             class="flex flex-col gap-4 p-4 border rounded-xl border-n-weak bg-n-solid-1"
@@ -364,7 +465,7 @@ const formatFecha = valor =>
               </div>
             </dl>
 
-            <!-- Reloj legal (no se pinta en categoria Informacion) -->
+            <!-- Reloj legal de la PQR (15 dias habiles SIC) -->
             <div
               v-if="tieneReloj"
               class="flex flex-col gap-2 p-3 rounded-lg bg-n-alpha-1"
@@ -432,7 +533,7 @@ const formatFecha = valor =>
             </div>
           </section>
 
-          <!-- Garantia (GAR-02): se pinta contra el payload y NO cuando es null -->
+          <!-- Garantia (GAR-02/03): expediente operativo, reloj de 30 dias habiles -->
           <section
             v-if="garantia"
             class="flex flex-col gap-4 p-4 border rounded-xl border-n-weak bg-n-solid-1"
@@ -448,7 +549,13 @@ const formatFecha = valor =>
                 </span>
               </div>
               <span
-                v-if="garantia.proceso_visible"
+                v-if="garantiaCerrada"
+                class="px-2 py-0.5 text-xs font-medium rounded-md bg-n-teal-3 text-n-teal-11"
+              >
+                {{ t('TICKETS.WARRANTY.CLOSED') }}
+              </span>
+              <span
+                v-else-if="garantia.proceso_visible"
                 class="px-2 py-0.5 text-xs font-medium rounded-md bg-n-blue-3 text-n-blue-11"
               >
                 {{ garantia.proceso_visible.nombre }}
@@ -473,6 +580,14 @@ const formatFecha = valor =>
                 </dt>
                 <dd class="mb-0 text-right text-n-slate-12">
                   {{ expediente.assignee?.name || t('TICKETS.UNASSIGNED') }}
+                </dd>
+              </div>
+              <div class="flex justify-between gap-3">
+                <dt class="text-n-slate-11">
+                  {{ t('TICKETS.DETAIL.PRODUCTS') }}
+                </dt>
+                <dd class="mb-0 text-right tabular-nums text-n-slate-12">
+                  {{ numProductos }}
                 </dd>
               </div>
             </dl>
@@ -508,40 +623,100 @@ const formatFecha = valor =>
               </div>
             </div>
 
-            <!-- Items: cada uno con su producto, motivo, detalle y proceso -->
+            <!-- Linea de proceso -->
+            <div v-if="procesoTimeline.length" class="flex flex-col gap-2">
+              <span class="text-xs font-medium text-n-slate-11">
+                {{ t('TICKETS.DETAIL.TIMELINE') }}
+              </span>
+              <ol class="flex flex-col gap-2">
+                <li
+                  v-for="paso in procesoTimeline"
+                  :key="paso.id"
+                  class="flex items-center gap-2.5 text-sm"
+                >
+                  <span
+                    class="rounded-full size-2 shrink-0"
+                    :class="paso.esVigente ? 'bg-n-brand' : 'bg-n-slate-6'"
+                  />
+                  <span
+                    :class="
+                      paso.esVigente
+                        ? 'font-medium text-n-slate-12'
+                        : 'text-n-slate-11'
+                    "
+                  >
+                    {{ paso.nombre }}
+                  </span>
+                  <span
+                    v-if="paso.esTerminal"
+                    class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-n-slate-3 text-n-slate-10"
+                  >
+                    {{ t('TICKETS.DETAIL.STEP_TERMINAL') }}
+                  </span>
+                </li>
+              </ol>
+            </div>
+
+            <!-- Productos del radicado, con estado y selector de proceso destino -->
             <div class="flex flex-col gap-2">
+              <span class="text-xs font-medium text-n-slate-11">
+                {{ t('TICKETS.DETAIL.PRODUCTS') }}
+              </span>
               <div
                 v-for="item in garantia.items || []"
                 :key="item.id"
-                class="flex items-start justify-between gap-2 p-2.5 text-sm rounded-lg bg-n-alpha-1"
+                class="flex flex-col gap-2 p-2.5 text-sm rounded-lg bg-n-alpha-1"
               >
-                <div class="flex flex-col gap-0.5 min-w-0">
-                  <p class="mb-0 font-medium text-n-slate-12">
-                    {{ item.producto_nombre }}
-                    <span
-                      v-if="item.producto_referencia"
-                      class="text-n-slate-11"
-                    >
-                      · {{ item.producto_referencia }}
-                    </span>
-                  </p>
-                  <p class="mb-0 text-xs text-n-slate-11">
-                    {{
-                      [
-                        item.motivo_garantia?.nombre,
-                        item.detalle_tipificado?.nombre,
-                        item.proceso?.nombre,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')
-                    }}
-                  </p>
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex flex-col gap-0.5 min-w-0">
+                    <p class="mb-0 font-medium text-n-slate-12">
+                      {{ item.producto_nombre }}
+                      <span
+                        v-if="item.producto_referencia"
+                        class="text-n-slate-11"
+                      >
+                        · {{ item.producto_referencia }}
+                      </span>
+                    </p>
+                    <p class="mb-0 text-xs text-n-slate-11">
+                      {{
+                        [
+                          item.motivo_garantia?.nombre,
+                          item.detalle_tipificado?.nombre,
+                          item.proceso?.nombre,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')
+                      }}
+                    </p>
+                  </div>
+                  <span
+                    class="px-2 py-0.5 text-xs font-medium rounded-md shrink-0"
+                    :class="itemEstado(item).cls"
+                  >
+                    {{ itemEstado(item).text }}
+                  </span>
                 </div>
+                <!-- Avanzar de proceso: misma llamada del panel (GAR-03). Solo si
+                     la garantia no esta cerrada. -->
+                <Select
+                  v-if="!garantiaCerrada && procesoOptions.length"
+                  :key="`proc-${item.id}-${refreshKey}`"
+                  :options="procesoOptions"
+                  :model-value="item.proceso?.id ?? ''"
+                  :placeholder="t('TICKETS.WARRANTY.PROCESS_PLACEHOLDER')"
+                  @update:model-value="
+                    procesoId => avanzarItem(item, procesoId)
+                  "
+                />
               </div>
+              <p v-if="!garantiaCerrada" class="mb-0 text-xs text-n-amber-11">
+                {{ t('TICKETS.DETAIL.BUDGET_NO_RESET') }}
+              </p>
             </div>
           </section>
 
-          <!-- Aviso cuando la PQR no abrio garantia -->
+          <!-- Aviso cuando la PQR no abrio garantia (abre_garantia: nunca) -->
           <section
             v-else
             class="flex items-center gap-2 p-3 text-sm rounded-lg text-n-slate-11 bg-n-alpha-1"
@@ -554,9 +729,8 @@ const formatFecha = valor =>
           </section>
         </div>
 
-        <!-- Columna derecha: siguiente accion, acciones, datos y actividad -->
+        <!-- Columna derecha: siguiente accion, acciones, datos, actividad y documentos -->
         <div class="flex flex-col gap-6">
-          <!-- Siguiente accion -->
           <section
             class="flex flex-col gap-2 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
@@ -566,7 +740,6 @@ const formatFecha = valor =>
             <p class="mb-0 text-sm text-n-slate-11">{{ siguienteAccion }}</p>
           </section>
 
-          <!-- Acciones del operador: estado y responsable -->
           <section
             class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
@@ -597,8 +770,7 @@ const formatFecha = valor =>
             </div>
           </section>
 
-          <!-- Datos del caso con procedencia (badges IA / ERP / Manual). Los seis
-               campos se muestran siempre; sin valor dicen "Pendiente" (criterio 10). -->
+          <!-- Datos del caso con procedencia (badges IA / ERP / Manual) -->
           <section
             class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
@@ -629,6 +801,67 @@ const formatFecha = valor =>
                 </dd>
               </div>
             </dl>
+          </section>
+
+          <!-- Actividad: sellos reales (EVT-01 la reemplaza en E4) -->
+          <section
+            v-if="actividad.length"
+            class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
+          >
+            <h3 class="mb-0 text-sm font-medium text-n-slate-12">
+              {{ t('TICKETS.DETAIL.ACTIVITY') }}
+            </h3>
+            <ol class="flex flex-col gap-3">
+              <li
+                v-for="hito in actividad"
+                :key="hito.titulo"
+                class="flex gap-2.5"
+              >
+                <span
+                  class="mt-1 rounded-full size-2 shrink-0"
+                  :class="hito.ultimo ? 'bg-n-brand' : 'bg-n-teal-9'"
+                />
+                <div class="flex flex-col gap-0.5 min-w-0">
+                  <span class="text-sm text-n-slate-12">{{ hito.titulo }}</span>
+                  <span class="text-xs text-n-slate-11">
+                    {{ formatFecha(hito.at) }}
+                  </span>
+                </div>
+              </li>
+            </ol>
+          </section>
+
+          <!-- Documentos: formato del proceso vigente (generacion pendiente) -->
+          <section
+            class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
+          >
+            <h3 class="mb-0 text-sm font-medium text-n-slate-12">
+              {{ t('TICKETS.DETAIL.DOCUMENTS') }}
+            </h3>
+            <div
+              v-for="doc in documentos"
+              :key="doc.nombre"
+              class="flex items-center justify-between gap-2 p-2.5 text-sm rounded-lg bg-n-alpha-1"
+            >
+              <span class="min-w-0 break-words text-n-slate-12">
+                {{ doc.nombre }}
+              </span>
+              <span
+                v-tooltip="t('TICKETS.DETAIL.DOC_DISABLED')"
+                class="inline-flex"
+              >
+                <Button
+                  icon="i-lucide-download"
+                  variant="faded"
+                  color="slate"
+                  size="xs"
+                  disabled
+                />
+              </span>
+            </div>
+            <p class="mb-0 text-xs text-n-slate-10">
+              {{ t('TICKETS.DETAIL.DOC_EVIDENCE_NOTE') }}
+            </p>
           </section>
         </div>
       </div>
