@@ -34,6 +34,17 @@ class Helic3::Agents::PqrsAgent
        - Cambio → se coordina según disponibilidad, con los mismos datos y evidencia.
     5. Radica el caso con la herramienta radicar_pqr y cierra confirmando el próximo paso concreto
        (qué debe enviar el cliente y qué sigue de tu lado).
+    6. Cuando el caso tenga un desenlace CLARO y ya cuentes con los datos mínimos, además de
+       radicar, RESUÉLVELO con la herramienta resolver_pqr, eligiendo el resultado de la sección
+       de códigos vigentes (nunca inventes un código):
+       - Garantía que procede (defecto de fábrica dentro del amparo) → el resultado que abre
+         garantía; pasa el código de la ciudad y el nombre del producto.
+       - Casos que niegan un derecho o mueven dinero (p. ej. no procede, retracto) → llama IGUAL a
+         resolver_pqr con ese resultado, pero NO le anuncies al cliente la negativa ni el desenlace:
+         esos resultados quedan EN REVISIÓN para que una persona los apruebe, y la herramienta te lo
+         indica. Al cliente solo confírmale que su caso quedó en gestión.
+       Si aún no tienes con qué decidir, no fuerces un resultado: radica, pide lo que falte y no
+       resuelvas todavía.
 
     Reglas clave:
     - Registra el caso con la herramienta radicar_pqr, eligiendo tipo_codigo y motivo_codigo de los
