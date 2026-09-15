@@ -8,6 +8,7 @@ import Button from 'dashboard/components-next/button/Button.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
+import Helic3BudgetBar from 'dashboard/components-next/helic3/Helic3BudgetBar.vue';
 
 // Detalle del expediente (DET-01 + VIS-03). Consume el show (GET helic3/tickets/:id)
 // que trae los dos relojes separados (PQR legal y garantia), la clasificacion, los
@@ -119,14 +120,9 @@ const clasificacionEsIA = computed(() =>
 
 const ciudad = computed(() => expediente.value?.datos?.ciudad?.valor || null);
 
-// Barra del presupuesto de garantia: fraccion consumida de los dias habiles.
 const garantia = computed(() => expediente.value?.garantia || null);
-const presupuestoPct = computed(() => {
-  const g = garantia.value;
-  if (!g?.presupuesto_dias_habiles) return 0;
-  const usado = g.presupuesto?.consumidos ?? 0;
-  return Math.min(100, Math.round((usado / g.presupuesto_dias_habiles) * 100));
-});
+// El % y la barra los calcula el componente compartido Helic3BudgetBar (VIS-04);
+// aqui solo queda el color del punto del encabezado.
 const presupuestoDotClass = computed(
   () =>
     ({
@@ -614,13 +610,12 @@ const formatFecha = valor =>
                   }}
                 </span>
               </div>
-              <div class="w-full h-2 rounded-full bg-n-alpha-2">
-                <div
-                  class="h-2 rounded-full"
-                  :class="presupuestoDotClass"
-                  :style="{ width: `${presupuestoPct}%` }"
-                />
-              </div>
+              <Helic3BudgetBar
+                :consumidos="garantia.presupuesto.consumidos"
+                :total="garantia.presupuesto_dias_habiles"
+                :semaforo="garantia.presupuesto.semaforo"
+                hide-label
+              />
             </div>
 
             <!-- Linea de proceso -->

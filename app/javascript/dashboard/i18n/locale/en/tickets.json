@@ -24,7 +24,8 @@
     },
     "CONVERSATION": {
       "EMPTY": "No PQR records linked to this conversation",
-      "CREATE": "File a PQR"
+      "CREATE": "File a PQR",
+      "OPEN_DETAIL": "Open the full case"
     },
     "FIELDS": {
       "CATEGORY": "Category",
@@ -44,6 +45,8 @@
       "FORM_MOTIVE_LABEL": "Reason",
       "FORM_MOTIVE_PLACEHOLDER": "Select a reason",
       "FORM_CATEGORY_DERIVED": "Category: {category}",
+      "FORM_DETAIL_LABEL": "Typified detail",
+      "FORM_DETAIL_PLACEHOLDER": "Select a detail",
       "FORM_STATUS_LABEL": "Status",
       "CONFIRM": "Create",
       "SUCCESS": "Ticket created successfully",
@@ -116,6 +119,7 @@
       "NEW_NAME": "Name",
       "NEW_CODE": "Code",
       "PARAM_REQUIRED": "{param} is required: it cannot be left empty",
+      "GENERA_RADICADO_AVISO": "Turning this off removes this category from the count reported to the SIC",
       "ENUM": {
         "NUNCA": "Never",
         "SIEMPRE": "Always",
@@ -130,12 +134,21 @@
         "REQUIERE_ADMIN": "Only an administrator can sign it off",
         "ES_TERMINAL": "Is the final stage of the process",
         "TECNICO_PROPIO": "In-house technician (not outsourced)",
-        "ORIGEN_RUTA": "Route origin"
+        "ORIGEN_RUTA": "Route origin",
+        "GENERA_RADICADO": "Generates a filing number and counts against the SIC",
+        "DETIENE_RELOJ": "Pauses the legal clock",
+        "VISIBLE_CLIENTE": "Visible to the client",
+        "REGLA": "Assignment rule (internal key)",
+        "PARAMETRO_DIAS": "Rule threshold (days)"
       },
       "TABS": {
+        "CATEGORIAS": "Categories",
+        "TIPOS": "Types",
         "MOTIVOS_PQR": "PQR motives",
         "RESULTADOS": "Results",
+        "ETAPAS_PQR": "PQR stages",
         "DETALLES_TIPIFICADOS": "Typified detail",
+        "MOTIVOS_GARANTIA": "Warranty motives",
         "PROCESOS_GARANTIA": "Warranty processes",
         "COBERTURAS_CIUDAD": "City coverage",
         "PARAMETROS": "Parameters"
@@ -148,9 +161,13 @@
         "GARANTIA": "Warranty"
       },
       "DESC": {
+        "CATEGORIAS": "First-level classification; decides whether the case is a real PQR before the SIC.",
+        "TIPOS": "Petition, complaint, claim, suggestion or compliment, with its own legal deadline.",
         "MOTIVOS_PQR": "The motive decides whether the PQR opens a warranty case.",
         "RESULTADOS": "Closes the PQR, opens a warranty or requires a person to decide.",
+        "ETAPAS_PQR": "The legal-effect status the client sees; some stages pause the clock.",
         "DETALLES_TIPIFICADOS": "Standalone catalog of details; not tied to the motive.",
+        "MOTIVOS_GARANTIA": "What happened to the product; can drive a date-based assignment rule.",
         "PROCESOS_GARANTIA": "Milestones within the same business-day budget; they do not reset the clock.",
         "COBERTURAS_CIUDAD": "With an in-house technician the warranty starts with a visit; otherwise, with pickup.",
         "PARAMETROS": "Operational times and thresholds of the module."
@@ -224,6 +241,19 @@
       "STOPPED": "Clock stopped",
       "RULE_HUMAN": "Human approval required",
       "RULE_APPLIED": "Rule applied: {rule}",
+      "RULE_ADMIN": "Signed by an administrator",
+      "RULE_AGENT": "Signed by an authorized agent",
+      "CANT_SIGN": "Requires an administrator",
+      "GOVERNANCE_TITLE": "Who can decide what",
+      "GOVERNANCE_SUBTITLE": "Comes from the results catalog. Edited in Catalogs and parameters, not here.",
+      "GOVERNANCE_HUMAN_TAG": "Human sign-off",
+      "AUTONOMY_TITLE": "Agent autonomy when resolving",
+      "AUTONOMY_PROPONE": "Proposes and waits for a person",
+      "AUTONOMY_EJECUTA": "Acts on its own",
+      "AUTONOMY_EJECUTA_CON_AVISO": "Acts and leaves a notice",
+      "AUTONOMY_UNKNOWN": "Not configured",
+      "AUTONOMY_HINT": "Edited in Catalogs and parameters.",
+      "NOTICE": "The agent does not send a denial. The rationale, date, owner and legal document must remain on file.",
       "BASIS": "The agent proposes applying \"{result}\" and is waiting for sign-off. Nothing has been sent to the client.",
       "VIEW": "View basis",
       "APPROVE": "Approve",
@@ -240,8 +270,7 @@
       "PLACEHOLDER": "Register result",
       "SUCCESS": "Result registered",
       "ERROR": "There was an error registering the result",
-      "NEEDS_APPROVAL": "(needs approval)",
-      "WARRANTY_LOCKED": "(pending warranty form)"
+      "NEEDS_APPROVAL": "(needs approval)"
     },
     "WARRANTY": {
       "TITLE": "Warranty",
@@ -249,7 +278,20 @@
       "CLOSED": "Warranty closed",
       "ADVANCED": "Process updated",
       "ERROR": "There was an error advancing the process",
-      "PROCESS_PLACEHOLDER": "Change process"
+      "PROCESS_PLACEHOLDER": "Change process",
+      "FORM": {
+        "TITLE": "Open warranty",
+        "CONFIRM": "Open warranty",
+        "CITY": "Coverage city",
+        "CITY_PLACEHOLDER": "Select the city",
+        "PRODUCT": "Product {n}",
+        "PRODUCT_NAME": "Product name",
+        "PRODUCT_REF": "Reference (optional)",
+        "MOTIVE": "Warranty reason",
+        "DETAIL": "Typified detail",
+        "ADD_PRODUCT": "Add product",
+        "ERROR": "The warranty could not be opened"
+      }
     },
     "DATA": {
       "TITLE": "Case data",

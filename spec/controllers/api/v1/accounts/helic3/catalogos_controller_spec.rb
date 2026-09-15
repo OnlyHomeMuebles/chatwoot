@@ -27,7 +27,7 @@ RSpec.describe 'Helic3 Catalogos API', type: :request do
         expect(body.keys).to include('tipos', 'motivos_pqr', 'etapas_pqr', 'resultados')
         expect(body['tipos'].first.keys).to match_array(%w[id codigo nombre plazo_dias_habiles])
         expect(body['etapas_pqr'].first.keys).to match_array(%w[id codigo nombre detiene_reloj visible_cliente])
-        expect(body['resultados'].first.keys).to match_array(%w[id codigo nombre cierra_pqr abre_garantia aprobacion_humana])
+        expect(body['resultados'].first.keys).to match_array(%w[id codigo nombre cierra_pqr abre_garantia aprobacion_humana requiere_admin])
       end
 
       it 'devuelve cada catalogo en el orden de posicion' do

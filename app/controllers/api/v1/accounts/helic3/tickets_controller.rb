@@ -35,6 +35,7 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
         origen: :humano
       ).call
       aplicar_operativos_al_crear
+      registrar_detalle_al_crear
     end
   end
 
@@ -123,11 +124,24 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
     raise ActiveRecord::RecordInvalid, @ticket
   end
 
+  # VIS-04: el diálogo puede traer un detalle tipificado; se guarda en la ficha con
+  # fuente humano (lo eligió el operador), por el mismo servicio que usa el panel
+  # (DAT-01). Corre bajo la transaccion del create: si falla, se revierte todo.
+  def registrar_detalle_al_crear
+    detalle_id = create_params[:detalle_tipificado_id]
+    return if detalle_id.blank?
+
+    Helic3::Casos::RegistrarDatos.new(
+      ticket: @ticket, campos: { detalle_tipificado_id: detalle_id }, fuente: :humano
+    ).call
+  end
+
   # Datos de radicacion. NO incluye categoria_id: la categoria la deriva Radicar
   # del motivo, y recibirla abriria una segunda fuente de la misma verdad.
   def create_params
     params.require(:ticket).permit(:title, :description, :conversation_id,
-                                   :tipo_id, :motivo_pqr_id, :status, :assignee_id)
+                                   :tipo_id, :motivo_pqr_id, :detalle_tipificado_id,
+                                   :status, :assignee_id)
   end
 
   # Update solo toca lo operativo: estado y asignacion.

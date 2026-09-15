@@ -23,6 +23,7 @@ class Helic3::Casos::AbrirGarantia
     # crea una segunda.
     return @ticket.garantia if @ticket.garantia.present?
 
+    validar_cobertura!
     validar_motivo_coherente!
 
     garantia = Helic3::Garantia.create!(
@@ -35,6 +36,16 @@ class Helic3::Casos::AbrirGarantia
   end
 
   private
+
+  # sin ciudad de cobertura no hay a donde enrutar la garantia: se rechaza con un
+  # mensaje claro (ArgumentError -> 422 en el controlador) en vez de crear un
+  # radicado roto sin ciudad ni proceso, en silencio. Es el fallo que tuvo AGT-03
+  # en su primera version y que ahora tampoco puede colarse desde el panel.
+  def validar_cobertura!
+    return if @cobertura_ciudad.present?
+
+    raise ArgumentError, 'la garantia requiere una ciudad de cobertura'
+  end
 
   # el motivo del expediente (MotivoPqr) tiene el enum abre_garantia; si es
   # 'nunca' y el resultado igual abrio garantia, el catalogo se contradice.
