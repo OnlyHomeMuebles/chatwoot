@@ -72,6 +72,10 @@ class CreaGarantiasConItems < ActiveRecord::Migration[7.2]
     add_index :helic3_garantia_items, :proceso_id, name: 'idx_h3_gitems_proceso'
     add_index :helic3_garantia_items, :motivo_garantia_id, name: 'idx_h3_gitems_motivo'
     add_index :helic3_garantia_items, :detalle_tipificado_id, name: 'idx_h3_gitems_detalle'
+    fks_items
+  end
+
+  def fks_items
     add_foreign_key :helic3_garantia_items, :helic3_garantias, column: :garantia_id
     add_foreign_key :helic3_garantia_items, :helic3_catalogo_motivos_garantia, column: :motivo_garantia_id
     add_foreign_key :helic3_garantia_items, :helic3_catalogo_detalles_tipificados, column: :detalle_tipificado_id
