@@ -119,6 +119,7 @@
       "NEW_NAME": "Nombre",
       "NEW_CODE": "Código",
       "PARAM_REQUIRED": "{param} es obligatorio: no puede quedar vacío",
+      "GENERA_RADICADO_AVISO": "Al apagarlo, esta categoría sale del conteo que se reporta a la SIC",
       "ENUM": {
         "NUNCA": "Nunca",
         "SIEMPRE": "Siempre",
@@ -133,12 +134,21 @@
         "REQUIERE_ADMIN": "Solo un administrador puede firmarlo",
         "ES_TERMINAL": "Es la etapa final del proceso",
         "TECNICO_PROPIO": "Técnico propio (no tercerizado)",
-        "ORIGEN_RUTA": "Origen de la ruta"
+        "ORIGEN_RUTA": "Origen de la ruta",
+        "GENERA_RADICADO": "Genera radicado y cuenta frente a la SIC",
+        "DETIENE_RELOJ": "Detiene el reloj legal",
+        "VISIBLE_CLIENTE": "Visible para el cliente",
+        "REGLA": "Regla de asignación (llave interna)",
+        "PARAMETRO_DIAS": "Umbral de la regla (días)"
       },
       "TABS": {
+        "CATEGORIAS": "Categorías",
+        "TIPOS": "Tipos",
         "MOTIVOS_PQR": "Motivos de PQR",
         "RESULTADOS": "Resultados",
+        "ETAPAS_PQR": "Etapas de la PQR",
         "DETALLES_TIPIFICADOS": "Detalle tipificado",
+        "MOTIVOS_GARANTIA": "Motivos de garantía",
         "PROCESOS_GARANTIA": "Procesos de garantía",
         "COBERTURAS_CIUDAD": "Cobertura por ciudad",
         "PARAMETROS": "Parámetros"
@@ -151,9 +161,13 @@
         "GARANTIA": "Garantía"
       },
       "DESC": {
+        "CATEGORIAS": "Clasificación de primer nivel; decide si el caso es una PQR real frente a la SIC.",
+        "TIPOS": "Petición, queja, reclamo, sugerencia o felicitación, con su propio plazo legal.",
         "MOTIVOS_PQR": "El motivo decide si la PQR abre un expediente de garantía.",
         "RESULTADOS": "Cierra la PQR, abre garantía o exige que decida una persona.",
+        "ETAPAS_PQR": "El estado con efecto legal que ve el cliente; algunas etapas detienen el reloj.",
         "DETALLES_TIPIFICADOS": "Catálogo autónomo de detalles; no cuelga del motivo.",
+        "MOTIVOS_GARANTIA": "Qué pasó con el producto; puede activar una regla de asignación por fecha.",
         "PROCESOS_GARANTIA": "Hitos dentro del mismo presupuesto de días hábiles; no reinician el reloj.",
         "COBERTURAS_CIUDAD": "Con técnico propio la garantía arranca en visita; sin técnico, en recolección.",
         "PARAMETROS": "Tiempos y umbrales de operación del módulo."
