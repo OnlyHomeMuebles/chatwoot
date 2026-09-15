@@ -18,6 +18,9 @@ if propuesta
     json.codigo propuesta.codigo
     json.nombre propuesta.nombre
     json.aprobacion_humana propuesta.aprobacion_humana
+    # requiere_admin: quien puede firmar (DEC-02). La regla que se pinta al pie
+    # de la tarjeta se deriva de aqui, no de una tabla quemada en el .vue.
+    json.requiere_admin propuesta.requiere_admin
   end
 else
   json.propuesta nil

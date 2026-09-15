@@ -91,10 +91,10 @@ export const actions = {
   // resolver (RES-01): registra el resultado por el endpoint propio. Sin catch a
   // proposito, igual que update: se relanza el error de axios para que el panel
   // pueda revertir el selector si el servidor rechaza (p. ej. sin permiso).
-  resolver: async ({ commit }, { id, resultadoId }) => {
+  resolver: async ({ commit }, { id, resultadoId, garantia = null }) => {
     commit(types.SET_TICKET_UI_FLAG, { isUpdating: true });
     try {
-      const response = await TicketsAPI.resolver(id, resultadoId);
+      const response = await TicketsAPI.resolver(id, resultadoId, garantia);
       commit(types.EDIT_TICKET, response.data);
     } finally {
       commit(types.SET_TICKET_UI_FLAG, { isUpdating: false });

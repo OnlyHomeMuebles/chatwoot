@@ -16,9 +16,13 @@ const store = useStore();
 const { t } = useI18n();
 
 const TIPOS = [
+  'categorias',
+  'tipos',
   'motivos_pqr',
   'resultados',
+  'etapas_pqr',
   'detalles_tipificados',
+  'motivos_garantia',
   'procesos_garantia',
   'coberturas_ciudad',
 ];
@@ -26,8 +30,12 @@ const PARAMETROS = 'parametros';
 
 // Campos propios de cada catalogo, con el CONTROL resuelto por el tipo de columna
 // (no por el nombre): abre_garantia es enum en motivos y booleano en resultados.
+// `default` solo se declara cuando el default en blanco (false) no coincide con
+// el default real de la columna: genera_radicado nace en true (ADM-02).
 const ENUM_ABRE_GARANTIA = ['nunca', 'siempre', 'segun_analisis'];
 const CAMPOS = {
+  categorias: [{ key: 'genera_radicado', tipo: 'bool', default: true }],
+  tipos: [{ key: 'plazo_dias_habiles', tipo: 'numero' }],
   motivos_pqr: [
     { key: 'categoria_id', tipo: 'categoria', requerido: true },
     { key: 'abre_garantia', tipo: 'enum', opciones: ENUM_ABRE_GARANTIA },
@@ -39,7 +47,15 @@ const CAMPOS = {
     { key: 'aprobacion_humana', tipo: 'bool' },
     { key: 'requiere_admin', tipo: 'bool' },
   ],
+  etapas_pqr: [
+    { key: 'detiene_reloj', tipo: 'bool' },
+    { key: 'visible_cliente', tipo: 'bool' },
+  ],
   detalles_tipificados: [],
+  motivos_garantia: [
+    { key: 'regla', tipo: 'texto' },
+    { key: 'parametro_dias', tipo: 'numero' },
+  ],
   procesos_garantia: [
     { key: 'es_terminal', tipo: 'bool' },
     { key: 'plazo_dias_habiles', tipo: 'numero' },
@@ -51,13 +67,23 @@ const CAMPOS = {
 };
 
 // Menu lateral agrupado por ambito (como el mockup): PQR y Garantia. Parametros
-// va como entrada aparte al final.
+// va como entrada aparte al final. Nueve catalogos en total (ADM-02).
 const GRUPOS = [
   {
     titulo: 'PQR',
-    items: ['motivos_pqr', 'resultados', 'detalles_tipificados'],
+    items: [
+      'categorias',
+      'tipos',
+      'motivos_pqr',
+      'resultados',
+      'etapas_pqr',
+      'detalles_tipificados',
+    ],
   },
-  { titulo: 'GARANTIA', items: ['procesos_garantia', 'coberturas_ciudad'] },
+  {
+    titulo: 'GARANTIA',
+    items: ['motivos_garantia', 'procesos_garantia', 'coberturas_ciudad'],
+  },
 ];
 
 const tabActivo = ref(TIPOS[0]);
@@ -115,7 +141,7 @@ const reiniciarNuevo = () => {
   camposActivos.value.forEach(c => {
     // el enum arranca en su primera opcion (no en '', que el select pinta como la
     // primera pero manda vacio y revienta la columna NOT NULL al crear)
-    if (c.tipo === 'bool') base[c.key] = false;
+    if (c.tipo === 'bool') base[c.key] = c.default ?? false;
     else if (c.tipo === 'enum') [base[c.key]] = c.opciones;
     else base[c.key] = '';
   });
@@ -408,8 +434,28 @@ const guardarParametro = (parametro, valor) => {
 
                 <!-- Marcas de comportamiento, control por tipo de columna -->
                 <template v-for="campo in camposActivos" :key="campo.key">
+                  <!-- genera_radicado no es un booleano cualquiera: apagarlo saca
+                  la categoria del conteo frente a la SIC (ADM-02) -->
+                  <template v-if="campo.key === 'genera_radicado'">
+                    <label
+                      class="flex items-center gap-1 text-xs cursor-pointer text-n-slate-11"
+                    >
+                      <input
+                        v-model="ediciones[registro.id][campo.key]"
+                        type="checkbox"
+                        :disabled="!esAdmin"
+                      />
+                      {{ t('TICKETS.ADMIN.FLAGS.GENERA_RADICADO') }}
+                    </label>
+                    <span
+                      v-if="!ediciones[registro.id][campo.key]"
+                      class="px-2 py-0.5 text-xs rounded-md text-n-amber-11 bg-n-amber-3"
+                    >
+                      {{ t('TICKETS.ADMIN.GENERA_RADICADO_AVISO') }}
+                    </span>
+                  </template>
                   <label
-                    v-if="campo.tipo === 'bool'"
+                    v-else-if="campo.tipo === 'bool'"
                     class="flex items-center gap-1 text-xs cursor-pointer text-n-slate-11"
                     :title="t(`TICKETS.ADMIN.FLAGS.${campo.key.toUpperCase()}`)"
                   >
@@ -493,8 +539,22 @@ const guardarParametro = (parametro, valor) => {
                 v-for="campo in camposActivos"
                 :key="`nuevo-${campo.key}`"
               >
+                <template v-if="campo.key === 'genera_radicado'">
+                  <label
+                    class="flex items-center gap-1 text-xs cursor-pointer text-n-slate-11"
+                  >
+                    <input v-model="nuevo[campo.key]" type="checkbox" />
+                    {{ t('TICKETS.ADMIN.FLAGS.GENERA_RADICADO') }}
+                  </label>
+                  <span
+                    v-if="!nuevo[campo.key]"
+                    class="px-2 py-0.5 text-xs rounded-md text-n-amber-11 bg-n-amber-3"
+                  >
+                    {{ t('TICKETS.ADMIN.GENERA_RADICADO_AVISO') }}
+                  </span>
+                </template>
                 <label
-                  v-if="campo.tipo === 'bool'"
+                  v-else-if="campo.tipo === 'bool'"
                   class="flex items-center gap-1 text-xs cursor-pointer text-n-slate-11"
                 >
                   <input v-model="nuevo[campo.key]" type="checkbox" />

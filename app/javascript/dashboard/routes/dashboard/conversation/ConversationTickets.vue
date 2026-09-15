@@ -1,11 +1,15 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
+import Helic3SourceBadge from 'dashboard/components-next/helic3/Helic3SourceBadge.vue';
+import Helic3BudgetBar from 'dashboard/components-next/helic3/Helic3BudgetBar.vue';
 import CreateTicketDialog from 'dashboard/components/widgets/conversation/CreateTicketDialog.vue';
+import GarantiaFormDialog from 'dashboard/components/widgets/conversation/GarantiaFormDialog.vue';
 
 const props = defineProps({
   conversationId: {
@@ -16,10 +20,13 @@ const props = defineProps({
 
 const store = useStore();
 const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
 
 const STATUSES = ['open', 'pending', 'resolved', 'closed'];
 
 const createDialogRef = ref(null);
+const garantiaDialogRef = ref(null);
 
 const tickets = useMapGetter('tickets/getTickets');
 const catalogos = useMapGetter('tickets/getCatalogos');
@@ -153,30 +160,15 @@ const updateStatus = async (ticket, status) => {
 
 // opciones del selector de resultado, leidas del catalogo (RES-01). Se marca
 // con un aviso el que exige aprobacion humana: el operador debe saber que ese
-// resultado niega un derecho o mueve dinero.
-//
-// Candado (GAR-02): mientras no exista el formulario de garantia (que capture
-// ciudad y productos), un resultado que abre garantia SIEMPRE falla con 422
-// desde el panel —el selector solo manda resultado_id—. Se deshabilita con el
-// motivo a la vista en vez de ofrecer un boton que revienta. El agente de IA si
-// puede abrirla (AGT-03, lleva los datos); esto es solo la carencia del panel.
+// resultado niega un derecho o mueve dinero. Ya SIN candado (GAR-05): los
+// resultados que abren garantia se pueden elegir; disparan el formulario.
 const resultadoOptions = computed(() =>
-  (catalogos.value.resultados || []).map(resultado => {
-    if (resultado.abre_garantia) {
-      return {
-        value: resultado.id,
-        label: `${resultado.nombre} ${t('TICKETS.RESOLUTION.WARRANTY_LOCKED')}`,
-        disabled: true,
-      };
-    }
-
-    return {
-      value: resultado.id,
-      label: resultado.aprobacion_humana
-        ? `${resultado.nombre} ${t('TICKETS.RESOLUTION.NEEDS_APPROVAL')}`
-        : resultado.nombre,
-    };
-  })
+  (catalogos.value.resultados || []).map(resultado => ({
+    value: resultado.id,
+    label: resultado.aprobacion_humana
+      ? `${resultado.nombre} ${t('TICKETS.RESOLUTION.NEEDS_APPROVAL')}`
+      : resultado.nombre,
+  }))
 );
 
 const resolver = async (ticket, resultadoId) => {
@@ -190,6 +182,21 @@ const resolver = async (ticket, resultadoId) => {
         ? t('TICKETS.UPDATE.FORBIDDEN')
         : t('TICKETS.RESOLUTION.ERROR')
     );
+  }
+};
+
+// GAR-05: al elegir un resultado, si ABRE GARANTIA se abre el formulario (necesita
+// ciudad y productos); si no, se resuelve directo como siempre. En ambos casos se
+// refresca el selector para que quede sincronizado con el valor real del ticket.
+const onResultadoElegido = (ticket, resultadoId) => {
+  const resultado = (catalogos.value.resultados || []).find(
+    r => r.id === resultadoId
+  );
+  selectsRefreshKey.value += 1;
+  if (resultado?.abre_garantia) {
+    garantiaDialogRef.value.open(ticket, resultadoId);
+  } else {
+    resolver(ticket, resultadoId);
   }
 };
 
@@ -230,18 +237,13 @@ const DATOS_TEXTO = [
   'producto_nombre',
 ];
 
-const datosFuenteLabel = fuente =>
-  fuente ? t(`TICKETS.DATA.SOURCE.${fuente.toUpperCase()}`) : '';
-
-// el color del badge dice de un vistazo el origen: IA, ERP o manual
-const datosFuenteClass = fuente => {
-  const classes = {
-    ia: 'bg-n-blue-3 text-n-blue-11',
-    erp: 'bg-n-amber-3 text-n-amber-11',
-    humano: 'bg-n-teal-3 text-n-teal-11',
-  };
-  return classes[fuente] || 'bg-n-alpha-2 text-n-slate-10';
-};
+// VIS-04: abrir el expediente completo (DET-01) desde el panel, por nombre de ruta.
+// Sirve con garantia y tambien cuando el expediente no abrio garantia.
+const abrirExpediente = ticket =>
+  router.push({
+    name: 'helic3_pqr_detail',
+    params: { accountId: route.params.accountId, id: ticket.id },
+  });
 
 // al guardar, la fuente de ese campo pasa a humano (lo fija el backend). Un
 // valor vacio no se manda: no borra el que habia, misma regla del servicio.
@@ -302,8 +304,12 @@ const guardarDato = async (ticket, campo, event) => {
           class="mb-0 text-xs text-n-slate-11"
         >
           <span class="text-n-slate-10">{{ campo.label }}:</span>
-          <span v-if="campo.value" class="text-n-slate-12">{{ campo.value }}</span>
-          <span v-else class="text-n-slate-10">{{ t('TICKETS.FIELDS.PENDING') }}</span>
+          <span v-if="campo.value" class="text-n-slate-12">{{
+            campo.value
+          }}</span>
+          <span v-else class="text-n-slate-10">{{
+            t('TICKETS.FIELDS.PENDING')
+          }}</span>
         </p>
       </div>
 
@@ -375,7 +381,7 @@ const guardarDato = async (ticket, campo, event) => {
         :model-value="ticket.resultado?.id"
         :placeholder="t('TICKETS.RESOLUTION.PLACEHOLDER')"
         @update:model-value="
-          resultadoId => resolver(ticket, resultadoId)
+          resultadoId => onResultadoElegido(ticket, resultadoId)
         "
       />
 
@@ -395,20 +401,11 @@ const guardarDato = async (ticket, campo, event) => {
         >
           {{ ticket.garantia.proceso_visible.nombre }}
         </p>
-        <div class="flex items-center gap-1 text-xs">
-          <span
-            class="rounded-full size-2 shrink-0"
-            :class="semaforoDotClass(ticket.garantia.presupuesto.semaforo)"
-          />
-          <span class="text-n-slate-11">
-            {{
-              t('TICKETS.WARRANTY.BUDGET', {
-                used: ticket.garantia.presupuesto.consumidos,
-                total: ticket.garantia.presupuesto_dias_habiles,
-              })
-            }}
-          </span>
-        </div>
+        <Helic3BudgetBar
+          :consumidos="ticket.garantia.presupuesto.consumidos"
+          :total="ticket.garantia.presupuesto_dias_habiles"
+          :semaforo="ticket.garantia.presupuesto.semaforo"
+        />
 
         <!-- Cerrada cuando todos los productos resolvieron (GAR-03). -->
         <p
@@ -465,13 +462,10 @@ const guardarDato = async (ticket, campo, event) => {
             class="flex-1 min-w-0 px-1.5 py-0.5 text-xs rounded bg-n-surface-1 outline-1 outline -outline-offset-1 outline-n-weak"
             @change="event => guardarDato(ticket, campo, event)"
           />
-          <span
-            v-if="ticket.datos[campo] && ticket.datos[campo].fuente"
-            class="shrink-0 px-1 py-0.5 rounded text-[10px]"
-            :class="datosFuenteClass(ticket.datos[campo].fuente)"
-          >
-            {{ datosFuenteLabel(ticket.datos[campo].fuente) }}
-          </span>
+          <Helic3SourceBadge
+            v-if="ticket.datos[campo]"
+            :fuente="ticket.datos[campo].fuente"
+          />
         </div>
 
         <div
@@ -484,14 +478,19 @@ const guardarDato = async (ticket, campo, event) => {
           <span class="flex-1 min-w-0 text-xs text-n-slate-12">
             {{ ticket.datos.detalle_tipificado.valor.nombre }}
           </span>
-          <span
-            class="shrink-0 px-1 py-0.5 rounded text-[10px]"
-            :class="datosFuenteClass(ticket.datos.detalle_tipificado.fuente)"
-          >
-            {{ datosFuenteLabel(ticket.datos.detalle_tipificado.fuente) }}
-          </span>
+          <Helic3SourceBadge :fuente="ticket.datos.detalle_tipificado.fuente" />
         </div>
       </div>
+
+      <!-- VIS-04: abre el expediente completo (con o sin garantia). -->
+      <Button
+        :label="t('TICKETS.CONVERSATION.OPEN_DETAIL')"
+        icon="i-lucide-external-link"
+        sm
+        faded
+        class="w-full"
+        @click="abrirExpediente(ticket)"
+      />
     </div>
     <Button
       :label="t('TICKETS.CONVERSATION.CREATE')"
@@ -506,5 +505,8 @@ const guardarDato = async (ticket, campo, event) => {
       ref="createDialogRef"
       :conversation-id="conversationId"
     />
+
+    <!-- GAR-05: formulario de apertura de garantia a mano por el operador -->
+    <GarantiaFormDialog ref="garantiaDialogRef" />
   </div>
 </template>

@@ -27,6 +27,7 @@ const emptyTicket = () => ({
   status: 'open',
   tipo_id: null,
   motivo_pqr_id: null,
+  detalle_tipificado_id: null,
 });
 
 const dialogRef = ref(null);
@@ -63,6 +64,16 @@ const categoriaDerivada = computed(() => {
   );
   return motivo?.categoria?.nombre || null;
 });
+
+// VIS-04: el mockup muestra el detalle tipificado en el diálogo. El catálogo llega
+// con getCatalogos (GAR-05 lo expone). Es opcional; si se elige, el backend lo
+// guarda en la ficha con fuente humano.
+const detalleOptions = computed(() =>
+  (catalogos.value.detalles_tipificados || []).map(detalle => ({
+    value: detalle.id,
+    label: detalle.nombre,
+  }))
+);
 
 const open = () => {
   newTicket.value = emptyTicket();
@@ -139,6 +150,16 @@ defineExpose({ open });
             })
           }}
         </span>
+      </div>
+      <div class="flex flex-col gap-1">
+        <span class="mb-0.5 text-sm font-medium text-n-slate-12">
+          {{ t('TICKETS.CREATE.FORM_DETAIL_LABEL') }}
+        </span>
+        <Select
+          v-model="newTicket.detalle_tipificado_id"
+          :options="detalleOptions"
+          :placeholder="t('TICKETS.CREATE.FORM_DETAIL_PLACEHOLDER')"
+        />
       </div>
       <div class="flex flex-col gap-1">
         <span class="mb-0.5 text-sm font-medium text-n-slate-12">

@@ -24,7 +24,8 @@
     },
     "CONVERSATION": {
       "EMPTY": "No hay expedientes vinculados a esta conversación",
-      "CREATE": "Radicar PQR"
+      "CREATE": "Radicar PQR",
+      "OPEN_DETAIL": "Abrir el expediente completo"
     },
     "FIELDS": {
       "CATEGORY": "Categoría",
@@ -44,6 +45,8 @@
       "FORM_MOTIVE_LABEL": "Motivo",
       "FORM_MOTIVE_PLACEHOLDER": "Selecciona un motivo",
       "FORM_CATEGORY_DERIVED": "Categoría: {category}",
+      "FORM_DETAIL_LABEL": "Detalle tipificado",
+      "FORM_DETAIL_PLACEHOLDER": "Selecciona un detalle",
       "FORM_STATUS_LABEL": "Estado",
       "CONFIRM": "Crear",
       "SUCCESS": "Ticket creado correctamente",
@@ -133,6 +136,7 @@
       "NEW_NAME": "Nombre",
       "NEW_CODE": "Código",
       "PARAM_REQUIRED": "{param} es obligatorio: no puede quedar vacío",
+      "GENERA_RADICADO_AVISO": "Al apagarlo, esta categoría sale del conteo que se reporta a la SIC",
       "ENUM": {
         "NUNCA": "Nunca",
         "SIEMPRE": "Siempre",
@@ -147,12 +151,21 @@
         "REQUIERE_ADMIN": "Solo un administrador puede firmarlo",
         "ES_TERMINAL": "Es la etapa final del proceso",
         "TECNICO_PROPIO": "Técnico propio (no tercerizado)",
-        "ORIGEN_RUTA": "Origen de la ruta"
+        "ORIGEN_RUTA": "Origen de la ruta",
+        "GENERA_RADICADO": "Genera radicado y cuenta frente a la SIC",
+        "DETIENE_RELOJ": "Detiene el reloj legal",
+        "VISIBLE_CLIENTE": "Visible para el cliente",
+        "REGLA": "Regla de asignación (llave interna)",
+        "PARAMETRO_DIAS": "Umbral de la regla (días)"
       },
       "TABS": {
+        "CATEGORIAS": "Categorías",
+        "TIPOS": "Tipos",
         "MOTIVOS_PQR": "Motivos de PQR",
         "RESULTADOS": "Resultados",
+        "ETAPAS_PQR": "Etapas de la PQR",
         "DETALLES_TIPIFICADOS": "Detalle tipificado",
+        "MOTIVOS_GARANTIA": "Motivos de garantía",
         "PROCESOS_GARANTIA": "Procesos de garantía",
         "COBERTURAS_CIUDAD": "Cobertura por ciudad",
         "PARAMETROS": "Parámetros"
@@ -165,9 +178,13 @@
         "GARANTIA": "Garantía"
       },
       "DESC": {
+        "CATEGORIAS": "Clasificación de primer nivel; decide si el caso es una PQR real frente a la SIC.",
+        "TIPOS": "Petición, queja, reclamo, sugerencia o felicitación, con su propio plazo legal.",
         "MOTIVOS_PQR": "El motivo decide si la PQR abre un expediente de garantía.",
         "RESULTADOS": "Cierra la PQR, abre garantía o exige que decida una persona.",
+        "ETAPAS_PQR": "El estado con efecto legal que ve el cliente; algunas etapas detienen el reloj.",
         "DETALLES_TIPIFICADOS": "Catálogo autónomo de detalles; no cuelga del motivo.",
+        "MOTIVOS_GARANTIA": "Qué pasó con el producto; puede activar una regla de asignación por fecha.",
         "PROCESOS_GARANTIA": "Hitos dentro del mismo presupuesto de días hábiles; no reinician el reloj.",
         "COBERTURAS_CIUDAD": "Con técnico propio la garantía arranca en visita; sin técnico, en recolección.",
         "PARAMETROS": "Tiempos y umbrales de operación del módulo."
@@ -224,6 +241,19 @@
       "STOPPED": "Reloj detenido",
       "RULE_HUMAN": "Aprobación humana obligatoria",
       "RULE_APPLIED": "Regla aplicada: {rule}",
+      "RULE_ADMIN": "La firma un administrador",
+      "RULE_AGENT": "La firma un agente autorizado",
+      "CANT_SIGN": "Requiere un administrador",
+      "GOVERNANCE_TITLE": "Quién puede decidir qué",
+      "GOVERNANCE_SUBTITLE": "Sale del catálogo de resultados. Se edita en Catálogos y parámetros, no aquí.",
+      "GOVERNANCE_HUMAN_TAG": "Visto bueno humano",
+      "AUTONOMY_TITLE": "Autonomía del agente al resolver",
+      "AUTONOMY_PROPONE": "Propone y espera a una persona",
+      "AUTONOMY_EJECUTA": "Ejecuta por su cuenta",
+      "AUTONOMY_EJECUTA_CON_AVISO": "Ejecuta y deja aviso",
+      "AUTONOMY_UNKNOWN": "Sin configurar",
+      "AUTONOMY_HINT": "Se edita en Catálogos y parámetros.",
+      "NOTICE": "Una negativa no la envía el agente. Deben quedar el fundamento, la fecha, el responsable y el documento jurídico.",
       "BASIS": "El agente propone aplicar «{result}» y espera visto bueno. No se le ha escrito nada al cliente.",
       "VIEW": "Ver sustento",
       "APPROVE": "Aprobar",
@@ -240,8 +270,7 @@
       "PLACEHOLDER": "Registrar resultado",
       "SUCCESS": "Resultado registrado",
       "ERROR": "Hubo un error al registrar el resultado",
-      "NEEDS_APPROVAL": "(requiere aprobación)",
-      "WARRANTY_LOCKED": "(pendiente del formulario de garantía)"
+      "NEEDS_APPROVAL": "(requiere aprobación)"
     },
     "WARRANTY": {
       "TITLE": "Garantía",
@@ -249,7 +278,20 @@
       "CLOSED": "Garantía cerrada",
       "ADVANCED": "Proceso actualizado",
       "ERROR": "Hubo un error al avanzar el proceso",
-      "PROCESS_PLACEHOLDER": "Cambiar proceso"
+      "PROCESS_PLACEHOLDER": "Cambiar proceso",
+      "FORM": {
+        "TITLE": "Abrir garantía",
+        "CONFIRM": "Abrir garantía",
+        "CITY": "Ciudad de cobertura",
+        "CITY_PLACEHOLDER": "Selecciona la ciudad",
+        "PRODUCT": "Producto {n}",
+        "PRODUCT_NAME": "Nombre del producto",
+        "PRODUCT_REF": "Referencia (opcional)",
+        "MOTIVE": "Motivo de garantía",
+        "DETAIL": "Detalle tipificado",
+        "ADD_PRODUCT": "Agregar producto",
+        "ERROR": "No se pudo abrir la garantía"
+      }
     },
     "DATA": {
       "TITLE": "Datos del caso",
