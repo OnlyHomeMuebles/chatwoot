@@ -9,6 +9,7 @@ import Icon from 'dashboard/components-next/icon/Icon.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import Helic3BudgetBar from 'dashboard/components-next/helic3/Helic3BudgetBar.vue';
+import Helic3SourceBadge from 'dashboard/components-next/helic3/Helic3SourceBadge.vue';
 
 // Detalle del expediente (DET-01 + VIS-03). Consume el show (GET helic3/tickets/:id)
 // que trae los dos relojes separados (PQR legal y garantia), la clasificacion, los
@@ -139,7 +140,8 @@ const numProductos = computed(() => garantia.value?.items?.length || 0);
 
 // Linea de proceso: el catalogo de procesos activos, marcando el vigente
 // (proceso_visible) y el terminal. Sin historial por proceso (eso llega con
-// EVT-01 en E4): es la ruta del proceso, no una bitacora.
+// EVT-01, ya en esta entrega en la rama de Samuel): es la ruta del proceso, no
+// una bitacora.
 const procesoTimeline = computed(() => {
   const g = garantia.value;
   if (!g?.procesos) return [];
@@ -261,19 +263,8 @@ const clasificacion = computed(() => {
 });
 
 // Datos del caso con procedencia (DAT-01): cada campo trae { valor, fuente }.
-const FUENTES = {
-  ia: { label: t('TICKETS.DATA.SOURCE.IA'), cls: 'bg-n-iris-3 text-n-iris-11' },
-  erp: {
-    label: t('TICKETS.DATA.SOURCE.ERP'),
-    cls: 'bg-n-blue-3 text-n-blue-11',
-  },
-  humano: {
-    label: t('TICKETS.DATA.SOURCE.HUMANO'),
-    cls: 'bg-n-slate-3 text-n-slate-11',
-  },
-};
-const badgeFuente = fuente => FUENTES[fuente] || null;
-
+// El badge lo pinta Helic3SourceBadge (VIS-04), extraido del panel para que el
+// panel, la bandeja y el expediente no lo copien cada uno por su lado.
 const datosLista = computed(() => {
   const d = expediente.value?.datos || {};
   const campos = [
@@ -286,12 +277,13 @@ const datosLista = computed(() => {
   const filas = campos.map(c => ({
     label: c.label,
     valor: d[c.key]?.valor ?? null,
-    fuente: d[c.key]?.fuente ?? null,
+    // '' y no null: Helic3SourceBadge tipa fuente como String.
+    fuente: d[c.key]?.fuente ?? '',
   }));
   filas.push({
     label: t('TICKETS.DATA.FIELDS.DETALLE'),
     valor: d.detalle_tipificado?.valor?.nombre ?? null,
-    fuente: d.detalle_tipificado?.fuente ?? null,
+    fuente: d.detalle_tipificado?.fuente ?? '',
   });
   return filas;
 });
@@ -307,7 +299,8 @@ const siguienteAccion = computed(() => {
 });
 
 // Actividad: linea de tiempo con los sellos reales del expediente. NO se inventan
-// eventos. EVT-01 (bitacora) la reemplaza en E4 con la traza completa por evento.
+// eventos. EVT-01 (bitacora), ya codificado en esta misma entrega en la rama de
+// Samuel, la reemplaza con la traza completa por evento.
 const actividad = computed(() => {
   const e = expediente.value;
   if (!e) return [];
@@ -427,12 +420,7 @@ const formatFecha = valor =>
                 <h3 class="mb-0 text-sm font-medium text-n-slate-12">
                   {{ t('TICKETS.DETAIL.LEGAL_TITLE') }}
                 </h3>
-                <span
-                  v-if="clasificacionEsIA"
-                  class="px-1.5 py-0.5 text-[10px] font-semibold tracking-wide rounded bg-n-iris-3 text-n-iris-11"
-                >
-                  {{ t('TICKETS.DATA.SOURCE.IA') }}
-                </span>
+                <Helic3SourceBadge v-if="clasificacionEsIA" fuente="ia" />
               </div>
               <span
                 class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-md"
@@ -782,13 +770,7 @@ const formatFecha = valor =>
                 <dd class="flex items-center gap-2 mb-0 text-n-slate-12">
                   <template v-if="dato.valor">
                     <span class="min-w-0 break-words">{{ dato.valor }}</span>
-                    <span
-                      v-if="badgeFuente(dato.fuente)"
-                      class="px-1.5 py-0.5 text-[10px] font-semibold tracking-wide rounded shrink-0"
-                      :class="badgeFuente(dato.fuente).cls"
-                    >
-                      {{ badgeFuente(dato.fuente).label }}
-                    </span>
+                    <Helic3SourceBadge :fuente="dato.fuente" />
                   </template>
                   <span v-else class="text-n-slate-11">
                     {{ t('TICKETS.INBOX.PENDING') }}
@@ -798,7 +780,7 @@ const formatFecha = valor =>
             </dl>
           </section>
 
-          <!-- Actividad: sellos reales (EVT-01 la reemplaza en E4) -->
+          <!-- Actividad: sellos reales (EVT-01, de esta entrega, la reemplaza) -->
           <section
             v-if="actividad.length"
             class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
