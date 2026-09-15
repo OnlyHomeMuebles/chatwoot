@@ -342,6 +342,31 @@ Rails.application.routes.draw do
               member do
                 post :assign
               end
+              resource :resolucion, only: [:create], controller: 'resoluciones'
+              resource :datos, only: [:update], controller: 'datos'
+            end
+            resources :garantias, only: [] do
+              resources :items, only: [:update], controller: 'garantia_items'
+            end
+            resource :catalogos, only: [:show]
+            # Bandeja de PQR (BAN-01): indice de solo lectura, filtrado y paginado
+            # en servidor. Endpoint propio para no cambiar la forma de la respuesta
+            # que el panel de conversacion ya consume por tickets#index.
+            get 'pqr', to: 'pqr#index'
+            # Cola de decisiones (DEC-01): expedientes con una propuesta del agente
+            # esperando aprobacion humana (scope con_decision_pendiente de RES-01).
+            get 'pqr/decisiones', to: 'pqr#decisiones'
+            # Contadores livianos del rail (VIS-05): solo dos numeros con COUNT, sin
+            # traer registros ni pisar el estado de la bandeja.
+            get 'pqr/contadores', to: 'pqr#contadores'
+            # Administracion de catalogos y parametros (ADM-01): lectura para
+            # agentes, escritura solo administradores. El :tipo elige el catalogo.
+            namespace :admin do
+              get    'catalogos/:tipo',     to: 'catalogos#index'
+              post   'catalogos/:tipo',     to: 'catalogos#create'
+              patch  'catalogos/:tipo/:id', to: 'catalogos#update'
+              delete 'catalogos/:tipo/:id', to: 'catalogos#destroy'
+              resources :parametros, only: [:index, :update]
             end
           end
 

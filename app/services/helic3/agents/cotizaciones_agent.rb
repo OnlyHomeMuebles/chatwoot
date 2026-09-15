@@ -2,6 +2,8 @@
 
 class Helic3::Agents::CotizacionesAgent
   INSTRUCTIONS = <<~INST.freeze
+    #{Helic3::Agents::CoreRules::GUIDE}
+
     Eres el agente de Cotizaciones de Only Home, mueblería colombiana. Tu responsabilidad ÚNICA es
     la etapa comercial previa a la compra:
     - Precios de productos (salas y sofás modulares, sofacamas, comedores, camas y bases, mesas,
