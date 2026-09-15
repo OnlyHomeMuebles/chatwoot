@@ -27,14 +27,10 @@ class Helic3::Casos::RadicacionAutomatica
   def call
     return :ya_existe if expediente_existente?
 
-    resultado = @extractor.call(conversacion_texto)
-    return :sin_senal if resultado.nil? || !resultado.requiere_pqr
+    clasificacion = clasificar
+    return :sin_senal if clasificacion.nil?
 
-    tipo = Helic3::Catalogo::Tipo.activos.find_by(account: @account, codigo: resultado.tipo_codigo)
-    motivo = Helic3::Catalogo::MotivoPqr.activos.find_by(account: @account, codigo: resultado.motivo_codigo)
-    return :sin_senal if tipo.nil? || motivo.nil?
-
-    radicar(resultado, tipo, motivo)
+    radicar(*clasificacion)
   rescue StandardError => e
     # nunca tumba el flujo de respuesta al cliente; el error queda visible (CAS-01)
     Rails.logger.error("[Helic3] radicacion automatica fallo conv=#{@conversation&.id}: #{e.class}: #{e.message}")
@@ -42,6 +38,19 @@ class Helic3::Casos::RadicacionAutomatica
   end
 
   private
+
+  # Corre el clasificador y valida sus codigos contra el catalogo vivo.
+  # @return [Array(Resultado, Tipo, MotivoPqr), nil] los datos para radicar, o nil si no procede
+  def clasificar
+    resultado = @extractor.call(conversacion_texto)
+    return nil if resultado.nil? || !resultado.requiere_pqr
+
+    tipo = Helic3::Catalogo::Tipo.activos.find_by(account: @account, codigo: resultado.tipo_codigo)
+    motivo = Helic3::Catalogo::MotivoPqr.activos.find_by(account: @account, codigo: resultado.motivo_codigo)
+    return nil if tipo.nil? || motivo.nil?
+
+    [resultado, tipo, motivo]
+  end
 
   # idempotencia: un expediente por conversacion (cubre que el agente ya haya
   # radicado con su herramienta en la misma corrida)

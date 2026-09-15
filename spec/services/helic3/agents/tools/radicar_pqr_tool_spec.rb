@@ -48,6 +48,19 @@ RSpec.describe Helic3::Agents::Tools::RadicarPqrTool do
     expect(ticket.conversation_id).to eq(conversation.id)
   end
 
+  it 'no duplica: si la conversacion ya tiene expediente, no crea otro' do
+    radicar # primera radicacion (p. ej. la haria la compuerta automatica o una llamada previa)
+
+    expect { radicar }.not_to(change { account.tickets.count })
+  end
+
+  it 'cuando ya existe, le devuelve al modelo que no radique de nuevo' do
+    radicar
+    salida = radicar
+
+    expect(salida).to match(/ya (quedo registrado|estaba radicado)/)
+  end
+
   it 'en modo propone (el default sin parametro), la salida NO contiene el numero de radicado' do
     salida = radicar
 
