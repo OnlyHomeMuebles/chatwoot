@@ -24,7 +24,8 @@
     },
     "CONVERSATION": {
       "EMPTY": "No hay expedientes vinculados a esta conversación",
-      "CREATE": "Radicar PQR"
+      "CREATE": "Radicar PQR",
+      "OPEN_DETAIL": "Abrir el expediente completo"
     },
     "FIELDS": {
       "CATEGORY": "Categoría",
@@ -44,6 +45,8 @@
       "FORM_MOTIVE_LABEL": "Motivo",
       "FORM_MOTIVE_PLACEHOLDER": "Selecciona un motivo",
       "FORM_CATEGORY_DERIVED": "Categoría: {category}",
+      "FORM_DETAIL_LABEL": "Detalle tipificado",
+      "FORM_DETAIL_PLACEHOLDER": "Selecciona un detalle",
       "FORM_STATUS_LABEL": "Estado",
       "CONFIRM": "Crear",
       "SUCCESS": "Ticket creado correctamente",

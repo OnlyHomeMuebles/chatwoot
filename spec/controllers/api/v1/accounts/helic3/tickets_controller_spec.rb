@@ -95,6 +95,17 @@ RSpec.describe 'Tickets API', type: :request do
       expect(body['plazo_respuesta_vence_at']).to be_present
     end
 
+    it 'guarda el detalle tipificado del dialogo en la ficha con fuente humano (VIS-04)' do
+      detalle = Helic3::Catalogo::DetalleTipificado.where(account: account).activos.first
+
+      radicar(tipo_id: tipo.id, motivo_pqr_id: motivo_garantia.id, detalle_tipificado_id: detalle.id)
+
+      expect(response).to have_http_status(:success)
+      ticket = account.tickets.find(response.parsed_body['id'])
+      expect(ticket.datos.detalle_tipificado_id).to eq(detalle.id)
+      expect(ticket.datos.fuentes['detalle_tipificado_id']).to eq('humano')
+    end
+
     it 'incluye semaforo y dias habiles restantes coherentes con el plazo' do
       radicar(tipo_id: tipo.id, motivo_pqr_id: motivo_garantia.id)
 
