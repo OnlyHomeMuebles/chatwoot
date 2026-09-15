@@ -34,6 +34,17 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
     @propuestas = propuestas_por_id(@decisiones)
   end
 
+  # Contadores del rail (VIS-05): solo dos numeros con COUNT. NO trae registros ni
+  # escribe el estado de la bandeja, y corre en cada carga del dashboard, asi que
+  # debe ser barato. Fuente propia justamente para no pisar records/meta de index.
+  def contadores
+    scope = Current.account.tickets
+    render json: {
+      sin_responder: scope.where(respondida_at: nil).count,
+      decisiones_pendientes: scope.con_decision_pendiente.count
+    }
+  end
+
   private
 
   # Metricas del encabezado (BAN-01): conteos de toda la cuenta, no de la pagina

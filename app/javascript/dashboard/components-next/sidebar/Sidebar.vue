@@ -213,15 +213,15 @@ useEventListener(document, 'touchend', onResizeEnd);
 const inboxes = useMapGetter('inboxes/getInboxes');
 const labels = useMapGetter('labels/getLabelsOnSidebar');
 
-// VIS-05: contadores del menú del módulo, solo donde hay consulta real. La bandeja
-// aporta "sin responder" (métrica del listado) y decisiones aporta la cantidad de
-// la cola. Las hojas sin fuente (catálogos) no muestran número.
-const pqrMeta = useMapGetter('pqrInbox/getMeta');
-const pqrDecisiones = useMapGetter('pqrInbox/getDecisiones');
-const pqrSinResponder = computed(
-  () => pqrMeta.value?.metricas?.sin_responder || 0
+// VIS-05: contadores del menú del módulo, solo donde hay consulta real. Salen de
+// una fuente PROPIA y liviana (pqrInbox/getContadores, endpoint de puros COUNT) que
+// NO escribe records/meta de la bandeja: el rail no debe pisar lo que la bandeja
+// tenga cargado. Las hojas sin fuente (catálogos) no muestran número.
+const pqrContadores = useMapGetter('pqrInbox/getContadores');
+const pqrSinResponder = computed(() => pqrContadores.value.sin_responder || 0);
+const pqrDecisionesPendientes = computed(
+  () => pqrContadores.value.decisiones_pendientes || 0
 );
-const pqrDecisionesPendientes = computed(() => pqrDecisiones.value.length);
 const allUnreadCount = useMapGetter(
   'conversationUnreadCounts/getAllUnreadCount'
 );
@@ -263,10 +263,19 @@ onMounted(() => {
   store.dispatch('attributes/get');
   store.dispatch('customViews/get', 'conversation');
   store.dispatch('customViews/get', 'contact');
-  // VIS-05: conteos del menú del módulo (bandeja "sin responder" y decisiones).
-  // Guardado: en una cuenta sin el módulo el endpoint no responde y no rompe el rail.
-  store.dispatch('pqrInbox/fetch').catch(() => {});
-  store.dispatch('pqrInbox/fetchDecisiones').catch(() => {});
+  // VIS-05: conteos del menú del módulo, por su fuente liviana propia (no pisa la
+  // bandeja). 404 = la cuenta no tiene el módulo del rail; se ignora. Cualquier otro
+  // error se registra en vez de tragarse: una cuenta rota no debe verse igual a una
+  // sana (misma regla que el #41).
+  store.dispatch('pqrInbox/fetchContadores').catch(error => {
+    if (error?.response?.status !== 404) {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[Helic3] no se pudieron cargar los contadores del rail',
+        error
+      );
+    }
+  });
 });
 
 watch([accountId, hasConversationUnreadCounts], fetchConversationUnreadCounts, {
