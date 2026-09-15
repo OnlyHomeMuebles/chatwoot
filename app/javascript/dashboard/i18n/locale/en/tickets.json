@@ -116,7 +116,6 @@
         "ANSWERED": "Answered"
       },
       "NEW": "New PQR",
-      "NEW_DISABLED": "A PQR is filed from a conversation",
       "EXPORT": "Export",
       "EXPORT_DISABLED": "Export is coming in a future release"
     },

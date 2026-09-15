@@ -10,6 +10,7 @@ import Icon from 'dashboard/components-next/icon/Icon.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
+import CreateTicketDialog from 'dashboard/components/widgets/conversation/CreateTicketDialog.vue';
 
 // Bandeja de PQR (BAN-01 + VIS-02). Usa su store propio (pqrInbox), NO el del panel
 // de conversacion. Los filtros, la paginacion y las metricas se resuelven en el
@@ -35,6 +36,11 @@ const filtros = reactive({
   sin_responder: false,
 });
 const pagina = ref(1);
+
+// «Nueva PQR» abre el mismo dialogo del panel de conversacion, sin
+// conversationId: Radicar funciona sin conversacion (VIS-02, revision de Jhan).
+const dialogoNuevoRef = ref(null);
+const abrirNuevaPqr = () => dialogoNuevoRef.value.open();
 
 const cargar = async () => {
   const params = { page: pagina.value };
@@ -193,8 +199,11 @@ const estaVencido = fila =>
 // Cinco metricas (VIS-02): valor, unidad pequeña y linea de contexto. Los
 // porcentajes se calculan sobre el total del filtro (meta.count).
 const metricas = computed(() => meta.value.metricas);
+// ruby queda reservado para vencido (el chip de la columna Plazo ya lo usa);
+// "vencen esta semana" es una alerta previa, no un incumplimiento, por eso va
+// en ambar (revision de Jhan en VIS-02).
 const metricaValueClass = tone =>
-  ({ good: 'text-n-teal-11', warn: 'text-n-ruby-11' })[tone] ||
+  ({ good: 'text-n-teal-11', caution: 'text-n-amber-11' })[tone] ||
   'text-n-slate-12';
 
 const metricasCards = computed(() => {
@@ -230,7 +239,7 @@ const metricasCards = computed(() => {
     {
       label: t('TICKETS.INBOX.METRICS.DUE_WEEK'),
       value: m.vencen_semana,
-      tone: m.vencen_semana ? 'warn' : '',
+      tone: m.vencen_semana ? 'caution' : '',
       context: t('TICKETS.INBOX.METRICS.DUE_WEEK_CTX'),
     },
   ];
@@ -320,15 +329,13 @@ const relojPill = fila => {
             disabled
           />
         </span>
-        <span v-tooltip="t('TICKETS.INBOX.NEW_DISABLED')" class="inline-flex">
-          <Button
-            :label="t('TICKETS.INBOX.NEW')"
-            icon="i-lucide-plus"
-            color="blue"
-            size="sm"
-            disabled
-          />
-        </span>
+        <Button
+          :label="t('TICKETS.INBOX.NEW')"
+          icon="i-lucide-plus"
+          color="blue"
+          size="sm"
+          @click="abrirNuevaPqr"
+        />
       </div>
 
       <div
@@ -583,5 +590,7 @@ const relojPill = fila => {
         </div>
       </div>
     </div>
+
+    <CreateTicketDialog ref="dialogoNuevoRef" @created="cargar" />
   </div>
 </template>

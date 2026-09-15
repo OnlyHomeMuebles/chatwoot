@@ -16,6 +16,10 @@ const props = defineProps({
   },
 });
 
+// La bandeja (VIS-02) abre este mismo dialogo sin conversationId y necesita
+// refrescar su lista tras crear; el panel de la conversacion no lo usa.
+const emit = defineEmits(['created']);
+
 const store = useStore();
 const { t } = useI18n();
 
@@ -93,6 +97,7 @@ const createTicket = async () => {
     await store.dispatch('tickets/create', { ticket });
     useAlert(t('TICKETS.CREATE.SUCCESS'));
     dialogRef.value.close();
+    emit('created');
   } catch (error) {
     useAlert(t('TICKETS.CREATE.ERROR'));
   }

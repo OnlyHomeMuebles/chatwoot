@@ -19,8 +19,12 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
     @pqr = filtrados.order(created_at: :desc).page(pagina_actual).per(RESULTS_PER_PAGE)
     @total = @pqr.total_count
     @umbrales = umbrales_pqr
-    # Metricas sobre el MISMO filtro (VIS-02), en una consulta aparte de la pagina
-    # y sobre un scope limpio (sin includes) para que los conteos no se inflen.
+    # Decision (VIS-02, resuelta en revision): las metricas SI respetan el mismo
+    # filtro que la pagina, no el total de la cuenta. BAN-01 asumia lo contrario
+    # (metricas fijas, el filtro solo sobre la tabla); con el tabbar a la vista el
+    # usuario entiende que ve un subconjunto, y es la lectura correcta del
+    # criterio 1. Van en una consulta aparte de la pagina y sobre un scope limpio
+    # (sin includes) para que los conteos no se inflen.
     @metricas = metricas_pqr(aplicar_filtros(Current.account.tickets))
   end
 
