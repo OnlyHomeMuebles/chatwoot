@@ -29,11 +29,35 @@ class Helic3::ProcessConversationJob < ApplicationJob
     start_typing(client, conversation_id)
     reply = generate_reply(client, memory, conversation_id, content)
     client.create_message(conversation_id, content: reply, message_type: 'outgoing') if reply.present?
+    radicar_si_corresponde(account_id, conversation_id, memory)
   ensure
     stop_typing(client, conversation_id)
   end
 
   private
+
+  # Punto 3 (E4): compuerta determinista de radicacion. Corre DESPUES de responderle al cliente
+  # (nunca antes: si algo falla aqui, el cliente ya recibio su respuesta). Es idempotente y no
+  # depende de que el modelo haya llamado la herramienta: si el caso amerita PQR/garantia, se
+  # radica por codigo. El display_id (id publico de Chatwoot) se traduce al registro de BD aqui.
+  def radicar_si_corresponde(account_id, display_id, memory)
+    return unless agente_pqrs_activo?(memory)
+
+    account = Account.find_by(id: account_id)
+    conversation = account&.conversations&.find_by(display_id: display_id)
+    return if conversation.nil?
+
+    Helic3::Casos::RadicacionAutomatica.new(account: account, conversation: conversation).call
+  rescue StandardError => e
+    Rails.logger.error("[Helic3] compuerta de radicacion conv=#{display_id}: #{e.class}: #{e.message}")
+  end
+
+  # La compuerta solo tiene sentido cuando el caso esta en manos del agente de PQRS: en
+  # conversaciones de FAQ/cotizacion/logistica no se gasta una llamada LLM de clasificacion.
+  # El agente que cerro el turno quedo en la memoria (current_agent) tras el run.
+  def agente_pqrs_activo?(memory)
+    memory.load[:current_agent].to_s.include?('pqrs')
+  end
 
   # Corre el multiagente restaurando el hilo previo. Ante un fallo del LLM devuelve un mensaje de
   # respaldo para que el cliente nunca quede sin respuesta, y no persiste un estado a medias.
