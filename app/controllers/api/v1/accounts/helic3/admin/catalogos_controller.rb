@@ -9,7 +9,17 @@
 #   se fija al crear y NO se edita despues.
 class Api::V1::Accounts::Helic3::Admin::CatalogosController < Api::V1::Accounts::BaseController
   # tipo (segmento de ruta) -> modelo y campos editables de ese catalogo.
+  # Agrupados por dominio (ADM-02), como los presenta el menu lateral: PQR
+  # primero, Garantia despues.
   CATALOGOS = {
+    'categorias' => {
+      modelo: Helic3::Catalogo::Categoria,
+      campos: %i[nombre codigo activo posicion genera_radicado]
+    },
+    'tipos' => {
+      modelo: Helic3::Catalogo::Tipo,
+      campos: %i[nombre codigo activo posicion plazo_dias_habiles]
+    },
     'motivos_pqr' => {
       modelo: Helic3::Catalogo::MotivoPqr,
       campos: %i[nombre codigo activo posicion categoria_id abre_garantia plazo_dias_habiles]
@@ -18,9 +28,17 @@ class Api::V1::Accounts::Helic3::Admin::CatalogosController < Api::V1::Accounts:
       modelo: Helic3::Catalogo::Resultado,
       campos: %i[nombre codigo activo posicion abre_garantia aprobacion_humana cierra_pqr requiere_admin]
     },
+    'etapas_pqr' => {
+      modelo: Helic3::Catalogo::EtapaPqr,
+      campos: %i[nombre codigo activo posicion detiene_reloj visible_cliente]
+    },
     'detalles_tipificados' => {
       modelo: Helic3::Catalogo::DetalleTipificado,
       campos: %i[nombre codigo activo posicion motivo_garantia_id]
+    },
+    'motivos_garantia' => {
+      modelo: Helic3::Catalogo::MotivoGarantia,
+      campos: %i[nombre codigo activo posicion regla parametro_dias]
     },
     'procesos_garantia' => {
       modelo: Helic3::Catalogo::ProcesoGarantia,
@@ -43,11 +61,14 @@ class Api::V1::Accounts::Helic3::Admin::CatalogosController < Api::V1::Accounts:
     @registros = @modelo.where(account: Current.account).order(:posicion)
   end
 
-  # compact_blank: un campo vacio del formulario (un enum sin elegir, una ruta sin
-  # texto) no se asigna, para que la columna use su default o quede NULL en vez de
-  # castear "" -> nil sobre una columna NOT NULL (que reventaria con 500).
+  # Se descarta el string vacio (un enum sin elegir, una ruta sin texto) para que
+  # la columna use su default o quede NULL en vez de castear "" -> nil sobre una
+  # columna NOT NULL (que reventaria con 500). A diferencia de compact_blank,
+  # esto SI conserva un booleano en false explicito: genera_radicado y
+  # requiere_admin arrancan en true por columna, y apagarlos al crear se debe
+  # respetar, no perderse silenciosamente por ser "blank".
   def create
-    @registro = @modelo.create!(catalogo_params.compact_blank.merge(account: Current.account))
+    @registro = @modelo.create!(catalogo_params.reject { |_, v| v == '' }.merge(account: Current.account))
     render :show, status: :created
   end
 

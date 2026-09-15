@@ -97,6 +97,91 @@ RSpec.describe 'Helic3 administracion de catalogos (ADM-01)', type: :request do
     end
   end
 
+  # Las cuatro entradas que sumó ADM-02: mismo contrato del controlador
+  # (crear, actualizar, desactivar, rechazar codigo repetido), sin repetir el
+  # detalle fila por fila que ya cubren los specs de arriba para motivos_pqr.
+  shared_examples 'catalogo con las cuatro operaciones (ADM-02)' do |tipo|
+    let(:base_nuevo) { "/api/v1/accounts/#{account.id}/helic3/admin/catalogos/#{tipo}" }
+
+    it 'un administrador crea un registro' do
+      post base_nuevo, params: { catalogo: atributos_validos }, headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(modelo.find_by(account: account, codigo: atributos_validos[:codigo])).to be_present
+    end
+
+    it 'un administrador actualiza el nombre' do
+      patch "#{base_nuevo}/#{registro.id}",
+            params: { catalogo: { nombre: 'Editado' } },
+            headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(registro.reload.nombre).to eq('Editado')
+    end
+
+    it 'un administrador desactiva el registro sin borrarlo' do
+      patch "#{base_nuevo}/#{registro.id}",
+            params: { catalogo: { activo: false } },
+            headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(registro.reload.activo).to be(false)
+    end
+
+    it 'rechaza un codigo repetido' do
+      post base_nuevo,
+           params: { catalogo: atributos_validos.merge(codigo: registro.codigo) },
+           headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+  end
+
+  describe 'catalogos nuevos (ADM-02)' do
+    describe 'categorias' do
+      let(:modelo) { Helic3::Catalogo::Categoria }
+      let(:atributos_validos) { { nombre: 'Devoluciones', codigo: 'devoluciones' } }
+      let(:registro) { modelo.create!(account: account, nombre: 'Garantía', codigo: 'garantia') }
+
+      it_behaves_like 'catalogo con las cuatro operaciones (ADM-02)', 'categorias'
+
+      # genera_radicado nace en true por columna: apagarlo al crear no se
+      # puede perder silenciosamente (es la razon de ser del ticket).
+      it 'respeta genera_radicado en false al crear' do
+        post "/api/v1/accounts/#{account.id}/helic3/admin/catalogos/categorias",
+             params: { catalogo: { nombre: 'Información', codigo: 'informacion', genera_radicado: false } },
+             headers: admin.create_new_auth_token, as: :json
+
+        expect(response).to have_http_status(:created)
+        expect(Helic3::Catalogo::Categoria.find_by(account: account, codigo: 'informacion').genera_radicado).to be(false)
+      end
+    end
+
+    describe 'tipos' do
+      let(:modelo) { Helic3::Catalogo::Tipo }
+      let(:atributos_validos) { { nombre: 'Sugerencia', codigo: 'sugerencia' } }
+      let(:registro) { modelo.create!(account: account, nombre: 'Petición', codigo: 'peticion') }
+
+      it_behaves_like 'catalogo con las cuatro operaciones (ADM-02)', 'tipos'
+    end
+
+    describe 'etapas_pqr' do
+      let(:modelo) { Helic3::Catalogo::EtapaPqr }
+      let(:atributos_validos) { { nombre: 'En trámite', codigo: 'en_tramite' } }
+      let(:registro) { modelo.create!(account: account, nombre: 'Radicada', codigo: 'radicada') }
+
+      it_behaves_like 'catalogo con las cuatro operaciones (ADM-02)', 'etapas_pqr'
+    end
+
+    describe 'motivos_garantia' do
+      let(:modelo) { Helic3::Catalogo::MotivoGarantia }
+      let(:atributos_validos) { { nombre: 'Producto incompleto', codigo: 'producto_incompleto' } }
+      let(:registro) { modelo.create!(account: account, nombre: 'Error de pedido', codigo: 'error_pedido') }
+
+      it_behaves_like 'catalogo con las cuatro operaciones (ADM-02)', 'motivos_garantia'
+    end
+  end
+
   describe 'acotado a la cuenta y al catalogo' do
     it 'un catalogo desconocido responde 404' do
       get "/api/v1/accounts/#{account.id}/helic3/admin/catalogos/inexistente",
