@@ -42,13 +42,13 @@ class Helic3::Garantia < ApplicationRecord
   # claves en helic3_catalogo_parametros; ninguna se siembra todavia porque
   # Only Home no ha decidido prefijo ni arranque del consecutivo (atado a la
   # migracion de historico). Sin configurar: sin prefijo y arranca en 1.
-  PARAM_PREFIJO = 'radicado_garantia_prefijo'
-  PARAM_INICIO = 'radicado_garantia_inicio' # lo lee el trigger al crear la secuencia
+  PARAM_PREFIJO = 'radicado_garantia_prefijo'.freeze
+  PARAM_INICIO = 'radicado_garantia_inicio'.freeze # lo lee el trigger al crear la secuencia
 
   belongs_to :account
   belongs_to :ticket, class_name: 'Helic3::Ticket'
   belongs_to :cobertura_ciudad, class_name: 'Helic3::Catalogo::CoberturaCiudad', optional: true
-  has_many :items, class_name: 'Helic3::GarantiaItem', foreign_key: :garantia_id,
+  has_many :items, class_name: 'Helic3::GarantiaItem',
                    inverse_of: :garantia, dependent: :destroy
 
   validates :account_id, presence: true

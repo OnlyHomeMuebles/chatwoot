@@ -117,7 +117,11 @@ export const actions = {
   avanzarGarantia: async ({ commit }, { garantiaId, itemId, procesoId }) => {
     commit(types.SET_TICKET_UI_FLAG, { isUpdating: true });
     try {
-      const response = await TicketsAPI.avanzarGarantia(garantiaId, itemId, procesoId);
+      const response = await TicketsAPI.avanzarGarantia(
+        garantiaId,
+        itemId,
+        procesoId
+      );
       commit(types.EDIT_TICKET, response.data);
     } finally {
       commit(types.SET_TICKET_UI_FLAG, { isUpdating: false });

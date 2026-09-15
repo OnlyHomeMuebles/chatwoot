@@ -18,7 +18,7 @@ RSpec.describe 'Helic3 contrato de conversation_id entre el agente y la API', ty
   # display_id 1 (por cuenta) pero id de BD mucho mayor.
   let(:conversation) do
     otra = create(:account)
-    3.times { create(:conversation, account: otra) }
+    create_list(:conversation, 3, account: otra)
     create(:conversation, account: account, inbox: inbox)
   end
 
