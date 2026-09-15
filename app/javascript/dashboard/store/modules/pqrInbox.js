@@ -17,6 +17,9 @@ export const state = {
   },
   current: null,
   decisiones: [],
+  // VIS-05: contadores del rail, en su propio slice. Nunca se mezclan con records
+  // ni meta: el rail no debe pisar lo que la bandeja tenga cargado.
+  contadores: { sin_responder: 0, decisiones_pendientes: 0 },
   uiFlags: {
     isFetching: false,
     isFetchingItem: false,
@@ -36,6 +39,9 @@ export const getters = {
   },
   getDecisiones(_state) {
     return _state.decisiones;
+  },
+  getContadores(_state) {
+    return _state.contadores;
   },
   getUIFlags(_state) {
     return _state.uiFlags;
@@ -102,6 +108,15 @@ export const actions = {
     }
   },
 
+  // Contadores del rail (VIS-05): fuente propia y liviana (endpoint de puros
+  // COUNT). Escribe SOLO _state.contadores, nunca records/meta, para no pisar la
+  // bandeja. Sin catch aqui: el error se propaga y el rail decide (ignora la cuenta
+  // sin modulo, registra el resto).
+  fetchContadores: async ({ commit }) => {
+    const { data } = await PqrInboxAPI.contadores();
+    commit(types.SET_PQR_CONTADORES, data);
+  },
+
   // Aprobar aplica el resultado propuesto por la puerta de resolucion (RES-01) y
   // recarga la cola: la fila aprobada sale (ya no tiene propuesta pendiente). Sin
   // catch: el error (p. ej. 401 de un agente) se propaga para que la pantalla avise.
@@ -126,6 +141,9 @@ export const mutations = {
   },
   [types.SET_PQR_DECISIONES](_state, decisiones) {
     _state.decisiones = decisiones;
+  },
+  [types.SET_PQR_CONTADORES](_state, contadores) {
+    _state.contadores = contadores;
   },
 };
 

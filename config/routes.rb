@@ -356,6 +356,9 @@ Rails.application.routes.draw do
             # Cola de decisiones (DEC-01): expedientes con una propuesta del agente
             # esperando aprobacion humana (scope con_decision_pendiente de RES-01).
             get 'pqr/decisiones', to: 'pqr#decisiones'
+            # Contadores livianos del rail (VIS-05): solo dos numeros con COUNT, sin
+            # traer registros ni pisar el estado de la bandeja.
+            get 'pqr/contadores', to: 'pqr#contadores'
             # Administracion de catalogos y parametros (ADM-01): lectura para
             # agentes, escritura solo administradores. El :tipo elige el catalogo.
             namespace :admin do

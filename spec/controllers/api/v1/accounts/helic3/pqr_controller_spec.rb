@@ -36,6 +36,26 @@ RSpec.describe 'Helic3 Bandeja de PQR (BAN-01)', type: :request do
     expect(response.parsed_body['payload'].size).to eq(2)
   end
 
+  it 'contadores: sin_responder y decisiones_pendientes, sin traer registros (VIS-05)' do
+    con_propuesta = radicar(motivo_pqr: motivo_garantia)
+    radicar(motivo_pqr: motivo_logistica)
+    no_procede = Helic3::Catalogo::Resultado.find_by!(account: account, codigo: 'no_procede_garantia')
+    con_propuesta.update!(pqrs_metadata: con_propuesta.pqrs_metadata.merge(
+      'resultado_propuesto_id' => no_procede.id,
+      'propuesto_at' => Time.current.iso8601,
+      'propuesto_por' => 'agente'
+    ))
+
+    get "/api/v1/accounts/#{account.id}/helic3/pqr/contadores",
+        headers: agent.create_new_auth_token, as: :json
+
+    expect(response).to have_http_status(:success)
+    body = response.parsed_body
+    expect(body['sin_responder']).to eq(2)
+    expect(body['decisiones_pendientes']).to eq(1)
+    expect(body).not_to have_key('payload') # es liviano: no trae la lista
+  end
+
   it 'filtra por categoria' do
     radicar(motivo_pqr: motivo_garantia)
     radicar(motivo_pqr: motivo_logistica)

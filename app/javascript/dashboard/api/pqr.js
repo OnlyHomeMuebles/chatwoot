@@ -19,6 +19,12 @@ class PqrInboxAPI extends ApiClient {
     return axios.get(`${this.url}/decisiones`);
   }
 
+  // Contadores del rail (VIS-05): dos numeros (sin_responder y decisiones
+  // pendientes) con puras consultas COUNT, sin traer registros ni pisar la bandeja.
+  contadores() {
+    return axios.get(`${this.url}/contadores`);
+  }
+
   // Aprobar = aplicar el resultado propuesto por la unica puerta de resolucion
   // (RES-01, de Samuel), que fija origen: humano. baseUrl() da el prefijo de la
   // cuenta, sin armar la ruta a mano con replace.
