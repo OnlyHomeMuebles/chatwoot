@@ -68,7 +68,11 @@
         "FILED": "Radicadas",
         "ON_TIME": "Dentro del plazo",
         "UNANSWERED": "Sin responder",
-        "OVERDUE": "Vencidas"
+        "WARRANTY": "Abren garantía",
+        "DUE_WEEK": "Vencen esta semana",
+        "RATIO": "{n} de {total}",
+        "EXCL_INFO": "Excluye Información",
+        "DUE_WEEK_CTX": "Requieren respuesta"
       },
       "EMPTY": "No hay expedientes que coincidan con los filtros",
       "ERROR": "No se pudo cargar la bandeja",
@@ -90,18 +94,30 @@
         "CLASSIFICATION": "Clasificación",
         "STAGE": "Etapa",
         "CLOCK": "Vencimiento",
-        "ASSIGNEE": "Responsable"
+        "ASSIGNEE": "Responsable",
+        "MOTIVE": "Motivo",
+        "WARRANTY": "Garantía"
       },
       "CLOCK": {
         "FROZEN": "Congelado",
         "OVERDUE": "Vencido",
-        "DUE": "Vence {date}"
+        "DUE": "Vence {date}",
+        "ANSWERED": "Respondida dentro del plazo"
       },
       "PAGINATION": {
         "PREV": "Anterior",
         "NEXT": "Siguiente",
         "PAGE": "{page} / {total}"
-      }
+      },
+      "TABS": {
+        "ALL": "Todas",
+        "UNANSWERED": "Sin responder",
+        "IN_REVIEW": "En análisis",
+        "ANSWERED": "Respondidas"
+      },
+      "NEW": "Nueva PQR",
+      "EXPORT": "Exportar",
+      "EXPORT_DISABLED": "Exportar llegará en una próxima entrega"
     },
     "ADMIN": {
       "TITLE": "Catálogos y parámetros",
