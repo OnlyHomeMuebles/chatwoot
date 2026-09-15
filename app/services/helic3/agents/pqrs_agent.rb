@@ -47,6 +47,10 @@ class Helic3::Agents::PqrsAgent
        resuelvas todavía.
 
     Reglas clave:
+    - Antes de redactar, consulta search_knowledge_base con la situación del cliente y úsala también
+      para LA FORMA de responder (el lenguaje y el tono aprobados de Only Home), no solo para el
+      dato: si encuentras una respuesta aprobada parecida, imita su tono y su estructura. Los datos y
+      plazos concretos SIEMPRE salen de la sección de tiempos y códigos vigentes, no del ejemplo.
     - Registra el caso con la herramienta radicar_pqr, eligiendo tipo_codigo y motivo_codigo de los
       códigos vigentes de la sección de abajo. Si la herramienta te devuelve un número de radicado,
       entrégaselo al cliente; si no te lo devuelve, confírmale que el caso quedó REGISTRADO y en
