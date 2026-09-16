@@ -29,45 +29,20 @@ class Helic3::ProcessConversationJob < ApplicationJob
     start_typing(client, conversation_id)
     reply = generate_reply(client, memory, conversation_id, content)
     client.create_message(conversation_id, content: reply, message_type: 'outgoing') if reply.present?
-    radicar_si_corresponde(client, account_id, conversation_id, memory)
+    encolar_radicacion(conversation_id, memory)
   ensure
     stop_typing(client, conversation_id)
   end
 
   private
 
-  # Punto 3 (E4): compuerta determinista de radicacion. Corre DESPUES de responderle al cliente
-  # (nunca antes: si algo falla aqui, el cliente ya recibio su respuesta). Es idempotente y no
-  # depende de que el modelo haya llamado la herramienta: si el caso amerita PQR/garantia, se
-  # radica por codigo. El display_id (id publico de Chatwoot) se traduce al registro de BD aqui.
-  def radicar_si_corresponde(client, account_id, display_id, memory)
+  # AGT-06: la radicacion determinista corre en su propio job (async), no aqui, para no
+  # retrasar la respuesta ni el indicador de escritura. Solo se encola cuando el caso puede
+  # necesitar expediente; el job es idempotente y decide si de verdad radica.
+  def encolar_radicacion(display_id, memory)
     return unless compuerta_aplica?(memory)
 
-    account = Account.find_by(id: account_id)
-    conversation = account&.conversations&.find_by(display_id: display_id)
-    return if conversation.nil?
-
-    ticket = Helic3::Casos::RadicacionAutomatica.new(account: account, conversation: conversation).call
-    nota_radicacion_automatica(client, display_id, ticket) if ticket.is_a?(Helic3::Ticket)
-  rescue StandardError => e
-    Rails.logger.error("[Helic3] compuerta de radicacion conv=#{display_id}: #{e.class}: #{e.message}")
-  end
-
-  # Cuando la compuerta radica por codigo (el agente no uso su herramienta), deja la MISMA nota
-  # privada al operador que dejaria la tool: asi la traza "dorada" aparece sin importar quien
-  # radico. Best-effort: si el envio falla, no rompe el flujo (el expediente ya quedo creado).
-  def nota_radicacion_automatica(client, display_id, ticket)
-    client.create_message(display_id, content: nota_de(ticket), private_note: true)
-  rescue StandardError => e
-    Rails.logger.warn("[Helic3] no se pudo dejar la nota de radicacion conv=#{display_id}: #{e.message}")
-  end
-
-  def nota_de(ticket)
-    numero = ticket.numero_radicado || ticket.ticket_number
-    vence = ticket.plazo_respuesta_vence_at&.to_date || 'sin plazo (no genera radicado)'
-    "Radicacion automatica del agente — expediente #{numero}: " \
-      "tipo #{ticket.tipo&.nombre}, motivo #{ticket.motivo_pqr&.nombre} " \
-      "(categoria #{ticket.categoria&.nombre}). Vence: #{vence}."
+    Helic3::RadicarAutomaticoJob.perform_later(account_id: @account_id, conversation_id: display_id)
   end
 
   # La compuerta corre cuando el caso puede necesitar expediente: con el agente de PQRS,

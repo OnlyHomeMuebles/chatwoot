@@ -30,7 +30,7 @@ class Helic3::Casos::RadicacionAutomatica
     clasificacion = clasificar
     return :sin_senal if clasificacion.nil?
 
-    radicar(*clasificacion)
+    radicar_seguro(*clasificacion)
   rescue StandardError => e
     # nunca tumba el flujo de respuesta al cliente; el error queda visible (CAS-01)
     Rails.logger.error("[Helic3] radicacion automatica fallo conv=#{@conversation&.id}: #{e.class}: #{e.message}")
@@ -59,6 +59,23 @@ class Helic3::Casos::RadicacionAutomatica
   # agente le confirme al cliente un caso que no existe).
   def expediente_existente?
     @account.tickets.exists?(conversation_id: @conversation.id, respondida_at: nil)
+  end
+
+  # El candado serializa dos jobs simultaneos (dos mensajes seguidos) sobre la misma
+  # conversacion: la clasificacion (lenta, con LLM) ya corrio FUERA del candado; aqui solo
+  # entra la verificacion + creacion, con un re-chequeo que corta la carrera (el indice de
+  # conversation_id no es unico, asi que el guard es en codigo). Se bloquea la fila con un
+  # SELECT FOR UPDATE sobre un registro FRESCO (no @conversation, que puede traer atributos
+  # sin persistir —display_id— por como Chatwoot crea la conversacion).
+  def radicar_seguro(resultado, tipo, motivo)
+    Conversation.transaction do
+      Conversation.lock.find(@conversation.id)
+      if expediente_existente?
+        :ya_existe
+      else
+        radicar(resultado, tipo, motivo)
+      end
+    end
   end
 
   def radicar(resultado, tipo, motivo)
