@@ -26,14 +26,21 @@ namespace :knowledge do
     require 'csv'
 
     account = Account.first
-    Dir[Rails.root.join('db/knowledge_seeds/*.csv')].each do |path|
-      name = File.basename(path, '.csv')
+    vigentes = Dir[Rails.root.join('db/knowledge_seeds/*.csv')].map { |path| File.basename(path, '.csv') }
+    vigentes.each do |name|
+      path = Rails.root.join("db/knowledge_seeds/#{name}.csv")
       document = Helic3::Knowledge::Document.find_or_initialize_by(account: account, name: name, source_type: :dataset)
       document.assign_attributes(content: knowledge_csv_to_text(path))
       document.save!
 
       result = Helic3::Knowledge::IngestionService.new(document).perform
       puts "#{name}: #{result} (#{document.chunks.count} fragmentos)"
+    end
+
+    # Purga reproducible: borra del RAG los datasets de semilla cuyo CSV ya no existe (p. ej. el
+    # corpus alienigena movido a fixtures). Sin esto el Document ya ingestado seguiria vivo.
+    Helic3::Knowledge::DatasetPurge.new(account, vigentes).call.each do |name|
+      puts "#{name}: PURGADO del RAG (ya no tiene CSV en db/knowledge_seeds)"
     end
   end
 end
