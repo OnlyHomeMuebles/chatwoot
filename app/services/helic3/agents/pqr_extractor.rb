@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-# Punto 3 (E4): clasificador determinista de intencion de PQR/garantia.
+# AGT-06: clasificador determinista de intencion de PQR/garantia.
 #
 # NO conversa: su unico trabajo es LEER la conversacion y decidir, con salida
 # JSON estricta (temperatura 0), si el cliente esta planteando una PQR o una
 # garantia y, de ser asi, clasificarla contra el catalogo VIVO de la cuenta.
 #
-# Es la mitad "entender" del punto 3: separar entender de actuar. La accion
+# Es la mitad "entender" de AGT-06: separar entender de actuar. La accion
 # (crear el expediente) la hace despues, por codigo, Helic3::Casos::RadicacionAutomatica
 # usando esta clasificacion. Asi la creacion deja de depender de que el modelo
 # "decida" llamar una herramienta.

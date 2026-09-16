@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-# Punto 3 (E4): la COMPUERTA determinista de radicacion.
+# AGT-06: la COMPUERTA determinista de radicacion.
 #
-# Es la mitad "actuar" del punto 3. Toma la clasificacion del PqrExtractor y,
+# Es la mitad "actuar" del ticket. Toma la clasificacion del PqrExtractor y,
 # si procede, crea el expediente POR CODIGO llamando a Helic3::Casos::Radicar
 # (la unica puerta de radicacion, CAS-01). Asi la creacion deja de depender de
 # que el modelo "decida" llamar la herramienta: si se identifica que el cliente
