@@ -26,14 +26,21 @@ namespace :knowledge do
     require 'csv'
 
     account = Account.first
-    Dir[Rails.root.join('db/knowledge_seeds/*.csv')].each do |path|
-      name = File.basename(path, '.csv')
+    vigentes = Dir[Rails.root.join('db/knowledge_seeds/*.csv')].map { |path| File.basename(path, '.csv') }
+    vigentes.each do |name|
+      path = Rails.root.join("db/knowledge_seeds/#{name}.csv")
       document = Helic3::Knowledge::Document.find_or_initialize_by(account: account, name: name, source_type: :dataset)
       document.assign_attributes(content: knowledge_csv_to_text(path))
       document.save!
 
       result = Helic3::Knowledge::IngestionService.new(document).perform
       puts "#{name}: #{result} (#{document.chunks.count} fragmentos)"
+    end
+
+    # Purga reproducible: borra del RAG los datasets de semilla cuyo CSV ya no existe (p. ej. el
+    # corpus alienigena movido a fixtures). Sin esto el Document ya ingestado seguiria vivo.
+    Helic3::Knowledge::DatasetPurge.new(account, vigentes).call.each do |name|
+      puts "#{name}: PURGADO del RAG (ya no tiene CSV en db/knowledge_seeds)"
     end
   end
 end
@@ -85,6 +92,40 @@ namespace :knowledge do
       puts "score=#{result[:score]&.round(3)} doc=#{result[:document_id]} chunk=#{result[:chunk_id]}"
       puts result[:content].to_s[0, 300]
       puts '---'
+    end
+  end
+end
+
+namespace :knowledge do
+  # AGT-04: revisar la VOZ del agente de un tiron. Corre el multiagente real sobre las preguntas
+  # canonicas (o una que pases) e imprime la respuesta, para revisar tono y lenguaje sin abrir el
+  # chat. Todo va dentro de una transaccion que se revierte: no crea tickets ni deja rastro.
+  desc 'Revisa la voz del agente: rake knowledge:voz  o  rake "knowledge:voz[una pregunta]"'
+  task :voz, [:pregunta] => :environment do |_t, args|
+    canonicas = [
+      'Hola, buenas',
+      'Compre un sofa y me llego con la tela rota, tiene garantia?',
+      'El comedor me llego rayado',
+      'Me falto una pieza de la cama',
+      'Quiero devolver el producto, no me gusto',
+      'Como va mi pedido?',
+      'Que horarios tienen las tiendas?',
+      'Cuanto cuesta el sofa Santorini?'
+    ]
+    Agents.configure { |config| config.openai_api_key = ENV.fetch('OPENAI_API_KEY') }
+    preguntas = args[:pregunta].present? ? [args[:pregunta]] : canonicas
+    account = Account.first
+
+    ActiveRecord::Base.transaction do
+      preguntas.each do |pregunta|
+        result = Helic3::Agents::RunnerService.new(
+          model: ENV.fetch('ONLY_HOME_OPENAI_MODEL', 'gpt-4.1-mini'), provider: :openai, assume_model_exists: true
+        ).run(pregunta, context: { account_id: account.id, state: { conversation_id: nil } })
+        puts "PREGUNTA:  #{pregunta}"
+        puts "RESPUESTA: #{result.output}"
+        puts '=' * 70
+      end
+      raise ActiveRecord::Rollback # revisar la voz nunca deja datos
     end
   end
 end
