@@ -112,15 +112,16 @@ namespace :knowledge do
       'Que horarios tienen las tiendas?',
       'Cuanto cuesta el sofa Santorini?'
     ]
-    Agents.configure { |config| config.openai_api_key = ENV.fetch('OPENAI_API_KEY') }
+    # Mismo proveedor/modelo/credenciales que el agente real (LlmRuntime): asi la voz que
+    # revisas con el rake es la que le sale al cliente, no la de otro modelo.
+    Helic3::Agents::LlmRuntime.configure_agents!
     preguntas = args[:pregunta].present? ? [args[:pregunta]] : canonicas
     account = Account.first
 
     ActiveRecord::Base.transaction do
       preguntas.each do |pregunta|
-        result = Helic3::Agents::RunnerService.new(
-          model: ENV.fetch('ONLY_HOME_OPENAI_MODEL', 'gpt-4.1-mini'), provider: :openai, assume_model_exists: true
-        ).run(pregunta, context: { account_id: account.id, state: { conversation_id: nil } })
+        result = Helic3::Agents::RunnerService.new(**Helic3::Agents::LlmRuntime.agents_options)
+                                              .run(pregunta, context: { account_id: account.id, state: { conversation_id: nil } })
         puts "PREGUNTA:  #{pregunta}"
         puts "RESPUESTA: #{result.output}"
         puts '=' * 70
