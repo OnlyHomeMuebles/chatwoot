@@ -61,6 +61,13 @@ RSpec.describe Helic3::Agents::Tools::RadicarPqrTool do
     expect(salida).to match(/ya (quedo registrado|estaba radicado)/)
   end
 
+  it 'respondida la PQR anterior, un caso nuevo en el mismo hilo si radica' do
+    radicar
+    Helic3::Ticket.last.update_columns(respondida_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
+
+    expect { radicar }.to change { account.tickets.count }.by(1)
+  end
+
   it 'en modo propone (el default sin parametro), la salida NO contiene el numero de radicado' do
     salida = radicar
 
@@ -89,7 +96,7 @@ RSpec.describe Helic3::Agents::Tools::RadicarPqrTool do
                                         resumen: 'x', descripcion: 'y')
 
     expect(salida).to include('garantia_producto')
-    expect(Helic3::Ticket.count).to eq(0)
+    expect(account.tickets.count).to eq(0)
 
     # la lista se LEE del catalogo: un motivo nuevo aparece sin tocar la tool
     Helic3::Catalogo::MotivoPqr.create!(account: account, nombre: 'Otro', codigo: 'motivo_nuevo',
@@ -113,7 +120,7 @@ RSpec.describe Helic3::Agents::Tools::RadicarPqrTool do
 
     salida = nil
     expect { salida = radicar }.not_to raise_error
-    expect(Helic3::Ticket.count).to eq(1)
+    expect(account.tickets.count).to eq(1)
     expect(salida).to include('registrado')
   end
 

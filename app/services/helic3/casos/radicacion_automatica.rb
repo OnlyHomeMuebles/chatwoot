@@ -52,10 +52,13 @@ class Helic3::Casos::RadicacionAutomatica
     [resultado, tipo, motivo]
   end
 
-  # idempotencia: un expediente por conversacion (cubre que el agente ya haya
-  # radicado con su herramienta en la misma corrida)
+  # idempotencia acotada al expediente VIGENTE (respondida_at: nil): no se duplica el
+  # caso en curso, pero un caso nuevo en un hilo abierto —una PQR vive hasta 15 dias
+  # habiles y el cliente puede reportar un segundo producto— SI vuelve a ser radicable
+  # una vez respondida la anterior. Eso es lo que exige el modelo legal (evita que el
+  # agente le confirme al cliente un caso que no existe).
   def expediente_existente?
-    @account.tickets.exists?(conversation_id: @conversation.id)
+    @account.tickets.exists?(conversation_id: @conversation.id, respondida_at: nil)
   end
 
   def radicar(resultado, tipo, motivo)

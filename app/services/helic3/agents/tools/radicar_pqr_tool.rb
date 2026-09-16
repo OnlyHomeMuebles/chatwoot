@@ -33,7 +33,7 @@ class Helic3::Agents::Tools::RadicarPqrTool < Helic3::Agents::Tools::BaseTool
   # modelo), no una decision de estilo; el perform ademas orquesta validacion,
   # idempotencia y radicacion de corrido (traduccion modelo->dominio, sin logica
   # de negocio propia), por eso se relajan tambien largo y complejidad aqui.
-  # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength, Metrics/CyclomaticComplexity
+  # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/AbcSize
   def perform(tool_context, tipo_codigo:, motivo_codigo:, resumen:, descripcion:, numero_orden: nil)
     account = resolve_account(tool_context)
     return 'No hay una cuenta configurada para radicar.' if account.blank?
@@ -42,12 +42,13 @@ class Helic3::Agents::Tools::RadicarPqrTool < Helic3::Agents::Tools::BaseTool
     motivo = Helic3::Catalogo::MotivoPqr.activos.find_by(account: account, codigo: motivo_codigo)
     return codigos_invalidos(account, tipo, motivo) if tipo.nil? || motivo.nil?
 
-    # idempotencia simetrica con la compuerta automatica (RadicacionAutomatica):
-    # si esta conversacion ya tiene expediente (lo radico la compuerta por codigo
-    # o una llamada previa), no se crea otro; se le devuelve al modelo el numero
-    # existente. Da igual quien radique primero.
+    # idempotencia simetrica con la compuerta automatica (RadicacionAutomatica), acotada al
+    # expediente VIGENTE (respondida_at: nil): no se duplica el caso en curso, pero respondida
+    # la PQR anterior, un caso nuevo en el mismo hilo vuelve a ser radicable. Asi el agente
+    # nunca le confirma al cliente un caso que ya no existe.
     conversation_id = conversacion_de_bd(account, tool_context)
-    existente = conversation_id && account.tickets.find_by(conversation_id: conversation_id)
+    existente = conversation_id &&
+                account.tickets.where(conversation_id: conversation_id, respondida_at: nil).first
     return ya_radicado(account, existente) if existente
 
     ticket = begin
@@ -68,7 +69,7 @@ class Helic3::Agents::Tools::RadicarPqrTool < Helic3::Agents::Tools::BaseTool
     dejar_nota_privada(tool_context, ticket, tipo, motivo)
     respuesta_segun_autonomia(account, ticket)
   end
-  # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength, Metrics/CyclomaticComplexity
+  # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/AbcSize
 
   private
 

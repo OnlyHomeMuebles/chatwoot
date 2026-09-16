@@ -46,17 +46,30 @@ class Helic3::Agents::PqrExtractor
     }
   PROMPT
 
+  # Por defecto usa el MISMO proveedor/modelo/credenciales que la corrida del agente
+  # (Helic3::Agents::LlmRuntime): asi el clasificador nunca corre en un proveedor
+  # distinto al que responde al cliente. Los parametros son inyectables para pruebas.
   def initialize(account:, model: nil, api_key: nil, api_base: nil)
     @account = account
-    @model = model || Llm::Config::DEFAULT_MODEL
-    @api_key = api_key || default_api_key
-    @api_base = api_base
+    @model = model || Helic3::Agents::LlmRuntime.model
+    @api_key = api_key || Helic3::Agents::LlmRuntime.api_key
+    @api_base = api_base || Helic3::Agents::LlmRuntime.api_base
   end
 
   # @param conversacion_texto [String] la conversacion (cliente y asistente) ya formateada
   # @return [Resultado, nil] nil ante error del LLM o JSON invalido (se trata como "sin senal")
   def call(conversacion_texto)
-    return nil if conversacion_texto.blank? || @api_key.blank?
+    return nil if conversacion_texto.blank?
+
+    # Sin credencial NO se falla en silencio: se registra el error (era el hueco
+    # que reintroducia el bug que este flujo viene a eliminar).
+    if @api_key.blank?
+      Rails.logger.error(
+        "[Helic3] PqrExtractor sin credencial LLM (proveedor=#{Helic3::Agents::LlmRuntime.provider}); " \
+        'no se pudo clasificar el caso'
+      )
+      return nil
+    end
 
     crudo = pedir_clasificacion(conversacion_texto)
     return nil if crudo.blank?
@@ -71,7 +84,10 @@ class Helic3::Agents::PqrExtractor
 
   def pedir_clasificacion(texto)
     Llm::Config.with_api_key(@api_key, api_base: @api_base) do |context|
-      chat = context.chat(model: @model)
+      # provider :openai cubre OpenAI y los endpoints openai-compatibles (Gemini, Groq,
+      # Ollama); assume_model_exists evita que RubyLLM valide el modelo contra su registro
+      # (los modelos de Gemini/Groq no estan ahi), igual que hace el gem ai-agents.
+      chat = context.chat(model: @model, provider: :openai, assume_model_exists: true)
       chat.with_temperature(0)
       chat.with_instructions("#{SYSTEM}\n\n#{listas_vigentes}")
       chat.with_params(response_format: { type: 'json_object' })
@@ -110,9 +126,5 @@ class Helic3::Agents::PqrExtractor
       descripcion: datos['descripcion'].presence,
       numero_orden: datos['numero_orden'].presence
     )
-  end
-
-  def default_api_key
-    ENV['OPENAI_API_KEY'].presence || InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_API_KEY')&.value
   end
 end

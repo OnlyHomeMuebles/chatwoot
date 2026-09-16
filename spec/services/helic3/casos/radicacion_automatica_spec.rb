@@ -79,6 +79,24 @@ RSpec.describe Helic3::Casos::RadicacionAutomatica do
     end
   end
 
+  describe 'idempotencia acotada al expediente vigente (respondida_at)' do
+    before do
+      allow(extractor).to receive(:call).and_return(
+        resultado(requiere_pqr: true, tipo_codigo: 'reclamo', motivo_codigo: 'garantia_producto',
+                  resumen: 'Segundo producto', descripcion: 'Otra falla en el mismo hilo')
+      )
+    end
+
+    it 'con la PQR anterior ya respondida, radica un caso nuevo en el mismo hilo' do
+      previa = Helic3::Casos::Radicar.new(account: account, titulo: 'Previa',
+                                          conversation_id: conversation.id, tipo: reclamo,
+                                          motivo_pqr: motivo_garantia).call
+      previa.update_columns(respondida_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
+
+      expect { gate.call }.to change { account.tickets.count }.by(1)
+    end
+  end
+
   describe 'cuando el cliente NO requiere una PQR' do
     before { allow(extractor).to receive(:call).and_return(resultado(requiere_pqr: false)) }
 
