@@ -21,7 +21,8 @@ RSpec.describe Helic3::ProcessConversationJob do
   it 'corre el runner con el contexto atado a la conversación, publica la respuesta y guarda la memoria' do
     result = instance_double(Agents::RunResult, output: 'Con gusto, te ayudo con eso.', context: { turn_count: 1 })
     expect(runner).to receive(:run)
-      .with('hola', context: { account_id: 1, state: { conversation_id: 7, chatwoot_client: client } })
+      .with('hola', context: { account_id: 1,
+                               state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil } })
       .and_return(result)
 
     expect(client).to receive(:create_message).with(7, content: 'Con gusto, te ayudo con eso.', message_type: 'outgoing')
@@ -34,7 +35,7 @@ RSpec.describe Helic3::ProcessConversationJob do
     allow(memory).to receive(:load).and_return({ conversation_history: [{ role: :user, content: 'antes' }] })
     expect(runner).to receive(:run)
       .with('hola', context: { conversation_history: [{ role: :user, content: 'antes' }], account_id: 1,
-                               state: { conversation_id: 7, chatwoot_client: client } })
+                               state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil } })
       .and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
 
     job.perform(account_id: 1, conversation_id: 7, content: 'hola')

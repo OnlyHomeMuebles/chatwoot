@@ -63,16 +63,97 @@ class Helic3::Agents::TriageAgent
   def self.build(model: nil, provider: nil, assume_model_exists: false)
     Agents::Agent.new(
       name: 'agente_triage',
-      instructions: INSTRUCTIONS,
+      instructions: contextual_instructions,
       model: model || default_model,
       provider: provider,
       assume_model_exists: assume_model_exists,
-      tools: [Helic3::Agents::Tools::HumanHandoffTool.new]
+      tools: [
+        Helic3::Agents::Tools::HumanHandoffTool.new,
+        Helic3::Agents::Tools::RegistrarConsentimientoTool.new
+      ]
     )
+  end
+
+  # AGT-07: instrucciones por corrida. A las reglas base de enrutamiento se les antepone la
+  # REGLA DE APERTURA, que depende del estado de consentimiento de la conversacion (leido de
+  # sus atributos y pasado por el job en state[:consentimiento_datos_at]) y de los textos del
+  # catalogo. Ningun texto de bienvenida/aviso vive en el prompt ni en el codigo.
+  def self.contextual_instructions
+    lambda do |run_context|
+      contexto = run_context.context || {}
+      state = contexto[:state] || {}
+      [INSTRUCTIONS, seccion_apertura(contexto[:account_id], state[:consentimiento_datos_at])].compact.join("\n\n")
+    end
+  end
+
+  # Con consentimiento: no repetir el aviso. Sin consentimiento: mostrar bienvenida + aviso +
+  # enlace (textos del catalogo) y pedir autorizacion en lenguaje natural. Sin cuenta: sin seccion.
+  def self.seccion_apertura(account_id, consentimiento_at)
+    account = account_id.present? ? Account.find_by(id: account_id) : nil
+    return nil if account.nil?
+    return seccion_ya_autorizado if consentimiento_at.present?
+
+    textos = textos_apertura(account)
+    return seccion_sin_config(account.id) if textos.nil?
+
+    seccion_pedir_consentimiento(textos)
+  end
+
+  def self.seccion_ya_autorizado
+    <<~SEC
+      # Consentimiento de datos (AGT-07)
+      Esta conversación YA tiene registrado el consentimiento de tratamiento de datos. NO vuelvas a
+      mostrar el aviso; atiende y enruta con normalidad.
+    SEC
+  end
+
+  def self.seccion_pedir_consentimiento(textos)
+    <<~SEC
+      # REGLA DE APERTURA (AGT-07 — aplica ANTES que todo lo demás en la primera interacción)
+      Esta conversación AÚN NO tiene el consentimiento de datos registrado. En tu PRIMERA respuesta,
+      antes de enrutar o de pedir cualquier dato:
+      1. Saluda con el mensaje de bienvenida.
+      2. Presenta el aviso de tratamiento de datos e incluye el enlace a la política.
+      3. Pide que confirme si autoriza, en lenguaje natural. NUNCA uses un menú de números ni "marca 1".
+      Cuando el cliente autorice (sí, claro, dale, ok), llama a la herramienta registrar_consentimiento.
+      Mientras NO autorice: NO pidas ni registres datos personales (cédula, dirección, factura, teléfono)
+      y NO radiques nada; solo puedes dar información general (horarios, tiendas, políticas públicas).
+      Si el cliente NO autoriza, acéptalo con amabilidad y quédate disponible solo para información general.
+
+      Textos oficiales (úsalos, no los inventes ni los cambies):
+      - Bienvenida: #{textos[:bienvenida]}
+      - Aviso de datos: #{textos[:aviso]}
+      - Enlace a la política: #{textos[:enlace]}
+    SEC
+  end
+
+  # Los tres textos salen del catalogo por corrida. Si falta alguno, no se inventa: se registra
+  # el error y se instruye no recolectar datos (AGT-07, criterio 6).
+  def self.textos_apertura(account)
+    params = Helic3::Catalogo::Parametro
+             .where(account: account, clave: %w[mensaje_bienvenida aviso_datos_personales enlace_politica_datos])
+             .pluck(:clave, :valor).to_h
+    return nil if params.values_at('mensaje_bienvenida', 'aviso_datos_personales', 'enlace_politica_datos').any?(&:blank?)
+
+    { bienvenida: params['mensaje_bienvenida'], aviso: params['aviso_datos_personales'],
+      enlace: params['enlace_politica_datos'] }
+  end
+
+  def self.seccion_sin_config(account_id)
+    Rails.logger.error(
+      '[Helic3] AGT-07: faltan parametros de apertura (mensaje_bienvenida / aviso_datos_personales / ' \
+      "enlace_politica_datos) en la cuenta #{account_id}; no se muestra aviso ni se recolectan datos"
+    )
+    <<~SEC
+      # REGLA DE APERTURA (AGT-07)
+      No hay aviso de datos configurado. NO recolectes datos personales ni radiques nada. Saluda con
+      calidez y ofrece solo información general.
+    SEC
   end
 
   def self.default_model
     InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence || LlmConstants::DEFAULT_MODEL
   end
-  private_class_method :default_model
+  private_class_method :contextual_instructions, :seccion_apertura, :seccion_ya_autorizado,
+                       :seccion_pedir_consentimiento, :textos_apertura, :seccion_sin_config, :default_model
 end

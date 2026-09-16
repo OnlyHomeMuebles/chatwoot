@@ -145,7 +145,17 @@ class Helic3::Catalogo::SeederService
     { clave: 'umbral_verde_pqr', valor: '8', unidad: 'dias_habiles' },
     { clave: 'umbral_amarillo_pqr', valor: '3', unidad: 'dias_habiles' },
     { clave: 'autonomia_radicar_pqr', valor: 'propone', unidad: 'texto' },
-    { clave: 'autonomia_resolver_pqr', valor: 'propone', unidad: 'texto' }
+    { clave: 'autonomia_resolver_pqr', valor: 'propone', unidad: 'texto' },
+    # AGT-07: apertura conforme a ley. Textos PROVISIONALES: Luisa valida el aviso y el
+    # enlace antes de la demo. Viven en el catalogo, NUNCA en el prompt ni en el codigo.
+    { clave: 'mensaje_bienvenida',
+      valor: 'Hola, te damos la bienvenida a Only Home 💙 Con mucho gusto te ayudo.',
+      unidad: 'texto' },
+    { clave: 'aviso_datos_personales',
+      valor: '[PROVISIONAL — validar con Luisa] Para atender tu caso vamos a tratar tus datos ' \
+             'personales conforme a nuestra Política de Tratamiento de Datos. ¿Nos autorizas a continuar?',
+      unidad: 'texto' },
+    { clave: 'enlace_politica_datos', valor: 'https://www.onlyhome.co/politica-de-datos', unidad: 'texto' }
   ].freeze
 
   def initialize(account)

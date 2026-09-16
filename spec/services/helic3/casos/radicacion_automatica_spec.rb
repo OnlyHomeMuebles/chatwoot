@@ -35,6 +35,8 @@ RSpec.describe Helic3::Casos::RadicacionAutomatica do
     Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nueva', codigo: 'nueva')
     create(:message, account: account, conversation: conversation, message_type: :incoming,
                      content: 'Compré un sofá y me llegó con la tela rota, factura 345670')
+    # AGT-07: sin consentimiento no se radica; los casos felices asumen consentimiento dado
+    conversation.update!(custom_attributes: { 'helic3_consentimiento_datos_at' => Time.current.iso8601 })
   end
 
   describe 'cuando el cliente requiere una PQR con tipo y motivo válidos' do
@@ -134,6 +136,16 @@ RSpec.describe Helic3::Casos::RadicacionAutomatica do
       expect(extractor).to have_received(:call).with(
         a_string_including('Cliente: Compré un sofá').and(including('Asistente: Lamento lo del sofá'))
       )
+    end
+  end
+
+  describe 'sin consentimiento de datos (AGT-07)' do
+    it 'no radica ni llama al clasificador cuando la conversación no tiene consentimiento' do
+      conversation.update!(custom_attributes: {})
+
+      expect(extractor).not_to receive(:call)
+      expect(gate.call).to eq(:sin_consentimiento)
+      expect(account.tickets).to be_empty
     end
   end
 end
