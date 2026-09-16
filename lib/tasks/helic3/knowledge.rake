@@ -82,6 +82,31 @@ namespace :knowledge do
 end
 
 namespace :knowledge do
+  # AGT-05: ingesta a DEMANDA las conversaciones marcadas como bien resueltas
+  # (etiqueta `voz_aprobada`). Idempotente (re-correr no duplica) y anonimizada.
+  # La etiqueta es la unica puerta: nada sin ella entra al corpus.
+  desc 'Ingesta al RAG las conversaciones aprobadas (etiqueta voz_aprobada)'
+  task ingest_conversaciones_aprobadas: :environment do
+    etiqueta = Helic3::Knowledge::ConversacionAprobada::ETIQUETA_APROBACION
+    account = Account.first
+    conversaciones = account.conversations.tagged_with(etiqueta)
+
+    if conversaciones.empty?
+      puts "No hay conversaciones con la etiqueta '#{etiqueta}'."
+    else
+      conversaciones.find_each do |conversation|
+        resultado = Helic3::Knowledge::ConversacionAprobada.new(conversation).call
+        puts "conversacion_#{conversation.display_id}: #{resultado}"
+      rescue StandardError => e
+        # no en silencio: el Document queda en `failed` con el error en metadata;
+        # aqui lo trazamos y seguimos con las demas conversaciones del lote.
+        puts "conversacion_#{conversation.display_id}: ERROR (#{e.class}: #{e.message})"
+      end
+    end
+  end
+end
+
+namespace :knowledge do
   desc 'Search the knowledge base: rake "knowledge:search[como funciona la garantia]"'
   task :search, [:query] => :environment do |_t, args|
     abort 'Usage: rake "knowledge:search[query]"' if args[:query].blank?
