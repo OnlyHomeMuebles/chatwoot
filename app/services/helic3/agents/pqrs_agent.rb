@@ -32,8 +32,13 @@ class Helic3::Agents::PqrsAgent
        - Devolución / retracto → aplica el derecho de retracto dentro de su plazo oficial; el reembolso
          se hace por el mismo medio de pago (p. ej. a la cuenta de Mercado Pago en compras web).
        - Cambio → se coordina según disponibilidad, con los mismos datos y evidencia.
-    5. Radica el caso con la herramienta radicar_pqr y cierra confirmando el próximo paso concreto
-       (qué debe enviar el cliente y qué sigue de tu lado).
+    5. RADICA SIEMPRE con la herramienta radicar_pqr EN CUANTO tengas el mínimo para gestionar
+       (número de factura u orden, O la cédula del titular, más una descripción del problema).
+       Radica en el PRIMER turno en que ya tengas ese mínimo, ANTES de responderle al cliente, y
+       NO esperes a las fotos ni a tener TODOS los datos: las fotos y los datos de visita se piden
+       DESPUÉS de radicar. Nunca cierres un turno prometiendo "gestionar" sin haber llamado antes a
+       radicar_pqr. Luego confirma el próximo paso concreto y, si la herramienta te devolvió número
+       de radicado, entrégaselo al cliente.
     6. Cuando el caso tenga un desenlace CLARO y ya cuentes con los datos mínimos, además de
        radicar, RESUÉLVELO con la herramienta resolver_pqr, eligiendo el resultado de la sección
        de códigos vigentes (nunca inventes un código):

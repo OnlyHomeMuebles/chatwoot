@@ -21,7 +21,7 @@ class Helic3::ProcessConversationJob < ApplicationJob
   MAX_RETRY_WAIT = 4
 
   def perform(account_id:, conversation_id:, content:)
-    configure_llm
+    Helic3::Agents::LlmRuntime.configure_agents!
     @account_id = account_id
     client = Helic3::ChatwootClient.new(account_id: account_id)
     memory = Helic3::Agents::ConversationMemory.new(account_id: account_id, conversation_id: conversation_id)
@@ -29,11 +29,31 @@ class Helic3::ProcessConversationJob < ApplicationJob
     start_typing(client, conversation_id)
     reply = generate_reply(client, memory, conversation_id, content)
     client.create_message(conversation_id, content: reply, message_type: 'outgoing') if reply.present?
+    encolar_radicacion(conversation_id, memory)
   ensure
     stop_typing(client, conversation_id)
   end
 
   private
+
+  # AGT-06: la radicacion determinista corre en su propio job (async), no aqui, para no
+  # retrasar la respuesta ni el indicador de escritura. Solo se encola cuando el caso puede
+  # necesitar expediente; el job es idempotente y decide si de verdad radica.
+  def encolar_radicacion(display_id, memory)
+    return unless compuerta_aplica?(memory)
+
+    Helic3::RadicarAutomaticoJob.perform_later(account_id: @account_id, conversation_id: display_id)
+  end
+
+  # La compuerta corre cuando el caso puede necesitar expediente: con el agente de PQRS,
+  # con el triage, o en los primeros turnos (current_agent aun vacio) — que es justo cuando
+  # se radica. Solo se salta cuando el caso ya esta firmemente en FAQ/cotizacion/logistica,
+  # para no gastar una clasificacion LLM ahi. El corte de costo real lo da expediente_existente?
+  # (consulta indexada) antes de llamar al LLM, no este filtro.
+  def compuerta_aplica?(memory)
+    agente = memory.load[:current_agent].to_s.downcase
+    agente.blank? || agente.include?('pqrs') || agente.include?('triage')
+  end
 
   # Corre el multiagente restaurando el hilo previo. Ante un fallo del LLM devuelve un mensaje de
   # respaldo para que el cliente nunca quede sin respuesta, y no persiste un estado a medias.
@@ -68,7 +88,7 @@ class Helic3::ProcessConversationJob < ApplicationJob
       context = memory.load
       context[:account_id] = @account_id
       context[:state] = { conversation_id: conversation_id, chatwoot_client: client }
-      result = Helic3::Agents::RunnerService.new(**llm_options).run(content, context: context)
+      result = Helic3::Agents::RunnerService.new(**Helic3::Agents::LlmRuntime.agents_options).run(content, context: context)
       return result if result.output.to_s.strip.present?
 
       delay = retry_delay(result.error)
@@ -101,49 +121,5 @@ class Helic3::ProcessConversationJob < ApplicationJob
     client&.toggle_typing(conversation_id, on: false)
   rescue StandardError
     nil
-  end
-
-  # Cerebro del agente. Se puede forzar con ONLY_HOME_LLM_PROVIDER=openai|gemini|groq|ollama. Si no,
-  # usa la API disponible (Gemini > OpenAI > Groq) y, como último recurso, el modelo local (Ollama).
-  def llm_provider
-    explicit = ENV['ONLY_HOME_LLM_PROVIDER'].to_s.strip.downcase
-    return explicit.to_sym if %w[ollama gemini groq openai].include?(explicit)
-    return :gemini if ENV['GEMINI_API_KEY'].to_s.strip.present?
-    return :openai if ENV['OPENAI_API_KEY'].to_s.strip.present?
-    return :groq if ENV['GROQ_API_KEY'].to_s.strip.present?
-
-    :ollama
-  end
-
-  def configure_llm
-    case llm_provider
-    when :groq
-      Agents.configure do |config|
-        config.openai_api_key = ENV.fetch('GROQ_API_KEY')
-        config.openai_api_base = ENV.fetch('GROQ_API_BASE', 'https://api.groq.com/openai/v1')
-      end
-    when :gemini
-      Agents.configure do |config|
-        config.openai_api_key = ENV.fetch('GEMINI_API_KEY')
-        config.openai_api_base = ENV.fetch('GEMINI_OPENAI_BASE', 'https://generativelanguage.googleapis.com/v1beta/openai')
-      end
-    when :openai
-      Agents.configure { |config| config.openai_api_key = ENV.fetch('OPENAI_API_KEY') }
-    else
-      Agents.configure { |config| config.ollama_api_base = ENV.fetch('OLLAMA_API_BASE', 'http://localhost:11434/v1') }
-    end
-  end
-
-  def llm_options
-    case llm_provider
-    when :groq
-      { model: ENV.fetch('GROQ_MODEL', 'llama-3.3-70b-versatile'), provider: :openai, assume_model_exists: true }
-    when :gemini
-      { model: ENV.fetch('GEMINI_MODEL', 'gemini-flash-latest'), provider: :openai, assume_model_exists: true }
-    when :openai
-      { model: ENV.fetch('ONLY_HOME_OPENAI_MODEL', 'gpt-4.1-mini'), provider: :openai, assume_model_exists: true }
-    else
-      { model: ENV.fetch('OLLAMA_MODEL', 'qwen2.5:14b'), provider: :ollama, assume_model_exists: true }
-    end
   end
 end

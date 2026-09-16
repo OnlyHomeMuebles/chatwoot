@@ -30,8 +30,10 @@ class Helic3::Agents::Tools::RadicarPqrTool < Helic3::Agents::Tools::BaseTool
                        desc: 'Numero de factura u orden, si el cliente lo dio'
 
   # la firma la dicta el contrato de parametros de la tool (los 5 que ve el
-  # modelo), no una decision de estilo
-  # rubocop:disable Metrics/ParameterLists
+  # modelo), no una decision de estilo; el perform ademas orquesta validacion,
+  # idempotencia y radicacion de corrido (traduccion modelo->dominio, sin logica
+  # de negocio propia), por eso se relajan tambien largo y complejidad aqui.
+  # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/AbcSize
   def perform(tool_context, tipo_codigo:, motivo_codigo:, resumen:, descripcion:, numero_orden: nil)
     account = resolve_account(tool_context)
     return 'No hay una cuenta configurada para radicar.' if account.blank?
@@ -40,10 +42,19 @@ class Helic3::Agents::Tools::RadicarPqrTool < Helic3::Agents::Tools::BaseTool
     motivo = Helic3::Catalogo::MotivoPqr.activos.find_by(account: account, codigo: motivo_codigo)
     return codigos_invalidos(account, tipo, motivo) if tipo.nil? || motivo.nil?
 
+    # idempotencia simetrica con la compuerta automatica (RadicacionAutomatica), acotada al
+    # expediente VIGENTE (respondida_at: nil): no se duplica el caso en curso, pero respondida
+    # la PQR anterior, un caso nuevo en el mismo hilo vuelve a ser radicable. Asi el agente
+    # nunca le confirma al cliente un caso que ya no existe.
+    conversation_id = conversacion_de_bd(account, tool_context)
+    existente = conversation_id &&
+                account.tickets.where(conversation_id: conversation_id, respondida_at: nil).first
+    return ya_radicado(account, existente) if existente
+
     ticket = begin
       Helic3::Casos::Radicar.new(
         account: account, titulo: resumen, descripcion: descripcion,
-        conversation_id: conversacion_de_bd(account, tool_context),
+        conversation_id: conversation_id,
         tipo: tipo, motivo_pqr: motivo, numero_orden: numero_orden, origen: :agente
       ).call
     rescue StandardError => e
@@ -58,7 +69,7 @@ class Helic3::Agents::Tools::RadicarPqrTool < Helic3::Agents::Tools::BaseTool
     dejar_nota_privada(tool_context, ticket, tipo, motivo)
     respuesta_segun_autonomia(account, ticket)
   end
-  # rubocop:enable Metrics/ParameterLists
+  # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/AbcSize
 
   private
 
@@ -87,6 +98,22 @@ class Helic3::Agents::Tools::RadicarPqrTool < Helic3::Agents::Tools::BaseTool
            "Vence: #{ticket.plazo_respuesta_vence_at&.to_date || 'sin plazo (no genera radicado)'}."
     with_api_error_handling do
       client(tool_context).create_message(display_id, content: nota, private_note: true)
+    end
+  end
+
+  # un caso ya radicado en esta conversacion no se duplica: se le entrega al
+  # modelo el numero existente (respetando la autonomia) para que no cree otro.
+  def ya_radicado(account, ticket)
+    numero = ticket.numero_radicado
+    if numero.nil?
+      'El caso de esta conversacion ya quedo registrado. NO radiques de nuevo; ' \
+        'continua la conversacion con normalidad.'
+    elsif autonomia(account) == 'ejecuta'
+      "El caso de esta conversacion ya estaba radicado. Numero de radicado: #{numero}. " \
+        'NO radiques de nuevo; si el cliente lo necesita, entregale este numero.'
+    else
+      'El caso de esta conversacion ya estaba radicado y esta en gestion. NO radiques de ' \
+        'nuevo; confirmale al cliente que su caso esta registrado, SIN darle numero.'
     end
   end
 

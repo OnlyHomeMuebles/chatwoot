@@ -91,4 +91,31 @@ RSpec.describe Helic3::ProcessConversationJob do
 
     job.perform(account_id: 1, conversation_id: 7, content: 'hola')
   end
+
+  describe 'encolado de la radicación automática (AGT-06)' do
+    around do |example|
+      original = ActiveJob::Base.queue_adapter
+      ActiveJob::Base.queue_adapter = :test
+      example.run
+      ActiveJob::Base.queue_adapter = original
+    end
+
+    before do
+      allow(runner).to receive(:run).and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
+    end
+
+    it 'la encola cuando el caso está en manos de PQRS' do
+      allow(memory).to receive(:load).and_return({ current_agent: 'agente_pqrs' })
+
+      expect { job.perform(account_id: 1, conversation_id: 7, content: 'mi sofá llegó roto') }
+        .to have_enqueued_job(Helic3::RadicarAutomaticoJob)
+    end
+
+    it 'NO la encola en conversaciones de FAQ/cotización' do
+      allow(memory).to receive(:load).and_return({ current_agent: 'agente_faq' })
+
+      expect { job.perform(account_id: 1, conversation_id: 7, content: '¿tienen envíos?') }
+        .not_to have_enqueued_job(Helic3::RadicarAutomaticoJob)
+    end
+  end
 end
