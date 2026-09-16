@@ -29,7 +29,7 @@ class Helic3::ProcessConversationJob < ApplicationJob
     start_typing(client, conversation_id)
     reply = generate_reply(client, memory, conversation_id, content)
     client.create_message(conversation_id, content: reply, message_type: 'outgoing') if reply.present?
-    encolar_radicacion(conversation_id, memory)
+    encolar_radicacion(conversation_id)
   ensure
     stop_typing(client, conversation_id)
   end
@@ -37,22 +37,12 @@ class Helic3::ProcessConversationJob < ApplicationJob
   private
 
   # AGT-06: la radicacion determinista corre en su propio job (async), no aqui, para no
-  # retrasar la respuesta ni el indicador de escritura. Solo se encola cuando el caso puede
-  # necesitar expediente; el job es idempotente y decide si de verdad radica.
-  def encolar_radicacion(display_id, memory)
-    return unless compuerta_aplica?(memory)
-
+  # retrasar la respuesta ni el indicador de escritura. Se encola SIEMPRE: no se filtra por el
+  # agente activo, porque una garantia puede vivir entera en FAQ/cotizacion si el triage no la
+  # reenruta (paso no determinista) y entonces nunca se radicaria. El job es idempotente y barato
+  # cuando no procede: expediente_existente? (consulta indexada) corta antes de llamar al LLM.
+  def encolar_radicacion(display_id)
     Helic3::RadicarAutomaticoJob.perform_later(account_id: @account_id, conversation_id: display_id)
-  end
-
-  # La compuerta corre cuando el caso puede necesitar expediente: con el agente de PQRS,
-  # con el triage, o en los primeros turnos (current_agent aun vacio) — que es justo cuando
-  # se radica. Solo se salta cuando el caso ya esta firmemente en FAQ/cotizacion/logistica,
-  # para no gastar una clasificacion LLM ahi. El corte de costo real lo da expediente_existente?
-  # (consulta indexada) antes de llamar al LLM, no este filtro.
-  def compuerta_aplica?(memory)
-    agente = memory.load[:current_agent].to_s.downcase
-    agente.blank? || agente.include?('pqrs') || agente.include?('triage')
   end
 
   # Corre el multiagente restaurando el hilo previo. Ante un fallo del LLM devuelve un mensaje de

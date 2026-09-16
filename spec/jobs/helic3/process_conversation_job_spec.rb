@@ -111,11 +111,11 @@ RSpec.describe Helic3::ProcessConversationJob do
         .to have_enqueued_job(Helic3::RadicarAutomaticoJob)
     end
 
-    it 'NO la encola en conversaciones de FAQ/cotización' do
+    it 'la encola TAMBIÉN cuando el caso quedó en FAQ (una garantía puede vivir ahí si el triage no la reenruta)' do
       allow(memory).to receive(:load).and_return({ current_agent: 'agente_faq' })
 
-      expect { job.perform(account_id: 1, conversation_id: 7, content: '¿tienen envíos?') }
-        .not_to have_enqueued_job(Helic3::RadicarAutomaticoJob)
+      expect { job.perform(account_id: 1, conversation_id: 7, content: 'mi mueble de madera se está dañando') }
+        .to have_enqueued_job(Helic3::RadicarAutomaticoJob)
     end
   end
 end
