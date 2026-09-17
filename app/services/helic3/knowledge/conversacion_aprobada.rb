@@ -16,6 +16,20 @@ class Helic3::Knowledge::ConversacionAprobada
     @account = conversation.account
   end
 
+  # Derecho de supresion (habeas data): saca del corpus la conversacion de un
+  # titular por su display_id, borrando el Document y sus chunks. Idempotente.
+  # @return [Symbol] :suprimida o :inexistente
+  def self.suprimir(account, display_id)
+    document = Helic3::Knowledge::Document.find_by(
+      account: account, name: "conversacion_#{display_id}", source_type: :dataset
+    )
+    return :inexistente if document.nil?
+
+    Helic3::Knowledge::VectorStore.adapter.delete_document(document)
+    document.destroy! # los chunks caen por dependent: :destroy
+    :suprimida
+  end
+
   # @return [Symbol] :no_aprobada, :sin_contenido, o el resultado de la ingestion
   #   (:ingested / :unchanged). Un fallo de embedding se propaga (no en silencio):
   #   el Document queda en `failed` con el error en metadata.
@@ -54,7 +68,13 @@ class Helic3::Knowledge::ConversacionAprobada
                           .map { |mensaje| "#{etiqueta(mensaje)}: #{mensaje.content}" }
                           .join("\n")
 
-    Helic3::Knowledge::Anonimizador.call(turnos)
+    Helic3::Knowledge::Anonimizador.call(turnos, nombres: nombres_a_enmascarar)
+  end
+
+  # Los nombres se tienen exactos, no se adivinan: el titular (contacto) y el asesor
+  # asignado. Enmascararlos como literales antes de las regex es lo que Jhan pidio.
+  def nombres_a_enmascarar
+    [@conversation.contact&.name, @conversation.assignee&.name].compact
   end
 
   def etiqueta(mensaje)

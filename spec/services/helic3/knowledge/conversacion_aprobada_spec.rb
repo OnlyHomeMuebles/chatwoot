@@ -64,25 +64,29 @@ RSpec.describe Helic3::Knowledge::ConversacionAprobada do
 
   describe 'anonimizacion antes de persistir (criterio 3)' do
     let(:datos_personales) do
-      { cedula: '1032456789', telefono: '3009998888', correo: 'juan.perez@gmail.com',
-        direccion: 'Calle 123 # 45-67', factura: '345670' }
+      { nombre: 'Maria Fernanda Gomez', cedula: '1032456789', telefono: '3009998888',
+        correo: 'juan.perez@gmail.com', direccion: 'Calle 123 # 45-67', factura: '345670' }
     end
 
     before do
       aprobar(conversation)
+      conversation.contact.update!(name: datos_personales[:nombre])
+      mensaje(:incoming, "Hola, soy #{datos_personales[:nombre]} y mi sofa llego roto")
       mensaje(:incoming, "Mi cedula es #{datos_personales[:cedula]}, mi celular #{datos_personales[:telefono]}")
       mensaje(:incoming, "Escribeme a #{datos_personales[:correo]}, vivo en la #{datos_personales[:direccion]}")
       mensaje(:incoming, "Adjunto la factura #{datos_personales[:factura]}")
       mensaje(:outgoing, 'Con gusto reviso tu caso de garantia')
     end
 
-    it 'ningun chunk almacenado contiene cedula, telefono, correo, direccion ni factura' do
+    it 'ningun chunk almacenado contiene datos que identifiquen al titular' do
       described_class.new(conversation).call
 
       corpus = Helic3::Knowledge::Chunk.where(account: account).pluck(:content).join("\n")
       datos_personales.each_value do |dato|
         expect(corpus).not_to include(dato)
       end
+      # el nombre tambien por partes
+      expect(corpus).not_to include('Fernanda')
     end
 
     it 'conserva el dialogo por turnos (Cliente / Asesor) para aprender la forma' do
@@ -109,6 +113,28 @@ RSpec.describe Helic3::Knowledge::ConversacionAprobada do
       document = documentos.sole
       expect(document.status).to eq('failed')
       expect(document.metadata['last_error']).to include('la API fallo')
+    end
+  end
+
+  describe 'derecho de supresión por display_id (habeas data)' do
+    before do
+      aprobar(conversation)
+      mensaje(:incoming, 'Compre un sofa y me llego roto')
+    end
+
+    it 'borra el documento y sus chunks del corpus' do
+      described_class.new(conversation).call
+      expect(documentos.count).to eq(1)
+
+      resultado = described_class.suprimir(account, conversation.display_id)
+
+      expect(resultado).to eq(:suprimida)
+      expect(documentos.count).to eq(0)
+      expect(Helic3::Knowledge::Chunk.where(account: account)).to be_empty
+    end
+
+    it 'es idempotente: si no está en el corpus, devuelve :inexistente' do
+      expect(described_class.suprimir(account, conversation.display_id)).to eq(:inexistente)
     end
   end
 end
