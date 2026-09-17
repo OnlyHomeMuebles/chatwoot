@@ -26,9 +26,14 @@ class Helic3::Casos::RadicacionAutomatica
   # @return [Helic3::Ticket, Symbol] el ticket creado, o :ya_existe / :sin_senal
   def call
     return :ya_existe if expediente_existente?
-    # AGT-07: sin consentimiento de datos NO se radica (no se pueden tratar los datos del cliente).
-    return :sin_consentimiento unless consentimiento_datos?
 
+    # La radicacion NO se condiciona al consentimiento: la base legal para tratar los
+    # datos de una PQR que el cliente mismo interpuso es la relacion contractual y la
+    # obligacion legal (el termino de la SIC corre desde que la presenta), no el
+    # consentimiento. Condicionar la apertura del expediente dejaria al cliente sin
+    # radicado ni reloj y sin rastro del reclamo. El aviso y el registro del
+    # consentimiento (AGT-07) van en paralelo; si hay que condicionar algo es la
+    # recoleccion de datos ADICIONALES (cedula, direccion, factura), nunca el expediente.
     clasificacion = clasificar
     return :sin_senal if clasificacion.nil?
 
@@ -61,11 +66,6 @@ class Helic3::Casos::RadicacionAutomatica
   # agente le confirme al cliente un caso que no existe).
   def expediente_existente?
     @account.tickets.exists?(conversation_id: @conversation.id, respondida_at: nil)
-  end
-
-  # AGT-07: el sello de consentimiento vive en los atributos de la conversacion.
-  def consentimiento_datos?
-    @conversation.custom_attributes&.dig('helic3_consentimiento_datos_at').present?
   end
 
   # El candado serializa dos jobs simultaneos (dos mensajes seguidos) sobre la misma
