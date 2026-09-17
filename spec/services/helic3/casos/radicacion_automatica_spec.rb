@@ -136,4 +136,18 @@ RSpec.describe Helic3::Casos::RadicacionAutomatica do
       )
     end
   end
+
+  describe 'la radicación no se condiciona al consentimiento (base legal de la PQR)' do
+    before do
+      conversation.update!(custom_attributes: {})
+      allow(extractor).to receive(:call).and_return(
+        resultado(requiere_pqr: true, tipo_codigo: 'reclamo', motivo_codigo: 'garantia_producto',
+                  resumen: 'Sofá con tela rota', descripcion: 'Llegó con la tela rota')
+      )
+    end
+
+    it 'radica el expediente aunque la conversación no tenga consentimiento registrado' do
+      expect { gate.call }.to change { account.tickets.count }.by(1)
+    end
+  end
 end

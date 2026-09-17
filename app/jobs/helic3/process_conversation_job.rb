@@ -25,6 +25,9 @@ class Helic3::ProcessConversationJob < ApplicationJob
     @account_id = account_id
     client = Helic3::ChatwootClient.new(account_id: account_id)
     memory = Helic3::Agents::ConversationMemory.new(account_id: account_id, conversation_id: conversation_id)
+    # AGT-07: el estado de consentimiento se lee de la conversacion (no de la memoria del modelo),
+    # para que el aviso no se repita entre corridas. El triage lo recibe en el state.
+    @consentimiento_datos_at = consentimiento_de_datos(conversation_id)
 
     start_typing(client, conversation_id)
     reply = generate_reply(client, memory, conversation_id, content)
@@ -35,6 +38,16 @@ class Helic3::ProcessConversationJob < ApplicationJob
   end
 
   private
+
+  # AGT-07: lee el sello de consentimiento del atributo de la conversacion (best-effort: si no
+  # se puede leer, se asume sin consentimiento y el aviso se mostrara).
+  def consentimiento_de_datos(display_id)
+    conversation = Account.find_by(id: @account_id)&.conversations&.find_by(display_id: display_id)
+    conversation&.custom_attributes&.dig('helic3_consentimiento_datos_at')
+  rescue StandardError => e
+    Rails.logger.warn("[Helic3] no se pudo leer el consentimiento conv=#{display_id}: #{e.message}")
+    nil
+  end
 
   # AGT-06: la radicacion determinista corre en su propio job (async), no aqui, para no
   # retrasar la respuesta ni el indicador de escritura. Se encola SIEMPRE: no se filtra por el
@@ -77,7 +90,8 @@ class Helic3::ProcessConversationJob < ApplicationJob
     MAX_LLM_ATTEMPTS.times do |attempt|
       context = memory.load
       context[:account_id] = @account_id
-      context[:state] = { conversation_id: conversation_id, chatwoot_client: client }
+      context[:state] = { conversation_id: conversation_id, chatwoot_client: client,
+                          consentimiento_datos_at: @consentimiento_datos_at }
       result = Helic3::Agents::RunnerService.new(**Helic3::Agents::LlmRuntime.agents_options).run(content, context: context)
       return result if result.output.to_s.strip.present?
 

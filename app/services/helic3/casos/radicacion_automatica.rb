@@ -27,6 +27,13 @@ class Helic3::Casos::RadicacionAutomatica
   def call
     return :ya_existe if expediente_existente?
 
+    # La radicacion NO se condiciona al consentimiento: la base legal para tratar los
+    # datos de una PQR que el cliente mismo interpuso es la relacion contractual y la
+    # obligacion legal (el termino de la SIC corre desde que la presenta), no el
+    # consentimiento. Condicionar la apertura del expediente dejaria al cliente sin
+    # radicado ni reloj y sin rastro del reclamo. El aviso y el registro del
+    # consentimiento (AGT-07) van en paralelo; si hay que condicionar algo es la
+    # recoleccion de datos ADICIONALES (cedula, direccion, factura), nunca el expediente.
     clasificacion = clasificar
     return :sin_senal if clasificacion.nil?
 
