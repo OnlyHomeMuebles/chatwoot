@@ -99,7 +99,7 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   end
 
   def toggle_priority
-    @conversation.toggle_priority(params[:priority])
+    @conversation.toggle_priority(permitted_update_params[:priority])
     head :ok
   end
 
@@ -140,6 +140,8 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
 
   def permitted_update_params
     # TODO: Move the other conversation attributes to this method and remove specific endpoints for each attribute
+    raise ActionController::ParameterMissing, :priority unless params[:priority].nil? || Conversation.priorities.key?(params[:priority])
+
     params.permit(:priority)
   end
 
@@ -177,7 +179,7 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
 
   def handle_human_open
     @conversation.with_lock do
-      @conversation.assignee_agent_bot = nil
+      @conversation.ai_assignee = nil
       @conversation.assignee = Current.user if Current.user.agent?
       @conversation.save!
     end

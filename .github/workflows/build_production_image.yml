@@ -1,0 +1,150 @@
+# Builds the production image on a runner and pushes it to GHCR so Dokploy only has to pull it.
+#
+# Until now Dokploy built the release on the production VM: a ~4GB vite build landing next to a
+# ~9GB runtime on a 16GB box, which the kernel resolved by OOM-killing something. This produces
+# the *same* artifact — same railpack builder, same `railpack.json`, same start command — just on
+# hardware that is not also serving traffic.
+#
+# Two versions must stay in lockstep: the railpack CLI generates the build plan and the railpack
+# BuildKit frontend consumes it, and a frontend from a different release may not understand the
+# plan it is handed.
+
+name: Build production image
+
+# Manual on purpose. A deploy is a deliberate act and this job is expensive — building an image
+# on every commit to dev is what made Actions minutes disappear. To make it automatic per release
+# instead, add `push: {branches: [main]}`: main only receives the dev -> main release PR, so that
+# is roughly one build per deploy rather than one per commit.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: build-production-image
+  cancel-in-progress: true
+
+env:
+  RAILPACK_VERSION: v0.37.0
+  BUILDKIT_VERSION: v0.32.2
+  # The VM's architecture. Switch to linux/arm64 (on an arm runner) if the EC2 instance is Graviton,
+  # otherwise the image will not start there.
+  PLATFORM: linux/amd64
+  # Build-time variables the image needs. railpack does not bake these into layers: it records each
+  # one as a BuildKit secret in the plan, so they are declared to `prepare` and then handed to
+  # `buildctl` as --secret. Defined once here and referenced by both steps.
+  # These currently also live in the Dokploy application's env; anything build-relevant added there
+  # has to be mirrored here or the CI image will differ from what the VM used to produce.
+  BUNDLE_WITHOUT: development:test
+  RAILS_ENV: production
+  NODE_ENV: production
+  RAILS_SERVE_STATIC_FILES: 'true'
+  RAILS_LOG_TO_STDOUT: 'true'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve image name
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      - name: Install railpack CLI
+        run: |
+          curl -fsSL -o railpack.tar.gz \
+            "https://github.com/railwayapp/railpack/releases/download/${RAILPACK_VERSION}/railpack-${RAILPACK_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          mkdir -p "${RUNNER_TEMP}/bin"
+          tar -xzf railpack.tar.gz -C "${RUNNER_TEMP}/bin" railpack
+          echo "${RUNNER_TEMP}/bin" >> "$GITHUB_PATH"
+
+      - name: Install buildctl
+        run: |
+          curl -fsSL -o buildkit.tar.gz \
+            "https://github.com/moby/buildkit/releases/download/${BUILDKIT_VERSION}/buildkit-${BUILDKIT_VERSION}.linux-amd64.tar.gz"
+          sudo tar -xzf buildkit.tar.gz -C /usr/local bin/buildctl
+          buildctl --version
+
+      - name: Free disk space
+        # A private repo gets the small runner: ~7.9GB RAM and ~13GB free on /. BuildKit materialises
+        # every layer of this image (base, mise's ruby+node, gems, node_modules, the built
+        # assets, the final image and its export) and does not fit. Dropping
+        # the preinstalled toolchains this workflow never touches buys ~25GB.
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup
+          sudo docker image prune -af
+          echo "--- after ---"
+          df -h /
+
+      - name: Start BuildKit daemon
+        # BuildKit keeps its state in /mnt (runner's ephemeral data disk) instead of runner's root disk.
+        run: |
+          sudo mkdir -p /mnt/buildkit
+          df -h / /mnt
+          docker run --rm --privileged -d --name buildkit \
+            -v /mnt/buildkit:/var/lib/buildkit \
+            "moby/buildkit:${BUILDKIT_VERSION}"
+          echo "BUILDKIT_HOST=docker-container://buildkit" >> "$GITHUB_ENV"
+
+      - name: Log in to GHCR
+        env:
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$REGISTRY_USER" --password-stdin
+
+      - name: Generate build plan
+        # --error-missing-start fails the build instead of shipping a container that cannot boot.
+        run: |
+          mkdir -p "${RUNNER_TEMP}/plan"
+          railpack prepare . \
+            --plan-out "${RUNNER_TEMP}/plan/railpack-plan.json" \
+            --info-out "${RUNNER_TEMP}/plan/railpack-info.json" \
+            --error-missing-start \
+            --env "BUNDLE_WITHOUT=${BUNDLE_WITHOUT}" \
+            --env "RAILS_ENV=${RAILS_ENV}" \
+            --env "NODE_ENV=${NODE_ENV}" \
+            --env "RAILS_SERVE_STATIC_FILES=${RAILS_SERVE_STATIC_FILES}" \
+            --env "RAILS_LOG_TO_STDOUT=${RAILS_LOG_TO_STDOUT}"
+
+      - name: Report runner resources
+        run: |
+          free -h
+          df -h /
+
+      - name: Build and push image
+        run: |
+          ( while true; do
+              echo "[res] $(date -u +%H:%M:%S) mem_used=$(free -m | awk '/^Mem:/{print $3}')MB mem_avail=$(free -m | awk '/^Mem:/{print $7}')MB root_avail=$(df -m --output=avail / | tail -1)MB buildkit_avail=$(df -m --output=avail /mnt | tail -1)MB"
+              sleep 20
+            done ) &
+          monitor_pid=$!
+          trap 'kill "${monitor_pid}" 2>/dev/null || true' EXIT
+
+          SECRET_ARGS=$(python3 -c "import json,sys;print(' '.join('--secret id=%s,env=%s' % (n, n) for n in json.load(open(sys.argv[1]))['secrets']))" "${RUNNER_TEMP}/plan/railpack-plan.json")
+          echo "secrets: ${SECRET_ARGS}"
+          # shellcheck disable=SC2086
+          buildctl build \
+            --frontend=gateway.v0 \
+            --opt source="ghcr.io/railwayapp/railpack-frontend:${RAILPACK_VERSION}" \
+            --opt platform="${PLATFORM}" \
+            --local context=. \
+            --local dockerfile="${RUNNER_TEMP}/plan" \
+            ${SECRET_ARGS} \
+            --output "type=image,\"name=${IMAGE}:latest,${IMAGE}:${GITHUB_SHA}\",push=true" \
+            --import-cache "type=registry,ref=${IMAGE}:buildcache" \
+            --export-cache "type=registry,ref=${IMAGE}:buildcache,mode=min" \
+            --progress plain
+
+      - name: Trigger Dokploy redeploy
+        env:
+          WEBHOOK: ${{ secrets.DOKPLOY_DEPLOY_WEBHOOK }}
+        run: |
+          if [ -z "${WEBHOOK}" ]; then
+            echo "DOKPLOY_DEPLOY_WEBHOOK not set — image pushed as ${IMAGE}:${GITHUB_SHA}, deploy it from Dokploy."
+            exit 0
+          fi
+          curl -fsSL -X POST "${WEBHOOK}"
