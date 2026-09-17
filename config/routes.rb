@@ -340,6 +340,12 @@ Rails.application.routes.draw do
           end
           resource :notification_settings, only: [:show, :update]
 
+          resources :tickets, only: [:index, :show, :create, :update, :destroy] do
+            member do
+              post :assign
+            end
+          end
+
           resources :teams do
             resources :team_members, only: [:index, :create] do
               collection do
@@ -673,6 +679,7 @@ Rails.application.routes.draw do
   post 'webhooks/line/:line_channel_id', to: 'webhooks/line#process_payload'
   post 'webhooks/telegram/:bot_token', to: 'webhooks/telegram#process_payload'
   post 'webhooks/sms/:phone_number', to: 'webhooks/sms#process_payload'
+  post 'webhooks/only_home', to: 'webhooks/only_home#process_payload'
   get 'webhooks/whatsapp/:phone_number', to: 'webhooks/whatsapp#verify'
   post 'webhooks/whatsapp/:phone_number', to: 'webhooks/whatsapp#process_payload'
   get 'webhooks/instagram', to: 'webhooks/instagram#verify'

@@ -1,0 +1,54 @@
+{
+  "TICKETS": {
+    "HEADER": "Tickets",
+    "NEW_TICKET": "New ticket",
+    "LOADING": "Loading tickets...",
+    "EMPTY_STATE": "No tickets found",
+    "UNASSIGNED": "Unassigned",
+    "FILTERS": {
+      "ALL": "All",
+      "MINE": "My tickets"
+    },
+    "STATUS": {
+      "OPEN": "Open",
+      "PENDING": "Pending",
+      "RESOLVED": "Resolved",
+      "CLOSED": "Closed"
+    },
+    "TABLE": {
+      "NUMBER": "#",
+      "TITLE": "Title",
+      "STATUS": "Status",
+      "ASSIGNEE": "Assignee",
+      "CREATED_AT": "Created"
+    },
+    "CONVERSATION": {
+      "EMPTY": "No tickets linked to this conversation",
+      "CREATE": "Create ticket"
+    },
+    "CREATE": {
+      "TITLE": "Create ticket",
+      "FORM_TITLE_LABEL": "Title",
+      "FORM_TITLE_PLACEHOLDER": "What is the issue?",
+      "FORM_DESCRIPTION_LABEL": "Description",
+      "FORM_DESCRIPTION_PLACEHOLDER": "Add more details (optional)",
+      "FORM_STATUS_LABEL": "Status",
+      "CONFIRM": "Create",
+      "SUCCESS": "Ticket created successfully",
+      "ERROR": "There was an error creating the ticket"
+    },
+    "UPDATE": {
+      "SUCCESS": "Ticket updated",
+      "ERROR": "There was an error updating the ticket",
+      "FORBIDDEN": "You don't have permission to modify this ticket."
+    },
+    "DELETE": {
+      "TITLE": "Delete ticket",
+      "DESCRIPTION": "Are you sure you want to delete this ticket? This action cannot be undone.",
+      "CONFIRM": "Delete",
+      "SUCCESS": "Ticket deleted",
+      "ERROR": "There was an error deleting the ticket",
+      "FORBIDDEN": "You don't have permission to delete this ticket."
+    }
+  }
+}
