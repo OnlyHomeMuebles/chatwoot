@@ -2,10 +2,16 @@ import { LocalStorage } from 'shared/helpers/localStorage';
 import { LOCAL_STORAGE_KEYS } from 'dashboard/constants/localStorage';
 
 export const setColorTheme = isOSOnDarkMode => {
-  // VIS-01: enciende el tema Nogal en toda la instancia. Por defecto 'nogal';
-  // apagarlo es quitar este atributo. El override del tema vive bajo
+  // VIS-08: Nogal queda OPT-IN hasta pulir los popovers/menus del rail (los menus que
+  // aparecen dentro del rail heredan el texto claro y no se leen sobre su fondo claro).
+  // Por defecto va el tema NORMAL de Chatwoot. Para probar Nogal: en la consola
+  // localStorage.setItem('helic3_nogal', 'on') y recargar. El override vive bajo
   // :root[data-helic3-theme='nogal']:not(.dark), asi que el modo oscuro sigue igual.
-  document.documentElement.setAttribute('data-helic3-theme', 'nogal');
+  if (LocalStorage.get('helic3_nogal') === 'on') {
+    document.documentElement.setAttribute('data-helic3-theme', 'nogal');
+  } else {
+    document.documentElement.removeAttribute('data-helic3-theme');
+  }
 
   const selectedColorScheme =
     LocalStorage.get(LOCAL_STORAGE_KEYS.COLOR_SCHEME) || 'auto';
