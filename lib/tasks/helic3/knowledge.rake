@@ -26,14 +26,21 @@ namespace :knowledge do
     require 'csv'
 
     account = Account.first
-    Dir[Rails.root.join('db/knowledge_seeds/*.csv')].each do |path|
-      name = File.basename(path, '.csv')
+    vigentes = Dir[Rails.root.join('db/knowledge_seeds/*.csv')].map { |path| File.basename(path, '.csv') }
+    vigentes.each do |name|
+      path = Rails.root.join("db/knowledge_seeds/#{name}.csv")
       document = Helic3::Knowledge::Document.find_or_initialize_by(account: account, name: name, source_type: :dataset)
       document.assign_attributes(content: knowledge_csv_to_text(path))
       document.save!
 
       result = Helic3::Knowledge::IngestionService.new(document).perform
       puts "#{name}: #{result} (#{document.chunks.count} fragmentos)"
+    end
+
+    # Purga reproducible: borra del RAG los datasets de semilla cuyo CSV ya no existe (p. ej. el
+    # corpus alienigena movido a fixtures). Sin esto el Document ya ingestado seguiria vivo.
+    Helic3::Knowledge::DatasetPurge.new(account, vigentes).call.each do |name|
+      puts "#{name}: PURGADO del RAG (ya no tiene CSV en db/knowledge_seeds)"
     end
   end
 end
@@ -42,12 +49,12 @@ namespace :knowledge do
   desc 'Ingest (or refresh) the Only Home knowledge base into the RAG'
   task ingest_catalog: :environment do
     account = Account.first
-    document = Helic3::Knowledge::Document.find_or_initialize_by(account: account, name: 'catalogo_only_home', source_type: :dataset)
-    document.assign_attributes(content: OnlyHome::KnowledgeBase.full_text)
+    document = Helic3::Knowledge::Document.find_or_initialize_by(account: account, name: 'catalogo_helic3', source_type: :dataset)
+    document.assign_attributes(content: Helic3::Agents::PoliticasEstaticas.full_text)
     document.save!
 
     result = Helic3::Knowledge::IngestionService.new(document).perform
-    puts "catalogo_only_home: #{result} (#{document.chunks.count} fragmentos)"
+    puts "catalogo_helic3: #{result} (#{document.chunks.count} fragmentos)"
   end
 end
 
@@ -75,6 +82,43 @@ namespace :knowledge do
 end
 
 namespace :knowledge do
+  # AGT-05: ingesta a DEMANDA las conversaciones marcadas como bien resueltas
+  # (etiqueta `voz_aprobada`). Idempotente (re-correr no duplica) y anonimizada.
+  # La etiqueta es la unica puerta: nada sin ella entra al corpus.
+  desc 'Ingesta al RAG las conversaciones aprobadas (etiqueta voz_aprobada)'
+  task ingest_conversaciones_aprobadas: :environment do
+    etiqueta = Helic3::Knowledge::ConversacionAprobada::ETIQUETA_APROBACION
+    account = Account.first
+    # on: :labels acota la busqueda al contexto de etiquetas (Labelable), no a todos
+    # los contextos de acts_as_taggable_on
+    conversaciones = account.conversations.tagged_with(etiqueta, on: :labels)
+
+    if conversaciones.empty?
+      puts "No hay conversaciones con la etiqueta '#{etiqueta}'."
+    else
+      conversaciones.find_each do |conversation|
+        resultado = Helic3::Knowledge::ConversacionAprobada.new(conversation).call
+        puts "conversacion_#{conversation.display_id}: #{resultado}"
+      rescue StandardError => e
+        # no en silencio: el Document queda en `failed` con el error en metadata;
+        # aqui lo trazamos y seguimos con las demas conversaciones del lote.
+        puts "conversacion_#{conversation.display_id}: ERROR (#{e.class}: #{e.message})"
+      end
+    end
+  end
+
+  # AGT-05: derecho de supresion (habeas data). Saca del corpus la conversacion de
+  # un titular por su display_id: rake "knowledge:olvidar_conversacion[42]"
+  desc 'Borra del RAG la conversacion de un titular por display_id (supresion)'
+  task :olvidar_conversacion, [:display_id] => :environment do |_t, args|
+    abort 'Usage: rake "knowledge:olvidar_conversacion[display_id]"' if args[:display_id].blank?
+
+    resultado = Helic3::Knowledge::ConversacionAprobada.suprimir(Account.first, args[:display_id])
+    puts "conversacion_#{args[:display_id]}: #{resultado}"
+  end
+end
+
+namespace :knowledge do
   desc 'Search the knowledge base: rake "knowledge:search[como funciona la garantia]"'
   task :search, [:query] => :environment do |_t, args|
     abort 'Usage: rake "knowledge:search[query]"' if args[:query].blank?
@@ -85,6 +129,41 @@ namespace :knowledge do
       puts "score=#{result[:score]&.round(3)} doc=#{result[:document_id]} chunk=#{result[:chunk_id]}"
       puts result[:content].to_s[0, 300]
       puts '---'
+    end
+  end
+end
+
+namespace :knowledge do
+  # AGT-04: revisar la VOZ del agente de un tiron. Corre el multiagente real sobre las preguntas
+  # canonicas (o una que pases) e imprime la respuesta, para revisar tono y lenguaje sin abrir el
+  # chat. Todo va dentro de una transaccion que se revierte: no crea tickets ni deja rastro.
+  desc 'Revisa la voz del agente: rake knowledge:voz  o  rake "knowledge:voz[una pregunta]"'
+  task :voz, [:pregunta] => :environment do |_t, args|
+    canonicas = [
+      'Hola, buenas',
+      'Compre un sofa y me llego con la tela rota, tiene garantia?',
+      'El comedor me llego rayado',
+      'Me falto una pieza de la cama',
+      'Quiero devolver el producto, no me gusto',
+      'Como va mi pedido?',
+      'Que horarios tienen las tiendas?',
+      'Cuanto cuesta el sofa Santorini?'
+    ]
+    # Mismo proveedor/modelo/credenciales que el agente real (LlmRuntime): asi la voz que
+    # revisas con el rake es la que le sale al cliente, no la de otro modelo.
+    Helic3::Agents::LlmRuntime.configure_agents!
+    preguntas = args[:pregunta].present? ? [args[:pregunta]] : canonicas
+    account = Account.first
+
+    ActiveRecord::Base.transaction do
+      preguntas.each do |pregunta|
+        result = Helic3::Agents::RunnerService.new(**Helic3::Agents::LlmRuntime.agents_options)
+                                              .run(pregunta, context: { account_id: account.id, state: { conversation_id: nil } })
+        puts "PREGUNTA:  #{pregunta}"
+        puts "RESPUESTA: #{result.output}"
+        puts '=' * 70
+      end
+      raise ActiveRecord::Rollback # revisar la voz nunca deja datos
     end
   end
 end

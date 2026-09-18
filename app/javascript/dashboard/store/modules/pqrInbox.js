@@ -1,0 +1,156 @@
+import types from '../mutation-types';
+import PqrInboxAPI from '../../api/pqr';
+import TicketsAPI from '../../api/tickets';
+
+// Store propio de la bandeja de PQR (BAN-01). NO reutiliza el del panel de
+// conversacion (tickets.js): abrir la bandeja no debe alterar lo que el panel ya
+// tenia cargado. Lleva su propia paginacion y sus propios filtros.
+export const state = {
+  records: [],
+  meta: {
+    count: 0,
+    currentPage: 1,
+    perPage: 25,
+    umbralVerde: null,
+    umbralAmarillo: null,
+    metricas: null,
+  },
+  current: null,
+  decisiones: [],
+  // VIS-05: contadores del rail, en su propio slice. Nunca se mezclan con records
+  // ni meta: el rail no debe pisar lo que la bandeja tenga cargado.
+  contadores: { sin_responder: 0, decisiones_pendientes: 0 },
+  uiFlags: {
+    isFetching: false,
+    isFetchingItem: false,
+    isFetchingDecisiones: false,
+  },
+};
+
+export const getters = {
+  getRecords(_state) {
+    return _state.records;
+  },
+  getMeta(_state) {
+    return _state.meta;
+  },
+  getCurrent(_state) {
+    return _state.current;
+  },
+  getDecisiones(_state) {
+    return _state.decisiones;
+  },
+  getContadores(_state) {
+    return _state.contadores;
+  },
+  getUIFlags(_state) {
+    return _state.uiFlags;
+  },
+};
+
+export const actions = {
+  // sin catch: el error se propaga para que el componente avise; el finally solo
+  // baja el flag de carga.
+  fetch: async ({ commit }, params = {}) => {
+    commit(types.SET_PQR_INBOX_UI_FLAG, { isFetching: true });
+    try {
+      const { data } = await PqrInboxAPI.list(params);
+      commit(types.SET_PQR_INBOX, data.payload);
+      commit(types.SET_PQR_INBOX_META, {
+        count: data.meta.count,
+        currentPage: Number(data.meta.current_page),
+        perPage: data.meta.per_page,
+        umbralVerde: data.meta.umbral_verde ?? null,
+        umbralAmarillo: data.meta.umbral_amarillo ?? null,
+        metricas: data.meta.metricas ?? null,
+      });
+    } finally {
+      commit(types.SET_PQR_INBOX_UI_FLAG, { isFetching: false });
+    }
+  },
+
+  // Detalle de un expediente (DET-01). Se guarda aparte de la lista para que la
+  // pantalla de detalle no dependa de que el expediente este en la pagina actual.
+  fetchOne: async ({ commit }, id) => {
+    commit(types.SET_PQR_INBOX_UI_FLAG, { isFetchingItem: true });
+    commit(types.SET_PQR_CURRENT, null);
+    try {
+      // Reusa el show de tickets (helic3/tickets/:id) — importar api/tickets.js no
+      // es editar el archivo de Samuel; asi el detalle no arma la URL a mano.
+      const { data } = await TicketsAPI.show(id);
+      commit(types.SET_PQR_CURRENT, data);
+    } finally {
+      commit(types.SET_PQR_INBOX_UI_FLAG, { isFetchingItem: false });
+    }
+  },
+
+  // Acciones del operador desde el detalle: cambiar estado y reasignar. Reusan las
+  // rutas de tickets (update/assign) y refrescan el expediente actual con la
+  // respuesta. Sin catch: el error se propaga para que la pantalla avise.
+  actualizar: async ({ commit }, { id, data }) => {
+    const { data: actualizado } = await TicketsAPI.update(id, { ticket: data });
+    commit(types.SET_PQR_CURRENT, actualizado);
+  },
+
+  asignar: async ({ commit }, { id, assigneeId }) => {
+    const { data: actualizado } = await TicketsAPI.assign(id, assigneeId);
+    commit(types.SET_PQR_CURRENT, actualizado);
+  },
+
+  // Cola de decisiones (DEC-01).
+  fetchDecisiones: async ({ commit }) => {
+    commit(types.SET_PQR_INBOX_UI_FLAG, { isFetchingDecisiones: true });
+    try {
+      const { data } = await PqrInboxAPI.decisiones();
+      commit(types.SET_PQR_DECISIONES, data);
+    } finally {
+      commit(types.SET_PQR_INBOX_UI_FLAG, { isFetchingDecisiones: false });
+    }
+  },
+
+  // Contadores del rail (VIS-05): fuente propia y liviana (endpoint de puros
+  // COUNT). Escribe SOLO _state.contadores, nunca records/meta, para no pisar la
+  // bandeja. Sin catch aqui: el error se propaga y el rail decide (ignora la cuenta
+  // sin modulo, registra el resto).
+  fetchContadores: async ({ commit }) => {
+    const { data } = await PqrInboxAPI.contadores();
+    commit(types.SET_PQR_CONTADORES, data);
+  },
+
+  // Aprobar aplica el resultado propuesto por la puerta de resolucion (RES-01) y
+  // recarga la cola: la fila aprobada sale (ya no tiene propuesta pendiente). Sin
+  // catch: el error (p. ej. 401 de un agente) se propaga para que la pantalla avise.
+  aprobarDecision: async ({ dispatch }, { ticketId, resultadoId }) => {
+    await PqrInboxAPI.aprobar(ticketId, resultadoId);
+    await dispatch('fetchDecisiones');
+  },
+};
+
+export const mutations = {
+  [types.SET_PQR_INBOX_UI_FLAG](_state, data) {
+    _state.uiFlags = { ..._state.uiFlags, ...data };
+  },
+  [types.SET_PQR_INBOX](_state, records) {
+    _state.records = records;
+  },
+  [types.SET_PQR_INBOX_META](_state, meta) {
+    _state.meta = meta;
+  },
+  [types.SET_PQR_CURRENT](_state, record) {
+    _state.current = record;
+  },
+  [types.SET_PQR_DECISIONES](_state, decisiones) {
+    _state.decisiones = decisiones;
+  },
+  [types.SET_PQR_CONTADORES](_state, contadores) {
+    _state.contadores = contadores;
+  },
+};
+
+export default {
+  namespaced: true,
+  state,
+  getters,
+  actions,
+  mutations,
+};

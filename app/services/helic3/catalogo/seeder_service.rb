@@ -21,7 +21,9 @@ class Helic3::Catalogo::SeederService
     { nombre: 'Comercial', codigo: 'comercial' },
     { nombre: 'Logística', codigo: 'logistica' },
     { nombre: 'Facturación', codigo: 'facturacion' },
-    { nombre: 'Información', codigo: 'informacion' }
+    # Informacion no genera radicado ni plazo (EXP-01): el expediente se crea
+    # para conservar historial, sin numero visible y fuera del conteo SIC.
+    { nombre: 'Información', codigo: 'informacion', genera_radicado: false }
   ].freeze
 
   # plazo legal por tipo (addendum 24/08): P, Q y R responden en 15 dias
@@ -133,7 +135,27 @@ class Helic3::Catalogo::SeederService
     { clave: 'minimo_visitas_ruta', valor: '5', unidad: 'cantidad' },
     { clave: 'umbral_confianza_agente', valor: '85', unidad: 'porcentaje' },
     { clave: 'exigir_direccion_confirmada', valor: 'true', unidad: 'booleano' },
-    { clave: 'mostrar_solo_ticket_garantia', valor: 'true', unidad: 'booleano' }
+    { clave: 'mostrar_solo_ticket_garantia', valor: 'true', unidad: 'booleano' },
+    # Umbrales del semaforo (PRM-01): los lee Helic3::PresupuestoGarantia via
+    # Helic3::ParametrosGarantia. Sin ellos el semaforo no se puede calcular.
+    # Garantia y autonomia van con valor definitivo; los de PQR (8 y 3) son
+    # propuesta pendiente de confirmar con el tech lead antes de integrar.
+    { clave: 'umbral_verde_garantia', valor: '15', unidad: 'dias_habiles' },
+    { clave: 'umbral_amarillo_garantia', valor: '5', unidad: 'dias_habiles' },
+    { clave: 'umbral_verde_pqr', valor: '8', unidad: 'dias_habiles' },
+    { clave: 'umbral_amarillo_pqr', valor: '3', unidad: 'dias_habiles' },
+    { clave: 'autonomia_radicar_pqr', valor: 'propone', unidad: 'texto' },
+    { clave: 'autonomia_resolver_pqr', valor: 'propone', unidad: 'texto' },
+    # AGT-07: apertura conforme a ley. Textos PROVISIONALES: Luisa valida el aviso y el
+    # enlace antes de la demo. Viven en el catalogo, NUNCA en el prompt ni en el codigo.
+    { clave: 'mensaje_bienvenida',
+      valor: 'Hola, te damos la bienvenida a Only Home 💙 Con mucho gusto te ayudo.',
+      unidad: 'texto' },
+    { clave: 'aviso_datos_personales',
+      valor: '[PROVISIONAL — validar con Luisa] Para atender tu caso vamos a tratar tus datos ' \
+             'personales conforme a nuestra Política de Tratamiento de Datos. ¿Nos autorizas a continuar?',
+      unidad: 'texto' },
+    { clave: 'enlace_politica_datos', valor: 'https://www.onlyhome.co/politica-de-datos', unidad: 'texto' }
   ].freeze
 
   def initialize(account)
