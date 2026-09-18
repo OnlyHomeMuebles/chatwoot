@@ -66,11 +66,35 @@
   // lienzo sigue en 247 245 242.
   :root[data-helic3-theme='nogal']:not(.dark) [data-helic3-rail] {
     --background-color: 36 31 27;
-    --slate-12: 255 255 255; // texto fuerte (blanco)
-    --slate-11: 191 184 176; // texto secundario (gris cálido claro, legible sobre 36 31 27)
+    // VIS-08: TODO el texto del rail debe leerse sobre el café. Los componentes del
+    // sidebar usan varios grises (12 fuerte, 11/10/9 secundarios/iconos, 8 tenue); si
+    // solo se suben 11 y 12, lo que usa 9/10 queda oscuro sobre oscuro y "no se ve".
+    // Se suben todos a claros (valores solidos: nada con "/ alpha", que rompe Tailwind).
+    --slate-12: 255 255 255; // texto fuerte / hoja activa
+    --slate-11: 201 194 186; // texto secundario (hojas, headers inactivos)
+    --slate-10: 184 177 169; // secundario tenue
+    --slate-9: 170 163 155; // identificadores de canal, iconos
+    --slate-8: 150 143 135;
     --border-weak: 56 51 46;
     --border-strong: 74 67 60;
     --alpha-1: 255, 255, 255, 0.08; // hover sobre el rail
     --alpha-2: 255, 255, 255, 0.14; // activo sobre el rail
+  }
+
+  // VIS-08: los popovers/menus que se abren DENTRO del rail (menu de perfil, account
+  // switcher, dropdowns) heredarian el texto claro del rail, pero tienen superficie
+  // clara -> texto claro sobre claro, ilegible. Aqui se re-declaran los valores del
+  // lienzo SOLO en esas superficies; por cercania gana esta regla (mas interna), asi
+  // el rail sigue oscuro y los menus vuelven a su contraste normal.
+  :root[data-helic3-theme='nogal']:not(.dark)
+    [data-helic3-rail]
+    :where([role='menu'], .dropdown-pane, [data-radix-popper-content-wrapper]) {
+    --slate-12: 31 27 23;
+    --slate-11: 79 71 64;
+    --slate-10: 117 107 99;
+    --slate-9: 174 165 155;
+    --slate-8: 190 179 165;
+    --slate-4: 232 226 218;
+    --slate-5: 226 219 209;
   }
 }
