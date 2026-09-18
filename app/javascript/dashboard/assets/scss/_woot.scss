@@ -8,6 +8,9 @@
 
 // Next Colors
 @import 'next-colors';
+// VIS-01: tema Nogal, inmediatamente despues de next-colors para redefinir sus
+// tokens bajo el selector de tema sin editar el archivo base.
+@import 'helic3/nogal';
 
 // Base styles for elements
 @import 'base';

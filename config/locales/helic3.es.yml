@@ -1,0 +1,20 @@
+es:
+  helic3:
+    catalogos:
+      referenciado: 'Este registro lo usan expedientes existentes y no se puede borrar. Desactívalo en su lugar.'
+      tipo_desconocido: 'Catálogo desconocido.'
+    parametros:
+      plazo_respuesta_pqr: 'Plazo de respuesta de PQR'
+      plazo_total_garantia: 'Plazo total de garantía'
+      plazo_retracto: 'Plazo de retracto'
+      umbral_verde_pqr: 'Umbral verde (PQR)'
+      umbral_amarillo_pqr: 'Umbral amarillo (PQR)'
+      umbral_verde_garantia: 'Umbral verde (garantía)'
+      umbral_amarillo_garantia: 'Umbral amarillo (garantía)'
+      autonomia_radicar_pqr: 'Autonomía para radicar PQR'
+      umbral_confianza_agente: 'Umbral de confianza del agente'
+      meta_interna_garantia: 'Meta interna de garantía'
+      minimo_visitas_ruta: 'Mínimo de visitas por ruta'
+      amparo_garantia: 'Amparo de garantía'
+      exigir_direccion_confirmada: 'Exigir dirección confirmada'
+      mostrar_solo_ticket_garantia: 'Mostrar solo ticket de garantía'

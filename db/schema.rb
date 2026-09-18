@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_31_000000) do
+ActiveRecord::Schema[7.2].define(version: 2026_09_10_130000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1112,6 +1112,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_31_000000) do
     t.boolean "activo", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "genera_radicado", default: true, null: false
     t.index ["account_id", "codigo"], name: "idx_h3cat_categorias_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_categorias_account"
   end
@@ -1224,6 +1225,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_31_000000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "aprobacion_humana", default: false, null: false
+    t.boolean "requiere_admin", default: true, null: false
     t.index ["account_id", "codigo"], name: "idx_h3cat_resultados_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_resultados_account"
   end
@@ -1239,6 +1241,41 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_31_000000) do
     t.datetime "updated_at", null: false
     t.index ["account_id", "codigo"], name: "idx_h3cat_tipos_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_tipos_account"
+  end
+
+  create_table "helic3_garantia_items", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "garantia_id", null: false
+    t.string "producto_nombre", null: false
+    t.string "producto_referencia"
+    t.bigint "motivo_garantia_id"
+    t.bigint "detalle_tipificado_id"
+    t.bigint "proceso_id"
+    t.datetime "resuelto_at"
+    t.string "decision"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "idx_h3_gitems_account"
+    t.index ["detalle_tipificado_id"], name: "idx_h3_gitems_detalle"
+    t.index ["garantia_id"], name: "idx_h3_gitems_garantia"
+    t.index ["motivo_garantia_id"], name: "idx_h3_gitems_motivo"
+    t.index ["proceso_id"], name: "idx_h3_gitems_proceso"
+  end
+
+  create_table "helic3_garantias", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "ticket_id", null: false
+    t.integer "display_id", null: false
+    t.datetime "abierta_at", null: false
+    t.datetime "cerrada_at"
+    t.integer "presupuesto_dias_habiles"
+    t.bigint "cobertura_ciudad_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "display_id"], name: "idx_h3_garantias_account_dpid", unique: true
+    t.index ["account_id"], name: "idx_h3_garantias_account"
+    t.index ["cobertura_ciudad_id"], name: "idx_h3_garantias_cobertura"
+    t.index ["ticket_id"], name: "idx_h3_garantias_ticket"
   end
 
   create_table "helic3_knowledge_chunks", force: :cascade do |t|
@@ -1331,6 +1368,62 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_31_000000) do
     t.datetime "updated_at", null: false
     t.index ["account_id", "nombre"], name: "index_helic3_pqrs_procesos_on_account_id_and_nombre", unique: true
     t.index ["account_id"], name: "index_helic3_pqrs_procesos_on_account_id"
+  end
+
+  create_table "helic3_ticket_datos", force: :cascade do |t|
+    t.bigint "ticket_id", null: false
+    t.bigint "account_id", null: false
+    t.string "cedula"
+    t.string "direccion"
+    t.string "ciudad"
+    t.string "factura_numero"
+    t.string "producto_nombre"
+    t.bigint "detalle_tipificado_id"
+    t.jsonb "fuentes", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "idx_h3_ticket_datos_account"
+    t.index ["detalle_tipificado_id"], name: "idx_h3_ticket_datos_detalle"
+    t.index ["ticket_id"], name: "idx_h3_ticket_datos_ticket", unique: true
+  end
+
+  create_table "helic3_tickets", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.integer "display_id", null: false
+    t.string "title", null: false
+    t.text "description"
+    t.integer "status", default: 0, null: false
+    t.bigint "assignee_id"
+    t.bigint "creator_id"
+    t.bigint "conversation_id"
+    t.datetime "resolved_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "pqrs_tipo"
+    t.string "pqrs_categoria"
+    t.string "pqrs_prioridad"
+    t.jsonb "pqrs_metadata", default: {}
+    t.string "pqrs_numero_orden"
+    t.bigint "categoria_id"
+    t.bigint "tipo_id"
+    t.bigint "motivo_pqr_id"
+    t.bigint "resultado_id"
+    t.bigint "etapa_id"
+    t.datetime "radicada_at"
+    t.datetime "respondida_at"
+    t.datetime "cerrada_at"
+    t.datetime "plazo_respuesta_vence_at"
+    t.index ["categoria_id"], name: "idx_h3_tickets_categoria"
+    t.index ["etapa_id"], name: "idx_h3_tickets_etapa"
+    t.index ["motivo_pqr_id"], name: "idx_h3_tickets_motivo_pqr"
+    t.index ["resultado_id"], name: "idx_h3_tickets_resultado"
+    t.index ["tipo_id"], name: "idx_h3_tickets_tipo"
+    t.index ["account_id", "display_id"], name: "index_helic3_tickets_on_account_id_and_display_id", unique: true
+    t.index ["account_id", "pqrs_tipo"], name: "index_helic3_tickets_on_account_id_and_pqrs_tipo"
+    t.index ["account_id", "status"], name: "index_helic3_tickets_on_account_id_and_status"
+    t.index ["account_id"], name: "index_helic3_tickets_on_account_id"
+    t.index ["assignee_id", "account_id"], name: "index_helic3_tickets_on_assignee_id_and_account_id"
+    t.index ["conversation_id"], name: "index_helic3_tickets_on_conversation_id"
   end
 
   create_table "inbox_assignment_policies", force: :cascade do |t|
@@ -1736,31 +1829,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_31_000000) do
     t.index ["name", "account_id"], name: "index_teams_on_name_and_account_id", unique: true
   end
 
-  create_table "tickets", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.integer "display_id", null: false
-    t.string "title", null: false
-    t.text "description"
-    t.integer "status", default: 0, null: false
-    t.bigint "assignee_id"
-    t.bigint "creator_id"
-    t.bigint "conversation_id"
-    t.datetime "resolved_at"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.string "pqrs_tipo"
-    t.string "pqrs_categoria"
-    t.string "pqrs_prioridad"
-    t.jsonb "pqrs_metadata", default: {}
-    t.string "pqrs_numero_orden"
-    t.index ["account_id", "display_id"], name: "index_tickets_on_account_id_and_display_id", unique: true
-    t.index ["account_id", "pqrs_tipo"], name: "index_tickets_on_account_id_and_pqrs_tipo"
-    t.index ["account_id", "status"], name: "index_tickets_on_account_id_and_status"
-    t.index ["account_id"], name: "index_tickets_on_account_id"
-    t.index ["assignee_id", "account_id"], name: "index_tickets_on_assignee_id_and_account_id"
-    t.index ["conversation_id"], name: "index_tickets_on_conversation_id"
-  end
-
   create_table "user_sessions", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.string "client_id", null: false
@@ -1858,40 +1926,70 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_31_000000) do
   add_foreign_key "campaign_recipients", "inboxes", on_delete: :cascade
   add_foreign_key "helic3_catalogo_detalles_tipificados", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
   add_foreign_key "helic3_catalogo_motivos_pqr", "helic3_catalogo_categorias", column: "categoria_id"
+  add_foreign_key "helic3_garantia_items", "helic3_catalogo_detalles_tipificados", column: "detalle_tipificado_id"
+  add_foreign_key "helic3_garantia_items", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
+  add_foreign_key "helic3_garantia_items", "helic3_catalogo_procesos_garantia", column: "proceso_id"
+  add_foreign_key "helic3_garantia_items", "helic3_garantias", column: "garantia_id"
+  add_foreign_key "helic3_garantias", "helic3_catalogo_coberturas_ciudad", column: "cobertura_ciudad_id"
+  add_foreign_key "helic3_garantias", "helic3_tickets", column: "ticket_id"
   add_foreign_key "helic3_pqrs_detalles", "helic3_pqrs_motivos", column: "motivo_id"
+  add_foreign_key "helic3_ticket_datos", "accounts"
+  add_foreign_key "helic3_ticket_datos", "helic3_catalogo_detalles_tipificados", column: "detalle_tipificado_id"
+  add_foreign_key "helic3_ticket_datos", "helic3_tickets", column: "ticket_id"
+  add_foreign_key "helic3_tickets", "helic3_catalogo_categorias", column: "categoria_id"
+  add_foreign_key "helic3_tickets", "helic3_catalogo_etapas_pqr", column: "etapa_id"
+  add_foreign_key "helic3_tickets", "helic3_catalogo_motivos_pqr", column: "motivo_pqr_id"
+  add_foreign_key "helic3_tickets", "helic3_catalogo_resultados", column: "resultado_id"
+  add_foreign_key "helic3_tickets", "helic3_catalogo_tipos", column: "tipo_id"
   add_foreign_key "inboxes", "portals"
   add_foreign_key "user_sessions", "users"
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.ticket_dpid_before_insert()
+CREATE OR REPLACE FUNCTION public.helic3_garantias_before_insert_row_tr()
  RETURNS trigger
  LANGUAGE plpgsql
 AS $function$
 BEGIN
-    execute format('create sequence IF NOT EXISTS ticket_dpid_seq_%s', NEW.id);
-    RETURN NULL;
-END;
-$function$
-  SQL
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER ticket_dpid_before_insert AFTER INSERT ON \"accounts\" FOR EACH ROW EXECUTE FUNCTION ticket_dpid_before_insert()")
-
-  # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute(<<-SQL)
-CREATE OR REPLACE FUNCTION public.tickets_before_insert_row_tr()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
-BEGIN
-    NEW.display_id := nextval('ticket_dpid_seq_' || NEW.account_id);
+    EXECUTE format('CREATE SEQUENCE IF NOT EXISTS helic3_garantia_dpid_seq_%s START WITH %s', NEW.account_id, COALESCE((SELECT valor::integer FROM helic3_catalogo_parametros WHERE account_id = NEW.account_id AND clave = 'radicado_garantia_inicio'), 1)); NEW.display_id := nextval('helic3_garantia_dpid_seq_' || NEW.account_id);
     RETURN NEW;
 END;
 $function$
   SQL
 
   # no candidate create_trigger statement could be found, creating an adapter-specific one
-  execute("CREATE TRIGGER tickets_before_insert_row_tr BEFORE INSERT ON \"tickets\" FOR EACH ROW EXECUTE FUNCTION tickets_before_insert_row_tr()")
+  execute("CREATE TRIGGER helic3_garantias_before_insert_row_tr BEFORE INSERT ON \"helic3_garantias\" FOR EACH ROW EXECUTE FUNCTION helic3_garantias_before_insert_row_tr()")
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute(<<-SQL)
+CREATE OR REPLACE FUNCTION public.helic3_ticket_dpid_before_insert()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    execute format('create sequence IF NOT EXISTS helic3_ticket_dpid_seq_%s', NEW.id);
+    RETURN NULL;
+END;
+$function$
+  SQL
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER helic3_ticket_dpid_before_insert AFTER INSERT ON \"accounts\" FOR EACH ROW EXECUTE FUNCTION helic3_ticket_dpid_before_insert()")
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute(<<-SQL)
+CREATE OR REPLACE FUNCTION public.helic3_tickets_before_insert_row_tr()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    NEW.display_id := nextval('helic3_ticket_dpid_seq_' || NEW.account_id);
+    RETURN NEW;
+END;
+$function$
+  SQL
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER helic3_tickets_before_insert_row_tr BEFORE INSERT ON \"helic3_tickets\" FOR EACH ROW EXECUTE FUNCTION helic3_tickets_before_insert_row_tr()")
 
   create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).
       on("accounts").

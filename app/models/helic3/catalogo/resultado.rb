@@ -2,6 +2,12 @@
 # PQR, si abre un expediente de garantia, y si exige aprobacion de una
 # persona con autoridad (CAT-02, frente C): negar una garantia o aprobar un
 # retracto que mueve dinero nunca lo decide el agente solo.
+#
+# requiere_admin (RES-01) responde una pregunta DISTINTA de aprobacion_humana:
+# no "puede la IA sola?" sino "que humano puede FIRMARLO?". default true = solo
+# admin, como hoy; Karen lo afloja por resultado desde ADM-01 sin desplegar. Lo
+# consume Helic3::Catalogo::ResultadoPolicy#aplicar? (la puerta humana; el agente pasa por
+# autonomia_resolver_pqr, no por aqui).
 # == Schema Information
 #
 # Table name: helic3_catalogo_resultados
@@ -14,6 +20,7 @@
 #  codigo            :string           not null
 #  nombre            :string           not null
 #  posicion          :integer          default(0), not null
+#  requiere_admin    :boolean          default(TRUE), not null
 #  created_at        :datetime         not null
 #  updated_at        :datetime         not null
 #  account_id        :bigint           not null

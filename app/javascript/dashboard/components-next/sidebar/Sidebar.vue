@@ -213,6 +213,16 @@ useEventListener(document, 'touchend', onResizeEnd);
 
 const inboxes = useMapGetter('inboxes/getInboxes');
 const labels = useMapGetter('labels/getLabelsOnSidebar');
+
+// VIS-05: contadores del menú del módulo, solo donde hay consulta real. Salen de
+// una fuente PROPIA y liviana (pqrInbox/getContadores, endpoint de puros COUNT) que
+// NO escribe records/meta de la bandeja: el rail no debe pisar lo que la bandeja
+// tenga cargado. Las hojas sin fuente (catálogos) no muestran número.
+const pqrContadores = useMapGetter('pqrInbox/getContadores');
+const pqrSinResponder = computed(() => pqrContadores.value.sin_responder || 0);
+const pqrDecisionesPendientes = computed(
+  () => pqrContadores.value.decisiones_pendientes || 0
+);
 const allUnreadCount = useMapGetter(
   'conversationUnreadCounts/getAllUnreadCount'
 );
@@ -254,6 +264,19 @@ onMounted(() => {
   store.dispatch('attributes/get');
   store.dispatch('customViews/get', 'conversation');
   store.dispatch('customViews/get', 'contact');
+  // VIS-05: conteos del menú del módulo, por su fuente liviana propia (no pisa la
+  // bandeja). 404 = la cuenta no tiene el módulo del rail; se ignora. Cualquier otro
+  // error se registra en vez de tragarse: una cuenta rota no debe verse igual a una
+  // sana (misma regla que el #41).
+  store.dispatch('pqrInbox/fetchContadores').catch(error => {
+    if (error?.response?.status !== 404) {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[Helic3] no se pudieron cargar los contadores del rail',
+        error
+      );
+    }
+  });
 });
 
 watch([accountId, hasConversationUnreadCounts], fetchConversationUnreadCounts, {
@@ -711,15 +734,33 @@ const menuItems = computed(() => {
       ],
     },
     {
-      name: 'Tickets',
-      label: t('SIDEBAR.TICKETS'),
+      name: 'PQR',
       icon: 'i-lucide-ticket',
+      label: t('TICKETS.INBOX.MENU_GROUP'),
+      activeOn: ['tickets_index'],
       children: [
         {
-          name: 'All Tickets',
-          label: t('SIDEBAR.ALL_TICKETS'),
-          to: accountScopedRoute('tickets_index'),
+          name: 'PQR Inbox',
+          label: t('TICKETS.INBOX.TITLE'),
+          icon: 'i-lucide-inbox',
           activeOn: ['tickets_index'],
+          to: accountScopedRoute('tickets_index'),
+          badgeCount: pqrSinResponder.value,
+        },
+        {
+          name: 'PQR Decisiones',
+          label: t('TICKETS.DECISIONS.TITLE'),
+          icon: 'i-lucide-gavel',
+          activeOn: ['helic3_pqr_decisiones'],
+          to: accountScopedRoute('helic3_pqr_decisiones'),
+          badgeCount: pqrDecisionesPendientes.value,
+        },
+        {
+          name: 'PQR Catalogs',
+          label: t('TICKETS.ADMIN.TITLE'),
+          icon: 'i-lucide-settings-2',
+          activeOn: ['helic3_catalogos_admin'],
+          to: accountScopedRoute('helic3_catalogos_admin'),
         },
       ],
     },
@@ -976,6 +1017,7 @@ const menuItems = computed(() => {
         ],
       },
     ]"
+    data-helic3-rail
     class="bg-n-background flex flex-col text-sm pb-px fixed top-0 ltr:left-0 rtl:right-0 h-full z-40 w-[200px] md:w-auto md:relative md:flex-shrink-0 md:ltr:translate-x-0 md:rtl:translate-x-0 ltr:border-r rtl:border-l border-n-weak"
     :class="[
       {

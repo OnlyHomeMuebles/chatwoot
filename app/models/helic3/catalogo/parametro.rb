@@ -21,7 +21,8 @@
 #  idx_h3cat_parametros_account_clave  (account_id,clave) UNIQUE
 #
 class Helic3::Catalogo::Parametro < ApplicationRecord
-  UNIDADES = %w[dias_habiles dias meses porcentaje cantidad booleano].freeze
+  # texto entro con GAR-01: el prefijo del radicado de garantia es una cadena
+  UNIDADES = %w[dias_habiles dias meses porcentaje cantidad booleano texto].freeze
 
   belongs_to :account
 
