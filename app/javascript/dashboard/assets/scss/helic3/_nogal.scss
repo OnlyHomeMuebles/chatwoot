@@ -75,12 +75,26 @@
     --slate-10: 184 177 169; // secundario tenue
     --slate-9: 170 163 155; // identificadores de canal, iconos
     --slate-8: 150 143 135;
-    // superficies internas sobre el café (badges/contadores): tonos oscuros, no beige claro
-    --slate-4: 60 54 48; // fondo de badge/contador
-    --slate-5: 68 61 54;
     --border-weak: 56 51 46;
     --border-strong: 74 67 60;
     --alpha-1: 255, 255, 255, 0.08; // hover sobre el rail
     --alpha-2: 255, 255, 255, 0.14; // activo sobre el rail
+  }
+
+  // VIS-08: los popovers/menus que se abren DENTRO del rail (menu de perfil, account
+  // switcher, dropdowns) heredarian el texto claro del rail, pero tienen superficie
+  // clara -> texto claro sobre claro, ilegible. Aqui se re-declaran los valores del
+  // lienzo SOLO en esas superficies; por cercania gana esta regla (mas interna), asi
+  // el rail sigue oscuro y los menus vuelven a su contraste normal.
+  :root[data-helic3-theme='nogal']:not(.dark)
+    [data-helic3-rail]
+    :where([role='menu'], .dropdown-pane, [data-radix-popper-content-wrapper]) {
+    --slate-12: 31 27 23;
+    --slate-11: 79 71 64;
+    --slate-10: 117 107 99;
+    --slate-9: 174 165 155;
+    --slate-8: 190 179 165;
+    --slate-4: 232 226 218;
+    --slate-5: 226 219 209;
   }
 }

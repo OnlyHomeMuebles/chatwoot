@@ -730,7 +730,6 @@ const menuItems = computed(() => {
       icon: 'i-lucide-ticket',
       label: t('TICKETS.INBOX.MENU_GROUP'),
       activeOn: ['tickets_index'],
-      showTreeLine: true,
       children: [
         {
           name: 'PQR Inbox',
