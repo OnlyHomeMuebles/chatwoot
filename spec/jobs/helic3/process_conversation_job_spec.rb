@@ -11,11 +11,25 @@ RSpec.describe Helic3::ProcessConversationJob do
   before do
     allow(Helic3::ChatwootClient).to receive(:new).and_return(client)
     allow(Helic3::Agents::RunnerService).to receive(:new).and_return(runner)
+    # H3A-08/H3A-12: el job construye el runner, registra el modo y chequea que
+    # haya agentes antes de responder. Por defecto: modo clases y con agentes.
+    allow(runner).to receive(:modo).and_return(:clases)
+    allow(runner).to receive(:hay_agentes?).and_return(true)
     allow(Helic3::Agents::ConversationMemory).to receive(:new).and_return(memory)
     allow(memory).to receive(:load).and_return({})
     allow(memory).to receive(:save)
     allow(client).to receive(:create_message)
     allow(client).to receive(:toggle_typing)
+  end
+
+  # H3A-08 criterio 3: sin agentes activos para la bandeja, se deja al humano.
+  it 'no responde y deja la conversación al humano cuando no hay agentes activos' do
+    allow(runner).to receive(:hay_agentes?).and_return(false)
+
+    expect(runner).not_to receive(:run)
+    expect(client).not_to receive(:create_message)
+
+    job.perform(account_id: 1, conversation_id: 7, content: 'hola')
   end
 
   it 'corre el runner con el contexto atado a la conversación, publica la respuesta y guarda la memoria' do

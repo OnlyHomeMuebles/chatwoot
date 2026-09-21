@@ -154,6 +154,8 @@ class Helic3::Agents::TriageAgent
   def self.default_model
     InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence || LlmConstants::DEFAULT_MODEL
   end
-  private_class_method :contextual_instructions, :seccion_apertura, :seccion_ya_autorizado,
+  # seccion_apertura queda PUBLICA: el runner dinamico (H3A-08) la reutiliza para
+  # reproducir el consentimiento AGT-07 del triage cuando lo construye desde la BD.
+  private_class_method :contextual_instructions, :seccion_ya_autorizado,
                        :seccion_pedir_consentimiento, :textos_apertura, :seccion_sin_config, :default_model
 end

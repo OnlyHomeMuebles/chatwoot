@@ -23,21 +23,48 @@ class Helic3::ProcessConversationJob < ApplicationJob
   def perform(account_id:, conversation_id:, content:)
     Helic3::Agents::LlmRuntime.configure_agents!
     @account_id = account_id
-    client = Helic3::ChatwootClient.new(account_id: account_id)
-    memory = Helic3::Agents::ConversationMemory.new(account_id: account_id, conversation_id: conversation_id)
-    # AGT-07: el estado de consentimiento se lee de la conversacion (no de la memoria del modelo),
-    # para que el aviso no se repita entre corridas. El triage lo recibe en el state.
-    @consentimiento_datos_at = consentimiento_de_datos(conversation_id)
+    @account = Account.find_by(id: account_id)
+    @client = Helic3::ChatwootClient.new(account_id: account_id)
+    @inbox = inbox_de(conversation_id)
+    @runner_service = Helic3::Agents::RunnerService.new(
+      account: @account, inbox: @inbox, **Helic3::Agents::LlmRuntime.agents_options
+    )
+    # H3A-12 (crit 2): el modo (bd | clases) queda en el log de cada ejecucion.
+    Rails.logger.info("[Helic3] conv=#{conversation_id} runner_modo=#{@runner_service.modo}")
+    # H3A-08 (crit 3): sin agentes activos para la bandeja, se deja al humano.
+    return dejar_al_humano(conversation_id) unless @runner_service.hay_agentes?
 
-    start_typing(client, conversation_id)
-    reply = generate_reply(client, memory, conversation_id, content)
-    client.create_message(conversation_id, content: reply, message_type: 'outgoing') if reply.present?
-    encolar_radicacion(conversation_id)
+    atender(conversation_id, content)
   ensure
-    stop_typing(client, conversation_id)
+    stop_typing(@client, conversation_id) if @client
   end
 
   private
+
+  # corre el multiagente y publica la respuesta. Solo se llega aqui si hay agentes.
+  def atender(conversation_id, content)
+    memory = Helic3::Agents::ConversationMemory.new(account_id: @account_id, conversation_id: conversation_id)
+    # AGT-07: el estado de consentimiento se lee de la conversacion (no de la memoria del
+    # modelo), para que el aviso no se repita entre corridas. El triage lo recibe en el state.
+    @consentimiento_datos_at = consentimiento_de_datos(conversation_id)
+
+    start_typing(@client, conversation_id)
+    reply = generate_reply(@client, memory, conversation_id, content)
+    @client.create_message(conversation_id, content: reply, message_type: 'outgoing') if reply.present?
+    encolar_radicacion(conversation_id)
+  end
+
+  def dejar_al_humano(conversation_id)
+    Rails.logger.info("[Helic3] sin agentes activos para la bandeja de conv=#{conversation_id}; se deja al equipo humano")
+  end
+
+  # bandeja de la conversacion; el runner filtra los agentes activos por ella (H3A-08)
+  def inbox_de(display_id)
+    Account.find_by(id: @account_id)&.conversations&.find_by(display_id: display_id)&.inbox
+  rescue StandardError => e
+    Rails.logger.warn("[Helic3] no se pudo resolver la bandeja conv=#{display_id}: #{e.message}")
+    nil
+  end
 
   # AGT-07: lee el sello de consentimiento del atributo de la conversacion (best-effort: si no
   # se puede leer, se asume sin consentimiento y el aviso se mostrara).
@@ -92,7 +119,7 @@ class Helic3::ProcessConversationJob < ApplicationJob
       context[:account_id] = @account_id
       context[:state] = { conversation_id: conversation_id, chatwoot_client: client,
                           consentimiento_datos_at: @consentimiento_datos_at }
-      result = Helic3::Agents::RunnerService.new(**Helic3::Agents::LlmRuntime.agents_options).run(content, context: context)
+      result = @runner_service.run(content, context: context)
       return result if result.output.to_s.strip.present?
 
       delay = retry_delay(result.error)

@@ -352,6 +352,9 @@ Rails.application.routes.draw do
               resources :items, only: [:update], controller: 'garantia_items'
             end
             resource :catalogos, only: [:show]
+            # H3A-03: catalogo fijo de herramientas + reglas duras (solo lectura),
+            # para que el panel de Agentes IA no duplique lo que vive en codigo.
+            get 'agentes/catalogo', to: 'agentes#catalogo'
             # Bandeja de PQR (BAN-01): indice de solo lectura, filtrado y paginado
             # en servidor. Endpoint propio para no cambiar la forma de la respuesta
             # que el panel de conversacion ya consume por tickets#index.
