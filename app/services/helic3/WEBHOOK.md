@@ -30,10 +30,13 @@ Cliente escribe en Chatwoot
   y las notas privadas (evita bucles), pero ya no descarta un mensaje que es solo una foto.
 - **Contexto atado a la conversación:** el `conversation_id` (display_id) viaja en
   `context[:state][:conversation_id]`, para que las tools actúen sobre la conversación correcta.
-- **Fotos (AGT-08):** las URLs de los adjuntos tipo imagen viajan en
-  `context[:state][:imagenes]` (extraídas del propio payload del webhook, sin llamar a la
-  Application API) para que `Helic3::Agents::Tools::AnalizarImagenTool` lea el texto legible con OCR
-  local (`tesseract`, sin API ni key). No describe objetos ni daños visuales, solo texto.
+- **Fotos (AGT-08):** las URLs de los adjuntos tipo imagen se extraen del propio payload del
+  webhook (sin llamar a la Application API). `Helic3::Agents::LectorDeImagenes` lee el texto
+  legible con OCR local (`tesseract`, sin API ni key) SIEMPRE, de forma determinista, antes de
+  correr el agente — no es una tool que el modelo deba llamar (se probó que a veces "alucinaba" el
+  resultado sin invocarla). El texto (o su ausencia) viaja ya resuelto en
+  `context[:state][:texto_imagenes]` y `PqrsAgent` lo inyecta en el prompt. No describe objetos ni
+  daños visuales, solo texto.
 - **Idempotencia:** clave Redis `helic3:webhook:message:<id>` con `SET NX EX 1h`. Un reintento del
   mismo mensaje no vuelve a encolar.
 
