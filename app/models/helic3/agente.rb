@@ -11,6 +11,48 @@
 # - confianza_minima 50..100 y max_respuestas 1..30 (ambos opcionales).
 # - herramientas se filtran contra el catalogo fijo (H3A-03): una clave
 #   desconocida no se guarda.
+# == Schema Information
+#
+# Table name: helic3_agentes
+#
+#  id               :bigint           not null, primary key
+#  activo           :boolean          default(TRUE), not null
+#  codigo           :string           not null
+#  confianza_minima :integer
+#  criterio_ruteo   :text
+#  descripcion      :text
+#  es_sistema       :boolean          default(FALSE), not null
+#  handoff_reglas   :jsonb            not null
+#  herramientas     :jsonb            not null
+#  horario          :string
+#  max_respuestas   :integer
+#  mensaje_handoff  :text
+#  modelo           :string
+#  nombre           :string           not null
+#  politicas        :jsonb            not null
+#  politicas_texto  :text
+#  prompt           :text
+#  tono             :string
+#  created_at       :datetime         not null
+#  updated_at       :datetime         not null
+#  account_id       :bigint           not null
+#  creado_por_id    :bigint
+#  team_id          :bigint
+#
+# Indexes
+#
+#  idx_h3ag_account         (account_id)
+#  idx_h3ag_account_activo  (account_id,activo)
+#  idx_h3ag_account_codigo  (account_id,codigo) UNIQUE
+#  idx_h3ag_creado_por      (creado_por_id)
+#  idx_h3ag_team            (team_id)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (account_id => accounts.id) ON DELETE => cascade
+#  fk_rails_...  (creado_por_id => users.id) ON DELETE => nullify
+#  fk_rails_...  (team_id => teams.id) ON DELETE => nullify
+#
 class Helic3::Agente < ApplicationRecord
   self.table_name = 'helic3_agentes'
 
