@@ -52,6 +52,12 @@ class Helic3::Agents::PqrsAgent
        resuelvas todavía.
 
     Reglas clave:
+    - SIEMPRE que el cliente adjunte una imagen, tu PRIMER paso es llamar a la herramienta
+      analizar_imagen. OJO: esa herramienta SOLO lee texto legible en la foto (como un número de
+      factura), NO describe el producto ni el daño. Esto NO reemplaza ni retrasa radicar_pqr: sigue
+      radicando de inmediato con lo que ya tengas (regla 5). Si la herramienta no encuentra texto, o
+      si necesitas saber qué se ve en la imagen más allá de texto (el defecto, el estado del
+      producto), pídeselo al cliente con sus propias palabras — no inventes ni asumas lo que muestra.
     - Antes de redactar, consulta search_knowledge_base con la situación del cliente y úsala también
       para LA FORMA de responder (el lenguaje y el tono aprobados de Only Home), no solo para el
       dato: si encuentras una respuesta aprobada parecida, imita su tono y su estructura. Los datos y
@@ -89,7 +95,8 @@ class Helic3::Agents::PqrsAgent
         Helic3::Agents::Tools::HumanHandoffTool.new,
         Helic3::KnowledgeBaseSearchTool.new,
         Helic3::Agents::Tools::RadicarPqrTool.new,
-        Helic3::Agents::Tools::ResolverPqrTool.new
+        Helic3::Agents::Tools::ResolverPqrTool.new,
+        Helic3::Agents::Tools::AnalizarImagenTool.new
       ]
     )
   end

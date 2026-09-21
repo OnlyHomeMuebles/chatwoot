@@ -19,17 +19,21 @@ class Helic3::WebhookHandler
     Helic3::ProcessConversationJob.perform_later(
       account_id: account_id,
       conversation_id: conversation_display_id,
-      content: content
+      content: content,
+      imagenes: imagenes
     )
   end
 
   private
 
+  # Un mensaje sin texto pero con foto (el caso normal de "aquí está el daño") ya
+  # no se descarta: content.present? por si solo dejaba pasar mensajes vacios
+  # sin adjuntos. imagenes.present? cubre la foto sola.
   def incoming_message?
     @payload[:event] == 'message_created' &&
       @payload[:message_type] == 'incoming' &&
       !ActiveModel::Type::Boolean.new.cast(@payload[:private]) &&
-      content.present? &&
+      (content.present? || imagenes.present?) &&
       conversation_display_id.present?
   end
 
@@ -48,6 +52,15 @@ class Helic3::WebhookHandler
 
   def content
     @payload[:content]
+  end
+
+  # Fotos del mensaje entrante (Message#webhook_data ya las trae con su URL:
+  # push_event_data de un adjunto tipo imagen incluye data_url). Solo imagenes: un
+  # audio o un PDF no le sirven de nada a analizar_imagen.
+  def imagenes
+    Array(@payload[:attachments]).filter_map do |adjunto|
+      adjunto[:data_url] if adjunto[:file_type].to_s == 'image' && adjunto[:data_url].present?
+    end
   end
 
   def conversation_display_id

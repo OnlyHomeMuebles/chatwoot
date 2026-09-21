@@ -41,6 +41,16 @@ RSpec.describe Helic3::Agents::PqrsAgent do
         Helic3::KnowledgeBaseSearchTool
       )
     end
+
+    it 'incluye la herramienta de leer imagenes (AGT-08)' do
+      expect(agent.tools.map(&:class)).to include(Helic3::Agents::Tools::AnalizarImagenTool)
+    end
+  end
+
+  describe 'instrucciones sobre fotos adjuntas (AGT-08)' do
+    it 'indica usar analizar_imagen cuando el cliente ya adjuntó una foto' do
+      expect(described_class::INSTRUCTIONS).to match(/analizar_imagen/)
+    end
   end
 
   describe 'seccion operativa leida del catalogo (AGT-02)' do

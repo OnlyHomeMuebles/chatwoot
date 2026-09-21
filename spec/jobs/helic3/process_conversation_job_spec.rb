@@ -22,7 +22,8 @@ RSpec.describe Helic3::ProcessConversationJob do
     result = instance_double(Agents::RunResult, output: 'Con gusto, te ayudo con eso.', context: { turn_count: 1 })
     expect(runner).to receive(:run)
       .with('hola', context: { account_id: 1,
-                               state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil } })
+                               state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
+                                        imagenes: [] } })
       .and_return(result)
 
     expect(client).to receive(:create_message).with(7, content: 'Con gusto, te ayudo con eso.', message_type: 'outgoing')
@@ -35,10 +36,34 @@ RSpec.describe Helic3::ProcessConversationJob do
     allow(memory).to receive(:load).and_return({ conversation_history: [{ role: :user, content: 'antes' }] })
     expect(runner).to receive(:run)
       .with('hola', context: { conversation_history: [{ role: :user, content: 'antes' }], account_id: 1,
-                               state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil } })
+                               state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
+                                        imagenes: [] } })
       .and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
 
     job.perform(account_id: 1, conversation_id: 7, content: 'hola')
+  end
+
+  it 'pasa las imagenes del mensaje al state para que las tools de vision las lean' do
+    fotos = ['https://cdn.chatwoot.test/foto-dano.jpg']
+    expect(runner).to receive(:run)
+      .with('hola', context: { account_id: 1,
+                               state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
+                                        imagenes: fotos } })
+      .and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
+
+    job.perform(account_id: 1, conversation_id: 7, content: 'hola', imagenes: fotos)
+  end
+
+  it 'usa un mensaje de respaldo para el runner cuando el cliente solo mandó una foto (sin texto)' do
+    fotos = ['https://cdn.chatwoot.test/foto-dano.jpg']
+    expect(runner).to receive(:run)
+      .with(described_class::SOLO_IMAGEN_CONTENT,
+            context: { account_id: 1,
+                       state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
+                                imagenes: fotos } })
+      .and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
+
+    job.perform(account_id: 1, conversation_id: 7, content: '', imagenes: fotos)
   end
 
   it 'muestra el indicador de escritura y lo apaga al terminar' do

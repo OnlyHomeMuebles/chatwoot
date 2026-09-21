@@ -20,7 +20,26 @@ RSpec.describe Helic3::WebhookHandler do
   it 'encola el procesamiento con el contexto de la conversación para un mensaje entrante' do
     expect { described_class.new(incoming_payload).process }
       .to have_enqueued_job(Helic3::ProcessConversationJob)
-      .with(account_id: 1, conversation_id: 7, content: '¿Cuánto cuesta el Sofá Modular Santorini?')
+      .with(account_id: 1, conversation_id: 7, content: '¿Cuánto cuesta el Sofá Modular Santorini?', imagenes: [])
+  end
+
+  it 'encola el procesamiento de un mensaje SOLO con foto (sin texto)' do
+    payload = incoming_payload.merge(
+      content: '',
+      attachments: [
+        { file_type: 'image', data_url: 'https://cdn.chatwoot.test/foto-dano.jpg' },
+        { file_type: 'audio', data_url: 'https://cdn.chatwoot.test/nota-de-voz.ogg' }
+      ]
+    )
+
+    expect { described_class.new(payload).process }
+      .to have_enqueued_job(Helic3::ProcessConversationJob)
+      .with(account_id: 1, conversation_id: 7, content: '', imagenes: ['https://cdn.chatwoot.test/foto-dano.jpg'])
+  end
+
+  it 'ignora un mensaje sin texto y sin adjuntos' do
+    expect { described_class.new(incoming_payload.merge(content: '')).process }
+      .not_to have_enqueued_job(Helic3::ProcessConversationJob)
   end
 
   it 'no responde si la conversación ya fue escalada a un humano (estado open)' do

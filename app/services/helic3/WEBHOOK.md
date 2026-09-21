@@ -25,10 +25,15 @@ Cliente escribe en Chatwoot
 | Handler (filtro + idempotencia) | `app/services/helic3/webhook_handler.rb` |
 | Job de procesamiento | `app/jobs/helic3/process_conversation_job.rb` |
 
-- **Solo reacciona a** `event == message_created`, `message_type == incoming`, no privado y con contenido.
-  Así ignora las respuestas del propio agente y las notas privadas (evita bucles).
+- **Solo reacciona a** `event == message_created`, `message_type == incoming`, no privado, y con
+  contenido de texto **o** al menos una imagen adjunta. Así ignora las respuestas del propio agente
+  y las notas privadas (evita bucles), pero ya no descarta un mensaje que es solo una foto.
 - **Contexto atado a la conversación:** el `conversation_id` (display_id) viaja en
   `context[:state][:conversation_id]`, para que las tools actúen sobre la conversación correcta.
+- **Fotos (AGT-08):** las URLs de los adjuntos tipo imagen viajan en
+  `context[:state][:imagenes]` (extraídas del propio payload del webhook, sin llamar a la
+  Application API) para que `Helic3::Agents::Tools::AnalizarImagenTool` lea el texto legible con OCR
+  local (`tesseract`, sin API ni key). No describe objetos ni daños visuales, solo texto.
 - **Idempotencia:** clave Redis `helic3:webhook:message:<id>` con `SET NX EX 1h`. Un reintento del
   mismo mensaje no vuelve a encolar.
 
