@@ -119,6 +119,22 @@
       "EXPORT": "Export",
       "EXPORT_DISABLED": "Export is coming in a future release"
     },
+    "AGENT_INBOX": {
+      "TITLE": "Agent inbox",
+      "SUBTITLE": "Cases the AI agent has filed on its own, for oversight. This is not an editing screen: open a case to see the real conversation.",
+      "ERROR": "The agent inbox could not be loaded",
+      "EMPTY": "The agent hasn't filed any cases yet",
+      "EMPTY_HINT": "Chats where the bot only answered a question (no PQR/warranty filed) don't show up here.",
+      "OPEN_CONVERSATION": "Open the conversation",
+      "COLUMNS": {
+        "CLASSIFICATION": "Classification"
+      },
+      "METRICS": {
+        "RADICADAS": "Filed by the agent",
+        "ABREN_GARANTIA": "Opened a warranty",
+        "SIN_RESPONDER": "Unanswered"
+      }
+    },
     "ADMIN": {
       "TITLE": "Catalogs and parameters",
       "READ_ONLY": "Read only: changes are made by an administrator",

@@ -4,6 +4,7 @@ import TicketsPage from './pages/TicketsPage.vue';
 import PqrCatalogosPage from './pages/PqrCatalogosPage.vue';
 import PqrDetailPage from './pages/PqrDetailPage.vue';
 import PqrDecisionesPage from './pages/PqrDecisionesPage.vue';
+import AgentInboxPage from './pages/AgentInboxPage.vue';
 
 const ticketsRoutes = {
   routes: [
@@ -43,6 +44,16 @@ const ticketsRoutes = {
       },
       component: PqrDetailPage,
       props: true,
+    },
+    {
+      // Bandeja de supervision del Agente IA (AGT-04): solo los casos que el
+      // bot radico, sin editar nada aqui (el flujo real vive en la conversacion).
+      path: frontendURL('accounts/:accountId/helic3/agente'),
+      name: 'helic3_agente_inbox',
+      meta: {
+        permissions: ['administrator', 'agent'],
+      },
+      component: AgentInboxPage,
     },
   ],
 };

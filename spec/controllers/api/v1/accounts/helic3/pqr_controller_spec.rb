@@ -151,6 +151,37 @@ RSpec.describe 'Helic3 Bandeja de PQR (BAN-01)', type: :request do
     expect(fila['numero_radicado']).to be_nil
   end
 
+  it 'origen=agente solo trae los expedientes que radico el agente (AGT-04)' do
+    Helic3::Casos::Radicar.new(account: account, titulo: 'Radicado por el agente', origen: :agente,
+                               motivo_pqr: motivo_garantia).call
+    radicar(motivo_pqr: motivo_garantia) # origen humano, por defecto
+
+    get_pqr(origen: 'agente')
+
+    payload = response.parsed_body['payload']
+    expect(payload.size).to eq(1)
+    expect(payload.first['origen']).to eq('agente')
+  end
+
+  it 'sin el filtro origen trae expedientes de humano y de agente por igual' do
+    Helic3::Casos::Radicar.new(account: account, titulo: 'Del agente', origen: :agente,
+                               motivo_pqr: motivo_garantia).call
+    radicar(motivo_pqr: motivo_garantia)
+
+    get_pqr
+
+    expect(response.parsed_body['meta']['count']).to eq(2)
+  end
+
+  it 'expone conversation_display_id para poder abrir la conversacion real' do
+    conversacion = create(:conversation, account: account)
+    radicar(motivo_pqr: motivo_garantia, conversation_id: conversacion.id)
+
+    get_pqr
+
+    expect(response.parsed_body['payload'].first['conversation_display_id']).to eq(conversacion.display_id)
+  end
+
   it 'no muestra expedientes de otra cuenta' do
     otra = create(:account)
     Helic3::Catalogo::SeederService.new(otra).sembrar!
