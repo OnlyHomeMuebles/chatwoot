@@ -139,5 +139,30 @@ RSpec.describe Helic3::Agents::RunnerService do
 
       expect(described_class.new(account: account, inbox: otra_bandeja).hay_agentes?).to be(false)
     end
+
+    # N1 (revision de Jhan): el modelo del agente sigue el mismo fallback que las
+    # clases -> fila.modelo (override), si no @model, si no default_model.
+    describe 'modelo del agente' do
+      before { prender_flag }
+
+      def agente_bd(codigo, model: nil)
+        servicio = described_class.new(account: account, inbox: inbox, model: model)
+        servicio.send(:build_agents).find { |a| a.name == codigo }
+      end
+
+      it 'respeta fila.modelo como override cuando esta presente' do
+        Helic3::Agente.find_by(account: account, codigo: 'agente_faq').update!(modelo: 'gpt-override')
+        expect(agente_bd('agente_faq').model).to eq('gpt-override')
+      end
+
+      it 'usa el @model del llamador cuando la fila no trae modelo' do
+        expect(agente_bd('agente_faq', model: 'gpt-del-runtime').model).to eq('gpt-del-runtime')
+      end
+
+      it 'cae al default_model cuando no hay ni fila.modelo ni @model' do
+        allow(InstallationConfig).to receive(:find_by).with(name: 'CAPTAIN_OPEN_AI_MODEL').and_return(nil)
+        expect(agente_bd('agente_faq').model).to eq(LlmConstants::DEFAULT_MODEL)
+      end
+    end
   end
 end

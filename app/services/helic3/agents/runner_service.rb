@@ -11,8 +11,9 @@
 # Sin agentes activos para la bandeja (crit 3): no hay runner; el job deja la
 # conversacion al humano y nada se rompe (ver #hay_agentes?).
 #
-# El modelo/proveedor salen de LlmRuntime (decision: modelo POR CUENTA). Si se
-# decide modelo por agente, basta usar `fila.modelo.presence || @model` aqui.
+# El modelo/proveedor salen de LlmRuntime (decision: modelo POR CUENTA). La
+# columna fila.modelo ya se respeta como override (construir_agente), asi que la
+# decision "modelo por agente" solo requiere llenar esa columna desde la UI.
 class Helic3::Agents::RunnerService
   # inbox/account son opcionales: sin ellos, modo :clases (comportamiento de hoy),
   # que es lo que usan los llamadores y specs previos a H3A-08.
@@ -109,12 +110,21 @@ class Helic3::Agents::RunnerService
     Agents::Agent.new(
       name: fila.codigo,
       instructions: instrucciones_para(fila),
-      model: @model,
+      # N1 (revision de Jhan): mismo fallback que las clases (model || default_model),
+      # para que los dos caminos coincidan cuando el llamador no pasa modelo. La
+      # columna fila.modelo queda lista para la decision "modelo por agente".
+      model: fila.modelo.presence || @model || default_model,
       provider: @provider,
       assume_model_exists: @assume_model_exists,
       # H3A-10: solo las herramientas de la columna + derivar_humano (siempre)
       tools: Helic3::Agents::CatalogoHerramientas.instanciar(fila.herramientas)
     )
+  end
+
+  # mismo default que las clases (TriageAgent.default_model, etc.): el modelo de
+  # OpenAI configurable desde Super Admin, o la constante del proyecto.
+  def default_model
+    InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence || LlmConstants::DEFAULT_MODEL
   end
 
   # cuerpo estatico (PromptBuilder, H3A-07) + secciones contextuales por corrida.
