@@ -1,19 +1,71 @@
 # frozen_string_literal: true
 
+# H3A-08: arma la orquesta leyendo helic3_agentes (filtrados por bandeja y
+# activos), en vez de instanciar las cinco clases a mano. Crear/editar/pausar un
+# agente cambia el comportamiento en el siguiente mensaje, sin desplegar.
+#
+# Paridad (crit 1): con la semilla de H3A-04 (mismo prompt via PromptBuilder +
+# mismas herramientas + mismas secciones contextuales por codigo) el resultado
+# es el mismo de hoy.
+#
+# Sin agentes activos para la bandeja (crit 3): no hay runner; el job deja la
+# conversacion al humano y nada se rompe (ver #hay_agentes?).
+#
+# El modelo/proveedor salen de LlmRuntime (decision: modelo POR CUENTA). Si se
+# decide modelo por agente, basta usar `fila.modelo.presence || @model` aqui.
 class Helic3::Agents::RunnerService
-  def initialize(model: nil, provider: nil, assume_model_exists: false)
+  # inbox/account son opcionales: sin ellos, modo :clases (comportamiento de hoy),
+  # que es lo que usan los llamadores y specs previos a H3A-08.
+  def initialize(inbox: nil, account: nil, model: nil, provider: nil, assume_model_exists: false)
+    @inbox = inbox
+    @account = account || inbox&.account
     @model = model
     @provider = provider
     @assume_model_exists = assume_model_exists
   end
 
+  # modo activo segun la bandera por cuenta (H3A-12): :bd lee la base de datos,
+  # :clases usa el comportamiento actual. Se expone para dejarlo en el log.
+  def modo
+    Helic3::Agents::FeatureFlag.agentes_desde_bd?(@account) ? :bd : :clases
+  end
+
+  # En modo :bd, ¿hay agentes activos para esta bandeja? Si no, el job deja la
+  # conversacion al humano (crit 3 de H3A-08). En modo :clases siempre hay 5.
+  def hay_agentes?
+    modo == :bd ? filas.any? : true
+  end
+
   def run(message, context: {})
+    return nil if runner.nil?
+
     runner.run(message, context: context)
   end
 
   private
 
+  def filas
+    return [] if @inbox.nil?
+
+    @filas ||= Helic3::Agente.activos_para(@inbox).to_a
+  end
+
+  def runner
+    return @runner if defined?(@runner)
+
+    agentes = build_agents
+    @runner = agentes.empty? ? nil : Agents::Runner.with_agents(*agentes)
+  end
+
+  # H3A-12: elige el camino segun la bandera por cuenta. Apagada (default) usa las
+  # clases actuales -> comportamiento de hoy, sin riesgo. Encendida lee la BD.
   def build_agents
+    modo == :bd ? construir_desde_bd : construir_desde_clases
+  end
+
+  # camino actual (clases quemadas): fallback del flag apagado. Es el build_agents
+  # original de RunnerService, intacto.
+  def construir_desde_clases
     opts = { model: @model, provider: @provider, assume_model_exists: @assume_model_exists }
     triage       = Helic3::Agents::TriageAgent.build(**opts)
     faq          = Helic3::Agents::FaqAgent.build(**opts)
@@ -30,7 +82,90 @@ class Helic3::Agents::RunnerService
     [triage, faq, pqrs, logistica, cotizaciones]
   end
 
-  def runner
-    @runner ||= Agents::Runner.with_agents(*build_agents)
+  # H3A-08 (modo :bd): construye cada agente desde su fila y cablea los handoffs en
+  # estrella: triage <-> cada especialista. El triage (es_sistema) va primero.
+  def construir_desde_bd
+    return [] if filas.empty?
+
+    construidos = filas.index_with { |fila| construir_agente(fila) }
+    triage_fila = filas.find(&:es_sistema)
+    # sin triage no hay hub de ruteo (borde raro; con la semilla no ocurre)
+    return construidos.values if triage_fila.nil?
+
+    cablear_orquesta(construidos, triage_fila)
+  end
+
+  # deja el triage como entrada y con handoff a cada especialista; cada especialista
+  # solo con handoff de vuelta al triage (estrella, sin bucles).
+  def cablear_orquesta(construidos, triage_fila)
+    triage = construidos[triage_fila]
+    especialistas = construidos.except(triage_fila).values
+    triage.register_handoffs(*especialistas) if especialistas.any?
+    especialistas.each { |esp| esp.register_handoffs(triage) }
+    [triage, *especialistas]
+  end
+
+  def construir_agente(fila)
+    Agents::Agent.new(
+      name: fila.codigo,
+      instructions: instrucciones_para(fila),
+      model: @model,
+      provider: @provider,
+      assume_model_exists: @assume_model_exists,
+      # H3A-10: solo las herramientas de la columna + derivar_humano (siempre)
+      tools: Helic3::Agents::CatalogoHerramientas.instanciar(fila.herramientas)
+    )
+  end
+
+  # cuerpo estatico (PromptBuilder, H3A-07) + secciones contextuales por corrida.
+  # Las contextuales viven en codigo keyed por codigo: reproducen exactamente lo
+  # que hoy hacen las clases (consentimiento del triage, tiempos/codigos de PQRS,
+  # contexto de conversacion de logistica/cotizaciones).
+  def instrucciones_para(fila)
+    base = Helic3::Agents::PromptBuilder.new(fila)
+    case fila.codigo
+    when 'agente_triage' then instrucciones_triage(base)
+    when 'agente_pqrs'   then instrucciones_pqrs(base)
+    when 'agente_logistica'
+      instrucciones_con_contexto(base, [[:customer_name, 'Cliente'], [:order_number, 'Número de pedido']])
+    when 'agente_cotizaciones'
+      instrucciones_con_contexto(base, [[:customer_name, 'Cliente'], [:city, 'Ciudad'], [:product, 'Producto de interés']])
+    else
+      base.construir # estatico: FAQ y agentes nuevos creados por el admin
+    end
+  end
+
+  # triage: antepone el consentimiento AGT-07 (reutiliza la logica de TriageAgent)
+  def instrucciones_triage(base)
+    lambda do |run_context|
+      contexto = run_context.context || {}
+      state = contexto[:state] || {}
+      [base.construir,
+       Helic3::Agents::TriageAgent.seccion_apertura(contexto[:account_id], state[:consentimiento_datos_at])]
+        .compact.join("\n\n")
+    end
+  end
+
+  # pqrs: tiempos y codigos del catalogo (reutiliza PqrsAgent) + contexto conocido
+  def instrucciones_pqrs(base)
+    lambda do |run_context|
+      contexto = run_context.context || {}
+      state = contexto[:state] || {}
+      known = []
+      known << "- Cliente: #{state[:customer_name]}" if state[:customer_name].present?
+      known << "- Número de orden: #{state[:order_number]} (ya disponible, no lo vuelvas a pedir)" if state[:order_number].present?
+      partes = [base.construir, Helic3::Agents::PqrsAgent.seccion_operativa(contexto[:account_id])]
+      partes << "# Contexto de la conversación\n#{known.join("\n")}" unless known.empty?
+      partes.compact.join("\n")
+    end
+  end
+
+  # logistica/cotizaciones: solo el contexto de la conversacion si viene en el state
+  def instrucciones_con_contexto(base, campos)
+    lambda do |run_context|
+      state = (run_context.context || {})[:state] || {}
+      known = campos.filter_map { |clave, etiqueta| "- #{etiqueta}: #{state[clave]}" if state[clave].present? }
+      known.empty? ? base.construir : "#{base.construir}\n# Contexto de la conversación\n#{known.join("\n")}"
+    end
   end
 end

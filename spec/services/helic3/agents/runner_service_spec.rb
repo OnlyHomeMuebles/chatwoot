@@ -96,4 +96,48 @@ RSpec.describe Helic3::Agents::RunnerService do
       expect(result.context[:current_agent]).to eq('agente_cotizaciones')
     end
   end
+
+  # H3A-08 (runner desde la BD) + H3A-12 (bandera por cuenta). Lo de arriba cubre el
+  # camino de clases; aqui el camino de base de datos.
+  describe 'desde la BD (H3A-08 y H3A-12)' do
+    let(:account) { create(:account) }
+    let(:inbox) { create(:inbox, account: account) }
+
+    before do
+      Helic3::Agents::SeederService.new(account).sembrar!
+      Helic3::Agente.where(account: account).find_each do |agente|
+        Helic3::AgenteBandeja.create!(agente: agente, inbox: inbox)
+      end
+    end
+
+    def prender_flag
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'agentes_desde_bd',
+                                          valor: 'true', unidad: 'booleano')
+    end
+
+    it 'con la bandera apagada usa las clases (modo :clases): comportamiento de hoy' do
+      expect(described_class.new(account: account, inbox: inbox).modo).to eq(:clases)
+    end
+
+    it 'con la bandera encendida lee la BD y arma la orquesta con el triage primero' do
+      prender_flag
+      servicio = described_class.new(account: account, inbox: inbox)
+
+      expect(servicio.modo).to eq(:bd)
+      expect(servicio.hay_agentes?).to be(true)
+
+      agentes = servicio.send(:build_agents)
+      expect(agentes.first.name).to eq('agente_triage')
+      expect(agentes.map(&:name)).to contain_exactly(
+        'agente_triage', 'agente_faq', 'agente_pqrs', 'agente_logistica', 'agente_cotizaciones'
+      )
+    end
+
+    it 'en modo :bd sin agentes para la bandeja, hay_agentes? es false (se deja al humano)' do
+      prender_flag
+      otra_bandeja = create(:inbox, account: account)
+
+      expect(described_class.new(account: account, inbox: otra_bandeja).hay_agentes?).to be(false)
+    end
+  end
 end

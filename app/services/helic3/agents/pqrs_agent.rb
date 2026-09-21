@@ -165,6 +165,8 @@ class Helic3::Agents::PqrsAgent
   def self.default_model
     InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence || LlmConstants::DEFAULT_MODEL
   end
-  private_class_method :contextual_instructions, :seccion_operativa, :seccion_tiempos,
+  # seccion_operativa queda PUBLICA: el runner dinamico (H3A-08) la reutiliza para
+  # inyectar los tiempos y codigos del catalogo cuando construye PQRS desde la BD.
+  private_class_method :contextual_instructions, :seccion_tiempos,
                        :seccion_codigos, :default_model
 end
