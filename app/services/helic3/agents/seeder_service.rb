@@ -52,6 +52,13 @@ class Helic3::Agents::SeederService
       herramientas: %w[buscar_conocimiento] }
   ].freeze
 
+  # Patrones para ubicar el Agent Bot de Helic3 por su webhook. Se aceptan LOS DOS
+  # mientras la ruta heredada siga viva: en produccion n8n y el Agent Bot todavia
+  # apuntan a /webhooks/only_home (ver config/routes.rb), no a /webhooks/helic3.
+  # Si solo buscaramos '%helic3%', asignar_bandejas! no encontraria nada en prod y
+  # el bot quedaria mudo al prender la bandera (B1 de la revision de Jhan).
+  PATRONES_BOT = %w[%helic3% %only_home%].freeze
+
   def initialize(account)
     @account = account
   end
@@ -95,9 +102,11 @@ class Helic3::Agents::SeederService
     end
   end
 
-  # inbox de la cuenta cuyo Agent Bot apunta al webhook de helic3
+  # inbox de la cuenta cuyo Agent Bot apunta al webhook de helic3 (o a la ruta
+  # heredada /webhooks/only_home, todavia usada en produccion)
   def inboxes_del_bot_helic3
-    bot_ids = AgentBot.where('outgoing_url ILIKE ?', '%helic3%').pluck(:id)
+    condicion = PATRONES_BOT.map { 'outgoing_url ILIKE ?' }.join(' OR ')
+    bot_ids = AgentBot.where(condicion, *PATRONES_BOT).pluck(:id)
     return [] if bot_ids.empty?
 
     @account.inboxes.joins(:agent_bot_inbox)

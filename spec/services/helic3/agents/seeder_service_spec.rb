@@ -39,4 +39,58 @@ RSpec.describe Helic3::Agents::SeederService do
       expect(normalizar.call(armado)).to eq(normalizar.call(clase::INSTRUCTIONS))
     end
   end
+
+  # B1 (revision de Jhan): la asignacion de bandejas debe encontrar el bot tanto por
+  # el webhook nuevo (/webhooks/helic3) como por la ruta heredada (/webhooks/only_home),
+  # que es la que sigue viva en produccion. Si solo mirara 'helic3', en prod no
+  # asignaria nada y el bot quedaria mudo al prender la bandera.
+  describe 'asignar_bandejas! (H3A-04 crit paridad)' do
+    def bandejas_de(account)
+      Helic3::AgenteBandeja.where(agente_id: Helic3::Agente.where(account: account).select(:id))
+    end
+
+    def conectar_bot(account, inbox, outgoing_url)
+      bot = create(:agent_bot, account: account, outgoing_url: outgoing_url)
+      create(:agent_bot_inbox, inbox: inbox, agent_bot: bot)
+    end
+
+    it 'vincula los 5 agentes al inbox del bot cuando el webhook es /webhooks/helic3' do
+      inbox = create(:inbox, account: account)
+      conectar_bot(account, inbox, 'https://app.example.com/webhooks/helic3')
+
+      described_class.new(account).sembrar!
+
+      expect(bandejas_de(account).count).to eq(5)
+      expect(bandejas_de(account).where(inbox_id: inbox.id).count).to eq(5)
+    end
+
+    it 'tambien vincula cuando el webhook es la ruta heredada /webhooks/only_home' do
+      inbox = create(:inbox, account: account)
+      conectar_bot(account, inbox, 'https://app.example.com/webhooks/only_home')
+
+      described_class.new(account).sembrar!
+
+      expect(bandejas_de(account).count).to eq(5)
+    end
+
+    it 'no asigna ninguna bandeja si no hay un bot de helic3 conectado' do
+      inbox = create(:inbox, account: account)
+      conectar_bot(account, inbox, 'https://app.example.com/webhooks/otro_servicio')
+
+      resumen = described_class.new(account).sembrar!
+
+      expect(bandejas_de(account).count).to eq(0)
+      expect(resumen[:bandejas]).to eq(0)
+    end
+
+    it 'es idempotente: no duplica bandejas al sembrar dos veces' do
+      inbox = create(:inbox, account: account)
+      conectar_bot(account, inbox, 'https://app.example.com/webhooks/helic3')
+
+      described_class.new(account).sembrar!
+      described_class.new(account).sembrar!
+
+      expect(bandejas_de(account).count).to eq(5)
+    end
+  end
 end
