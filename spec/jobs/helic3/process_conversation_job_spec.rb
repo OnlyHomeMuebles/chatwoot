@@ -16,6 +16,8 @@ RSpec.describe Helic3::ProcessConversationJob do
     allow(memory).to receive(:save)
     allow(client).to receive(:create_message)
     allow(client).to receive(:toggle_typing)
+    # AGT-08: sin imagenes no hay nada que leer; cada test que las manda stubea su propio resultado.
+    allow(Helic3::Agents::LectorDeImagenes).to receive(:leer).and_return(nil)
   end
 
   it 'corre el runner con el contexto atado a la conversación, publica la respuesta y guarda la memoria' do
@@ -23,7 +25,7 @@ RSpec.describe Helic3::ProcessConversationJob do
     expect(runner).to receive(:run)
       .with('hola', context: { account_id: 1,
                                state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
-                                        imagenes: [] } })
+                                        imagenes: [], texto_imagenes: nil } })
       .and_return(result)
 
     expect(client).to receive(:create_message).with(7, content: 'Con gusto, te ayudo con eso.', message_type: 'outgoing')
@@ -37,18 +39,19 @@ RSpec.describe Helic3::ProcessConversationJob do
     expect(runner).to receive(:run)
       .with('hola', context: { conversation_history: [{ role: :user, content: 'antes' }], account_id: 1,
                                state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
-                                        imagenes: [] } })
+                                        imagenes: [], texto_imagenes: nil } })
       .and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
 
     job.perform(account_id: 1, conversation_id: 7, content: 'hola')
   end
 
-  it 'pasa las imagenes del mensaje al state para que las tools de vision las lean' do
-    fotos = ['https://cdn.chatwoot.test/foto-dano.jpg']
+  it 'lee el texto de las imagenes (AGT-08, determinista) y lo suma al state' do
+    fotos = ['https://cdn.chatwoot.test/factura.jpg']
+    allow(Helic3::Agents::LectorDeImagenes).to receive(:leer).with(fotos).and_return('Factura N.° 8821')
     expect(runner).to receive(:run)
       .with('hola', context: { account_id: 1,
                                state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
-                                        imagenes: fotos } })
+                                        imagenes: fotos, texto_imagenes: 'Factura N.° 8821' } })
       .and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
 
     job.perform(account_id: 1, conversation_id: 7, content: 'hola', imagenes: fotos)
@@ -60,7 +63,7 @@ RSpec.describe Helic3::ProcessConversationJob do
       .with(described_class::SOLO_IMAGEN_CONTENT,
             context: { account_id: 1,
                        state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
-                                imagenes: fotos } })
+                                imagenes: fotos, texto_imagenes: nil } })
       .and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
 
     job.perform(account_id: 1, conversation_id: 7, content: '', imagenes: fotos)

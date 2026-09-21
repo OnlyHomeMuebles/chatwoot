@@ -52,12 +52,12 @@ class Helic3::Agents::PqrsAgent
        resuelvas todavía.
 
     Reglas clave:
-    - SIEMPRE que el cliente adjunte una imagen, tu PRIMER paso es llamar a la herramienta
-      analizar_imagen. OJO: esa herramienta SOLO lee texto legible en la foto (como un número de
-      factura), NO describe el producto ni el daño. Esto NO reemplaza ni retrasa radicar_pqr: sigue
-      radicando de inmediato con lo que ya tengas (regla 5). Si la herramienta no encuentra texto, o
-      si necesitas saber qué se ve en la imagen más allá de texto (el defecto, el estado del
-      producto), pídeselo al cliente con sus propias palabras — no inventes ni asumas lo que muestra.
+    - Cuando el cliente adjunte una imagen, el sistema YA leyó automáticamente el texto legible que
+      tenga (factura, cédula) y te lo entrega en la sección "Contexto de la conversación" si encontró
+      algo. NO tienes forma de "ver" la foto más allá de ese texto: NUNCA digas que revisaste, viste o
+      no viste algo en la imagen que no esté en ese texto — ni asumas el defecto o el estado del
+      producto. Si necesitas saber qué muestra la foto más allá del texto leído, pídeselo al cliente
+      con sus propias palabras.
     - Antes de redactar, consulta search_knowledge_base con la situación del cliente y úsala también
       para LA FORMA de responder (el lenguaje y el tono aprobados de Only Home), no solo para el
       dato: si encuentras una respuesta aprobada parecida, imita su tono y su estructura. Los datos y
@@ -95,8 +95,7 @@ class Helic3::Agents::PqrsAgent
         Helic3::Agents::Tools::HumanHandoffTool.new,
         Helic3::KnowledgeBaseSearchTool.new,
         Helic3::Agents::Tools::RadicarPqrTool.new,
-        Helic3::Agents::Tools::ResolverPqrTool.new,
-        Helic3::Agents::Tools::AnalizarImagenTool.new
+        Helic3::Agents::Tools::ResolverPqrTool.new
       ]
     )
   end
@@ -114,9 +113,23 @@ class Helic3::Agents::PqrsAgent
       known = []
       known << "- Cliente: #{state[:customer_name]}" if state[:customer_name].present?
       known << "- Número de orden: #{state[:order_number]} (ya disponible, no lo vuelvas a pedir)" if state[:order_number].present?
+      known.concat(linea_de_imagen(state))
       partes << "# Contexto de la conversación\n#{known.join("\n")}" unless known.empty?
 
       partes.compact.join("\n")
+    end
+  end
+
+  # AGT-08: el texto de la foto ya se leyó (OCR determinista, ver LectorDeImagenes) antes de
+  # correr el agente — nunca se le pide al modelo que "llame" a nada para verlo.
+  def self.linea_de_imagen(state)
+    if state[:texto_imagenes].present?
+      ["- Texto leído automáticamente de la foto que el cliente adjuntó (OCR): #{state[:texto_imagenes]}"]
+    elsif state[:imagenes].present?
+      ['- El cliente adjuntó una foto, pero no se encontró texto legible en ella ' \
+       '(puede ser del producto, no de un documento).']
+    else
+      []
     end
   end
 
@@ -172,6 +185,6 @@ class Helic3::Agents::PqrsAgent
   def self.default_model
     InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence || LlmConstants::DEFAULT_MODEL
   end
-  private_class_method :contextual_instructions, :seccion_operativa, :seccion_tiempos,
+  private_class_method :contextual_instructions, :linea_de_imagen, :seccion_operativa, :seccion_tiempos,
                        :seccion_codigos, :default_model
 end

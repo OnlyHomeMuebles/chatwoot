@@ -20,8 +20,8 @@ class Helic3::ProcessConversationJob < ApplicationJob
   MAX_LLM_ATTEMPTS = 2
   MAX_RETRY_WAIT = 4
   # Mensaje de entrada al runner cuando el cliente solo mandó una foto: el runner
-  # necesita un string no vacío, y así el agente sabe por qué debe mirar la imagen
-  # (llamando a analizar_imagen) en vez de responder a un mensaje en blanco.
+  # necesita un string no vacío, y así el agente sabe que llegó una imagen aunque
+  # no haya texto que responder.
   SOLO_IMAGEN_CONTENT = 'El cliente envió una imagen sin texto.'
 
   def perform(account_id:, conversation_id:, content:, imagenes: [])
@@ -32,6 +32,10 @@ class Helic3::ProcessConversationJob < ApplicationJob
     # AGT-07: el estado de consentimiento se lee de la conversacion (no de la memoria del modelo),
     # para que el aviso no se repita entre corridas. El triage lo recibe en el state.
     @consentimiento_datos_at = consentimiento_de_datos(conversation_id)
+    # AGT-08: el OCR corre SIEMPRE aqui, determinista, no como tool que el modelo deba
+    # acordarse de llamar (se probo en vivo que a veces "alucina" el resultado sin
+    # invocarla). El texto ya leido viaja en el state y PqrsAgent lo inyecta en el prompt.
+    @texto_imagenes = Helic3::Agents::LectorDeImagenes.leer(imagenes)
 
     start_typing(client, conversation_id)
     reply = generate_reply(client, memory, conversation_id, content, imagenes)
@@ -96,7 +100,8 @@ class Helic3::ProcessConversationJob < ApplicationJob
       context = memory.load
       context[:account_id] = @account_id
       context[:state] = { conversation_id: conversation_id, chatwoot_client: client,
-                          consentimiento_datos_at: @consentimiento_datos_at, imagenes: imagenes }
+                          consentimiento_datos_at: @consentimiento_datos_at, imagenes: imagenes,
+                          texto_imagenes: @texto_imagenes }
       result = Helic3::Agents::RunnerService.new(**Helic3::Agents::LlmRuntime.agents_options).run(mensaje, context: context)
       return result if result.output.to_s.strip.present?
 

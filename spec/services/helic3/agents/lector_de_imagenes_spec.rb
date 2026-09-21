@@ -2,25 +2,15 @@
 
 require 'rails_helper'
 
-RSpec.describe Helic3::Agents::Tools::AnalizarImagenTool do
-  subject(:tool) { described_class.new }
-
-  def tool_context(imagenes: nil)
-    state = imagenes.nil? ? {} : { imagenes: imagenes }
-    Agents::ToolContext.new(run_context: Agents::RunContext.new({ state: state }))
-  end
-
+RSpec.describe Helic3::Agents::LectorDeImagenes do
   # Doble de lo que devuelve Down.download: un Tempfile con .path, .close, .unlink.
   def archivo_descargado(path)
     instance_double(Tempfile, path: path, close: nil, unlink: nil)
   end
 
-  it 'avisa si el cliente no adjuntó ninguna imagen en su ultimo mensaje' do
-    expect(tool.perform(tool_context)).to match(/no adjuntó ninguna imagen/i)
-  end
-
-  it 'avisa igual si el state trae un array de imagenes vacio' do
-    expect(tool.perform(tool_context(imagenes: []))).to match(/no adjuntó ninguna imagen/i)
+  it 'devuelve nil si no hay imagenes' do
+    expect(described_class.leer(nil)).to be_nil
+    expect(described_class.leer([])).to be_nil
   end
 
   it 'descarga la imagen y devuelve el texto que lee tesseract' do
@@ -32,7 +22,7 @@ RSpec.describe Helic3::Agents::Tools::AnalizarImagenTool do
     expect(RTesseract).to receive(:new).with('/tmp/helic3-ocr123.jpg', lang: described_class::IDIOMA).and_return(rtess)
     expect(rtess).to receive(:to_s).and_return("Factura N.° 8821\n")
 
-    expect(tool.perform(tool_context(imagenes: [url]))).to eq('Factura N.° 8821')
+    expect(described_class.leer([url])).to eq('Factura N.° 8821')
   end
 
   it 'concatena el texto de varias imagenes, separado por un delimitador' do
@@ -45,24 +35,22 @@ RSpec.describe Helic3::Agents::Tools::AnalizarImagenTool do
     allow(Down).to receive(:download).and_return(archivo1, archivo2)
     allow(RTesseract).to receive(:new).and_return(rtess1, rtess2)
 
-    expect(tool.perform(tool_context(imagenes: urls))).to eq("Factura 8821\n---\nCC 1032456789")
+    expect(described_class.leer(urls)).to eq("Factura 8821\n---\nCC 1032456789")
   end
 
-  it 'avisa que no hay texto legible cuando tesseract no encuentra nada (foto del producto, no de un documento)' do
+  it 'devuelve nil cuando tesseract no encuentra texto (foto del producto, no de un documento)' do
     url = 'https://cdn.chatwoot.test/silla-rota.jpg'
     archivo = archivo_descargado('/tmp/c.jpg')
     allow(Down).to receive(:download).and_return(archivo)
     allow(RTesseract).to receive(:new).and_return(instance_double(RTesseract, to_s: '   '))
 
-    resultado = tool.perform(tool_context(imagenes: [url]))
-    expect(resultado).to match(/no se encontró texto legible/i)
+    expect(described_class.leer([url])).to be_nil
   end
 
-  it 'devuelve un mensaje legible (y deja rastro en el log) si la descarga o tesseract fallan' do
+  it 'devuelve nil (y deja rastro en el log) si la descarga o tesseract fallan, sin tumbar el job' do
     allow(Down).to receive(:download).and_raise(Down::Error, 'timeout')
-    expect(Rails.logger).to receive(:error).with(a_string_matching(/analizar_imagen fallo/))
+    expect(Rails.logger).to receive(:error).with(a_string_matching(/lector_de_imagenes fallo/))
 
-    resultado = tool.perform(tool_context(imagenes: ['https://cdn.chatwoot.test/foto.jpg']))
-    expect(resultado).to match(/no se pudo leer la imagen/i)
+    expect(described_class.leer(['https://cdn.chatwoot.test/foto.jpg'])).to be_nil
   end
 end
