@@ -17,10 +17,13 @@ module Helic3::Agents::FeatureFlag
   module_function
 
   # ¿el runner de esta cuenta lee los agentes desde la base de datos?
+  # Usa el lector canonico valor_booleano (ActiveModel::Type::Boolean): asi '1',
+  # 'True', 't' u 'on' escritos en el panel prenden la bandera, en vez de quedar
+  # apagados en silencio como haria un '== true' seco (B2 de la revision de Jhan).
   def agentes_desde_bd?(account)
     return false if account.nil?
 
-    Helic3::Catalogo::Parametro
-      .find_by(account: account, clave: CLAVE_AGENTES_DESDE_BD)&.valor.to_s.strip == 'true'
+    parametro = Helic3::Catalogo::Parametro.find_by(account: account, clave: CLAVE_AGENTES_DESDE_BD)
+    parametro&.valor_booleano || false
   end
 end

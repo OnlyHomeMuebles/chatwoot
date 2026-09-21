@@ -12,7 +12,7 @@ RSpec.describe Helic3::Catalogo::SeederService do
     expect(resumen).to eq(
       categorias: 6, tipos: 5, etapas_pqr: 4, motivos_pqr: 7, resultados: 7,
       motivos_garantia: 5, detalles_tipificados: 31, procesos_garantia: 7,
-      coberturas_ciudad: 10, parametros: 15
+      coberturas_ciudad: 10, parametros: 19
     )
   end
 
@@ -140,6 +140,17 @@ RSpec.describe Helic3::Catalogo::SeederService do
     expect(total.unidad).to eq('dias_habiles')
     expect(umbral.valor_entero).to eq(85)
     expect(direccion.valor_booleano).to be(true)
+  end
+
+  # H3A-12 / B2: la bandera de agentes editables se siembra APAGADA, para que se
+  # pueda prender desde el panel (update) sin un INSERT por consola.
+  it 'siembra la bandera agentes_desde_bd apagada por defecto' do
+    service.sembrar!
+
+    flag = Helic3::Catalogo::Parametro.find_by!(account: account, clave: 'agentes_desde_bd')
+    expect(flag.unidad).to eq('booleano')
+    expect(flag.valor_booleano).to be(false)
+    expect(Helic3::Agents::FeatureFlag.agentes_desde_bd?(account)).to be(false)
   end
 
   it 'siembra los cinco umbrales del semaforo y la autonomia (PRM-01, criterio 3)' do

@@ -136,6 +136,10 @@ class Helic3::Catalogo::SeederService
     { clave: 'umbral_confianza_agente', valor: '85', unidad: 'porcentaje' },
     { clave: 'exigir_direccion_confirmada', valor: 'true', unidad: 'booleano' },
     { clave: 'mostrar_solo_ticket_garantia', valor: 'true', unidad: 'booleano' },
+    # H3A-12: bandera del runner de agentes editables. Apagada por defecto (L-09).
+    # Se siembra aqui para que se pueda PRENDER desde el panel (update del parametro),
+    # sin un INSERT por consola. La lee Helic3::Agents::FeatureFlag.
+    { clave: 'agentes_desde_bd', valor: 'false', unidad: 'booleano' },
     # Umbrales del semaforo (PRM-01): los lee Helic3::PresupuestoGarantia via
     # Helic3::ParametrosGarantia. Sin ellos el semaforo no se puede calcular.
     # Garantia y autonomia van con valor definitivo; los de PQR (8 y 3) son
