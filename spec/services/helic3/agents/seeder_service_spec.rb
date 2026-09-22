@@ -24,19 +24,27 @@ RSpec.describe Helic3::Agents::SeederService do
     expect(faq.prompt).not_to include(Helic3::Agents::HumanTone::GUIDE)
   end
 
-  # H3A-04 criterio 4 (paridad): el prompt reensamblado equivale al INSTRUCTIONS original
-  it 'reensamblado con PromptBuilder queda igual al INSTRUCTIONS de la clase' do
+  # H3A-04 criterio 4 (paridad): el prompt reensamblado equivale al INSTRUCTIONS original.
+  # N2 (revision de Jhan): se cubren los CINCO agentes, incluidos triage y pqrs (los
+  # prompts mas largos y los unicos con seccion contextual). La comparacion sigue
+  # siendo valida: la seccion contextual se concatena aparte en el runner, no en el
+  # prompt almacenado, asi que el cuerpo reensamblado debe seguir igual al INSTRUCTIONS.
+  it 'reensamblado con PromptBuilder queda igual al INSTRUCTIONS de la clase (los 5)' do
     described_class.new(account).sembrar!
+    # aplana el espacio en blanco: compara CONTENIDO, no el detalle de saltos de linea
+    # (el reensamblado usa join("\n\n") y el original puede traer otra separacion).
     normalizar = ->(texto) { texto.to_s.gsub(/\s+/, ' ').strip }
 
     {
+      'agente_triage' => Helic3::Agents::TriageAgent,
+      'agente_pqrs' => Helic3::Agents::PqrsAgent,
       'agente_faq' => Helic3::Agents::FaqAgent,
       'agente_logistica' => Helic3::Agents::LogisticaAgent,
       'agente_cotizaciones' => Helic3::Agents::CotizacionesAgent
     }.each do |codigo, clase|
       agente = Helic3::Agente.find_by(account: account, codigo: codigo)
       armado = Helic3::Agents::PromptBuilder.new(agente).construir
-      expect(normalizar.call(armado)).to eq(normalizar.call(clase::INSTRUCTIONS))
+      expect(normalizar.call(armado)).to eq(normalizar.call(clase::INSTRUCTIONS)), "falla la paridad en #{codigo}"
     end
   end
 

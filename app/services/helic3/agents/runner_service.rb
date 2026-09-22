@@ -40,10 +40,30 @@ class Helic3::Agents::RunnerService
   def run(message, context: {})
     return nil if runner.nil?
 
-    runner.run(message, context: context)
+    result = runner.run(message, context: context)
+    registrar_ruteo(result) if modo == :bd
+    result
   end
 
   private
+
+  # H3A-09 crit 3: deja en el log a que agente se enruto y con que criterio. El
+  # agente que atendio queda en el contexto del resultado (current_agent). Si es el
+  # triage (es_sistema, sin criterio) se registra que la conversacion se quedo en
+  # recepcion o se derivo a un humano.
+  def registrar_ruteo(result)
+    codigo = result&.context&.dig(:current_agent)
+    return if codigo.blank?
+
+    Rails.logger.info("[Helic3][ruteo] enrutó a #{codigo} · #{detalle_ruteo(codigo)}")
+  rescue StandardError => e
+    Rails.logger.warn("[Helic3][ruteo] no se pudo registrar el ruteo: #{e.message}")
+  end
+
+  def detalle_ruteo(codigo)
+    criterio = filas.find { |f| f.codigo == codigo }&.criterio_ruteo
+    criterio.present? ? "criterio: #{criterio}" : 'recepción/derivación a humano (sin criterio)'
+  end
 
   def filas
     return [] if @inbox.nil?
@@ -133,9 +153,12 @@ class Helic3::Agents::RunnerService
   # contexto de conversacion de logistica/cotizaciones).
   def instrucciones_para(fila)
     base = Helic3::Agents::PromptBuilder.new(fila)
+    # el triage se identifica por es_sistema (no por codigo), para que siga siendo
+    # el enrutador aunque el admin lo renombre.
+    return instrucciones_triage(fila) if fila.es_sistema
+
     case fila.codigo
-    when 'agente_triage' then instrucciones_triage(base)
-    when 'agente_pqrs'   then instrucciones_pqrs(base)
+    when 'agente_pqrs' then instrucciones_pqrs(base)
     when 'agente_logistica'
       instrucciones_con_contexto(base, [[:customer_name, 'Cliente'], [:order_number, 'Número de pedido']])
     when 'agente_cotizaciones'
@@ -145,12 +168,20 @@ class Helic3::Agents::RunnerService
     end
   end
 
-  # triage: antepone el consentimiento AGT-07 (reutiliza la logica de TriageAgent)
-  def instrucciones_triage(base)
+  # triage: (H3A-09) reemplaza el directorio de ruteo estatico por uno armado con
+  # los criterio_ruteo de los especialistas activos de la bandeja, y antepone el
+  # consentimiento AGT-07 (reutiliza la logica de TriageAgent).
+  def instrucciones_triage(fila)
+    base = Helic3::Agents::PromptBuilder.new(fila)
     lambda do |run_context|
       contexto = run_context.context || {}
       state = contexto[:state] || {}
-      [base.construir,
+      # (revision Jhan) especialistas se resuelve DENTRO del lambda (por corrida), no al
+      # construir: asi refleja los agentes activos aunque la instancia se cacheara a futuro.
+      # fila.prompt.to_s evita el NoMethodError si un admin dejo el prompt en nil.
+      especialistas = filas.reject(&:es_sistema)
+      cuerpo = Helic3::Agents::TriageAgent.con_directorio_dinamico(fila.prompt.to_s, especialistas)
+      [base.construir(cuerpo: cuerpo),
        Helic3::Agents::TriageAgent.seccion_apertura(contexto[:account_id], state[:consentimiento_datos_at])]
         .compact.join("\n\n")
     end

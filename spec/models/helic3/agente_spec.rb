@@ -7,7 +7,9 @@ RSpec.describe Helic3::Agente, type: :model do
   let(:inbox) { create(:inbox, account: account) }
 
   def nuevo(**attrs)
-    described_class.new({ account: account, codigo: 'agente_x', nombre: 'X', criterio_ruteo: 'y' }.merge(attrs))
+    described_class.new(
+      { account: account, codigo: 'agente_x', nombre: 'X', criterio_ruteo: 'y', prompt: 'instrucciones' }.merge(attrs)
+    )
   end
 
   describe 'validaciones (H3A-02)' do
@@ -33,8 +35,23 @@ RSpec.describe Helic3::Agente, type: :model do
     end
 
     it 'exige codigo unico por cuenta' do
-      described_class.create!(account: account, codigo: 'dup', nombre: 'A', criterio_ruteo: 'x')
+      described_class.create!(account: account, codigo: 'dup', nombre: 'A', criterio_ruteo: 'x', prompt: 'p')
       expect(nuevo(codigo: 'dup')).not_to be_valid
+    end
+
+    # H3A-09 (revision de Jhan): sin prompt no hay identidad y el triage revienta.
+    it 'exige prompt' do
+      expect(nuevo(prompt: nil)).not_to be_valid
+      expect(nuevo(prompt: '')).not_to be_valid
+    end
+
+    # solo un agente de sistema (el triage) por cuenta
+    it 'no permite dos agentes de sistema en la misma cuenta' do
+      described_class.create!(account: account, codigo: 'agente_triage', nombre: 'T',
+                              es_sistema: true, prompt: 'p')
+      otro = nuevo(codigo: 'agente_triage_2', es_sistema: true, criterio_ruteo: nil)
+      expect(otro).not_to be_valid
+      expect(otro.errors[:es_sistema]).to be_present
     end
   end
 
@@ -48,8 +65,10 @@ RSpec.describe Helic3::Agente, type: :model do
 
   describe '.activos_para (H3A-02)' do
     it 'devuelve solo los de esa cuenta, esa bandeja y activos' do
-      activo = described_class.create!(account: account, codigo: 'a1', nombre: 'A1', criterio_ruteo: 'x', activo: true)
-      pausado = described_class.create!(account: account, codigo: 'a2', nombre: 'A2', criterio_ruteo: 'x', activo: false)
+      activo = described_class.create!(account: account, codigo: 'a1', nombre: 'A1', criterio_ruteo: 'x',
+                                       prompt: 'p', activo: true)
+      pausado = described_class.create!(account: account, codigo: 'a2', nombre: 'A2', criterio_ruteo: 'x',
+                                        prompt: 'p', activo: false)
       Helic3::AgenteBandeja.create!(agente: activo, inbox: inbox)
       Helic3::AgenteBandeja.create!(agente: pausado, inbox: inbox)
 
@@ -59,7 +78,8 @@ RSpec.describe Helic3::Agente, type: :model do
 
   describe 'proteccion del agente de sistema' do
     it 'no se puede eliminar un es_sistema' do
-      sistema = described_class.create!(account: account, codigo: 'agente_triage', nombre: 'T', es_sistema: true)
+      sistema = described_class.create!(account: account, codigo: 'agente_triage', nombre: 'T',
+                                        es_sistema: true, prompt: 'p')
       expect(sistema.destroy).to be_falsey
       expect(described_class.exists?(sistema.id)).to be(true)
     end

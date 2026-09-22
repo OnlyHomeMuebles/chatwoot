@@ -67,6 +67,12 @@ class Helic3::Agente < ApplicationRecord
   validates :codigo, presence: true, uniqueness: { scope: :account_id }
   validates :nombre, presence: true
   validates :criterio_ruteo, presence: true, unless: :es_sistema?
+  # H3A-09 (revision de Jhan): un agente sin prompt no tiene identidad, y en el
+  # triage un prompt nil rompia el armado del directorio dinamico. El runner ademas
+  # lo lee con .to_s como red de seguridad para las filas que ya existan.
+  validates :prompt, presence: true
+  # solo puede haber un agente de sistema (el triage) por cuenta: es el hub de ruteo
+  validates :es_sistema, uniqueness: { scope: :account_id }, if: :es_sistema?
   validates :confianza_minima,
             numericality: { only_integer: true, greater_than_or_equal_to: 50, less_than_or_equal_to: 100 },
             allow_nil: true

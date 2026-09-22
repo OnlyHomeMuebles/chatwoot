@@ -164,5 +164,55 @@ RSpec.describe Helic3::Agents::RunnerService do
         expect(agente_bd('agente_faq').model).to eq(LlmConstants::DEFAULT_MODEL)
       end
     end
+
+    # H3A-09: el triage arma su directorio de ruteo desde los criterio_ruteo de la BD.
+    describe 'ruteo dinámico (H3A-09)' do
+      before { prender_flag }
+
+      # evalua las instrucciones del triage (son un lambda por corrida)
+      def instrucciones_triage(servicio)
+        triage = servicio.send(:build_agents).find { |a| a.name == 'agente_triage' }
+        ctx = Struct.new(:context).new({ account_id: account.id,
+                                         state: { consentimiento_datos_at: Time.current } })
+        triage.instructions.call(ctx)
+      end
+
+      it 'el triage considera un agente NUEVO por su criterio, sin tocar código (crit 1)' do
+        Helic3::Agente.create!(
+          account: account, codigo: 'agente_reventa', nombre: 'Reventa',
+          criterio_ruteo: 'Cliente que quiere revender muebles usados de segunda',
+          prompt: 'Especialista de recompra de usados', activo: true
+        ).tap { |a| Helic3::AgenteBandeja.create!(agente: a, inbox: inbox) }
+
+        texto = instrucciones_triage(described_class.new(account: account, inbox: inbox))
+
+        expect(texto).to include('agente_reventa')
+        expect(texto).to include('Cliente que quiere revender muebles usados de segunda')
+      end
+
+      it 'reemplaza el directorio estático por el dinámico y conserva la desambiguación' do
+        texto = instrucciones_triage(described_class.new(account: account, inbox: inbox))
+
+        expect(texto).not_to include('REGLA DE ORO (decide rápido):')
+        expect(texto).to include('Desambiguación (casos límite):')
+      end
+
+      it 'instruye derivar a humano si ningún criterio corresponde (crit 2)' do
+        texto = instrucciones_triage(described_class.new(account: account, inbox: inbox))
+        expect(texto).to include('NINGÚN criterio')
+      end
+
+      it 'registra a qué agente enrutó y con qué criterio (crit 3)' do
+        servicio = described_class.new(account: account, inbox: inbox)
+        fake = instance_double(Agents::AgentRunner)
+        allow(Agents::Runner).to receive(:with_agents).and_return(fake)
+        allow(fake).to receive(:run).and_return(
+          instance_double(Agents::RunResult, output: 'ok', context: { current_agent: 'agente_pqrs' })
+        )
+
+        expect(Rails.logger).to receive(:info).with(/enrutó a agente_pqrs · criterio:/)
+        servicio.run('quiero poner una queja')
+      end
+    end
   end
 end

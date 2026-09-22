@@ -58,22 +58,26 @@ class Helic3::ProcessConversationJob < ApplicationJob
     Rails.logger.info("[Helic3] sin agentes activos para la bandeja de conv=#{conversation_id}; se deja al equipo humano")
   end
 
+  # N5 (revision de Jhan): la conversacion se resuelve UNA sola vez por corrida y se
+  # memoiza; antes se consultaba 2-3 veces (bandeja + consentimiento + cuenta).
+  def conversacion(display_id)
+    return @conversacion if defined?(@conversacion)
+
+    @conversacion = @account&.conversations&.find_by(display_id: display_id)
+  rescue StandardError => e
+    Rails.logger.warn("[Helic3] no se pudo resolver la conversación conv=#{display_id}: #{e.message}")
+    @conversacion = nil
+  end
+
   # bandeja de la conversacion; el runner filtra los agentes activos por ella (H3A-08)
   def inbox_de(display_id)
-    Account.find_by(id: @account_id)&.conversations&.find_by(display_id: display_id)&.inbox
-  rescue StandardError => e
-    Rails.logger.warn("[Helic3] no se pudo resolver la bandeja conv=#{display_id}: #{e.message}")
-    nil
+    conversacion(display_id)&.inbox
   end
 
   # AGT-07: lee el sello de consentimiento del atributo de la conversacion (best-effort: si no
   # se puede leer, se asume sin consentimiento y el aviso se mostrara).
   def consentimiento_de_datos(display_id)
-    conversation = Account.find_by(id: @account_id)&.conversations&.find_by(display_id: display_id)
-    conversation&.custom_attributes&.dig('helic3_consentimiento_datos_at')
-  rescue StandardError => e
-    Rails.logger.warn("[Helic3] no se pudo leer el consentimiento conv=#{display_id}: #{e.message}")
-    nil
+    conversacion(display_id)&.custom_attributes&.dig('helic3_consentimiento_datos_at')
   end
 
   # AGT-06: la radicacion determinista corre en su propio job (async), no aqui, para no
@@ -144,12 +148,19 @@ class Helic3::ProcessConversationJob < ApplicationJob
   # best-effort: si el indicador falla, no debe impedir que se responda.
   def start_typing(client, conversation_id)
     client.toggle_typing(conversation_id, on: true)
+    @typing_on = true
   rescue StandardError => e
     Rails.logger.warn("[Helic3] no se pudo activar el indicador de escritura conv=#{conversation_id}: #{e.message}")
   end
 
+  # N5 (revision de Jhan): solo se apaga si se llego a encender. En el camino sin
+  # agentes (dejar_al_humano) nunca hubo start_typing, asi que se evita una llamada
+  # de mas a la API por cada conversacion sin agentes.
   def stop_typing(client, conversation_id)
+    return unless @typing_on
+
     client&.toggle_typing(conversation_id, on: false)
+    @typing_on = false
   rescue StandardError
     nil
   end
