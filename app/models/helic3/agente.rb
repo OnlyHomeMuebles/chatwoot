@@ -82,6 +82,9 @@ class Helic3::Agente < ApplicationRecord
 
   before_validation :filtrar_herramientas
   before_destroy :proteger_agente_de_sistema
+  # H3A-06: guardar/pausar/borrar un agente invalida la cache de config de la cuenta,
+  # para que el cambio se refleje en el siguiente mensaje sin reiniciar el proceso.
+  after_commit :invalidar_config_cache
 
   scope :activos, -> { where(activo: true) }
 
@@ -99,6 +102,10 @@ class Helic3::Agente < ApplicationRecord
   # conservando el orden en que las eligio el admin.
   def filtrar_herramientas
     self.herramientas = Array(herramientas).map(&:to_s).uniq & Helic3::Agents::CatalogoHerramientas::CLAVES
+  end
+
+  def invalidar_config_cache
+    Helic3::Agents::ConfigCache.invalidar(account_id)
   end
 
   # el triage (u otro es_sistema) no se puede eliminar; H3A-05 tambien lo bloquea

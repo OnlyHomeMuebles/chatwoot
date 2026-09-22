@@ -32,4 +32,14 @@ class Helic3::AgenteBandeja < ApplicationRecord
   belongs_to :inbox
 
   validates :inbox_id, uniqueness: { scope: :agente_id }
+
+  # H3A-06: cambiar en que bandeja atiende un agente invalida la cache de config.
+  # Si el agente ya se borro en cascada, su propio after_commit ya invalido.
+  after_commit :invalidar_config_cache
+
+  private
+
+  def invalidar_config_cache
+    Helic3::Agents::ConfigCache.invalidar(agente&.account_id)
+  end
 end

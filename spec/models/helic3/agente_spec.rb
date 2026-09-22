@@ -84,4 +84,17 @@ RSpec.describe Helic3::Agente, type: :model do
       expect(described_class.exists?(sistema.id)).to be(true)
     end
   end
+
+  # H3A-06: guardar/pausar/borrar invalida la cache de config de la cuenta.
+  describe 'invalidacion de cache (H3A-06)' do
+    it 'registra el after_commit de invalidacion' do
+      expect(described_class._commit_callbacks.map(&:filter)).to include(:invalidar_config_cache)
+    end
+
+    it 'invalida la cache de la cuenta del agente' do
+      agente = described_class.create!(account: account, codigo: 'a', nombre: 'A', criterio_ruteo: 'x', prompt: 'p')
+      expect(Helic3::Agents::ConfigCache).to receive(:invalidar).with(account.id)
+      agente.send(:invalidar_config_cache)
+    end
+  end
 end

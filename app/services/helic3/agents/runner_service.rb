@@ -65,10 +65,12 @@ class Helic3::Agents::RunnerService
     criterio.present? ? "criterio: #{criterio}" : 'recepción/derivación a humano (sin criterio)'
   end
 
+  # H3A-06: los agentes de la bandeja salen de la cache (invalidada al guardar/pausar),
+  # no de la BD en cada mensaje. Memoizado ademas por corrida.
   def filas
     return [] if @inbox.nil?
 
-    @filas ||= Helic3::Agente.activos_para(@inbox).to_a
+    @filas ||= Helic3::Agents::ConfigCache.agentes_para(@inbox)
   end
 
   def runner
