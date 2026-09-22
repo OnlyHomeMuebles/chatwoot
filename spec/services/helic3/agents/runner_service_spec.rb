@@ -180,7 +180,8 @@ RSpec.describe Helic3::Agents::RunnerService do
       it 'el triage considera un agente NUEVO por su criterio, sin tocar código (crit 1)' do
         Helic3::Agente.create!(
           account: account, codigo: 'agente_reventa', nombre: 'Reventa',
-          criterio_ruteo: 'Cliente que quiere revender muebles usados de segunda', activo: true
+          criterio_ruteo: 'Cliente que quiere revender muebles usados de segunda',
+          prompt: 'Especialista de recompra de usados', activo: true
         ).tap { |a| Helic3::AgenteBandeja.create!(agente: a, inbox: inbox) }
 
         texto = instrucciones_triage(described_class.new(account: account, inbox: inbox))

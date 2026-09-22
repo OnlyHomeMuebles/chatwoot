@@ -86,13 +86,26 @@ RSpec.describe Helic3::Agents::TriageAgent do
       end
 
       it 'si el cuerpo no trae las anclas, anexa el directorio al final sin romper (fail-safe)' do
-        allow(Rails.logger).to receive(:warn)
+        allow(Rails.logger).to receive(:error)
 
         resultado = described_class.con_directorio_dinamico('cuerpo editado sin anclas', especialistas)
 
         expect(resultado).to start_with('cuerpo editado sin anclas')
         expect(resultado).to include('Postventa: algo salió mal con una compra ya hecha')
-        expect(Rails.logger).to have_received(:warn).with(/no trae las anclas de ruteo/)
+        expect(Rails.logger).to have_received(:error).with(/no trae las anclas de ruteo/)
+      end
+
+      # (revision Jhan) el fail-safe debe cubrir nil y '', no solo un texto sin anclas:
+      # la columna prompt es nulable y un admin puede dejarla vacia.
+      [nil, ''].each do |cuerpo_vacio|
+        it "no revienta con #{cuerpo_vacio.inspect}: anexa el directorio dinámico" do
+          allow(Rails.logger).to receive(:error)
+
+          resultado = described_class.con_directorio_dinamico(cuerpo_vacio, especialistas)
+
+          expect(resultado).to include('Postventa: algo salió mal con una compra ya hecha')
+          expect(resultado).to include('herramienta de escalamiento')
+        end
       end
     end
   end

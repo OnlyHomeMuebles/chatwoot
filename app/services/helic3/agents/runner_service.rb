@@ -173,11 +173,14 @@ class Helic3::Agents::RunnerService
   # consentimiento AGT-07 (reutiliza la logica de TriageAgent).
   def instrucciones_triage(fila)
     base = Helic3::Agents::PromptBuilder.new(fila)
-    especialistas = filas.reject(&:es_sistema)
     lambda do |run_context|
       contexto = run_context.context || {}
       state = contexto[:state] || {}
-      cuerpo = Helic3::Agents::TriageAgent.con_directorio_dinamico(fila.prompt, especialistas)
+      # (revision Jhan) especialistas se resuelve DENTRO del lambda (por corrida), no al
+      # construir: asi refleja los agentes activos aunque la instancia se cacheara a futuro.
+      # fila.prompt.to_s evita el NoMethodError si un admin dejo el prompt en nil.
+      especialistas = filas.reject(&:es_sistema)
+      cuerpo = Helic3::Agents::TriageAgent.con_directorio_dinamico(fila.prompt.to_s, especialistas)
       [base.construir(cuerpo: cuerpo),
        Helic3::Agents::TriageAgent.seccion_apertura(contexto[:account_id], state[:consentimiento_datos_at])]
         .compact.join("\n\n")
