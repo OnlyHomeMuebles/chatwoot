@@ -11,10 +11,11 @@ RSpec.describe 'Helic3 CRUD de agentes (H3A-05)', type: :request do
 
   let!(:faq) do
     Helic3::Agente.create!(account: account, codigo: 'agente_faq', nombre: 'FAQ',
-                           criterio_ruteo: 'Información general', activo: true)
+                           criterio_ruteo: 'Información general', prompt: 'p', activo: true)
   end
   let!(:triage) do
-    Helic3::Agente.create!(account: account, codigo: 'agente_triage', nombre: 'Triage', es_sistema: true, activo: true)
+    Helic3::Agente.create!(account: account, codigo: 'agente_triage', nombre: 'Triage',
+                           es_sistema: true, prompt: 'p', activo: true)
   end
 
   describe 'GET index' do
@@ -38,7 +39,7 @@ RSpec.describe 'Helic3 CRUD de agentes (H3A-05)', type: :request do
     it 'un agente de OTRA cuenta devuelve 404, no 403 (crit 1)' do
       otra_cuenta = create(:account)
       ajeno = Helic3::Agente.create!(account: otra_cuenta, codigo: 'agente_faq', nombre: 'FAQ',
-                                     criterio_ruteo: 'x', activo: true)
+                                     criterio_ruteo: 'x', prompt: 'p', activo: true)
 
       get "#{base}/#{ajeno.id}", headers: admin.create_new_auth_token, as: :json
 
@@ -58,7 +59,8 @@ RSpec.describe 'Helic3 CRUD de agentes (H3A-05)', type: :request do
 
     it 'un administrador crea un agente y le asigna bandejas' do
       post base, params: { agente: { codigo: 'agente_reventa', nombre: 'Reventa',
-                                     criterio_ruteo: 'Recompra de usados', inbox_ids: [inbox.id] } },
+                                     criterio_ruteo: 'Recompra de usados',
+                                     prompt: 'Especialista de recompra', inbox_ids: [inbox.id] } },
                  headers: admin.create_new_auth_token, as: :json
 
       expect(response).to have_http_status(:created)
@@ -100,6 +102,47 @@ RSpec.describe 'Helic3 CRUD de agentes (H3A-05)', type: :request do
 
       expect(response).to have_http_status(:unauthorized)
       expect(faq.reload.nombre).to eq('FAQ')
+    end
+
+    it 'no cambia el codigo: es inmutable tras crear' do
+      patch "#{base}/#{faq.id}", params: { agente: { codigo: 'otro_codigo', nombre: 'FAQ v2' } },
+                                 headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(faq.reload.codigo).to eq('agente_faq')
+      expect(faq.nombre).to eq('FAQ v2')
+    end
+  end
+
+  # Endurecimiento anti-bloqueante (cacería previa al PR): el agente de sistema es
+  # el hub de ruteo; pausarlo o renombrar su código rompería la orquesta.
+  describe 'protección del agente de sistema' do
+    it 'no deja pausar el triage con toggle (422, sigue activo)' do
+      patch "#{base}/#{triage.id}/toggle", headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(triage.reload.activo).to be(true)
+    end
+
+    it 'no deja apagar el triage con update activo=false (422)' do
+      patch "#{base}/#{triage.id}", params: { agente: { activo: false } },
+                                    headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(triage.reload.activo).to be(true)
+    end
+  end
+
+  describe 'aislamiento de cuenta' do
+    it 'rechaza un team de otra cuenta con 422' do
+      team_ajeno = create(:team, account: create(:account))
+
+      post base, params: { agente: { codigo: 'agente_x', nombre: 'X',
+                                     criterio_ruteo: 'y', team_id: team_ajeno.id } },
+                 headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(Helic3::Agente.exists?(account: account, codigo: 'agente_x')).to be(false)
     end
   end
 end
