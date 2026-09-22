@@ -9,6 +9,14 @@
 # (expiran solas por TTL). Asi no hay que enumerar bandejas ni acertar la clave
 # exacta al invalidar, y cubre create/update/pausa/borrado y cambios de bandeja.
 #
+# La VERSION vive en Redis (compartido entre procesos), NO las filas (decision del
+# tech lead, PR #78). Puma (CRUD) y Sidekiq (runner) corren en contenedores separados
+# con su propio Rails.cache; si la version viviera en Rails.cache la invalidacion no
+# cruzaria de proceso. Las filas siguen en Rails.cache POR PROCESO: asi no se
+# serializan objetos ActiveRecord en un store compartido (una entrada desfasada por
+# un deploy queda local y se cura en 30s, no envenena a todos). El contador es
+# atomico (Redis incr): no depende del reloj.
+#
 # La metrica de aciertos (HIT/MISS) queda en el log (criterio 3).
 module Helic3::Agents::ConfigCache
   TTL = 30.seconds
@@ -32,11 +40,12 @@ module Helic3::Agents::ConfigCache
     Helic3::Agente.activos_para(inbox).to_a
   end
 
-  # sube la version de la cuenta: invalida todas sus bandejas en el siguiente mensaje
+  # sube la version de la cuenta en Redis (compartido): invalida todas sus bandejas
+  # en el siguiente mensaje, en TODOS los procesos. incr es atomico y sin reloj.
   def invalidar(account_id)
     return if account_id.blank?
 
-    Rails.cache.write(clave_version(account_id), Time.current.to_f.to_s, expires_in: 1.day)
+    Redis::Alfred.incr(clave_version(account_id))
   rescue StandardError => e
     Rails.logger.warn("[Helic3][cache] no se pudo invalidar cta=#{account_id}: #{e.message}")
   end
@@ -45,8 +54,13 @@ module Helic3::Agents::ConfigCache
     "helic3:agentes:cta#{inbox.account_id}:v#{version(inbox.account_id)}:inbox#{inbox.id}"
   end
 
+  # la version vive en Redis (compartido entre procesos). Si Redis falla, se
+  # devuelve un valor IRREPETIBLE para forzar un MISS (consultar la BD) en vez de
+  # servir una entrada vieja a todos los procesos: misma degradacion que agentes_para.
   def version(account_id)
-    Rails.cache.read(clave_version(account_id)) || '0'
+    Redis::Alfred.get(clave_version(account_id)) || '0'
+  rescue StandardError
+    SecureRandom.hex(4)
   end
 
   def clave_version(account_id)

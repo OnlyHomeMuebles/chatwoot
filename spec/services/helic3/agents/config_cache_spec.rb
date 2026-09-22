@@ -5,8 +5,9 @@ require 'rails_helper'
 RSpec.describe Helic3::Agents::ConfigCache do
   let(:account) { create(:account) }
   let(:inbox) { create(:inbox, account: account) }
-  # en test el cache_store es :null_store (no persiste); usamos MemoryStore real,
-  # que ademas marshaliza como el store de produccion (Redis).
+  # las FILAS viven en Rails.cache por proceso; en test es :null_store, asi que se
+  # usa un MemoryStore real. La VERSION vive en Redis (Redis::Alfred -> MockRedis en
+  # test), que es lo que se comparte entre procesos.
   let(:memoria) { ActiveSupport::Cache::MemoryStore.new }
 
   before { allow(Rails).to receive(:cache).and_return(memoria) }
@@ -37,34 +38,47 @@ RSpec.describe Helic3::Agents::ConfigCache do
       expect(Rails.logger).to have_received(:info).with(/HIT/)
     end
 
-    it 'cae a la BD si la cache falla, sin romper' do
+    it 'cae a la BD si la cache de filas falla, sin romper' do
       crear_agente('agente_faq')
       allow(Rails.logger).to receive(:warn)
-      allow(memoria).to receive(:fetch).and_raise(StandardError, 'redis caido')
+      allow(memoria).to receive(:fetch).and_raise(StandardError, 'store caido')
 
       expect(described_class.agentes_para(inbox).map(&:codigo)).to eq(['agente_faq'])
     end
   end
 
-  describe '.invalidar' do
-    it 'guardar un agente se refleja tras invalidar (criterio 1)' do
-      crear_agente('agente_faq')
-      expect(described_class.agentes_para(inbox).size).to eq(1)
+  # revision Jhan: la version se comparte por Redis; hay que probar el problema
+  # entre procesos, no el mecanismo dentro de un solo proceso.
+  describe 'invalidacion entre procesos' do
+    it 'la version se lee de Redis::Alfred, no de Rails.cache' do
+      expect(Redis::Alfred).to receive(:get).with(described_class.clave_version(account.id)).and_call_original
 
-      crear_agente('agente_pqrs')
-      described_class.invalidar(account.id)
-
-      expect(described_class.agentes_para(inbox).map(&:codigo)).to contain_exactly('agente_faq', 'agente_pqrs')
+      described_class.version(account.id)
     end
 
-    it 'pausar un agente lo saca de circulacion tras invalidar (criterio 2)' do
-      agente = crear_agente('agente_faq')
-      expect(described_class.agentes_para(inbox).size).to eq(1)
+    it 'invalidar sube la version en Redis (contador atomico)' do
+      expect { described_class.invalidar(account.id) }
+        .to(change { described_class.version(account.id) })
+    end
 
-      agente.update_column(:activo, false) # rubocop:disable Rails/SkipsModelValidations
-      described_class.invalidar(account.id)
+    it 'un cambio hecho por OTRO proceso (bump directo en Redis) produce un MISS' do
+      crear_agente('agente_faq')
+      described_class.agentes_para(inbox) # MISS: cachea en el Rails.cache local
 
-      expect(described_class.agentes_para(inbox)).to be_empty
+      # "otro proceso" (Puma) sube la version en el Redis compartido
+      Redis::Alfred.incr(described_class.clave_version(account.id))
+
+      expect(Helic3::Agente).to receive(:activos_para).and_call_original
+      described_class.agentes_para(inbox) # nueva version -> MISS -> re-consulta
+    end
+
+    it 'degrada a NO cachear (fuerza MISS) si Redis falla al leer la version' do
+      crear_agente('agente_faq')
+      described_class.agentes_para(inbox) # cachea bajo la version actual
+      allow(Redis::Alfred).to receive(:get).and_raise(StandardError, 'redis caido')
+
+      expect(Helic3::Agente).to receive(:activos_para).and_call_original
+      described_class.agentes_para(inbox) # version irrepetible -> MISS -> consulta BD
     end
 
     it 'no revienta si el account_id es nil' do
