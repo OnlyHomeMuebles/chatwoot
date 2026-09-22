@@ -62,9 +62,11 @@ module Helic3::Agents::CatalogoHerramientas
     HERRAMIENTAS.map { |h| h.slice(:clave, :etiqueta, :ayuda, :escribe_expediente) }
   end
 
-  # instancia las tools de un conjunto de claves + las que van siempre (H3A-10)
+  # instancia las tools de un conjunto de claves + las que van siempre (H3A-10).
+  # N5 (revision de Jhan): las de SIEMPRE (derivar_humano) van PRIMERO, igual que
+  # las clases actuales, para no cambiar el orden en que el modelo ve las tools.
   def instanciar(claves)
-    (Array(claves).map(&:to_s) | SIEMPRE).filter_map do |clave|
+    (SIEMPRE | Array(claves).map(&:to_s)).filter_map do |clave|
       entrada = HERRAMIENTAS.find { |h| h[:clave] == clave }
       entrada && entrada[:clase].constantize.new
     end
