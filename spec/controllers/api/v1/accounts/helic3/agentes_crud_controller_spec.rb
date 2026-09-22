@@ -68,6 +68,31 @@ RSpec.describe 'Helic3 CRUD de agentes (H3A-05)', type: :request do
       expect(response.parsed_body['bandejas'].first['inbox_id']).to eq(inbox.id)
       expect(Helic3::Agente.find_by(account: account, codigo: 'agente_reventa').creado_por).to eq(admin)
     end
+
+    # revision Jhan (no bloqueante 1): no recortar bandejas ajenas en silencio
+    it 'rechaza con 422 si alguna bandeja no es de la cuenta, y no crea el agente' do
+      inbox_ajeno = create(:inbox, account: create(:account))
+
+      post base, params: { agente: { codigo: 'agente_x', nombre: 'X', criterio_ruteo: 'y',
+                                     prompt: 'p', inbox_ids: [inbox.id, inbox_ajeno.id] } },
+                 headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(Helic3::Agente.exists?(account: account, codigo: 'agente_x')).to be(false)
+    end
+
+    # revision Jhan (no bloqueante 2): create transaccional. La asociacion crea la
+    # bandeja con save!, asi que se stubea el save! de la instancia para simular el fallo.
+    it 'no deja un agente a medias si falla la creacion de una bandeja' do
+      allow_any_instance_of(Helic3::AgenteBandeja).to receive(:save!) # rubocop:disable RSpec/AnyInstance
+        .and_raise(ActiveRecord::RecordInvalid.new(Helic3::AgenteBandeja.new))
+
+      expect do
+        post base, params: { agente: { codigo: 'agente_x', nombre: 'X', criterio_ruteo: 'y',
+                                       prompt: 'p', inbox_ids: [inbox.id] } },
+                   headers: admin.create_new_auth_token, as: :json
+      end.not_to change(Helic3::Agente, :count)
+    end
   end
 
   describe 'DELETE destroy' do
@@ -111,6 +136,17 @@ RSpec.describe 'Helic3 CRUD de agentes (H3A-05)', type: :request do
       expect(response).to have_http_status(:success)
       expect(faq.reload.codigo).to eq('agente_faq')
       expect(faq.nombre).to eq('FAQ v2')
+    end
+
+    # inbox_ids: [] es desasignar todo (legitimo), distinto de "mandé IDs invalidos"
+    it 'con inbox_ids vacio desasigna todas las bandejas (200)' do
+      Helic3::AgenteBandeja.create!(agente: faq, inbox: inbox)
+
+      patch "#{base}/#{faq.id}", params: { agente: { inbox_ids: [] } },
+                                 headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(faq.agente_bandejas.count).to eq(0)
     end
   end
 

@@ -5,6 +5,7 @@ class Api::V1::Accounts::Helic3::AgentesController < Api::V1::Accounts::BaseCont
   before_action :check_admin_authorization?, except: [:catalogo]
   before_action :set_agente, only: [:show, :update, :destroy, :toggle]
   before_action :validar_team, only: [:create, :update]
+  before_action :validar_inbox_ids, only: [:create, :update]
 
   # H3A-03: catalogo FIJO de solo lectura. Las herramientas disponibles y el texto
   # de las reglas duras viven en codigo; se exponen aqui para que el panel (H3A-14)
@@ -23,11 +24,14 @@ class Api::V1::Accounts::Helic3::AgentesController < Api::V1::Accounts::BaseCont
 
   def show; end
 
+  # transaccional (revision Jhan): si falla una bandeja no queda un agente a medias.
   def create
     @agente = agentes_de_la_cuenta.new(agente_params.except(:inbox_ids))
     @agente.creado_por = Current.user
-    @agente.save!
-    sincronizar_bandejas!(@agente)
+    ActiveRecord::Base.transaction do
+      @agente.save!
+      sincronizar_bandejas!(@agente)
+    end
     render :show, status: :created
   end
 
@@ -36,8 +40,10 @@ class Api::V1::Accounts::Helic3::AgentesController < Api::V1::Accounts::BaseCont
   def update
     return render_bloqueo_de_sistema if intento_de_pausar_sistema?
 
-    @agente.update!(agente_params.except(:inbox_ids, :codigo))
-    sincronizar_bandejas!(@agente)
+    ActiveRecord::Base.transaction do
+      @agente.update!(agente_params.except(:inbox_ids, :codigo))
+      sincronizar_bandejas!(@agente)
+    end
     render :show
   end
 
@@ -81,6 +87,19 @@ class Api::V1::Accounts::Helic3::AgentesController < Api::V1::Accounts::BaseCont
     return if team_id.blank? || Current.account.teams.exists?(id: team_id)
 
     render json: { message: 'El equipo no pertenece a esta cuenta' }, status: :unprocessable_entity
+  end
+
+  # inbox_ids, si viene con elementos, deben ser TODOS de la cuenta (revision Jhan):
+  # antes se recortaban en silencio y si ninguno valia se borraban todas las bandejas
+  # con un 200 enganoso (agente sin atender). Se distingue [] (desasignar, legitimo).
+  def validar_inbox_ids
+    ids = params.dig(:agente, :inbox_ids)
+    return if ids.nil?
+
+    solicitados = Array(ids).map(&:to_s).reject(&:blank?).uniq
+    return if Current.account.inboxes.where(id: solicitados).count == solicitados.size
+
+    render json: { message: 'Alguna bandeja no pertenece a esta cuenta' }, status: :unprocessable_entity
   end
 
   # scope por cuenta: un agente de otra cuenta no aparece aqui, asi que set_agente
