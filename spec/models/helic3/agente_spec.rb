@@ -63,6 +63,28 @@ RSpec.describe Helic3::Agente, type: :model do
     end
   end
 
+  # H3A-10: la autorizacion de herramientas por agente. Una clave no autorizada se
+  # descarta y el intento queda en el log (criterio 2).
+  describe 'autorizacion de herramientas (H3A-10)' do
+    it 'descarta la clave no autorizada y deja el intento en el log' do
+      allow(Rails.logger).to receive(:warn)
+
+      agente = nuevo(herramientas: %w[buscar_conocimiento clave_inventada])
+      agente.valid?
+
+      expect(agente.herramientas).to eq(%w[buscar_conocimiento])
+      expect(Rails.logger).to have_received(:warn).with(/no autorizada.*clave_inventada/i)
+    end
+
+    it 'no loguea nada si todas las herramientas estan autorizadas' do
+      allow(Rails.logger).to receive(:warn)
+
+      nuevo(herramientas: %w[buscar_conocimiento radicar_pqr]).valid?
+
+      expect(Rails.logger).not_to have_received(:warn)
+    end
+  end
+
   describe '.activos_para (H3A-02)' do
     it 'devuelve solo los de esa cuenta, esa bandeja y activos' do
       activo = described_class.create!(account: account, codigo: 'a1', nombre: 'A1', criterio_ruteo: 'x',
