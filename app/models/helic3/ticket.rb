@@ -77,6 +77,10 @@ class Helic3::Ticket < ApplicationRecord
   # la bitacora de transiciones del expediente (EVT-01).
   has_many :eventos, class_name: 'Helic3::Evento', dependent: :destroy, inverse_of: :ticket
 
+  # el archivo documental del expediente (EVI-01): evidencias del cliente y,
+  # desde la Semana 3, los formatos de garantia.
+  has_many :documentos, class_name: 'Helic3::Documento', dependent: :destroy, inverse_of: :ticket
+
   CATALOGOS_CLASIFICACION = %i[categoria tipo motivo_pqr resultado etapa].freeze
 
   # status es el estado operativo generico heredado del sistema de tickets de

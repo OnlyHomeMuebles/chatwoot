@@ -39,7 +39,7 @@ class Helic3::Evento < ApplicationRecord
   # lista cerrada de transiciones: son eventos del dominio, no valores de
   # catalogo que Karen edite, por eso viven en codigo.
   TIPOS = %w[radicada clasificada resultado_propuesto resultado_aplicado
-             garantia_abierta proceso_avanzado respondida].freeze
+             garantia_abierta proceso_avanzado respondida evidencia_adjuntada].freeze
   ORIGENES = %w[humano agente].freeze
 
   belongs_to :account

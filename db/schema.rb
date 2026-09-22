@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_09_11_140000) do
+ActiveRecord::Schema[7.2].define(version: 2026_09_21_120000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1243,6 +1243,30 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_11_140000) do
     t.index ["account_id"], name: "idx_h3cat_tipos_account"
   end
 
+  create_table "helic3_documentos", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "ticket_id", null: false
+    t.bigint "garantia_id"
+    t.integer "attachment_id"
+    t.integer "message_id"
+    t.bigint "remitente_user_id"
+    t.string "clase", null: false
+    t.string "origen", null: false
+    t.string "remitente_nombre"
+    t.datetime "ocurrido_at", null: false
+    t.string "titulo"
+    t.text "descripcion"
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "idx_h3_documentos_account"
+    t.index ["garantia_id"], name: "idx_h3_documentos_garantia"
+    t.index ["message_id"], name: "idx_h3_documentos_message"
+    t.index ["remitente_user_id"], name: "idx_h3_documentos_remitente_user"
+    t.index ["ticket_id", "attachment_id"], name: "idx_h3_documentos_ticket_attachment_unico", unique: true, where: "(attachment_id IS NOT NULL)"
+    t.index ["ticket_id"], name: "idx_h3_documentos_ticket"
+  end
+
   create_table "helic3_eventos", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "ticket_id", null: false
@@ -1942,6 +1966,12 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_11_140000) do
   add_foreign_key "campaign_recipients", "inboxes", on_delete: :cascade
   add_foreign_key "helic3_catalogo_detalles_tipificados", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
   add_foreign_key "helic3_catalogo_motivos_pqr", "helic3_catalogo_categorias", column: "categoria_id"
+  add_foreign_key "helic3_documentos", "accounts"
+  add_foreign_key "helic3_documentos", "attachments"
+  add_foreign_key "helic3_documentos", "helic3_garantias", column: "garantia_id"
+  add_foreign_key "helic3_documentos", "helic3_tickets", column: "ticket_id"
+  add_foreign_key "helic3_documentos", "messages"
+  add_foreign_key "helic3_documentos", "users", column: "remitente_user_id"
   add_foreign_key "helic3_eventos", "accounts"
   add_foreign_key "helic3_eventos", "helic3_garantias", column: "garantia_id"
   add_foreign_key "helic3_eventos", "helic3_tickets", column: "ticket_id"
