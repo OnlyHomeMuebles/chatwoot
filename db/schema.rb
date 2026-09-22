@@ -1260,6 +1260,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "idx_h3_documentos_account"
+    t.index ["attachment_id"], name: "idx_h3_documentos_attachment"
     t.index ["garantia_id"], name: "idx_h3_documentos_garantia"
     t.index ["message_id"], name: "idx_h3_documentos_message"
     t.index ["remitente_user_id"], name: "idx_h3_documentos_remitente_user"

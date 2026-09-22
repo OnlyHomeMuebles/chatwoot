@@ -62,6 +62,38 @@ RSpec.describe Helic3::Documento do
       expect(documento).not_to be_valid
       expect(documento.errors[:attachment]).to be_present
     end
+
+    describe 'el archivo propio (procedencia B, EVI-03 carga manual)' do
+      it 'rechaza un archivo mas pesado que el limite configurado' do
+        documento = documento_con
+        documento.archivo.attach(io: Rails.root.join('spec/assets/avatar.png').open, filename: 'avatar.png',
+                                 content_type: 'image/png')
+        allow(documento.archivo).to receive(:byte_size).and_return(41.megabytes)
+
+        expect(documento).not_to be_valid
+        expect(documento.errors[:archivo]).to include('size is too big')
+      end
+
+      it 'rechaza un tipo de archivo no soportado (expediente con valor probatorio ante la SIC)' do
+        # ActiveStorage corrige el content_type declarado segun el contenido
+        # real del archivo (marcel); por eso el cuerpo tiene que ser
+        # genuinamente un ejecutable, no bytes de imagen con un tipo falso.
+        documento = documento_con
+        documento.archivo.attach(io: StringIO.new("#!/bin/sh\necho hi\n"), filename: 'script.sh',
+                                 content_type: 'application/x-sh')
+
+        expect(documento).not_to be_valid
+        expect(documento.errors[:archivo]).to include('content type not supported')
+      end
+
+      it 'acepta un tipo de la lista de Attachment::ACCEPTABLE_FILE_TYPES (p. ej. PDF)' do
+        documento = documento_con
+        documento.archivo.attach(io: Rails.root.join('spec/assets/avatar.png').open, filename: 'factura.pdf',
+                                 content_type: 'application/pdf')
+
+        expect(documento).to be_valid
+      end
+    end
   end
 
   describe '#url y #tipo_archivo' do
@@ -70,6 +102,14 @@ RSpec.describe Helic3::Documento do
 
       expect(documento.url).to be_present
       expect(documento.tipo_archivo).to eq('image/png')
+    end
+
+    it 'no revientan cuando el attachment referenciado no trae un archivo real (p. ej. una ubicacion)' do
+      sin_blob = mensaje.attachments.create!(account_id: account.id, file_type: :location)
+      documento = documento_con(attachment: sin_blob)
+
+      expect(documento.url).to be_nil
+      expect(documento.tipo_archivo).to be_nil
     end
 
     it 'resuelven contra el archivo propio cuando esa es la procedencia' do

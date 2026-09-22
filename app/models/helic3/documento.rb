@@ -29,6 +29,7 @@
 # Indexes
 #
 #  idx_h3_documentos_account                  (account_id)
+#  idx_h3_documentos_attachment               (attachment_id)
 #  idx_h3_documentos_garantia                 (garantia_id)
 #  idx_h3_documentos_message                  (message_id)
 #  idx_h3_documentos_remitente_user           (remitente_user_id)
@@ -66,12 +67,13 @@ class Helic3::Documento < ApplicationRecord
   validate :validate_una_procedencia
   validate :validate_ticket_belongs_to_account
   validate :validate_attachment_belongs_to_account
+  validate :validate_archivo
 
   # Resuelve la URL de descarga indistintamente contra el adjunto referenciado
   # o el archivo propio: el consumidor (API, frontend) no necesita saber de
   # cual de las dos procedencias viene.
   def url
-    return attachment.download_url if attachment
+    return attachment.download_url if attachment_con_archivo?
 
     return nil unless archivo.attached?
 
@@ -80,10 +82,21 @@ class Helic3::Documento < ApplicationRecord
   end
 
   def tipo_archivo
-    attachment ? attachment.file.content_type : archivo.content_type
+    return attachment.file.content_type if attachment_con_archivo?
+    return nil unless archivo.attached?
+
+    archivo.content_type
   end
 
   private
+
+  # El attachment referenciado puede existir (FK valida) sin traer un archivo
+  # real adjunto -- p. ej. un mensaje de ubicacion o de contacto no tiene blob
+  # (ver Attachment#with_attached_file?). Sin esta guarda, tipo_archivo/url
+  # revientan con un attachment de ese tipo.
+  def attachment_con_archivo?
+    attachment.present? && attachment.file.attached?
+  end
 
   # exactamente una procedencia: o trae attachment, o trae archivo adjunto.
   # Nunca las dos, nunca ninguna.
@@ -103,5 +116,23 @@ class Helic3::Documento < ApplicationRecord
     return if attachment.nil? || attachment.account_id == account_id
 
     errors.add(:attachment, 'must belong to the same account')
+  end
+
+  # Procedencia B (carga manual, EVI-03): a diferencia del attachment
+  # referenciado, que ya paso por las validaciones de Attachment cuando nacio,
+  # este archivo nunca las vio. Expediente con valor probatorio ante la SIC:
+  # no puede aceptar un ejecutable ni un archivo sin limite de peso. Mismo
+  # limite y misma lista de tipos que Attachment#acceptable_file.
+  def validate_archivo
+    return unless archivo.attached?
+
+    limite_mb = GlobalConfigService.load('MAXIMUM_FILE_UPLOAD_SIZE', 40).to_i
+    limite_mb = 40 if limite_mb <= 0
+    errors.add(:archivo, 'size is too big') if archivo.byte_size > limite_mb.megabytes
+
+    tipo = archivo.content_type.to_s
+    return if tipo.start_with?('image/', 'video/', 'audio/') || Attachment::ACCEPTABLE_FILE_TYPES.include?(tipo)
+
+    errors.add(:archivo, 'content type not supported')
   end
 end

@@ -82,5 +82,16 @@ RSpec.describe 'Documentos API (EVI-02)', type: :request do
         expect(ticket.documentos).to be_empty
       end
     end
+
+    context 'when the assignee sends a non-file value for archivo' do
+      before { ticket.update!(assignee: agent) }
+
+      it 'responde 422 en vez de reventar con 500' do
+        post_documento(params: { archivo: 'esto no es un archivo' })
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(ticket.documentos).to be_empty
+      end
+    end
   end
 end

@@ -16,7 +16,7 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
   # es upstream). Garantiza que ninguna evidencia se pierda aunque un webhook
   # falle o llegue fuera de orden.
   def show
-    Helic3::Casos::VincularEvidencias.call(@ticket)
+    sincronizar_evidencias
   end
 
   # Nace por Helic3::Casos::Radicar (CAS-01): la unica puerta de radicacion, para
@@ -62,6 +62,16 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
   end
 
   private
+
+  # best-effort (EVI-02/EVI-03): si un documento puntual falla su validacion,
+  # el expediente debe seguir cargando igual -- una evidencia sin sincronizar
+  # es un problema de datos, no una pantalla rota. Mismo patron que
+  # VincularEvidenciasJob.
+  def sincronizar_evidencias
+    Helic3::Casos::VincularEvidencias.call(@ticket)
+  rescue StandardError => e
+    Rails.logger.error("[Helic3] vincular_evidencias (show) ticket=#{@ticket.id}: #{e.class}: #{e.message}")
+  end
 
   def apply_filters(scope)
     scope = filter_by_status(scope)

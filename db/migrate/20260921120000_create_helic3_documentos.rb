@@ -26,7 +26,7 @@ class CreateHelic3Documentos < ActiveRecord::Migration[7.2]
       # attachments y messages usan id: :serial (integer), no bigint: t.references
       # crearia una columna bigint apuntando a una PK integer si no se declara el
       # tipo explicito.
-      t.references :attachment, type: :integer, foreign_key: true, index: false
+      t.references :attachment, type: :integer, foreign_key: true, index: { name: 'idx_h3_documentos_attachment' }
       t.references :message, type: :integer, foreign_key: true, index: { name: 'idx_h3_documentos_message' }
       t.references :remitente_user, foreign_key: { to_table: :users },
                                     index: { name: 'idx_h3_documentos_remitente_user' }

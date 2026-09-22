@@ -23,8 +23,16 @@ class Helic3::Casos::VincularEvidencias
 
   private
 
+  # El filtro (que tenga adjuntos) corre en SQL, sin cargar toda la
+  # conversacion en memoria; el preload va en una consulta aparte porque
+  # combinar :attachments (el joins) con :sender (polimorfica) en el mismo
+  # includes fuerza un eager_load que revienta contra una asociacion polimorfica.
   def mensajes_con_adjuntos(conversation)
-    conversation.messages.includes(:attachments, :sender).select { |mensaje| mensaje.attachments.any? }
+    # reorder(nil): Message tiene un default_scope por created_at que Postgres
+    # exige incluir en el SELECT cuando se combina con DISTINCT; aqui el orden
+    # no importa (solo se usa para filtrar ids).
+    ids = conversation.messages.joins(:attachments).distinct.reorder(nil).pluck(:id)
+    Message.where(id: ids).includes(:attachments, :sender)
   end
 
   def vincular_adjuntos(mensaje, ids_existentes)
@@ -34,7 +42,12 @@ class Helic3::Casos::VincularEvidencias
   end
 
   def vincular(mensaje, adjunto)
-    Helic3::Documento.transaction do
+    # requires_new: true es obligatorio: VincularEvidencias corre a veces
+    # DENTRO de la transaccion de Radicar (el barrido hacia atras). Sin
+    # savepoint propio, una violacion del indice unico deja envenenada la
+    # transaccion externa completa aunque el rescue atrape la excepcion aqui
+    # -- Postgres ignora cualquier sentencia posterior hasta el rollback.
+    Helic3::Documento.transaction(requires_new: true) do
       documento = Helic3::Documento.create!(
         account: @ticket.account, ticket: @ticket, attachment: adjunto, message: mensaje,
         clase: 'evidencia', origen: origen_del_mensaje(mensaje),
