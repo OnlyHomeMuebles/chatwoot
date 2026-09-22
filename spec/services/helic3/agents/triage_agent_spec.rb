@@ -48,4 +48,47 @@ RSpec.describe Helic3::Agents::TriageAgent do
       expect(triage.handoff_agents.map(&:name)).not_to include('agente_triage')
     end
   end
+
+  # H3A-09: el directorio de ruteo se arma desde los criterio_ruteo de la BD.
+  describe 'ruteo dinámico' do
+    let(:especialistas) do
+      [instance_double(Helic3::Agente, codigo: 'agente_faq',
+                                       criterio_ruteo: 'Información general de producto o empresa'),
+       instance_double(Helic3::Agente, codigo: 'agente_pqrs',
+                                       criterio_ruteo: 'Postventa: algo salió mal con una compra ya hecha')]
+    end
+
+    describe '.directorio_dinamico' do
+      subject(:directorio) { described_class.directorio_dinamico(especialistas) }
+
+      it 'lista cada especialista con su criterio y su codigo (crit 1)' do
+        expect(directorio).to include('agente_faq', 'Información general de producto o empresa')
+        expect(directorio).to include('agente_pqrs', 'Postventa: algo salió mal con una compra ya hecha')
+      end
+
+      it 'instruye derivar a humano si ningún criterio corresponde (crit 2)' do
+        expect(directorio).to include('NINGÚN criterio')
+        expect(directorio).to include('herramienta de escalamiento')
+      end
+    end
+
+    describe '.con_directorio_dinamico' do
+      let(:cuerpo) { described_class::INSTRUCTIONS }
+
+      it 'reemplaza el bloque de ruteo estático por el dinámico' do
+        resultado = described_class.con_directorio_dinamico(cuerpo, especialistas)
+
+        # el mapa rápido estático desaparece; el criterio de la BD entra
+        expect(resultado).not_to include('REGLA DE ORO (decide rápido):')
+        expect(resultado).to include('Postventa: algo salió mal con una compra ya hecha')
+        # lo que va después del bloque se conserva
+        expect(resultado).to include('Desambiguación (casos límite):')
+      end
+
+      it 'falla ruidosamente si el cuerpo no trae las anclas de ruteo' do
+        expect { described_class.con_directorio_dinamico('cuerpo sin anclas', especialistas) }
+          .to raise_error(ArgumentError, /anclas de ruteo/)
+      end
+    end
+  end
 end

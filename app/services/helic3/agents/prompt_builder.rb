@@ -28,8 +28,11 @@ class Helic3::Agents::PromptBuilder
     Helic3::Agents::CoreRules::GUIDE
   end
 
-  def construir
-    prompt = armar
+  # `cuerpo` permite sustituir el cuerpo de dominio del agente sin alterar el orden
+  # ni las reglas duras. Lo usa H3A-09: el triage arma su directorio de ruteo desde
+  # la BD y pasa el cuerpo ya con ese directorio, en vez del `prompt` almacenado.
+  def construir(cuerpo: nil)
+    prompt = armar(cuerpo.presence || @agente.prompt.presence)
     # criterio 3: el prompt final queda en el log en modo depuracion
     Rails.logger.debug { "[Helic3][PromptBuilder] agente=#{@agente.codigo}\n#{prompt}" }
     prompt
@@ -37,10 +40,10 @@ class Helic3::Agents::PromptBuilder
 
   private
 
-  def armar
+  def armar(cuerpo)
     [
       self.class.reglas_duras,           # reglas duras (codigo) — SIEMPRE primero
-      @agente.prompt.presence,           # identidad + pautas (editable por el admin)
+      cuerpo,                            # identidad + pautas (editable por el admin)
       @agente.politicas_texto.presence,  # politicas de la operacion (editable)
       Helic3::Agents::HumanTone::GUIDE   # tono (codigo)
     ].compact.join("\n\n")

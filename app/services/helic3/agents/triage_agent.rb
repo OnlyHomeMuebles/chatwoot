@@ -60,6 +60,37 @@ class Helic3::Agents::TriageAgent
     #{Helic3::Agents::HumanTone::GUIDE}
   INST
 
+  # H3A-09: anclas del bloque de ruteo ESTATICO dentro de INSTRUCTIONS. En el
+  # camino BD ese bloque (REGLA DE ORO + Definicion de cada especialista) se
+  # reemplaza por un directorio armado desde los criterio_ruteo de la BD.
+  ANCLA_RUTEO_INICIO = 'REGLA DE ORO (decide rápido):'
+  ANCLA_RUTEO_FIN = 'Desambiguación (casos límite):'
+
+  # Directorio de ruteo armado desde los agentes activos de la bandeja (H3A-09
+  # crit 1): agregar un agente con su criterio hace que el enrutador lo considere
+  # sin tocar codigo. La ultima linea cubre el crit 2 (si nada encaja -> humano).
+  def self.directorio_dinamico(especialistas)
+    lineas = especialistas.map { |e| "· #{e.criterio_ruteo} → #{e.codigo}" }
+    <<~DIR.strip
+      Definición de cada especialista (transfiérele según la INTENCIÓN principal del cliente):
+
+      #{lineas.join("\n")}
+
+      Si NINGÚN criterio corresponde a lo que el cliente necesita, NO inventes un destino: deriva a una
+      persona con la herramienta de escalamiento.
+    DIR
+  end
+
+  # Reemplaza el bloque de ruteo estatico del cuerpo del triage por el dinamico.
+  # Falla ruidosamente si no encuentra las anclas, para no armar un prompt a medias.
+  def self.con_directorio_dinamico(cuerpo, especialistas)
+    inicio = cuerpo.index(ANCLA_RUTEO_INICIO)
+    fin = cuerpo.index(ANCLA_RUTEO_FIN)
+    raise ArgumentError, 'TriageAgent: sin anclas de ruteo en el cuerpo del triage' unless inicio && fin && inicio < fin
+
+    "#{cuerpo[0...inicio]}#{directorio_dinamico(especialistas)}\n\n#{cuerpo[fin..]}"
+  end
+
   def self.build(model: nil, provider: nil, assume_model_exists: false)
     Agents::Agent.new(
       name: 'agente_triage',
