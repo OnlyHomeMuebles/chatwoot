@@ -98,10 +98,19 @@ class Helic3::Agente < ApplicationRecord
 
   private
 
-  # solo sobreviven las claves del catalogo (H3A-03), sin duplicados y
-  # conservando el orden en que las eligio el admin.
+  # H3A-10 (autorizacion): solo sobreviven las claves del catalogo (H3A-03), sin
+  # duplicados y conservando el orden en que las eligio el admin. Una clave que no
+  # este en el catalogo NO se autoriza: se descarta y el intento queda en el log.
   def filtrar_herramientas
-    self.herramientas = Array(herramientas).map(&:to_s).uniq & Helic3::Agents::CatalogoHerramientas::CLAVES
+    solicitadas = Array(herramientas).map(&:to_s).uniq
+    autorizadas = solicitadas & Helic3::Agents::CatalogoHerramientas::CLAVES
+    descartadas = solicitadas - autorizadas
+    if descartadas.any?
+      Rails.logger.warn(
+        "[Helic3][autorizacion] agente=#{codigo} herramienta(s) no autorizada(s), descartada(s): #{descartadas.join(', ')}"
+      )
+    end
+    self.herramientas = autorizadas
   end
 
   def invalidar_config_cache
