@@ -82,13 +82,18 @@ class Helic3::Agents::TriageAgent
   end
 
   # Reemplaza el bloque de ruteo estatico del cuerpo del triage por el dinamico.
-  # Falla ruidosamente si no encuentra las anclas, para no armar un prompt a medias.
+  # Fail-safe: si el admin editó el prompt y ya no trae las anclas, NO se rompe el
+  # ruteo; se anexa el directorio dinamico al final y se avisa en el log. Asi el
+  # triage siempre tiene su directorio, aunque el cuerpo cambie desde la UI.
   def self.con_directorio_dinamico(cuerpo, especialistas)
     inicio = cuerpo.index(ANCLA_RUTEO_INICIO)
     fin = cuerpo.index(ANCLA_RUTEO_FIN)
-    raise ArgumentError, 'TriageAgent: sin anclas de ruteo en el cuerpo del triage' unless inicio && fin && inicio < fin
+    return "#{cuerpo[0...inicio]}#{directorio_dinamico(especialistas)}\n\n#{cuerpo[fin..]}" if inicio && fin && inicio < fin
 
-    "#{cuerpo[0...inicio]}#{directorio_dinamico(especialistas)}\n\n#{cuerpo[fin..]}"
+    Rails.logger.warn(
+      '[Helic3][ruteo] el cuerpo del triage no trae las anclas de ruteo; se anexa el directorio dinámico al final'
+    )
+    "#{cuerpo}\n\n#{directorio_dinamico(especialistas)}"
   end
 
   def self.build(model: nil, provider: nil, assume_model_exists: false)

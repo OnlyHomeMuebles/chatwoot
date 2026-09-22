@@ -85,9 +85,14 @@ RSpec.describe Helic3::Agents::TriageAgent do
         expect(resultado).to include('Desambiguación (casos límite):')
       end
 
-      it 'falla ruidosamente si el cuerpo no trae las anclas de ruteo' do
-        expect { described_class.con_directorio_dinamico('cuerpo sin anclas', especialistas) }
-          .to raise_error(ArgumentError, /anclas de ruteo/)
+      it 'si el cuerpo no trae las anclas, anexa el directorio al final sin romper (fail-safe)' do
+        allow(Rails.logger).to receive(:warn)
+
+        resultado = described_class.con_directorio_dinamico('cuerpo editado sin anclas', especialistas)
+
+        expect(resultado).to start_with('cuerpo editado sin anclas')
+        expect(resultado).to include('Postventa: algo salió mal con una compra ya hecha')
+        expect(Rails.logger).to have_received(:warn).with(/no trae las anclas de ruteo/)
       end
     end
   end
