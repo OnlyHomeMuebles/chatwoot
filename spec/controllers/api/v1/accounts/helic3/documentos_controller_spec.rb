@@ -50,4 +50,37 @@ RSpec.describe 'Documentos API (EVI-02)', type: :request do
       expect(response).to have_http_status(:not_found)
     end
   end
+
+  describe 'POST /api/v1/accounts/{account.id}/helic3/tickets/{ticket_id}/documentos (EVI-03, carga manual)' do
+    let(:archivo) do
+      fixture_file_upload(Rails.root.join('spec/assets/avatar.png'), 'image/png')
+    end
+
+    def post_documento(ticket_id: ticket.id, headers: agent.create_new_auth_token, params: { archivo: archivo })
+      post "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket_id}/documentos", params: params, headers: headers
+    end
+
+    context 'when the uploader is a participant of the case (assignee)' do
+      before { ticket.update!(assignee: agent) }
+
+      it 'crea el documento con clase evidencia, origen operador y el usuario como remitente' do
+        post_documento
+
+        expect(response).to have_http_status(:success)
+        documento = ticket.documentos.last
+        expect(documento).to have_attributes(clase: 'evidencia', origen: 'operador', remitente_user: agent,
+                                             remitente_nombre: agent.name, titulo: 'avatar.png')
+        expect(documento.archivo).to be_attached
+      end
+    end
+
+    context 'when the agent is not a participant of the case' do
+      it 'no puede subir (update? = participante)' do
+        post_documento
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(ticket.documentos).to be_empty
+      end
+    end
+  end
 end

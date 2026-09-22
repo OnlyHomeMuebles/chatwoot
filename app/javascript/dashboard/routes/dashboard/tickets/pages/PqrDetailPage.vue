@@ -6,6 +6,7 @@ import { useAlert } from 'dashboard/composables';
 import { useRoute } from 'vue-router';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
+import Input from 'dashboard/components-next/input/Input.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import Helic3BudgetBar from 'dashboard/components-next/helic3/Helic3BudgetBar.vue';
@@ -26,14 +27,26 @@ const { t } = useI18n();
 const expediente = useMapGetter('pqrInbox/getCurrent');
 const uiFlags = useMapGetter('pqrInbox/getUIFlags');
 const agents = useMapGetter('agents/getAgents');
+const documentos = useMapGetter('pqrInbox/getDocumentos');
 const noEncontrado = ref(false);
 
 const STATUSES = ['open', 'pending', 'resolved', 'closed'];
+
+// Archivo documental (EVI-02/EVI-03): se carga aparte de fetchOne para que un
+// error puntual aqui no tumbe el resto del expediente ya cargado.
+const cargarDocumentos = async () => {
+  try {
+    await store.dispatch('pqrInbox/fetchDocumentos', props.id);
+  } catch (error) {
+    useAlert(t('TICKETS.DETAIL.DOC_ERROR'));
+  }
+};
 
 const cargar = async () => {
   noEncontrado.value = false;
   try {
     await store.dispatch('pqrInbox/fetchOne', props.id);
+    cargarDocumentos();
   } catch (error) {
     noEncontrado.value = true;
   }
@@ -298,32 +311,91 @@ const siguienteAccion = computed(() => {
   return t('TICKETS.DETAIL.NEXT_ANSWER');
 });
 
-// Actividad: linea de tiempo con los sellos reales del expediente. NO se inventan
-// eventos. EVT-01 (bitacora), ya codificado en esta misma entrega en la rama de
-// Samuel, la reemplaza con la traza completa por evento.
+// Actividad (EVI-03, 7.3): la bitacora real del expediente (EVT-01), con autor
+// y origen por evento -- ya no son los cuatro sellos derivados que este
+// componente inventaba. clasificada/proceso_avanzado no tienen productor
+// todavia (hueco conocido de EVT-01); su titulo ya esta listo para cuando lo
+// tengan.
+const TITULOS_EVENTO = {
+  radicada: 'TICKETS.DETAIL.ACT_FILED',
+  clasificada: 'TICKETS.DETAIL.ACT_CLASIFICADA',
+  resultado_propuesto: 'TICKETS.DETAIL.ACT_RESULTADO_PROPUESTO',
+  resultado_aplicado: 'TICKETS.DETAIL.ACT_RESULTADO_APLICADO',
+  garantia_abierta: 'TICKETS.DETAIL.ACT_WARRANTY',
+  proceso_avanzado: 'TICKETS.DETAIL.ACT_PROCESO_AVANZADO',
+  respondida: 'TICKETS.DETAIL.ACT_ANSWERED',
+  evidencia_adjuntada: 'TICKETS.DETAIL.ACT_EVIDENCIA_ADJUNTADA',
+};
+
 const actividad = computed(() => {
-  const e = expediente.value;
-  if (!e) return [];
-  return [
-    { at: e.radicada_at, titulo: t('TICKETS.DETAIL.ACT_FILED') },
-    {
-      at: garantia.value?.abierta_at,
-      titulo: t('TICKETS.DETAIL.ACT_WARRANTY'),
-    },
-    { at: e.respondida_at, titulo: t('TICKETS.DETAIL.ACT_ANSWERED') },
-    { at: e.cerrada_at, titulo: t('TICKETS.DETAIL.ACT_CLOSED') },
-  ]
-    .filter(h => h.at)
-    .map((h, i, arr) => ({ ...h, ultimo: i === arr.length - 1 }));
+  const eventos = expediente.value?.eventos ?? [];
+  return eventos.map((evento, indice) => ({
+    titulo: t(TITULOS_EVENTO[evento.tipo] || evento.tipo),
+    autor:
+      evento.actor?.name ||
+      t(
+        evento.origen === 'agente'
+          ? 'TICKETS.DETAIL.ACT_BY_AGENT'
+          : 'TICKETS.DETAIL.ACT_BY_TEAM'
+      ),
+    at: evento.created_at,
+    ultimo: indice === eventos.length - 1,
+  }));
 });
 
-// Documentos: el formato del proceso vigente (su generacion aun no existe: la
-// descarga queda deshabilitada). Las evidencias del cliente llegan con FMT/EVT.
-const documentos = computed(() => {
+// Documentos (EVI-03, 7.1): el formato de garantia sigue siendo un renglon
+// derivado y deshabilitado (su generacion es la Semana 3); los documentos
+// reales (evidencias del cliente + cargas del operador) llegan de
+// pqrInbox/getDocumentos, ya sincronizados por el backend.
+const formatoGarantia = computed(() => {
   const proceso = garantia.value?.proceso_visible?.nombre;
-  if (!proceso) return [];
-  return [{ nombre: t('TICKETS.DETAIL.DOC_FORMAT', { process: proceso }) }];
+  return proceso
+    ? { nombre: t('TICKETS.DETAIL.DOC_FORMAT', { process: proceso }) }
+    : null;
 });
+
+const esImagen = tipo => Boolean(tipo?.startsWith('image/'));
+
+const iconoDocumento = tipo => {
+  if (esImagen(tipo)) return 'i-lucide-image';
+  if (tipo?.startsWith('video/')) return 'i-lucide-video';
+  if (tipo === 'application/pdf') return 'i-lucide-file-text';
+  return 'i-lucide-file';
+};
+
+const remitenteDeDocumento = doc =>
+  doc.remitente?.nombre ||
+  t(
+    doc.origen === 'agente'
+      ? 'TICKETS.DETAIL.ACT_BY_AGENT'
+      : 'TICKETS.DETAIL.ACT_BY_TEAM'
+  );
+
+// Carga manual (EVI-03, 7.2): input de archivo nativo, sin componente de
+// subida propio (esta pantalla no compone un mensaje de conversacion, el
+// composable useFileUpload no encaja aqui).
+const archivoInputRef = ref(null);
+const notaSubida = ref('');
+
+const abrirSelectorDeArchivo = () => archivoInputRef.value?.click();
+
+const subirArchivo = async event => {
+  const [archivo] = event.target.files;
+  event.target.value = '';
+  if (!archivo) return;
+
+  const formData = new FormData();
+  formData.append('archivo', archivo);
+  if (notaSubida.value) formData.append('descripcion', notaSubida.value);
+
+  try {
+    await store.dispatch('pqrInbox/subirDocumento', { id: props.id, formData });
+    notaSubida.value = '';
+    useAlert(t('TICKETS.DETAIL.DOC_UPLOAD_SUCCESS'));
+  } catch (error) {
+    useAlert(t('TICKETS.DETAIL.DOC_UPLOAD_ERROR'));
+  }
+};
 
 const formatFecha = valor =>
   valor ? new Date(valor).toLocaleDateString() : '—';
@@ -801,27 +873,69 @@ const formatFecha = valor =>
                 <div class="flex flex-col gap-0.5 min-w-0">
                   <span class="text-sm text-n-slate-12">{{ hito.titulo }}</span>
                   <span class="text-xs text-n-slate-11">
-                    {{ formatFecha(hito.at) }}
+                    {{ hito.autor }} · {{ formatFecha(hito.at) }}
                   </span>
                 </div>
               </li>
             </ol>
           </section>
 
-          <!-- Documentos: formato del proceso vigente (generacion pendiente) -->
+          <!-- Documentos (EVI-03): evidencias del cliente + cargas del operador,
+               mas el formato de garantia (aun deshabilitado, es la Semana 3) -->
           <section
             class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
             <h3 class="mb-0 text-sm font-medium text-n-slate-12">
               {{ t('TICKETS.DETAIL.DOCUMENTS') }}
             </h3>
+
+            <p
+              v-if="!documentos.length && !formatoGarantia"
+              class="mb-0 text-xs text-n-slate-10"
+            >
+              {{ t('TICKETS.DETAIL.DOC_EMPTY') }}
+            </p>
+
             <div
               v-for="doc in documentos"
-              :key="doc.nombre"
+              :key="doc.id"
+              class="flex items-center gap-2.5 p-2.5 text-sm rounded-lg bg-n-alpha-1"
+            >
+              <img
+                v-if="esImagen(doc.tipo_archivo)"
+                :src="doc.url"
+                class="rounded-md size-8 shrink-0 object-cover"
+                alt=""
+              />
+              <Icon
+                v-else
+                :icon="iconoDocumento(doc.tipo_archivo)"
+                class="shrink-0 size-5 text-n-slate-10"
+              />
+              <div class="flex flex-col min-w-0 grow">
+                <span class="truncate text-n-slate-12">{{ doc.titulo }}</span>
+                <span class="text-xs text-n-slate-11">
+                  {{ remitenteDeDocumento(doc) }} ·
+                  {{ formatFecha(doc.ocurrido_at) }}
+                </span>
+              </div>
+              <a :href="doc.url" target="_blank" rel="noopener noreferrer">
+                <Button
+                  v-tooltip="t('TICKETS.DETAIL.DOC_DOWNLOAD')"
+                  icon="i-lucide-download"
+                  variant="faded"
+                  color="slate"
+                  size="xs"
+                />
+              </a>
+            </div>
+
+            <div
+              v-if="formatoGarantia"
               class="flex items-center justify-between gap-2 p-2.5 text-sm rounded-lg bg-n-alpha-1"
             >
               <span class="min-w-0 break-words text-n-slate-12">
-                {{ doc.nombre }}
+                {{ formatoGarantia.nombre }}
               </span>
               <span
                 v-tooltip="t('TICKETS.DETAIL.DOC_DISABLED')"
@@ -836,9 +950,29 @@ const formatFecha = valor =>
                 />
               </span>
             </div>
-            <p class="mb-0 text-xs text-n-slate-10">
-              {{ t('TICKETS.DETAIL.DOC_EVIDENCE_NOTE') }}
-            </p>
+
+            <div class="flex flex-col gap-2 pt-2 border-t border-n-weak">
+              <Input
+                v-model="notaSubida"
+                size="sm"
+                :placeholder="t('TICKETS.DETAIL.DOC_UPLOAD_NOTE_PLACEHOLDER')"
+              />
+              <input
+                ref="archivoInputRef"
+                type="file"
+                class="hidden"
+                @change="subirArchivo"
+              />
+              <Button
+                :label="t('TICKETS.DETAIL.DOC_UPLOAD_BUTTON')"
+                icon="i-lucide-upload"
+                variant="faded"
+                color="slate"
+                size="xs"
+                :is-loading="uiFlags.isUploadingDocumento"
+                @click="abrirSelectorDeArchivo"
+              />
+            </div>
           </section>
         </div>
       </div>
