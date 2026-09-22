@@ -10,7 +10,14 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
     )
   end
 
-  def show; end
+  # sincronizacion perezosa e idempotente (EVI-02, punto 3 del cableado): una
+  # escritura durante una lectura, poco elegante pero necesaria porque no se
+  # puede registrar un listener de Rails (app/dispatchers/async_dispatcher.rb
+  # es upstream). Garantiza que ninguna evidencia se pierda aunque un webhook
+  # falle o llegue fuera de orden.
+  def show
+    Helic3::Casos::VincularEvidencias.call(@ticket)
+  end
 
   # Nace por Helic3::Casos::Radicar (CAS-01): la unica puerta de radicacion, para
   # que un expediente creado desde el panel arranque con su reloj corriendo igual

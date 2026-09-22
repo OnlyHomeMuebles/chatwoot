@@ -49,4 +49,34 @@ RSpec.describe Helic3::WebhookHandler do
     expect { described_class.new(incoming_payload).process }.to have_enqueued_job(Helic3::ProcessConversationJob)
     expect { described_class.new(incoming_payload).process }.not_to have_enqueued_job(Helic3::ProcessConversationJob)
   end
+
+  describe 'mensajes con adjuntos (EVI-02)' do
+    let(:solo_imagen_payload) do
+      incoming_payload.merge(content: '', attachments: [{ file_type: 'image', data_url: 'https://x.test/foto.png' }])
+    end
+
+    it 'un mensaje solo con foto (sin texto) no invoca al agente con una cadena vacia' do
+      expect { described_class.new(solo_imagen_payload).process }
+        .not_to have_enqueued_job(Helic3::ProcessConversationJob)
+    end
+
+    it 'un mensaje solo con foto SI encola la vinculacion de evidencias' do
+      expect { described_class.new(solo_imagen_payload).process }
+        .to have_enqueued_job(Helic3::VincularEvidenciasJob).with(account_id: 1, conversation_id: 7)
+    end
+
+    it 'un mensaje con texto Y adjuntos encola las dos cosas' do
+      con_adjunto = incoming_payload.merge(attachments: [{ file_type: 'image', data_url: 'https://x.test/foto.png' }])
+
+      expect { described_class.new(con_adjunto).process }
+        .to have_enqueued_job(Helic3::ProcessConversationJob).and have_enqueued_job(Helic3::VincularEvidenciasJob)
+    end
+
+    it 'un mensaje sin texto y sin adjuntos se ignora por completo' do
+      vacio = incoming_payload.merge(content: '')
+
+      expect { described_class.new(vacio).process }.not_to have_enqueued_job(Helic3::ProcessConversationJob)
+      expect { described_class.new(vacio).process }.not_to have_enqueued_job(Helic3::VincularEvidenciasJob)
+    end
+  end
 end

@@ -16,11 +16,11 @@ class Helic3::WebhookHandler
     return unless bot_should_handle?
     return unless first_delivery?
 
-    Helic3::ProcessConversationJob.perform_later(
-      account_id: account_id,
-      conversation_id: conversation_display_id,
-      content: content
-    )
+    encolar_respuesta_del_agente if content.present?
+    # EVI-02: un mensaje solo con foto/video/documento no invoca al modelo de
+    # lenguaje con una cadena vacia; solo se sincronizan las evidencias del
+    # expediente (si ya existe uno para la conversacion).
+    encolar_vinculacion_de_evidencias if adjuntos?
   end
 
   private
@@ -29,8 +29,22 @@ class Helic3::WebhookHandler
     @payload[:event] == 'message_created' &&
       @payload[:message_type] == 'incoming' &&
       !ActiveModel::Type::Boolean.new.cast(@payload[:private]) &&
-      content.present? &&
+      (content.present? || adjuntos?) &&
       conversation_display_id.present?
+  end
+
+  def adjuntos?
+    Array(@payload[:attachments]).any?
+  end
+
+  def encolar_respuesta_del_agente
+    Helic3::ProcessConversationJob.perform_later(
+      account_id: account_id, conversation_id: conversation_display_id, content: content
+    )
+  end
+
+  def encolar_vinculacion_de_evidencias
+    Helic3::VincularEvidenciasJob.perform_later(account_id: account_id, conversation_id: conversation_display_id)
   end
 
   # El bot solo atiende conversaciones en estado 'pending' (territorio del bot). Cuando se escala a

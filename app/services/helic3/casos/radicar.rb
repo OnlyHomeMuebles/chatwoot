@@ -41,6 +41,10 @@ class Helic3::Casos::Radicar
         ticket: ticket, tipo: 'radicada', origen: @origen, actor: @creator,
         payload: { 'motivo' => @motivo_pqr&.codigo, 'numero_orden' => @numero_orden }.compact
       )
+      # barrido hacia atras (EVI-02): el cliente casi siempre manda la foto
+      # antes de que exista el radicado; al nacer el expediente se recogen
+      # todas las evidencias que ya estaban en la conversacion.
+      Helic3::Casos::VincularEvidencias.call(ticket)
       ticket
     end
   end

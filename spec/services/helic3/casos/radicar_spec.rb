@@ -148,4 +148,19 @@ RSpec.describe Helic3::Casos::Radicar do
       expect { radicar(tipo: reclamo) }.to raise_error(ActiveRecord::RecordNotFound)
     end
   end
+
+  describe 'barrido hacia atras de evidencias (EVI-02)' do
+    it 'vincula al nacer las evidencias que el cliente ya habia mandado antes de radicar' do
+      conversacion = create(:conversation, account: account)
+      create(:message, :with_attachment, account: account, conversation: conversacion, message_type: 'incoming')
+
+      ticket = radicar(tipo: reclamo, conversation_id: conversacion.id)
+
+      expect(ticket.documentos.count).to eq(1)
+    end
+
+    it 'no rompe al radicar un caso sin conversacion' do
+      expect { radicar(tipo: reclamo) }.not_to raise_error
+    end
+  end
 end
