@@ -210,8 +210,10 @@ RSpec.describe Helic3::Agents::RunnerService do
           instance_double(Agents::RunResult, output: 'ok', context: { current_agent: 'agente_pqrs' })
         )
 
-        expect(Rails.logger).to receive(:info).with(/enrutó a agente_pqrs · criterio:/)
+        allow(Rails.logger).to receive(:info) # la cache tambien loguea HIT/MISS
         servicio.run('quiero poner una queja')
+
+        expect(Rails.logger).to have_received(:info).with(/enrutó a agente_pqrs · criterio:/)
       end
     end
   end
