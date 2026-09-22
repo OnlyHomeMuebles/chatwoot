@@ -36,7 +36,7 @@ module Helic3::Agents::ConfigCache
   def invalidar(account_id)
     return if account_id.blank?
 
-    Rails.cache.write(clave_version(account_id), Time.now.to_f.to_s, expires_in: 1.day)
+    Rails.cache.write(clave_version(account_id), Time.current.to_f.to_s, expires_in: 1.day)
   rescue StandardError => e
     Rails.logger.warn("[Helic3][cache] no se pudo invalidar cta=#{account_id}: #{e.message}")
   end
