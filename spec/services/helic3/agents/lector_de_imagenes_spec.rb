@@ -3,9 +3,15 @@
 require 'rails_helper'
 
 RSpec.describe Helic3::Agents::LectorDeImagenes do
-  # Doble de lo que devuelve Down.download: un Tempfile con .path, .close, .unlink.
-  def archivo_descargado(path)
-    instance_double(Tempfile, path: path, close: nil, unlink: nil)
+  # ssrf_filter resuelve el host antes de pedir permiso: sin esto, el dominio
+  # de prueba no resuelve a nada y SafeFetch lo rechaza antes de llegar a WebMock.
+  before do
+    allow(Resolv).to receive(:getaddresses).and_call_original
+    allow(Resolv).to receive(:getaddresses).with('cdn.chatwoot.test').and_return(['93.184.216.34'])
+  end
+
+  def responder_con_imagen(url, cuerpo: File.read(Rails.root.join('spec/assets/avatar.png')))
+    stub_request(:get, url).to_return(status: 200, body: cuerpo, headers: { 'Content-Type' => 'image/png' })
   end
 
   it 'devuelve nil si no hay imagenes' do
@@ -13,44 +19,70 @@ RSpec.describe Helic3::Agents::LectorDeImagenes do
     expect(described_class.leer([])).to be_nil
   end
 
-  it 'descarga la imagen y devuelve el texto que lee tesseract' do
+  it 'descarga la imagen via SafeFetch (protegido contra SSRF) y devuelve el texto que lee tesseract' do
     url = 'https://cdn.chatwoot.test/factura.jpg'
-    archivo = archivo_descargado('/tmp/helic3-ocr123.jpg')
-
-    expect(Down).to receive(:download).with(url, max_size: anything, read_timeout: anything).and_return(archivo)
-    rtess = instance_double(RTesseract)
-    expect(RTesseract).to receive(:new).with('/tmp/helic3-ocr123.jpg', lang: described_class::IDIOMA).and_return(rtess)
-    expect(rtess).to receive(:to_s).and_return("Factura N.° 8821\n")
+    responder_con_imagen(url)
+    rtess = instance_double(RTesseract, to_s: "Factura N.° 8821\n")
+    expect(RTesseract).to receive(:new).with(a_string_matching(%r{\A/}), lang: described_class::IDIOMA).and_return(rtess)
 
     expect(described_class.leer([url])).to eq('Factura N.° 8821')
   end
 
   it 'concatena el texto de varias imagenes, separado por un delimitador' do
-    urls = ['https://cdn.chatwoot.test/factura.jpg', 'https://cdn.chatwoot.test/cedula.jpg']
-    archivo1 = archivo_descargado('/tmp/a.jpg')
-    archivo2 = archivo_descargado('/tmp/b.jpg')
+    url1 = 'https://cdn.chatwoot.test/factura.jpg'
+    url2 = 'https://cdn.chatwoot.test/cedula.jpg'
+    responder_con_imagen(url1)
+    responder_con_imagen(url2)
     rtess1 = instance_double(RTesseract, to_s: 'Factura 8821')
     rtess2 = instance_double(RTesseract, to_s: 'CC 1032456789')
-
-    allow(Down).to receive(:download).and_return(archivo1, archivo2)
     allow(RTesseract).to receive(:new).and_return(rtess1, rtess2)
 
-    expect(described_class.leer(urls)).to eq("Factura 8821\n---\nCC 1032456789")
+    expect(described_class.leer([url1, url2])).to eq("Factura 8821\n---\nCC 1032456789")
   end
 
   it 'devuelve nil cuando tesseract no encuentra texto (foto del producto, no de un documento)' do
     url = 'https://cdn.chatwoot.test/silla-rota.jpg'
-    archivo = archivo_descargado('/tmp/c.jpg')
-    allow(Down).to receive(:download).and_return(archivo)
+    responder_con_imagen(url)
     allow(RTesseract).to receive(:new).and_return(instance_double(RTesseract, to_s: '   '))
 
     expect(described_class.leer([url])).to be_nil
   end
 
-  it 'devuelve nil (y deja rastro en el log) si la descarga o tesseract fallan, sin tumbar el job' do
-    allow(Down).to receive(:download).and_raise(Down::Error, 'timeout')
+  it 'una imagen que falla no borra el texto que ya se leyo de las demas' do
+    url_buena = 'https://cdn.chatwoot.test/factura.jpg'
+    url_mala = 'https://cdn.chatwoot.test/rota.jpg'
+    responder_con_imagen(url_buena)
+    stub_request(:get, url_mala).to_timeout
+    allow(RTesseract).to receive(:new).and_return(instance_double(RTesseract, to_s: 'Factura 8821'))
+    allow(Rails.logger).to receive(:error)
+
+    expect(described_class.leer([url_buena, url_mala])).to eq('Factura 8821')
+    expect(Rails.logger).to have_received(:error).with(a_string_matching(/lector_de_imagenes fallo con #{url_mala}/))
+  end
+
+  it 'rechaza un content-type que no sea imagen (SafeFetch), sin tumbar el job' do
+    url = 'https://cdn.chatwoot.test/no-es-imagen'
+    stub_request(:get, url).to_return(status: 200, body: '<html></html>', headers: { 'Content-Type' => 'text/html' })
     expect(Rails.logger).to receive(:error).with(a_string_matching(/lector_de_imagenes fallo/))
 
-    expect(described_class.leer(['https://cdn.chatwoot.test/foto.jpg'])).to be_nil
+    expect(described_class.leer([url])).to be_nil
+  end
+
+  it 'corta y sigue si tesseract se cuelga mas de TIMEOUT_OCR (shell-out sin limite propio)' do
+    url = 'https://cdn.chatwoot.test/factura.jpg'
+    responder_con_imagen(url)
+    allow(RTesseract).to receive(:new) { sleep 0.2 }
+    stub_const('Helic3::Agents::LectorDeImagenes::TIMEOUT_OCR', 0.05)
+    expect(Rails.logger).to receive(:error).with(a_string_matching(/lector_de_imagenes fallo/))
+
+    expect(described_class.leer([url])).to be_nil
+  end
+
+  it 'devuelve nil (y deja rastro en el log) si la descarga falla, sin tumbar el job' do
+    url = 'https://cdn.chatwoot.test/foto.jpg'
+    stub_request(:get, url).to_raise(SocketError)
+    expect(Rails.logger).to receive(:error).with(a_string_matching(/lector_de_imagenes fallo/))
+
+    expect(described_class.leer([url])).to be_nil
   end
 end

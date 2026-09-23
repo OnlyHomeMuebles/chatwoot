@@ -29,6 +29,11 @@ class Helic3::ProcessConversationJob < ApplicationJob
     @account_id = account_id
     client = Helic3::ChatwootClient.new(account_id: account_id)
     memory = Helic3::Agents::ConversationMemory.new(account_id: account_id, conversation_id: conversation_id)
+
+    # El indicador va PRIMERO: el OCR (descarga + tesseract, hasta ~25s por
+    # imagen) puede tardar mas que la respuesta del LLM. Sin esto el cliente
+    # ve la conversacion quieta, sin ninguna señal, mientras se leen las fotos.
+    start_typing(client, conversation_id)
     # AGT-07: el estado de consentimiento se lee de la conversacion (no de la memoria del modelo),
     # para que el aviso no se repita entre corridas. El triage lo recibe en el state.
     @consentimiento_datos_at = consentimiento_de_datos(conversation_id)
@@ -37,7 +42,6 @@ class Helic3::ProcessConversationJob < ApplicationJob
     # invocarla). El texto ya leido viaja en el state y PqrsAgent lo inyecta en el prompt.
     @texto_imagenes = Helic3::Agents::LectorDeImagenes.leer(imagenes)
 
-    start_typing(client, conversation_id)
     reply = generate_reply(client, memory, conversation_id, content, imagenes)
     client.create_message(conversation_id, content: reply, message_type: 'outgoing') if reply.present?
     encolar_radicacion(conversation_id)

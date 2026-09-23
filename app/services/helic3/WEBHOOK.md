@@ -36,7 +36,11 @@ Cliente escribe en Chatwoot
   correr el agente — no es una tool que el modelo deba llamar (se probó que a veces "alucinaba" el
   resultado sin invocarla). El texto (o su ausencia) viaja ya resuelto en
   `context[:state][:texto_imagenes]` y `PqrsAgent` lo inyecta en el prompt. No describe objetos ni
-  daños visuales, solo texto.
+  daños visuales, solo texto. La descarga de cada imagen pasa por **`SafeFetch`** (mismo utilitario
+  de la sección de abajo): `Attachment#external_url` en canales como WhatsApp/Instagram no es un
+  dominio propio de Chatwoot, así que se filtra SSRF y se exige content-type de imagen antes de
+  bajar el archivo. Una imagen que falla (descarga, formato, tesseract colgado) no descarta el
+  texto ya leído de las demás: cada una corre en su propio rescate.
 - **Idempotencia:** clave Redis `helic3:webhook:message:<id>` con `SET NX EX 1h`. Un reintento del
   mismo mensaje no vuelve a encolar.
 
@@ -60,6 +64,11 @@ SAFE_FETCH_ALLOW_PRIVATE_NETWORK=true
 En una instancia local, sin esa variable el webhook del Agent Bot **no llega** a `http://localhost:3000/...`.
 Para probar el flujo E2E localmente hay que arrancar Chatwoot con `SAFE_FETCH_ALLOW_PRIVATE_NETWORK=true`.
 En producción (URL pública) no aplica.
+
+La misma variable la necesita `LectorDeImagenes` (AGT-08) para poder descargar la foto: en local, con
+el disco de ActiveStorage, la URL del adjunto también es `http://localhost:3000/rails/active_storage/...`
+— sin la variable, `SafeFetch` la bloquea igual que al propio webhook. En producción (S3/CDN externo)
+tampoco aplica.
 
 > Nota: la respuesta del agente requiere una API key de LLM configurada para el `RunnerService`. El
 > flujo (webhook → runner → publicación de la respuesta) está probado E2E contra una instancia real de
