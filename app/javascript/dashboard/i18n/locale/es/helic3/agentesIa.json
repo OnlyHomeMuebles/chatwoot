@@ -1,0 +1,143 @@
+{
+  "AI_AGENTS": {
+    "HEADER": "Agentes IA",
+    "KICKER": "Only Home · Configuración",
+    "SUBTITLE": "Define quién responde, en qué bandejas y cuándo toma el relevo tu equipo.",
+    "CREATE": "Crear agente",
+    "STATS": {
+      "TOTAL": "Agentes configurados",
+      "ACTIVE": "Activos",
+      "INBOXES": "Bandejas con agente activo",
+      "OF": "de {total}"
+    },
+    "PROCESS": {
+      "TITLE": "Del mensaje a la solución",
+      "S1_T": "1. Llega un mensaje",
+      "S1_B": "El agente atiende solo en sus bandejas autorizadas.",
+      "S2_T": "2. Responde con tus pautas",
+      "S2_B": "Usa el tono y respeta los límites que configures.",
+      "S3_T": "3. Tu equipo toma el relevo",
+      "S3_B": "Si se cumple una condición de derivación, la IA deja de intervenir."
+    },
+    "COVERAGE": {
+      "TITLE": "Cobertura de bandejas",
+      "HINT": "Qué agente activo atiende cada bandeja.",
+      "HUMAN": "Atención del equipo humano",
+      "EMPTY": "No hay bandejas en esta cuenta."
+    },
+    "LIST": {
+      "TITLE": "Tu equipo de IA",
+      "SEARCH": "Buscar agente…",
+      "FILTER_ALL": "Todos los estados",
+      "FILTER_ACTIVE": "Activos",
+      "FILTER_PAUSED": "Pausados",
+      "LOADING": "Cargando agentes…",
+      "FOOTNOTE": "Pausar conserva la configuración. El agente deja de responder hasta que lo actives."
+    },
+    "EMPTY": {
+      "TITLE": "Crea tu primer agente",
+      "BODY": "Define su propósito, sus bandejas y cuándo debe pedir ayuda.",
+      "FILTERED_TITLE": "No hay agentes con estos filtros",
+      "FILTERED_BODY": "Prueba otro nombre o cambia el estado.",
+      "CLEAR": "Limpiar filtros"
+    },
+    "CARD": {
+      "SYSTEM": "Del sistema",
+      "ACTIVE": "Activo",
+      "PAUSED": "Pausado",
+      "NO_INBOXES": "Sin bandejas",
+      "TOOLS_COUNT": "{count} herramientas",
+      "HANDS_OFF_TO": "Deriva a {team}",
+      "EDIT": "Editar",
+      "PAUSE": "Pausar",
+      "ACTIVATE": "Activar",
+      "DELETE": "Eliminar agente"
+    },
+    "TOGGLE": {
+      "ACTIVATED": "Agente activado",
+      "PAUSED": "Agente pausado",
+      "ERROR": "No se pudo cambiar el estado del agente"
+    },
+    "DELETE": {
+      "TITLE": "¿Eliminar este agente?",
+      "BODY": "Se eliminará «{name}» de forma permanente. Esta acción no se puede deshacer.",
+      "CANCEL": "Cancelar",
+      "CONFIRM": "Eliminar agente",
+      "SUCCESS": "Agente eliminado",
+      "ERROR": "No se pudo eliminar el agente"
+    },
+    "EDITOR": {
+      "NEW_TITLE": "Crear agente",
+      "EDIT_TITLE": "Editar agente",
+      "SUBTITLE": "Configura su identidad, su alcance y las reglas para atender a tus clientes.",
+      "UNSAVED": "Cambios sin guardar",
+      "NO_CHANGES": "Sin cambios pendientes",
+      "CANCEL": "Cancelar",
+      "SAVE": "Guardar cambios",
+      "SAVED": "Cambios guardados",
+      "CREATED": "Agente creado",
+      "ERROR": "No se pudo guardar el agente",
+      "DISCARD_CONFIRM": "Tienes cambios sin guardar. ¿Seguro que quieres salir?",
+      "STEP": "Paso {n} de {total}",
+      "PREV": "Anterior",
+      "NEXT": "Continuar",
+      "BACK": "Todos los agentes",
+      "TABS": {
+        "IDENTITY": "Identidad",
+        "INBOXES": "Bandejas",
+        "RESPONSE": "Respuesta",
+        "POLICIES": "Capacidades y políticas"
+      },
+      "FIELDS": {
+        "NAME": "Nombre del agente",
+        "NAME_PH": "Ej. Sofía · PQR y garantías",
+        "PURPOSE": "Propósito",
+        "PURPOSE_PH": "¿Qué consultas atiende y hasta dónde llega su trabajo?",
+        "PURPOSE_HINT": "Con esto el enrutador decide cuándo pasarle una conversación.",
+        "PAUSED_HINT": "Conserva su configuración sin responder a clientes.",
+        "ACTIVE_HINT": "Atiende en las bandejas que autorices al guardar.",
+        "INBOXES_INTRO": "El agente solo interviene en las bandejas seleccionadas. Las demás siguen a cargo de tu equipo.",
+        "NO_INBOXES": "No hay bandejas en esta cuenta.",
+        "SCHEDULE": "Disponibilidad",
+        "SCHEDULE_ALWAYS": "Siempre",
+        "SCHEDULE_HOURS": "Horario de atención",
+        "TONE": "Tono de respuesta",
+        "TONE_PH": "Ej. Cercano y empático",
+        "PROMPT": "Pautas de respuesta",
+        "PROMPT_HINT": "Indica cómo presentarse, qué preguntar y cómo explicar el siguiente paso.",
+        "TOOLS": "Capacidades (herramientas)",
+        "HARD_RULES": "Reglas duras (no editables)",
+        "HARD_RULES_HINT": "Vienen del sistema y aplican a todos los agentes. Se muestran solo como referencia.",
+        "CONFIDENCE": "Confianza mínima (%)",
+        "MAX": "Máximo de respuestas seguidas",
+        "TEAM": "Equipo que recibe la conversación",
+        "TEAM_NONE": "Sin equipo",
+        "HANDOFF": "Mensaje al derivar"
+      },
+      "ERRORS": {
+        "NAME": "Escribe un nombre para el agente.",
+        "PURPOSE": "Describe el propósito del agente.",
+        "INBOXES": "Selecciona al menos una bandeja antes de activar el agente.",
+        "PROMPT": "Añade las pautas de respuesta.",
+        "CONFIDENCE": "La confianza mínima debe estar entre 50 y 100.",
+        "MAX": "El máximo debe estar entre 1 y 30 respuestas.",
+        "HANDOFF": "Escribe el mensaje que verá el cliente al derivar."
+      },
+      "SUMMARY": {
+        "KICKER": "Configuración del agente",
+        "PLACEHOLDER": "Tu nuevo agente",
+        "PURPOSE_PH": "Define su propósito para que tu equipo sepa cuándo usarlo.",
+        "INBOXES": "Bandejas autorizadas",
+        "INBOXES_UNIT": "bandejas",
+        "NO_INBOXES": "Aún no has seleccionado bandejas",
+        "TONE": "Tono y disponibilidad",
+        "TOOLS": "Capacidades",
+        "TOOLS_LIMITS": "{tools} herramientas · {max} respuestas como máximo",
+        "HANDOFF": "Derivación humana",
+        "HANDOFF_HINT": "Confianza menor al {c} % o una condición de derivación.",
+        "NOTE": "Vista de configuración. Solo se simula la atención; los cambios se guardan al crear/guardar el agente.",
+        "LIMITS": "Límites (máx · confianza)"
+      }
+    }
+  }
+}
