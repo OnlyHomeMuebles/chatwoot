@@ -802,6 +802,7 @@ GEM
     rspec-support (3.13.1)
     rspec_junit_formatter (0.6.0)
       rspec-core (>= 2, < 4, != 2.12.0)
+    rtesseract (3.1.4)
     rubocop (1.75.6)
       json (~> 2.3)
       language_server-protocol (~> 3.17.0.2)
@@ -1160,6 +1161,7 @@ DEPENDENCIES
   reverse_markdown
   rspec-rails (>= 6.1.5)
   rspec_junit_formatter
+  rtesseract (~> 3.1)
   rubocop
   rubocop-factory_bot
   rubocop-performance

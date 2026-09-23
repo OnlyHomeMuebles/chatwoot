@@ -16,15 +16,20 @@ class Helic3::WebhookHandler
     return unless bot_should_handle?
     return unless first_delivery?
 
-    encolar_respuesta_del_agente if content.present?
-    # EVI-02: un mensaje solo con foto/video/documento no invoca al modelo de
-    # lenguaje con una cadena vacia; solo se sincronizan las evidencias del
-    # expediente (si ya existe uno para la conversacion).
+    encolar_respuesta_del_agente
+    # EVI-02: ademas de que el agente responda (AGT-08: incluso a un mensaje
+    # solo-foto, con el texto que lea el OCR), la evidencia se vincula al
+    # expediente por su cuenta -- son dos necesidades distintas (que el
+    # cliente reciba respuesta vs. que el documento quede guardado) y no se
+    # pisan: si el job del agente fallara, la evidencia igual queda linkeada.
     encolar_vinculacion_de_evidencias if adjuntos?
   end
 
   private
 
+  # Un mensaje sin texto pero con foto (el caso normal de "aquí está el daño") ya
+  # no se descarta: content.present? por si solo dejaba pasar mensajes vacios
+  # sin adjuntos. adjuntos?.present? cubre la foto sola.
   def incoming_message?
     @payload[:event] == 'message_created' &&
       @payload[:message_type] == 'incoming' &&
@@ -33,13 +38,19 @@ class Helic3::WebhookHandler
       conversation_display_id.present?
   end
 
+  # Cualquier tipo de adjunto cuenta como evidencia (foto, video, documento);
+  # distinto de `imagenes`, que solo filtra las que el OCR puede leer.
   def adjuntos?
     Array(@payload[:attachments]).any?
   end
 
+  # AGT-08: el agente responde SIEMPRE que el mensaje sea atendible, incluso
+  # sin texto -- el cliente que solo manda la foto de la factura recibe una
+  # respuesta natural, con el texto que el OCR ya leyo (ver
+  # ProcessConversationJob::SOLO_IMAGEN_CONTENT y LectorDeImagenes).
   def encolar_respuesta_del_agente
     Helic3::ProcessConversationJob.perform_later(
-      account_id: account_id, conversation_id: conversation_display_id, content: content
+      account_id: account_id, conversation_id: conversation_display_id, content: content, imagenes: imagenes
     )
   end
 
@@ -62,6 +73,15 @@ class Helic3::WebhookHandler
 
   def content
     @payload[:content]
+  end
+
+  # Fotos del mensaje entrante (Message#webhook_data ya las trae con su URL:
+  # push_event_data de un adjunto tipo imagen incluye data_url). Solo imagenes: un
+  # audio o un PDF no le sirven de nada al OCR.
+  def imagenes
+    Array(@payload[:attachments]).filter_map do |adjunto|
+      adjunto[:data_url] if adjunto[:file_type].to_s == 'image' && adjunto[:data_url].present?
+    end
   end
 
   def conversation_display_id

@@ -19,18 +19,30 @@ class Helic3::ProcessConversationJob < ApplicationJob
   # antes de rendirnos, para que ese límite pasajero sea transparente para el cliente.
   MAX_LLM_ATTEMPTS = 2
   MAX_RETRY_WAIT = 4
+  # Mensaje de entrada al runner cuando el cliente solo mandó una foto: el runner
+  # necesita un string no vacío, y así el agente sabe que llegó una imagen aunque
+  # no haya texto que responder.
+  SOLO_IMAGEN_CONTENT = 'El cliente envió una imagen sin texto.'
 
-  def perform(account_id:, conversation_id:, content:)
+  def perform(account_id:, conversation_id:, content:, imagenes: [])
     Helic3::Agents::LlmRuntime.configure_agents!
     @account_id = account_id
     client = Helic3::ChatwootClient.new(account_id: account_id)
     memory = Helic3::Agents::ConversationMemory.new(account_id: account_id, conversation_id: conversation_id)
+
+    # El indicador va PRIMERO: el OCR (descarga + tesseract, hasta ~25s por
+    # imagen) puede tardar mas que la respuesta del LLM. Sin esto el cliente
+    # ve la conversacion quieta, sin ninguna señal, mientras se leen las fotos.
+    start_typing(client, conversation_id)
     # AGT-07: el estado de consentimiento se lee de la conversacion (no de la memoria del modelo),
     # para que el aviso no se repita entre corridas. El triage lo recibe en el state.
     @consentimiento_datos_at = consentimiento_de_datos(conversation_id)
+    # AGT-08: el OCR corre SIEMPRE aqui, determinista, no como tool que el modelo deba
+    # acordarse de llamar (se probo en vivo que a veces "alucina" el resultado sin
+    # invocarla). El texto ya leido viaja en el state y PqrsAgent lo inyecta en el prompt.
+    @texto_imagenes = Helic3::Agents::LectorDeImagenes.leer(imagenes)
 
-    start_typing(client, conversation_id)
-    reply = generate_reply(client, memory, conversation_id, content)
+    reply = generate_reply(client, memory, conversation_id, content, imagenes)
     client.create_message(conversation_id, content: reply, message_type: 'outgoing') if reply.present?
     encolar_radicacion(conversation_id)
   ensure
@@ -60,8 +72,8 @@ class Helic3::ProcessConversationJob < ApplicationJob
 
   # Corre el multiagente restaurando el hilo previo. Ante un fallo del LLM devuelve un mensaje de
   # respaldo para que el cliente nunca quede sin respuesta, y no persiste un estado a medias.
-  def generate_reply(client, memory, conversation_id, content)
-    result = run_with_retries(client, memory, conversation_id, content)
+  def generate_reply(client, memory, conversation_id, content, imagenes)
+    result = run_with_retries(client, memory, conversation_id, content, imagenes)
 
     if result && result.output.to_s.strip.present?
       memory.save(result.context)
@@ -85,14 +97,16 @@ class Helic3::ProcessConversationJob < ApplicationJob
 
   # Reintenta ante errores de cuota/tasa (límite por minuto del free tier), reconstruyendo el
   # contexto desde la memoria en cada intento (no se persiste nada hasta que hay una salida válida).
-  def run_with_retries(client, memory, conversation_id, content)
+  def run_with_retries(client, memory, conversation_id, content, imagenes)
     result = nil
+    mensaje = content.presence || (imagenes.present? ? SOLO_IMAGEN_CONTENT : content)
     MAX_LLM_ATTEMPTS.times do |attempt|
       context = memory.load
       context[:account_id] = @account_id
       context[:state] = { conversation_id: conversation_id, chatwoot_client: client,
-                          consentimiento_datos_at: @consentimiento_datos_at }
-      result = Helic3::Agents::RunnerService.new(**Helic3::Agents::LlmRuntime.agents_options).run(content, context: context)
+                          consentimiento_datos_at: @consentimiento_datos_at, imagenes: imagenes,
+                          texto_imagenes: @texto_imagenes }
+      result = Helic3::Agents::RunnerService.new(**Helic3::Agents::LlmRuntime.agents_options).run(mensaje, context: context)
       return result if result.output.to_s.strip.present?
 
       delay = retry_delay(result.error)
