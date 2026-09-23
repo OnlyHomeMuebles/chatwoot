@@ -138,6 +138,21 @@
         "NOTE": "Vista de configuración. Solo se simula la atención; los cambios se guardan al crear/guardar el agente.",
         "LIMITS": "Límites (máx · confianza)"
       }
+    },
+    "LIVE": {
+      "LINK": "Estado en vivo",
+      "TITLE": "Estado en vivo",
+      "SUBTITLE": "Conversaciones que la IA está atendiendo ahora. Puedes intervenir y tomar el relevo.",
+      "CONNECTED": "En vivo",
+      "DISCONNECTED": "Desconectado",
+      "NEUTRAL": "Estado no disponible. Reconectando… (no se muestra información posiblemente desactualizada).",
+      "LOADING": "Cargando estado en vivo…",
+      "EMPTY": "Ninguna conversación está siendo atendida por la IA en este momento.",
+      "NO_CONTACT": "Contacto sin nombre",
+      "HANDLED_BY": "Atendida por {agent}",
+      "INTERVENE": "Intervenir",
+      "INTERVENED": "Intervenida: la IA dejó de responder en esta conversación.",
+      "INTERVENE_ERROR": "No se pudo intervenir la conversación."
     }
   }
 }

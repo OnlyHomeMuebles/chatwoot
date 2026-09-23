@@ -57,6 +57,7 @@ onMounted(() => {
 
 const irACrear = () => router.push({ name: 'agentes_ia_new' });
 const irAEditar = id => router.push({ name: 'agentes_ia_edit', params: { agenteId: id } });
+const irAEstadoEnVivo = () => router.push({ name: 'agentes_ia_estado_en_vivo' });
 
 const alternar = async agente => {
   try {
@@ -95,7 +96,10 @@ const limpiarFiltros = () => {
         <h1 class="text-2xl font-semibold text-n-slate-12">{{ t('AI_AGENTS.HEADER') }}</h1>
         <p class="mt-1 text-sm text-n-slate-11">{{ t('AI_AGENTS.SUBTITLE') }}</p>
       </div>
-      <Button color="teal" :label="t('AI_AGENTS.CREATE')" icon="i-lucide-plus" @click="irACrear" />
+      <div class="flex items-center gap-2">
+        <Button variant="faded" color="slate" icon="i-lucide-radio" :label="t('AI_AGENTS.LIVE.LINK')" @click="irAEstadoEnVivo" />
+        <Button color="teal" :label="t('AI_AGENTS.CREATE')" icon="i-lucide-plus" @click="irACrear" />
+      </div>
     </header>
 
     <!-- Contadores (H3A-13) -->
