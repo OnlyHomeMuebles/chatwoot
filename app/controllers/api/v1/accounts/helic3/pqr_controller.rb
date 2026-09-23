@@ -105,7 +105,8 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
     end
     scope = filtrar_por_texto(scope)
     scope = solo_sin_responder(scope)
-    solo_vencidas(scope)
+    scope = solo_vencidas(scope)
+    filtrar_por_origen(scope)
   end
 
   # Tab "Sin responder" (VIS-02): sin sello de respuesta. Columna directa, en SQL.
@@ -132,6 +133,14 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
     return scope unless ActiveModel::Type::Boolean.new.cast(params[:vencidas])
 
     scope.where(respondida_at: nil).where('plazo_respuesta_vence_at < ?', Time.current)
+  end
+
+  # Bandeja del Agente IA (AGT-04): solo los expedientes que el agente radico
+  # por su cuenta. Mismo patron de filtro opcional que los de arriba.
+  def filtrar_por_origen(scope)
+    return scope unless params[:origen] == 'agente'
+
+    scope.origen_agente
   end
 
   # Umbrales del semaforo PQR, leidos una sola vez por peticion. Si la cuenta aun

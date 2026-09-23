@@ -119,6 +119,22 @@
       "EXPORT": "Exportar",
       "EXPORT_DISABLED": "Exportar llegará en una próxima entrega"
     },
+    "AGENT_INBOX": {
+      "TITLE": "Bandeja del agente",
+      "SUBTITLE": "Casos que el Agente IA radicó por su cuenta, para supervisión. No es una pantalla de edición: abre un caso para ver la conversación real.",
+      "ERROR": "No se pudo cargar la bandeja del agente",
+      "EMPTY": "El agente todavía no ha radicado ningún caso",
+      "EMPTY_HINT": "Los chats donde el bot solo respondió una pregunta (sin radicar PQR/garantía) no aparecen aquí.",
+      "OPEN_CONVERSATION": "Abrir la conversación",
+      "COLUMNS": {
+        "CLASSIFICATION": "Clasificación"
+      },
+      "METRICS": {
+        "RADICADAS": "Radicados por el agente",
+        "ABREN_GARANTIA": "Abren garantía",
+        "SIN_RESPONDER": "Sin responder"
+      }
+    },
     "ADMIN": {
       "TITLE": "Catálogos y parámetros",
       "READ_ONLY": "Solo lectura: los cambios los hace un administrador",
