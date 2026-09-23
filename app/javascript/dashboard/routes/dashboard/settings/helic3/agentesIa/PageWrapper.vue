@@ -9,7 +9,7 @@ const routeKey = computed(() => route.fullPath);
 </script>
 
 <template>
-  <div class="flex flex-col w-full h-full px-8 pt-4 pb-10 overflow-auto bg-n-surface-1">
+  <div class="flex flex-col w-full h-full px-8 pt-4 pb-10 overflow-auto bg-n-background">
     <div class="w-full mx-auto max-w-[1200px]">
       <router-view v-slot="{ Component }">
         <component :is="Component" :key="routeKey" />
