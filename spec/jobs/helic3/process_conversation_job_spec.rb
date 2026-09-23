@@ -107,6 +107,53 @@ RSpec.describe Helic3::ProcessConversationJob do
     job.perform(account_id: 1, conversation_id: 7, content: 'hola')
   end
 
+  # H3A-11: límites de ejecución del agente activo antes de responder.
+  describe 'límites de ejecución (H3A-11)' do
+    let(:account) { create(:account) }
+    let(:inbox) { create(:inbox, account: account) }
+    let(:team) { create(:team, account: account) }
+    let(:conversation) { create(:conversation, account: account, inbox: inbox) }
+    let!(:agente) do
+      Helic3::Agente.create!(account: account, codigo: 'agente_triage', nombre: 'T', es_sistema: true,
+                             prompt: 'p', max_respuestas: 3, team_id: team.id, mensaje_handoff: 'Te paso con un asesor 💙')
+    end
+
+    before do
+      Helic3::AgenteBandeja.create!(agente: agente, inbox: inbox)
+      allow(client).to receive(:assign)
+    end
+
+    it 'al llegar al tope de respuestas deriva al equipo con el mensaje_handoff, sin correr el runner (crit 1)' do
+      allow(memory).to receive(:load).and_return({ current_agent: 'agente_triage', turn_count: 3 })
+
+      expect(runner).not_to receive(:run)
+      expect(client).to receive(:create_message)
+        .with(conversation.display_id, content: 'Te paso con un asesor 💙', message_type: 'outgoing')
+      expect(client).to receive(:assign).with(conversation.display_id, team_id: team.id)
+
+      job.perform(account_id: account.id, conversation_id: conversation.display_id, content: 'sigo molesto')
+    end
+
+    it 'fuera de horario no responde ni corre el runner: queda sin IA (crit 2)' do
+      allow_any_instance_of(Helic3::Agents::LimitesService).to receive(:evaluar) # rubocop:disable RSpec/AnyInstance
+        .and_return(Helic3::Agents::LimitesService::Decision.new(accion: :dejar_sin_ia, motivo: 'fuera del horario de atención'))
+
+      expect(runner).not_to receive(:run)
+      expect(client).not_to receive(:create_message)
+
+      job.perform(account_id: account.id, conversation_id: conversation.display_id, content: 'hola')
+    end
+
+    it 'dentro de límites, corre el runner normalmente' do
+      allow(memory).to receive(:load).and_return({ current_agent: 'agente_triage', turn_count: 1 })
+      allow(runner).to receive(:run).and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
+
+      expect(runner).to receive(:run)
+
+      job.perform(account_id: account.id, conversation_id: conversation.display_id, content: 'hola')
+    end
+  end
+
   describe 'encolado de la radicación automática (AGT-06)' do
     around do |example|
       original = ActiveJob::Base.queue_adapter
