@@ -316,6 +316,7 @@
       "SOURCE": {
         "IA": "AI",
         "ERP": "ERP",
+        "CONFIRMADO": "Confirmed",
         "HUMANO": "Manual"
       },
       "FIELDS": {
