@@ -20,6 +20,7 @@ RSpec.describe Helic3::ProcessConversationJob do
     allow(memory).to receive(:save)
     allow(client).to receive(:create_message)
     allow(client).to receive(:toggle_typing)
+    allow(client).to receive(:update_custom_attributes)
   end
 
   # H3A-08 criterio 3: sin agentes activos para la bandeja, se deja al humano.
@@ -105,6 +106,35 @@ RSpec.describe Helic3::ProcessConversationJob do
       .with(7, content: described_class::FALLBACK_REPLY, message_type: 'outgoing')
 
     job.perform(account_id: 1, conversation_id: 7, content: 'hola')
+  end
+
+  # H3A-15: estado en vivo por conversación (emitir agente activo + pausa por intervención).
+  describe 'estado en vivo (H3A-15)' do
+    it 'emite el agente que atendió en los custom_attributes de la conversación (crit 1)' do
+      result = instance_double(Agents::RunResult, output: 'ok', context: { current_agent: 'agente_pqrs' })
+      allow(runner).to receive(:run).and_return(result)
+
+      expect(client).to receive(:update_custom_attributes)
+        .with(7, { helic3_agente_activo: 'agente_pqrs' })
+
+      job.perform(account_id: 1, conversation_id: 7, content: 'hola')
+    end
+
+    describe 'cuando un humano intervino la conversación' do
+      let(:account) { create(:account) }
+      let(:inbox) { create(:inbox, account: account) }
+      let(:conversation) do
+        create(:conversation, account: account, inbox: inbox,
+                              custom_attributes: { 'helic3_ia_pausada' => true })
+      end
+
+      it 'no corre el runner ni responde (crit 2)' do
+        expect(runner).not_to receive(:run)
+        expect(client).not_to receive(:create_message)
+
+        job.perform(account_id: account.id, conversation_id: conversation.display_id, content: 'hola')
+      end
+    end
   end
 
   describe 'encolado de la radicación automática (AGT-06)' do

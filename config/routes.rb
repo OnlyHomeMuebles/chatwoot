@@ -360,6 +360,9 @@ Rails.application.routes.draw do
             resources :agentes, only: [:index, :show, :create, :update, :destroy] do
               member { patch :toggle }
             end
+            # H3A-15: estado en vivo por conversación (solo administrador).
+            get 'estado-en-vivo', to: 'estado_en_vivo#index'
+            post 'estado-en-vivo/:conversation_id/intervenir', to: 'estado_en_vivo#intervenir'
             # Bandeja de PQR (BAN-01): indice de solo lectura, filtrado y paginado
             # en servidor. Endpoint propio para no cambiar la forma de la respuesta
             # que el panel de conversacion ya consume por tickets#index.

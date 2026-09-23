@@ -33,6 +33,8 @@ class Helic3::ProcessConversationJob < ApplicationJob
     Rails.logger.info("[Helic3] conv=#{conversation_id} runner_modo=#{@runner_service.modo}")
     # H3A-08 (crit 3): sin agentes activos para la bandeja, se deja al humano.
     return dejar_al_humano(conversation_id) unless @runner_service.hay_agentes?
+    # H3A-15 (crit 2): si un humano intervino en la conversacion, la IA no responde.
+    return dejar_por_intervencion(conversation_id) if ia_pausada?(conversation_id)
 
     atender(conversation_id, content)
   ensure
@@ -51,11 +53,35 @@ class Helic3::ProcessConversationJob < ApplicationJob
     start_typing(@client, conversation_id)
     reply = generate_reply(@client, memory, conversation_id, content)
     @client.create_message(conversation_id, content: reply, message_type: 'outgoing') if reply.present?
+    emitir_estado(conversation_id)
     encolar_radicacion(conversation_id)
   end
 
   def dejar_al_humano(conversation_id)
     Rails.logger.info("[Helic3] sin agentes activos para la bandeja de conv=#{conversation_id}; se deja al equipo humano")
+  end
+
+  # H3A-15 crit 2: la conversacion quedo intervenida por un humano (helic3_ia_pausada).
+  def dejar_por_intervencion(conversation_id)
+    Rails.logger.info("[Helic3] conv=#{conversation_id} pausada por intervención humana; la IA no responde")
+  end
+
+  # H3A-15 crit 2: ¿un humano intervino esta conversacion? (best-effort).
+  def ia_pausada?(display_id)
+    ActiveModel::Type::Boolean.new.cast(conversacion(display_id)&.custom_attributes&.dig('helic3_ia_pausada'))
+  rescue StandardError
+    false
+  end
+
+  # H3A-15 crit 1: publica en la conversacion que agente esta atendiendo. Escribir el
+  # custom_attribute dispara conversation.updated (Chatwoot ya lo difunde), asi que la
+  # vista en vivo se actualiza sin recargar. Best-effort: nunca rompe la respuesta.
+  def emitir_estado(display_id)
+    return if @agente_activo.blank?
+
+    @client.update_custom_attributes(display_id, { helic3_agente_activo: @agente_activo })
+  rescue StandardError => e
+    Rails.logger.warn("[Helic3] no se pudo emitir el estado del agente conv=#{display_id}: #{e.message}")
   end
 
   # N5 (revision de Jhan): la conversacion se resuelve UNA sola vez por corrida y se
@@ -93,6 +119,8 @@ class Helic3::ProcessConversationJob < ApplicationJob
   # respaldo para que el cliente nunca quede sin respuesta, y no persiste un estado a medias.
   def generate_reply(client, memory, conversation_id, content)
     result = run_with_retries(client, memory, conversation_id, content)
+    # H3A-15: agente que atendio esta corrida (para publicarlo como estado en vivo).
+    @agente_activo = agente_del_resultado(result)
 
     if result && result.output.to_s.strip.present?
       memory.save(result.context)
@@ -106,6 +134,11 @@ class Helic3::ProcessConversationJob < ApplicationJob
   rescue StandardError => e
     Rails.logger.error("[Helic3] error procesando conv=#{conversation_id}: #{e.class}: #{e.message}")
     FALLBACK_REPLY
+  end
+
+  # H3A-15: codigo del agente que atendio (current_agent del contexto del resultado).
+  def agente_del_resultado(result)
+    result&.context.is_a?(Hash) ? result.context[:current_agent] : nil
   end
 
   # ¿El agente derivó la conversación a un humano durante el run? (lo marca HumanHandoffTool).
