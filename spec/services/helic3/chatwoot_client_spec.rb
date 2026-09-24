@@ -44,10 +44,12 @@ RSpec.describe Helic3::ChatwootClient do
     client.add_labels(42, 'pqrs')
   end
 
-  it 'envía atributos personalizados' do
+  # B1: merge: true evita que escribir un atributo borre el resto (p. ej. el sello de
+  # consentimiento AGT-07). El endpoint upstream reemplaza el hash completo sin esta bandera.
+  it 'envía atributos personalizados con merge: true (no pisa los demás)' do
     expect(HTTParty).to receive(:post).with(
       'http://cw.test/api/v1/accounts/7/conversations/42/custom_attributes',
-      hash_including(body: { custom_attributes: { 'ciudad' => 'Bogotá' } }.to_json)
+      hash_including(body: { custom_attributes: { 'ciudad' => 'Bogotá' }, merge: true }.to_json)
     ).and_return(ok)
 
     client.update_custom_attributes(42, { 'ciudad' => 'Bogotá' })

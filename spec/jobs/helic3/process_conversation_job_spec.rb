@@ -107,12 +107,53 @@ RSpec.describe Helic3::ProcessConversationJob do
     job.perform(account_id: 1, conversation_id: 7, content: 'hola')
   end
 
+  # H3A-15: estado en vivo por conversación (emitir agente activo + guard por estado, B4).
+  describe 'estado en vivo (H3A-15)' do
+    let(:account) { create(:account) }
+    let(:inbox) { create(:inbox, account: account) }
+
+    # crit 1 + B1: el job emite SOLO el agente activo; no reescribe el resto de atributos.
+    # Junto con merge: true del cliente, el sello de consentimiento (AGT-07) sobrevive.
+    it 'emite SOLO el agente que atendió, sin pisar otros atributos como el consentimiento (crit 1/B1)' do
+      result = instance_double(Agents::RunResult, output: 'ok', context: { current_agent: 'agente_pqrs' })
+      allow(runner).to receive(:run).and_return(result)
+
+      expect(client).to receive(:update_custom_attributes)
+        .with(7, { helic3_agente_activo: 'agente_pqrs' })
+
+      job.perform(account_id: 1, conversation_id: 7, content: 'hola')
+    end
+
+    # B4 (revisión de Jhan): el guard mira el ESTADO, no una bandera que nunca se limpia.
+    it 'no corre el runner ni responde cuando la conversación ya no está en pending (crit 2/B4)' do
+      conv = create(:conversation, account: account, inbox: inbox, status: :open)
+
+      expect(runner).not_to receive(:run)
+      expect(client).not_to receive(:create_message)
+
+      job.perform(account_id: account.id, conversation_id: conv.display_id, content: 'hola')
+    end
+
+    # B4: intervenida -> resuelta -> reabierta en pending: la IA vuelve a responder
+    # (aunque la marca de auditoría helic3_intervenido_at siga puesta).
+    it 'responde de nuevo si una conversación intervenida se reabre en pending (crit 3/B4)' do
+      conv = create(:conversation, account: account, inbox: inbox, status: :pending,
+                                   custom_attributes: { 'helic3_intervenido_at' => '2026-09-01T00:00:00Z' })
+      allow(runner).to receive(:run).and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
+
+      expect(runner).to receive(:run)
+
+      job.perform(account_id: account.id, conversation_id: conv.display_id, content: 'volví')
+    end
+  end
+
   # H3A-11: límites de ejecución del agente activo antes de responder.
   describe 'límites de ejecución (H3A-11)' do
     let(:account) { create(:account) }
     let(:inbox) { create(:inbox, account: account) }
     let(:team) { create(:team, account: account) }
-    let(:conversation) { create(:conversation, account: account, inbox: inbox) }
+    # pending = territorio del bot (el job solo corre ahí, B4)
+    let(:conversation) { create(:conversation, account: account, inbox: inbox, status: :pending) }
     let!(:agente) do
       Helic3::Agente.create!(account: account, codigo: 'agente_triage', nombre: 'T', es_sistema: true,
                              prompt: 'p', max_respuestas: 3, team_id: team.id, mensaje_handoff: 'Te paso con un asesor 💙')
