@@ -77,9 +77,9 @@ class Helic3::ProcessConversationJob < ApplicationJob
   # custom_attribute dispara conversation.updated (Chatwoot ya lo difunde), asi que la
   # vista en vivo se actualiza sin recargar. Best-effort: nunca rompe la respuesta.
   def emitir_estado(display_id)
-    return if @agente_activo.blank?
+    return if @codigo_agente_activo.blank?
 
-    @client.update_custom_attributes(display_id, { helic3_agente_activo: @agente_activo })
+    @client.update_custom_attributes(display_id, { helic3_agente_activo: @codigo_agente_activo })
   rescue StandardError => e
     Rails.logger.warn("[Helic3] no se pudo emitir el estado del agente conv=#{display_id}: #{e.message}")
   end
@@ -120,7 +120,7 @@ class Helic3::ProcessConversationJob < ApplicationJob
   def generate_reply(client, memory, conversation_id, content)
     result = run_with_retries(client, memory, conversation_id, content)
     # H3A-15: agente que atendio esta corrida (para publicarlo como estado en vivo).
-    @agente_activo = agente_del_resultado(result)
+    @codigo_agente_activo = agente_del_resultado(result)
 
     if result && result.output.to_s.strip.present?
       memory.save(result.context)

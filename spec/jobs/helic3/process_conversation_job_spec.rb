@@ -110,7 +110,10 @@ RSpec.describe Helic3::ProcessConversationJob do
 
   # H3A-15: estado en vivo por conversación (emitir agente activo + pausa por intervención).
   describe 'estado en vivo (H3A-15)' do
-    it 'emite el agente que atendió en los custom_attributes de la conversación (crit 1)' do
+    # crit 1 + B1: el job emite SOLO el agente activo; no reescribe el resto de atributos.
+    # Junto con merge: true del cliente (ver chatwoot_client_spec), el sello de consentimiento
+    # AGT-07 sobrevive a cada respuesta de la IA.
+    it 'emite SOLO el agente que atendió, sin pisar otros atributos como el consentimiento (crit 1/B1)' do
       result = instance_double(Agents::RunResult, output: 'ok', context: { current_agent: 'agente_pqrs' })
       allow(runner).to receive(:run).and_return(result)
 
