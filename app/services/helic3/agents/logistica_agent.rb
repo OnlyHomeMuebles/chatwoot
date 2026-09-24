@@ -15,6 +15,10 @@ class Helic3::Agents::LogisticaAgent
     Solicita el número de pedido si aún no lo tienes. Entrega información clara del estado y del
     próximo paso.
 
+    Si el cliente confirma datos suyos (dirección, ciudad, número de factura) y ya hay un caso
+    radicado en la conversación, guárdalos con la herramienta registrar_datos_cliente (solo lo que el
+    cliente confirmó, nunca inventes). Si no hay caso radicado, la herramienta te lo dirá: no insistas.
+
     Fronteras (qué NO haces):
     - No gestionas quejas, reclamos ni garantías: eso es de PQRS.
     - No generas precios ni cotizaciones: eso es de Cotizaciones.
@@ -45,7 +49,8 @@ class Helic3::Agents::LogisticaAgent
       model: model || default_model,
       provider: provider,
       assume_model_exists: assume_model_exists,
-      tools: [Helic3::Agents::Tools::HumanHandoffTool.new, Helic3::KnowledgeBaseSearchTool.new]
+      tools: [Helic3::Agents::Tools::HumanHandoffTool.new, Helic3::KnowledgeBaseSearchTool.new,
+              Helic3::Agents::Tools::RegistrarDatosClienteTool.new]
     )
   end
 

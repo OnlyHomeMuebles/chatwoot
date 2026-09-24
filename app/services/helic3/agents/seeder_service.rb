@@ -39,17 +39,17 @@ class Helic3::Agents::SeederService
       criterio_ruteo: 'Postventa: algo salió mal con una compra ya hecha (llegó dañado, rayado, roto, ' \
                       'incompleto o defectuoso), devoluciones o cambios, o hacer efectiva la garantía; ' \
                       'quejas, reclamos e inconformidad. Si el mensaje incluye un reclamo, va aquí primero.',
-      herramientas: %w[buscar_conocimiento radicar_pqr resolver_pqr] },
+      herramientas: %w[buscar_conocimiento radicar_pqr resolver_pqr registrar_datos_cliente] },
     { codigo: 'agente_logistica', clase: 'Helic3::Agents::LogisticaAgent',
       nombre: 'Logística', es_sistema: false,
       criterio_ruteo: 'Estado o entrega de un pedido YA realizado, sin reclamo: dónde va mi pedido, ' \
                       'cuándo llega, reprogramar la entrega, coordinar el envío o el armado.',
-      herramientas: %w[buscar_conocimiento] },
+      herramientas: %w[buscar_conocimiento registrar_datos_cliente] },
     { codigo: 'agente_cotizaciones', clase: 'Helic3::Agents::CotizacionesAgent',
       nombre: 'Cotizaciones', es_sistema: false,
       criterio_ruteo: 'Etapa previa a la compra: precios y condiciones comerciales, cotizar, descuentos, ' \
                       'combos, formas de pago y financiación (Addi, Sistecrédito).',
-      herramientas: %w[buscar_conocimiento] }
+      herramientas: %w[buscar_conocimiento registrar_datos_cliente] }
   ].freeze
 
   # Patrones para ubicar el Agent Bot de Helic3 por su webhook. Se aceptan LOS DOS
