@@ -45,6 +45,21 @@ class TicketsAPI extends ApiClient {
   catalogos() {
     return axios.get(this.url.replace(/tickets$/, 'catalogos'));
   }
+
+  // Archivo documental del expediente (EVI-02/EVI-03): evidencias del cliente
+  // (referenciadas, no copiadas) y cargas manuales del operador.
+  documentos(ticketId) {
+    return axios.get(`${this.url}/${ticketId}/documentos`);
+  }
+
+  // Carga manual (EVI-03, 7.2): multipart, no JSON -- FormData con el archivo
+  // y la nota opcional. El backend fija clase evidencia, origen operador y el
+  // usuario autenticado como remitente.
+  subirDocumento(ticketId, formData) {
+    return axios.post(`${this.url}/${ticketId}/documentos`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  }
 }
 
 export default new TicketsAPI();

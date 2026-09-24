@@ -94,6 +94,50 @@ describe('#actions', () => {
     });
   });
 
+  describe('#fetchDocumentos', () => {
+    it('carga el archivo documental del expediente', async () => {
+      const documentos = [{ id: 1, clase: 'evidencia', titulo: 'foto.png' }];
+      axios.get.mockResolvedValue({ data: documentos });
+
+      await actions.fetchDocumentos({ commit }, 7);
+
+      expect(commit.mock.calls).toEqual([
+        [types.SET_PQR_INBOX_UI_FLAG, { isFetchingDocumentos: true }],
+        [types.SET_PQR_DOCUMENTOS, documentos],
+        [types.SET_PQR_INBOX_UI_FLAG, { isFetchingDocumentos: false }],
+      ]);
+    });
+  });
+
+  describe('#subirDocumento', () => {
+    it('sube el documento y lo suma a la lista', async () => {
+      const nuevo = { id: 9, clase: 'evidencia', origen: 'operador' };
+      axios.post.mockResolvedValue({ data: nuevo });
+      const formData = new FormData();
+
+      await actions.subirDocumento({ commit }, { id: 7, formData });
+
+      expect(commit.mock.calls).toEqual([
+        [types.SET_PQR_INBOX_UI_FLAG, { isUploadingDocumento: true }],
+        [types.ADD_PQR_DOCUMENTO, nuevo],
+        [types.SET_PQR_INBOX_UI_FLAG, { isUploadingDocumento: false }],
+      ]);
+    });
+
+    it('propaga el error y baja el flag de carga', async () => {
+      axios.post.mockRejectedValue(new Error('boom'));
+
+      await expect(
+        actions.subirDocumento({ commit }, { id: 7, formData: new FormData() })
+      ).rejects.toThrow('boom');
+
+      expect(commit.mock.calls).toEqual([
+        [types.SET_PQR_INBOX_UI_FLAG, { isUploadingDocumento: true }],
+        [types.SET_PQR_INBOX_UI_FLAG, { isUploadingDocumento: false }],
+      ]);
+    });
+  });
+
   describe('#fetchDecisiones', () => {
     it('carga la cola de decisiones', async () => {
       const cola = [
