@@ -1968,10 +1968,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120000) do
   add_foreign_key "helic3_catalogo_detalles_tipificados", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
   add_foreign_key "helic3_catalogo_motivos_pqr", "helic3_catalogo_categorias", column: "categoria_id"
   add_foreign_key "helic3_documentos", "accounts"
-  add_foreign_key "helic3_documentos", "attachments"
+  add_foreign_key "helic3_documentos", "attachments", on_delete: :nullify
   add_foreign_key "helic3_documentos", "helic3_garantias", column: "garantia_id"
   add_foreign_key "helic3_documentos", "helic3_tickets", column: "ticket_id"
-  add_foreign_key "helic3_documentos", "messages"
+  add_foreign_key "helic3_documentos", "messages", on_delete: :nullify
   add_foreign_key "helic3_documentos", "users", column: "remitente_user_id"
   add_foreign_key "helic3_eventos", "accounts"
   add_foreign_key "helic3_eventos", "helic3_garantias", column: "garantia_id"

@@ -902,24 +902,51 @@ const formatFecha = valor =>
               class="flex items-center gap-2.5 p-2.5 text-sm rounded-lg bg-n-alpha-1"
             >
               <img
-                v-if="esImagen(doc.tipo_archivo)"
+                v-if="!doc.archivo_eliminado && esImagen(doc.tipo_archivo)"
                 :src="doc.url"
                 class="rounded-md size-8 shrink-0 object-cover"
                 alt=""
               />
               <Icon
                 v-else
-                :icon="iconoDocumento(doc.tipo_archivo)"
+                :icon="
+                  doc.archivo_eliminado
+                    ? 'i-lucide-file-x'
+                    : iconoDocumento(doc.tipo_archivo)
+                "
                 class="shrink-0 size-5 text-n-slate-10"
               />
               <div class="flex flex-col min-w-0 grow">
                 <span class="truncate text-n-slate-12">{{ doc.titulo }}</span>
                 <span class="text-xs text-n-slate-11">
-                  {{ remitenteDeDocumento(doc) }} ·
-                  {{ formatFecha(doc.ocurrido_at) }}
+                  <template v-if="doc.archivo_eliminado">
+                    {{ t('TICKETS.DETAIL.DOC_DELETED') }}
+                  </template>
+                  <template v-else>
+                    {{ remitenteDeDocumento(doc) }} ·
+                    {{ formatFecha(doc.ocurrido_at) }}
+                  </template>
                 </span>
               </div>
-              <a :href="doc.url" target="_blank" rel="noopener noreferrer">
+              <span
+                v-if="doc.archivo_eliminado"
+                v-tooltip="t('TICKETS.DETAIL.DOC_DELETED_TOOLTIP')"
+                class="inline-flex"
+              >
+                <Button
+                  icon="i-lucide-download"
+                  variant="faded"
+                  color="slate"
+                  size="xs"
+                  disabled
+                />
+              </span>
+              <a
+                v-else
+                :href="doc.url"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <Button
                   v-tooltip="t('TICKETS.DETAIL.DOC_DOWNLOAD')"
                   icon="i-lucide-download"

@@ -7,6 +7,16 @@
 # conversacion habria que rehacerla entonces.
 #
 # Tabla lateral propia del modulo; ninguna columna nueva sobre tablas upstream.
+#
+# on_delete: :nullify en attachment_id/message_id (revision de Jhan, B2):
+# Conversations::MessagesController#destroy de Chatwoot hace
+# message.attachments.destroy_all dentro de una transaccion. Sin esto, borrar
+# un mensaje cuya foto ya esta vinculada a un expediente revienta la FK con
+# un 500. El documento conserva titulo/remitente_nombre/ocurrido_at como
+# instantanea aunque el adjunto o el mensaje de origen desaparezcan -- la
+# evidencia no se pierde, solo deja de poder abrirse desde el chat (ver
+# Helic3::Documento#archivo_eliminado?). Pendiente de validar con Luisa la
+# preservacion de evidencia.
 class CreateHelic3Documentos < ActiveRecord::Migration[7.2]
   def change
     crear_tabla
@@ -25,9 +35,9 @@ class CreateHelic3Documentos < ActiveRecord::Migration[7.2]
 
       # attachments y messages usan id: :serial (integer), no bigint: t.references
       # crearia una columna bigint apuntando a una PK integer si no se declara el
-      # tipo explicito.
-      t.references :attachment, type: :integer, foreign_key: true, index: { name: 'idx_h3_documentos_attachment' }
-      t.references :message, type: :integer, foreign_key: true, index: { name: 'idx_h3_documentos_message' }
+      # tipo explicito. on_delete: :nullify explicado arriba (B2).
+      t.references :attachment, type: :integer, foreign_key: { on_delete: :nullify }, index: { name: 'idx_h3_documentos_attachment' }
+      t.references :message, type: :integer, foreign_key: { on_delete: :nullify }, index: { name: 'idx_h3_documentos_message' }
       t.references :remitente_user, foreign_key: { to_table: :users },
                                     index: { name: 'idx_h3_documentos_remitente_user' }
 

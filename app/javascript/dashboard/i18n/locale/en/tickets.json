@@ -248,6 +248,8 @@
       "DOC_FORMAT": "Format · {process}",
       "DOC_DISABLED": "Generated when the process runs",
       "DOC_DOWNLOAD": "Download",
+      "DOC_DELETED": "Deleted from the chat",
+      "DOC_DELETED_TOOLTIP": "The original attachment was deleted from the conversation",
       "DOC_EMPTY": "This case doesn't have any documents yet",
       "DOC_ERROR": "The documents could not be loaded",
       "DOC_UPLOAD_NOTE_PLACEHOLDER": "Optional note",

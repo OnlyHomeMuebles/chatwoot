@@ -121,4 +121,51 @@ RSpec.describe Helic3::Documento do
       expect(documento.tipo_archivo).to eq('image/png')
     end
   end
+
+  # B2 (revision de Jhan): Conversations::MessagesController#destroy borra los
+  # attachments del mensaje (message.attachments.destroy_all). Sin on_delete:
+  # :nullify en la FK, eso revienta con un 500 si la foto ya esta vinculada a
+  # un expediente.
+  describe 'cuando se borra el adjunto o el mensaje de origen desde el chat (B2)' do
+    it 'borrar el adjunto no revienta: la FK nullifica y el documento sigue existiendo' do
+      documento = documento_con(attachment: adjunto)
+      documento.save!
+
+      expect { adjunto.destroy! }.not_to raise_error
+      expect(documento.reload.attachment_id).to be_nil
+    end
+
+    it 'borrar el mensaje (y sus adjuntos en cascada) no revienta' do
+      documento = documento_con(attachment: adjunto, message: mensaje)
+      documento.save!
+
+      expect { mensaje.attachments.destroy_all }.not_to raise_error
+      expect(documento.reload.attachment_id).to be_nil
+    end
+
+    it 'conserva titulo, remitente_nombre y ocurrido_at como instantanea' do
+      documento = documento_con(attachment: adjunto, titulo: 'factura.png', remitente_nombre: 'Juan Pérez')
+      documento.save!
+      ocurrido_at = documento.ocurrido_at
+
+      adjunto.destroy!
+      documento.reload
+
+      expect(documento).to have_attributes(titulo: 'factura.png', remitente_nombre: 'Juan Pérez')
+      expect(documento.ocurrido_at).to be_within(1.second).of(ocurrido_at)
+    end
+
+    it 'queda marcado como archivo_eliminado? tras el borrado' do
+      documento = documento_con(attachment: adjunto)
+      documento.save!
+
+      adjunto.destroy!
+
+      expect(documento.reload.archivo_eliminado?).to be(true)
+    end
+
+    it 'un documento nuevo (sin guardar) no se reporta como archivo_eliminado?' do
+      expect(documento_con.archivo_eliminado?).to be(false)
+    end
+  end
 end

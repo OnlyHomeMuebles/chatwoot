@@ -39,9 +39,9 @@
 # Foreign Keys
 #
 #  fk_rails_...  (account_id => accounts.id)
-#  fk_rails_...  (attachment_id => attachments.id)
+#  fk_rails_...  (attachment_id => attachments.id) ON DELETE => nullify
 #  fk_rails_...  (garantia_id => helic3_garantias.id)
-#  fk_rails_...  (message_id => messages.id)
+#  fk_rails_...  (message_id => messages.id) ON DELETE => nullify
 #  fk_rails_...  (remitente_user_id => users.id)
 #  fk_rails_...  (ticket_id => helic3_tickets.id)
 #
@@ -86,6 +86,18 @@ class Helic3::Documento < ApplicationRecord
     return nil unless archivo.attached?
 
     archivo.content_type
+  end
+
+  # El adjunto o el mensaje de origen (procedencia A) pueden desaparecer si el
+  # chat borra el mensaje -- Chatwoot destruye sus attachments en cascada, y
+  # la FK aqui nullifica en vez de romper ese borrado (revision de Jhan, B2).
+  # El documento sigue existiendo con su instantanea (titulo/remitente_nombre/
+  # ocurrido_at) como registro historico; solo deja de poder abrirse. Es un
+  # estado terminal: si la fila se reintentara guardar quedaria invalida por
+  # validate_una_procedencia (ninguna de las dos), y eso es lo correcto -- no
+  # se edita una fila asi, se muestra como lo que es.
+  def archivo_eliminado?
+    persisted? && attachment.nil? && !archivo.attached?
   end
 
   private

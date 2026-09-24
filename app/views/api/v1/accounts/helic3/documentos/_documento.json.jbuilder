@@ -11,3 +11,7 @@ end
 json.ocurrido_at documento.ocurrido_at
 json.tipo_archivo documento.tipo_archivo
 json.url documento.url
+# B2: el adjunto o el mensaje de origen pueden haberse borrado del chat; el
+# panel usa esto para mostrar "archivo eliminado del chat" en vez de un
+# boton de descarga roto.
+json.archivo_eliminado documento.archivo_eliminado?

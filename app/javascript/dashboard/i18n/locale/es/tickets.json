@@ -248,6 +248,8 @@
       "DOC_FORMAT": "Formato · {process}",
       "DOC_DISABLED": "Se genera al ejecutar el proceso",
       "DOC_DOWNLOAD": "Descargar",
+      "DOC_DELETED": "Eliminado del chat",
+      "DOC_DELETED_TOOLTIP": "El adjunto original se eliminó de la conversación",
       "DOC_EMPTY": "Este expediente todavía no tiene documentos",
       "DOC_ERROR": "No se pudieron cargar los documentos",
       "DOC_UPLOAD_NOTE_PLACEHOLDER": "Nota opcional",
