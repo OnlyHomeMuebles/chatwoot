@@ -197,6 +197,10 @@ class Helic3::Agents::RunnerService
       known = []
       known << "- Cliente: #{state[:customer_name]}" if state[:customer_name].present?
       known << "- Número de orden: #{state[:order_number]} (ya disponible, no lo vuelvas a pedir)" if state[:order_number].present?
+      # cruce E4 + OCR: en el camino :bd hay que inyectar el texto leído de la foto (AGT-08),
+      # igual que hace PqrsAgent.contextual_instructions en el camino de clases; si no, con la
+      # bandera agentes_desde_bd encendida el texto del OCR se perdería sin que nada falle.
+      known.concat(Helic3::Agents::PqrsAgent.linea_de_imagen(state))
       partes = [base.construir, Helic3::Agents::PqrsAgent.seccion_operativa(contexto[:account_id])]
       partes << "# Contexto de la conversación\n#{known.join("\n")}" unless known.empty?
       partes.compact.join("\n")

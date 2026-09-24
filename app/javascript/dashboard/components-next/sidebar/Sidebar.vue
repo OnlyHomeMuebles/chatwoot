@@ -767,6 +767,16 @@ const menuItems = computed(() => {
       ],
     },
     {
+      // Bandeja de supervision del Agente IA (BAN-02): nivel superior a proposito,
+      // no anidada en "PQR" -- el agente hoy solo toca PQR/garantias, pero la
+      // pantalla es sobre EL AGENTE, no sobre el modulo de PQR en si.
+      name: 'Agent Inbox',
+      label: t('TICKETS.AGENT_INBOX.TITLE'),
+      icon: 'i-lucide-bot',
+      to: accountScopedRoute('helic3_agente_inbox'),
+      activeOn: ['helic3_agente_inbox'],
+    },
+    {
       name: 'Campaigns',
       label: t('SIDEBAR.CAMPAIGNS'),
       icon: 'i-lucide-megaphone',

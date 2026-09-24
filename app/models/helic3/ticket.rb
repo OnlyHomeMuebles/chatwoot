@@ -74,6 +74,13 @@ class Helic3::Ticket < ApplicationRecord
   # la ficha de datos del caso (DAT-01): 1:1, con la procedencia por campo.
   has_one :datos, class_name: 'Helic3::TicketDato', dependent: :destroy, inverse_of: :ticket
 
+  # la bitacora de transiciones del expediente (EVT-01).
+  has_many :eventos, class_name: 'Helic3::Evento', dependent: :destroy, inverse_of: :ticket
+
+  # el archivo documental del expediente (EVI-01): evidencias del cliente y,
+  # desde la Semana 3, los formatos de garantia.
+  has_many :documentos, class_name: 'Helic3::Documento', dependent: :destroy, inverse_of: :ticket
+
   CATALOGOS_CLASIFICACION = %i[categoria tipo motivo_pqr resultado etapa].freeze
 
   # status es el estado operativo generico heredado del sistema de tickets de
@@ -106,6 +113,11 @@ class Helic3::Ticket < ApplicationRecord
   scope :con_decision_pendiente, lambda {
     where('pqrs_metadata ? :clave', clave: 'resultado_propuesto_id')
   }
+  # Expedientes que el Agente IA radico por su cuenta (BAN-02): la tool
+  # radicar_pqr_tool fija pqrs_metadata['origen'] a 'agente' o 'humano'; es la
+  # unica senal confiable, porque el bot HELIC3 no es un AgentBot nativo de
+  # Chatwoot asignado a la conversacion (corre por webhook).
+  scope :origen_agente, -> { where("pqrs_metadata->>'origen' = ?", 'agente') }
 
   def ticket_number
     "##{display_id}"

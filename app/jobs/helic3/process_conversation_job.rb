@@ -6,6 +6,12 @@
 #
 # Elige el "cerebro" del agente: Gemini si hay GEMINI_API_KEY, si no un modelo local (Ollama),
 # para poder responder sin depender de una API key de OpenAI.
+#
+# El job es grande porque es el punto donde confluyen tres frentes: el flujo E4
+# (runner por cuenta + compuertas de intervención y límites), la recolección
+# determinista de datos (H3A-17) y la lectura OCR de imágenes (AGT-08). Un
+# seguimiento puede extraer las compuertas a objetos; por ahora se agrupa aquí.
+# rubocop:disable Metrics/ClassLength
 class Helic3::ProcessConversationJob < ApplicationJob
   queue_as :default
 
@@ -19,6 +25,15 @@ class Helic3::ProcessConversationJob < ApplicationJob
   # antes de rendirnos, para que ese límite pasajero sea transparente para el cliente.
   MAX_LLM_ATTEMPTS = 2
   MAX_RETRY_WAIT = 4
+  # Mensaje de entrada al runner cuando el cliente solo mandó una foto: el runner
+  # necesita un string no vacío, y así el agente sabe que llegó una imagen aunque
+  # no haya texto que responder.
+  SOLO_IMAGEN_CONTENT = 'El cliente envió una imagen sin texto.'
+  # B3 (revision de Jhan, 23-sep): una nota de voz, un PDF, un video o una
+  # ubicacion sin texto tambien deben tener respaldo -- sin esto, mensaje
+  # queda en "" y el runner se invoca con una cadena vacia. Las notas de voz
+  # son muy frecuentes en WhatsApp.
+  SOLO_ADJUNTO_CONTENT = 'El cliente envió un adjunto (audio, documento o video) sin texto.'
 
   # H3A-17 (determinista): datos del titular que una garantía necesita para la visita/recolección.
   # Si faltan en la ficha, el SISTEMA los pide una sola vez (no depende del LLM). El agente los
@@ -29,7 +44,9 @@ class Helic3::ProcessConversationJob < ApplicationJob
   MENSAJE_PEDIR_DATOS = 'Para completar tu garantía necesito unos datos del titular: tu número de ' \
                         'cédula, tu dirección y tu ciudad. ¿Me los confirmas, por favor? 💙'
 
-  def perform(account_id:, conversation_id:, content:)
+  # Cruce E4 + evidencias/OCR: se conserva el flujo de E4 (runner por cuenta, compuertas de
+  # intervención y límites) y se le suman las imágenes/OCR (AGT-08), que se leen en #atender.
+  def perform(account_id:, conversation_id:, content:, imagenes: [], hay_adjuntos: imagenes.present?)
     Helic3::Agents::LlmRuntime.configure_agents!
     @account_id = account_id
     @account = Account.find_by(id: account_id)
@@ -51,7 +68,7 @@ class Helic3::ProcessConversationJob < ApplicationJob
     decision = evaluar_limites(conversation_id)
     return aplicar_limite(conversation_id, decision) unless decision.accion == :responder
 
-    atender(conversation_id, content)
+    atender(conversation_id, content, imagenes: imagenes, hay_adjuntos: hay_adjuntos)
   ensure
     stop_typing(@client, conversation_id) if @client
   end
@@ -101,14 +118,19 @@ class Helic3::ProcessConversationJob < ApplicationJob
   end
 
   # corre el multiagente y publica la respuesta. Solo se llega aqui si hay agentes.
-  def atender(conversation_id, content)
+  def atender(conversation_id, content, imagenes: [], hay_adjuntos: imagenes.present?)
     memory = Helic3::Agents::ConversationMemory.new(account_id: @account_id, conversation_id: conversation_id)
     # AGT-07: el estado de consentimiento se lee de la conversacion (no de la memoria del
     # modelo), para que el aviso no se repita entre corridas. El triage lo recibe en el state.
     @consentimiento_datos_at = consentimiento_de_datos(conversation_id)
+    # AGT-08: el OCR corre SIEMPRE aqui, determinista, no como tool que el modelo deba acordarse
+    # de llamar. El texto leido viaja en el state y PqrsAgent lo inyecta en el prompt (camino :bd
+    # incluido, ver RunnerService#instrucciones_pqrs).
+    @texto_imagenes = Helic3::Agents::LectorDeImagenes.leer(imagenes)
 
     start_typing(@client, conversation_id)
-    reply = generate_reply(@client, memory, conversation_id, content)
+    entrada = { content: content, imagenes: imagenes, hay_adjuntos: hay_adjuntos }
+    reply = generate_reply(@client, memory, conversation_id, entrada)
     @client.create_message(conversation_id, content: reply, message_type: 'outgoing') if reply.present?
     emitir_estado(conversation_id)
     encolar_radicacion(conversation_id)
@@ -213,8 +235,8 @@ class Helic3::ProcessConversationJob < ApplicationJob
 
   # Corre el multiagente restaurando el hilo previo. Ante un fallo del LLM devuelve un mensaje de
   # respaldo para que el cliente nunca quede sin respuesta, y no persiste un estado a medias.
-  def generate_reply(client, memory, conversation_id, content)
-    result = run_with_retries(client, memory, conversation_id, content)
+  def generate_reply(client, memory, conversation_id, entrada)
+    result = run_with_retries(client, memory, conversation_id, entrada)
     # H3A-15: agente que atendio esta corrida (para publicarlo como estado en vivo).
     @codigo_agente_activo = agente_del_resultado(result)
 
@@ -245,14 +267,17 @@ class Helic3::ProcessConversationJob < ApplicationJob
 
   # Reintenta ante errores de cuota/tasa (límite por minuto del free tier), reconstruyendo el
   # contexto desde la memoria en cada intento (no se persiste nada hasta que hay una salida válida).
-  def run_with_retries(client, memory, conversation_id, content)
+  def run_with_retries(client, memory, conversation_id, entrada)
     result = nil
+    mensaje = entrada[:content].presence || mensaje_de_respaldo(entrada)
     MAX_LLM_ATTEMPTS.times do |attempt|
       context = memory.load
       context[:account_id] = @account_id
       context[:state] = { conversation_id: conversation_id, chatwoot_client: client,
-                          consentimiento_datos_at: @consentimiento_datos_at }
-      result = @runner_service.run(content, context: context)
+                          consentimiento_datos_at: @consentimiento_datos_at, imagenes: entrada[:imagenes],
+                          texto_imagenes: @texto_imagenes }
+      # se conserva el runner de E4 (por cuenta/bandeja: respeta la bandera agentes_desde_bd)
+      result = @runner_service.run(mensaje, context: context)
       return result if result.output.to_s.strip.present?
 
       delay = retry_delay(result.error)
@@ -262,6 +287,17 @@ class Helic3::ProcessConversationJob < ApplicationJob
       sleep(delay)
     end
     result
+  end
+
+  # B3: sin texto, el respaldo depende de que trajo el mensaje -- una imagen
+  # (el OCR ya la leyo, PqrsAgent lo inyecta aparte) o cualquier otro adjunto
+  # (audio, documento, video, ubicacion), que el agente no puede leer y debe
+  # pedirle al cliente que lo escriba.
+  def mensaje_de_respaldo(entrada)
+    return SOLO_IMAGEN_CONTENT if entrada[:imagenes].present?
+    return SOLO_ADJUNTO_CONTENT if entrada[:hay_adjuntos]
+
+    entrada[:content]
   end
 
   # Segundos a esperar si el error es de cuota/tasa (acotado a MAX_RETRY_WAIT), o nil si no procede reintentar.
@@ -294,3 +330,4 @@ class Helic3::ProcessConversationJob < ApplicationJob
     nil
   end
 end
+# rubocop:enable Metrics/ClassLength

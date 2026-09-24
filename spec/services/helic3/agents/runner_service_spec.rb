@@ -202,6 +202,20 @@ RSpec.describe Helic3::Agents::RunnerService do
         expect(texto).to include('NINGÚN criterio')
       end
 
+      # Cruce E4 + evidencias/OCR (AGT-08): en el camino :bd, el texto leído de la foto también
+      # debe llegar al prompt de PQRS (si no, con la bandera encendida el OCR se perdería).
+      it 'inyecta el texto del OCR en el prompt de PQRS en el camino :bd' do
+        pqrs = described_class.new(account: account, inbox: inbox)
+                              .send(:build_agents).find { |a| a.name == 'agente_pqrs' }
+        ctx = Struct.new(:context).new({ account_id: account.id,
+                                         state: { texto_imagenes: 'FACTURA OH-777 total 1.200.000' } })
+
+        texto = pqrs.instructions.call(ctx)
+
+        expect(texto).to include('FACTURA OH-777 total 1.200.000')
+        expect(texto).to include('OCR')
+      end
+
       it 'registra a qué agente enrutó y con qué criterio (crit 3)' do
         servicio = described_class.new(account: account, inbox: inbox)
         fake = instance_double(Agents::AgentRunner)

@@ -119,6 +119,22 @@
       "EXPORT": "Exportar",
       "EXPORT_DISABLED": "Exportar llegará en una próxima entrega"
     },
+    "AGENT_INBOX": {
+      "TITLE": "Bandeja del agente",
+      "SUBTITLE": "Casos que el Agente IA radicó por su cuenta, para supervisión. No es una pantalla de edición: abre un caso para ver la conversación real.",
+      "ERROR": "No se pudo cargar la bandeja del agente",
+      "EMPTY": "El agente todavía no ha radicado ningún caso",
+      "EMPTY_HINT": "Los chats donde el bot solo respondió una pregunta (sin radicar PQR/garantía) no aparecen aquí.",
+      "OPEN_CONVERSATION": "Abrir la conversación",
+      "COLUMNS": {
+        "CLASSIFICATION": "Clasificación"
+      },
+      "METRICS": {
+        "RADICADAS": "Radicados por el agente",
+        "ABREN_GARANTIA": "Abren garantía",
+        "SIN_RESPONDER": "Sin responder"
+      }
+    },
     "ADMIN": {
       "TITLE": "Catálogos y parámetros",
       "READ_ONLY": "Solo lectura: los cambios los hace un administrador",
@@ -227,9 +243,15 @@
       "OPERATOR_ACTIONS": "Acciones",
       "ACTIVITY": "Actividad",
       "ACT_FILED": "Solicitud radicada",
+      "ACT_CLASIFICADA": "Caso clasificado",
+      "ACT_RESULTADO_PROPUESTO": "Resultado propuesto (pendiente de aprobación)",
+      "ACT_RESULTADO_APLICADO": "Resultado aplicado",
       "ACT_WARRANTY": "Garantía abierta",
+      "ACT_PROCESO_AVANZADO": "Proceso de garantía avanzado",
       "ACT_ANSWERED": "Respuesta enviada",
-      "ACT_CLOSED": "Expediente cerrado",
+      "ACT_EVIDENCIA_ADJUNTADA": "Evidencia adjuntada",
+      "ACT_BY_AGENT": "Agente IA",
+      "ACT_BY_TEAM": "Equipo Only Home",
       "PRODUCTS": "Productos",
       "TIMELINE": "Línea de proceso",
       "STEP_TERMINAL": "Cierra",
@@ -241,7 +263,15 @@
       "DOCUMENTS": "Documentos",
       "DOC_FORMAT": "Formato · {process}",
       "DOC_DISABLED": "Se genera al ejecutar el proceso",
-      "DOC_EVIDENCE_NOTE": "Las evidencias del cliente y la generación de formatos llegan en una próxima entrega."
+      "DOC_DOWNLOAD": "Descargar",
+      "DOC_DELETED": "Eliminado del chat",
+      "DOC_DELETED_TOOLTIP": "El adjunto original se eliminó de la conversación",
+      "DOC_EMPTY": "Este expediente todavía no tiene documentos",
+      "DOC_ERROR": "No se pudieron cargar los documentos",
+      "DOC_UPLOAD_NOTE_PLACEHOLDER": "Nota opcional",
+      "DOC_UPLOAD_BUTTON": "Subir un documento",
+      "DOC_UPLOAD_SUCCESS": "Documento subido",
+      "DOC_UPLOAD_ERROR": "No se pudo subir el documento"
     },
     "DECISIONS": {
       "TITLE": "Decisiones pendientes",

@@ -170,4 +170,29 @@ RSpec.describe Helic3::Casos::Radicar do
       expect(ticket.datos).to be_nil
     end
   end
+
+  describe 'barrido hacia atras de evidencias (EVI-02)' do
+    it 'vincula al nacer las evidencias que el cliente ya habia mandado antes de radicar' do
+      conversacion = create(:conversation, account: account)
+      create(:message, :with_attachment, account: account, conversation: conversacion, message_type: 'incoming')
+
+      ticket = radicar(tipo: reclamo, conversation_id: conversacion.id)
+
+      expect(ticket.documentos.count).to eq(1)
+    end
+
+    it 'no rompe al radicar un caso sin conversacion' do
+      expect { radicar(tipo: reclamo) }.not_to raise_error
+    end
+
+    it 'un choque de indice unico durante el barrido no envenena la transaccion (requires_new: true)' do
+      conversacion = create(:conversation, account: account)
+      create(:message, :with_attachment, account: account, conversation: conversacion, message_type: 'incoming')
+      # simula la carrera real que el indice unico esta pensado para atrapar:
+      # otro proceso ya vinculo esa evidencia justo antes.
+      allow(Helic3::Documento).to receive(:create!).and_raise(ActiveRecord::RecordNotUnique, 'duplicate key')
+
+      expect { radicar(tipo: reclamo, conversation_id: conversacion.id) }.not_to raise_error
+    end
+  end
 end

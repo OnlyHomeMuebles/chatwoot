@@ -43,6 +43,39 @@ RSpec.describe Helic3::Agents::PqrsAgent do
     end
   end
 
+  describe 'instrucciones sobre fotos adjuntas (AGT-08)' do
+    it 'le prohibe inventar que vio algo en la foto que no venga del texto leido' do
+      expect(described_class::INSTRUCTIONS).to match(/NUNCA digas que revisaste, viste o/i)
+    end
+  end
+
+  describe 'texto de la foto inyectado en el contexto (AGT-08)' do
+    it 'inyecta el texto que ya leyo el OCR, sin que el modelo tenga que pedirlo' do
+      prompt = agent.get_system_prompt(
+        Agents::RunContext.new({ state: { texto_imagenes: 'Factura N.° 8821' } })
+      )
+
+      expect(prompt).to include('Contexto de la conversación')
+      expect(prompt).to include('Texto leído automáticamente de la foto')
+      expect(prompt).to include('Factura N.° 8821')
+    end
+
+    it 'avisa que la foto no tenia texto legible cuando el OCR no encontro nada' do
+      prompt = agent.get_system_prompt(
+        Agents::RunContext.new({ state: { imagenes: ['https://cdn.chatwoot.test/silla.jpg'], texto_imagenes: nil } })
+      )
+
+      expect(prompt).to match(/no se encontró texto legible/i)
+    end
+
+    it 'no menciona fotos si no llego ninguna imagen' do
+      prompt = agent.get_system_prompt(Agents::RunContext.new({ state: {} }))
+
+      expect(prompt).not_to include('Texto leído automáticamente')
+      expect(prompt).not_to include('no se encontró texto legible')
+    end
+  end
+
   describe 'seccion operativa leida del catalogo (AGT-02)' do
     let(:account) { create(:account) }
 

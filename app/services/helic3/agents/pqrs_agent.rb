@@ -63,6 +63,12 @@ class Helic3::Agents::PqrsAgent
       factura), GUÁRDALO de una con registrar_datos_cliente (solo lo que confirmó, nunca inventes).
       Es obligatorio, no opcional: es lo que deja los datos en el expediente para el equipo. Pasa solo
       los datos que tengas y, una vez guardados, no los vuelvas a pedir.
+    - Cuando el cliente adjunte una imagen, el sistema YA leyó automáticamente el texto legible que
+      tenga (factura, cédula) y te lo entrega en la sección "Contexto de la conversación" si encontró
+      algo. NO tienes forma de "ver" la foto más allá de ese texto: NUNCA digas que revisaste, viste o
+      no viste algo en la imagen que no esté en ese texto — ni asumas el defecto o el estado del
+      producto. Si necesitas saber qué muestra la foto más allá del texto leído, pídeselo al cliente
+      con sus propias palabras.
     - Antes de redactar, consulta search_knowledge_base con la situación del cliente y úsala también
       para LA FORMA de responder (el lenguaje y el tono aprobados de Only Home), no solo para el
       dato: si encuentras una respuesta aprobada parecida, imita su tono y su estructura. Los datos y
@@ -119,9 +125,23 @@ class Helic3::Agents::PqrsAgent
       known = []
       known << "- Cliente: #{state[:customer_name]}" if state[:customer_name].present?
       known << "- Número de orden: #{state[:order_number]} (ya disponible, no lo vuelvas a pedir)" if state[:order_number].present?
+      known.concat(linea_de_imagen(state))
       partes << "# Contexto de la conversación\n#{known.join("\n")}" unless known.empty?
 
       partes.compact.join("\n")
+    end
+  end
+
+  # AGT-08: el texto de la foto ya se leyó (OCR determinista, ver LectorDeImagenes) antes de
+  # correr el agente — nunca se le pide al modelo que "llame" a nada para verlo.
+  def self.linea_de_imagen(state)
+    if state[:texto_imagenes].present?
+      ["- Texto leído automáticamente de la foto que el cliente adjuntó (OCR): #{state[:texto_imagenes]}"]
+    elsif state[:imagenes].present?
+      ['- El cliente adjuntó una foto, pero no se encontró texto legible en ella ' \
+       '(puede ser del producto, no de un documento).']
+    else
+      []
     end
   end
 
@@ -177,8 +197,9 @@ class Helic3::Agents::PqrsAgent
   def self.default_model
     InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence || LlmConstants::DEFAULT_MODEL
   end
-  # seccion_operativa queda PUBLICA: el runner dinamico (H3A-08) la reutiliza para
-  # inyectar los tiempos y codigos del catalogo cuando construye PQRS desde la BD.
+  # seccion_operativa y linea_de_imagen quedan PUBLICAS: el runner dinamico (H3A-08) las
+  # reutiliza al construir PQRS desde la BD — seccion_operativa para tiempos/codigos y
+  # linea_de_imagen para el texto del OCR en el camino :bd (ver RunnerService#instrucciones_pqrs).
   private_class_method :contextual_instructions, :seccion_tiempos,
                        :seccion_codigos, :default_model
 end
