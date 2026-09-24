@@ -6,6 +6,8 @@ json.display_id ticket.display_id
 json.numero_radicado ticket.numero_radicado
 json.title ticket.title
 json.status ticket.status
+json.conversation_display_id ticket.conversation&.display_id
+json.origen ticket.pqrs_metadata&.dig('origen')
 
 # Clasificacion: cada llave como objeto id/codigo/nombre, o nulo. Un expediente
 # sin clasificar no rompe la fila: los campos van vacios, no un error.
