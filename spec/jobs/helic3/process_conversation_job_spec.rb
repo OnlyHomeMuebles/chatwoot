@@ -20,7 +20,6 @@ RSpec.describe Helic3::ProcessConversationJob do
     allow(memory).to receive(:save)
     allow(client).to receive(:create_message)
     allow(client).to receive(:toggle_typing)
-    allow(client).to receive(:update_custom_attributes)
   end
 
   # H3A-08 criterio 3: sin agentes activos para la bandeja, se deja al humano.
@@ -108,11 +107,13 @@ RSpec.describe Helic3::ProcessConversationJob do
     job.perform(account_id: 1, conversation_id: 7, content: 'hola')
   end
 
-  # H3A-15: estado en vivo por conversación (emitir agente activo + pausa por intervención).
+  # H3A-15: estado en vivo por conversación (emitir agente activo + guard por estado, B4).
   describe 'estado en vivo (H3A-15)' do
+    let(:account) { create(:account) }
+    let(:inbox) { create(:inbox, account: account) }
+
     # crit 1 + B1: el job emite SOLO el agente activo; no reescribe el resto de atributos.
-    # Junto con merge: true del cliente (ver chatwoot_client_spec), el sello de consentimiento
-    # AGT-07 sobrevive a cada respuesta de la IA.
+    # Junto con merge: true del cliente, el sello de consentimiento (AGT-07) sobrevive.
     it 'emite SOLO el agente que atendió, sin pisar otros atributos como el consentimiento (crit 1/B1)' do
       result = instance_double(Agents::RunResult, output: 'ok', context: { current_agent: 'agente_pqrs' })
       allow(runner).to receive(:run).and_return(result)
@@ -123,20 +124,79 @@ RSpec.describe Helic3::ProcessConversationJob do
       job.perform(account_id: 1, conversation_id: 7, content: 'hola')
     end
 
-    describe 'cuando un humano intervino la conversación' do
-      let(:account) { create(:account) }
-      let(:inbox) { create(:inbox, account: account) }
-      let(:conversation) do
-        create(:conversation, account: account, inbox: inbox,
-                              custom_attributes: { 'helic3_ia_pausada' => true })
-      end
+    # B4 (revisión de Jhan): el guard mira el ESTADO, no una bandera que nunca se limpia.
+    it 'no corre el runner ni responde cuando la conversación ya no está en pending (crit 2/B4)' do
+      conv = create(:conversation, account: account, inbox: inbox, status: :open)
 
-      it 'no corre el runner ni responde (crit 2)' do
-        expect(runner).not_to receive(:run)
-        expect(client).not_to receive(:create_message)
+      expect(runner).not_to receive(:run)
+      expect(client).not_to receive(:create_message)
 
-        job.perform(account_id: account.id, conversation_id: conversation.display_id, content: 'hola')
-      end
+      job.perform(account_id: account.id, conversation_id: conv.display_id, content: 'hola')
+    end
+
+    # B4: intervenida -> resuelta -> reabierta en pending: la IA vuelve a responder
+    # (aunque la marca de auditoría helic3_intervenido_at siga puesta).
+    it 'responde de nuevo si una conversación intervenida se reabre en pending (crit 3/B4)' do
+      conv = create(:conversation, account: account, inbox: inbox, status: :pending,
+                                   custom_attributes: { 'helic3_intervenido_at' => '2026-09-01T00:00:00Z' })
+      allow(runner).to receive(:run).and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
+
+      expect(runner).to receive(:run)
+
+      job.perform(account_id: account.id, conversation_id: conv.display_id, content: 'volví')
+    end
+  end
+
+  # H3A-11: límites de ejecución del agente activo antes de responder.
+  describe 'límites de ejecución (H3A-11)' do
+    let(:account) { create(:account) }
+    let(:inbox) { create(:inbox, account: account) }
+    let(:team) { create(:team, account: account) }
+    # pending = territorio del bot (el job solo corre ahí, B4)
+    let(:conversation) { create(:conversation, account: account, inbox: inbox, status: :pending) }
+    let!(:agente) do
+      Helic3::Agente.create!(account: account, codigo: 'agente_triage', nombre: 'T', es_sistema: true,
+                             prompt: 'p', max_respuestas: 3, team_id: team.id, mensaje_handoff: 'Te paso con un asesor 💙')
+    end
+
+    before do
+      Helic3::AgenteBandeja.create!(agente: agente, inbox: inbox)
+      allow(client).to receive(:assign)
+      allow(client).to receive(:update_status)
+    end
+
+    it 'al llegar al tope de respuestas deriva al equipo con el mensaje_handoff, sin correr el runner (crit 1)' do
+      allow(memory).to receive(:load).and_return({ current_agent: 'agente_triage', turn_count: 3 })
+
+      expect(runner).not_to receive(:run)
+      expect(client).to receive(:create_message)
+        .with(conversation.display_id, content: 'Te paso con un asesor 💙', message_type: 'outgoing')
+      expect(client).to receive(:assign).with(conversation.display_id, team_id: team.id)
+      # B1: además saca la conversación de 'pending' -> el webhook deja de encolar el job
+      # (ver webhook_handler_spec: una conversación 'open' no se procesa), así el segundo
+      # mensaje del cliente NO vuelve a recibir el handoff.
+      expect(client).to receive(:update_status).with(conversation.display_id, 'open')
+
+      job.perform(account_id: account.id, conversation_id: conversation.display_id, content: 'sigo molesto')
+    end
+
+    it 'fuera de horario no responde ni corre el runner: queda sin IA (crit 2)' do
+      allow_any_instance_of(Helic3::Agents::LimitesService).to receive(:evaluar) # rubocop:disable RSpec/AnyInstance
+        .and_return(Helic3::Agents::LimitesService::Decision.new(accion: :dejar_sin_ia, motivo: 'fuera del horario de atención'))
+
+      expect(runner).not_to receive(:run)
+      expect(client).not_to receive(:create_message)
+
+      job.perform(account_id: account.id, conversation_id: conversation.display_id, content: 'hola')
+    end
+
+    it 'dentro de límites, corre el runner normalmente' do
+      allow(memory).to receive(:load).and_return({ current_agent: 'agente_triage', turn_count: 1 })
+      allow(runner).to receive(:run).and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
+
+      expect(runner).to receive(:run)
+
+      job.perform(account_id: account.id, conversation_id: conversation.display_id, content: 'hola')
     end
   end
 

@@ -16,6 +16,7 @@ const claseFuente = computed(() => {
   const classes = {
     ia: 'bg-n-blue-3 text-n-blue-11',
     erp: 'bg-n-amber-3 text-n-amber-11',
+    confirmado: 'bg-n-iris-3 text-n-iris-11',
     humano: 'bg-n-teal-3 text-n-teal-11',
   };
   return classes[props.fuente] || 'bg-n-alpha-2 text-n-slate-10';
@@ -25,6 +26,7 @@ const claseFuente = computed(() => {
 const etiqueta = computed(() => {
   if (props.fuente === 'ia') return t('TICKETS.DATA.SOURCE.IA');
   if (props.fuente === 'erp') return t('TICKETS.DATA.SOURCE.ERP');
+  if (props.fuente === 'confirmado') return t('TICKETS.DATA.SOURCE.CONFIRMADO');
   if (props.fuente === 'humano') return t('TICKETS.DATA.SOURCE.HUMANO');
   return '';
 });

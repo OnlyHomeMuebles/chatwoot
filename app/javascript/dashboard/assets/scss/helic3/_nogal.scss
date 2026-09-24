@@ -98,3 +98,22 @@
     --slate-5: 226 219 209;
   }
 }
+
+// VIS · Chat sobre lienzo Nogal (mockup v10): el panel de mensajes va en beige
+// (el mismo cafecito del lienzo) con las burbujas blancas/teal encima, y los
+// mensajes de actividad (radicación, datos, consentimiento, resolución, derivación)
+// quedan como pastillas centradas, delgadas y en tono pastel cálido. Estas reglas
+// van FUERA de @layer a propósito: así le ganan a las utilidades de Tailwind
+// (bg-n-alpha-1, text-sm, px-3 py-1) que trae el bubble por defecto.
+:root[data-helic3-theme='nogal']:not(.dark) .conversation-panel {
+  background-color: rgb(var(--background-color));
+}
+
+:root[data-helic3-theme='nogal']:not(.dark) [data-bubble-name='activity'] {
+  background-color: rgb(var(--slate-3));
+  color: rgb(var(--slate-11));
+  padding-top: 0.125rem;
+  padding-bottom: 0.125rem;
+  font-size: 0.72rem;
+  line-height: 1rem;
+}

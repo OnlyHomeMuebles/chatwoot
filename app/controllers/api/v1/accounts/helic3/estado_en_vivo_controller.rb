@@ -16,19 +16,20 @@ class Api::V1::Accounts::Helic3::EstadoEnVivoController < Api::V1::Accounts::Bas
     @nombres_agentes = Helic3::Agente.where(account: Current.account).pluck(:codigo, :nombre).to_h
   end
 
-  # crit 2: intervenir = un humano toma el relevo. Se saca la conversación del territorio del
-  # bot (status 'open') y se asigna al asesor: el webhook ignora todo lo que no está en
-  # 'pending', así el bot deja de responder SIN depender de una bandera, y la conversación
-  # aparece en la bandeja del asesor. La bandera helic3_ia_pausada se conserva por auditoría
-  # y como guarda de la corrida en vuelo (el job la respeta si ya venía corriendo). Escribir
-  # el custom_attribute dispara conversation.updated, así el estado se refleja en vivo (B3).
+  # crit 2 (B3): intervenir = un humano toma el relevo. Se saca la conversación del territorio
+  # del bot (status 'open') y se asigna al asesor: el webhook ignora todo lo que no está en
+  # 'pending', así el bot deja de responder SIN depender de una bandera. El job además mira el
+  # ESTADO (no una bandera), así que al reabrirse en 'pending' la IA vuelve (B4).
+  #
+  # B4: se marca helic3_intervenido_at solo como AUDITORÍA (sin efecto en el job) y se LIMPIA
+  # helic3_agente_activo, para que la conversación no siga apareciendo en "Estado en vivo" como
+  # atendida por IA. Escribir el custom_attribute dispara conversation.updated (refleja en vivo).
   def intervenir
     conversacion = Current.account.conversations.find_by!(display_id: params[:conversation_id])
-    conversacion.update!(
-      custom_attributes: conversacion.custom_attributes.merge('helic3_ia_pausada' => true),
-      status: :open,
-      assignee: Current.user
-    )
+    atributos = conversacion.custom_attributes
+                            .merge('helic3_intervenido_at' => Time.current.iso8601)
+                            .except('helic3_agente_activo')
+    conversacion.update!(custom_attributes: atributos, status: :open, assignee: Current.user)
     head :ok
   end
 end

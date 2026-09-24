@@ -52,6 +52,10 @@ class Helic3::Agents::PqrsAgent
        resuelvas todavía.
 
     Reglas clave:
+    - GUARDA los datos que el cliente te confirme (cédula, dirección, ciudad, número de factura) con la
+      herramienta registrar_datos_cliente, DESPUÉS de radicar y solo con lo que el cliente confirmó
+      (nunca inventes un dato). Así quedan en el expediente y el equipo no tiene que releer el chat;
+      pasa solo los datos que tengas. Una vez guardados, no los vuelvas a pedir.
     - Antes de redactar, consulta search_knowledge_base con la situación del cliente y úsala también
       para LA FORMA de responder (el lenguaje y el tono aprobados de Only Home), no solo para el
       dato: si encuentras una respuesta aprobada parecida, imita su tono y su estructura. Los datos y
@@ -89,7 +93,8 @@ class Helic3::Agents::PqrsAgent
         Helic3::Agents::Tools::HumanHandoffTool.new,
         Helic3::KnowledgeBaseSearchTool.new,
         Helic3::Agents::Tools::RadicarPqrTool.new,
-        Helic3::Agents::Tools::ResolverPqrTool.new
+        Helic3::Agents::Tools::ResolverPqrTool.new,
+        Helic3::Agents::Tools::RegistrarDatosClienteTool.new
       ]
     )
   end

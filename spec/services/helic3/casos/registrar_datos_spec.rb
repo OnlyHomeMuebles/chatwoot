@@ -41,14 +41,22 @@ RSpec.describe Helic3::Casos::RegistrarDatos do
     expect(datos.fuentes['detalle_tipificado_id']).to eq('ia')
   end
 
-  describe 'precedencia humano > erp > ia (las seis combinaciones)' do
+  describe 'precedencia humano > confirmado > erp > ia' do
     {
       %w[ia erp] => true,
       %w[ia humano] => true,
       %w[erp humano] => true,
       %w[erp ia] => false,
       %w[humano erp] => false,
-      %w[humano ia] => false
+      %w[humano ia] => false,
+      # H3A-17: el dato confirmado por el cliente le gana al ERP y a la deduccion ia,
+      # pero no a la correccion de una persona.
+      %w[erp confirmado] => true,
+      %w[ia confirmado] => true,
+      %w[confirmado humano] => true,
+      %w[confirmado erp] => false,
+      %w[confirmado ia] => false,
+      %w[humano confirmado] => false
     }.each do |(previa, nueva), pisa|
       it "#{nueva} #{pisa ? 'pisa' : 'NO pisa'} a #{previa}" do
         registrar({ direccion: 'vieja' }, previa.to_sym)

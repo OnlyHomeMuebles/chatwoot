@@ -1,16 +1,19 @@
 # frozen_string_literal: true
 
 # DAT-01: escribe los datos del expediente respetando la procedencia. Un solo
-# punto de escritura para los tres productores (el operador desde el panel, el
-# agente con fuente ia, el ERP con fuente erp), para que la regla de quien pisa
-# a quien viva en un lado y no repartida.
+# punto de escritura para los cuatro productores (el operador desde el panel, el
+# agente con fuente ia cuando DEDUCE un dato, el agente con fuente confirmado
+# cuando el CLIENTE lo confirma en el chat, y el ERP con fuente erp), para que la
+# regla de quien pisa a quien viva en un lado y no repartida.
 #
-# Precedencia: humano > erp > ia. Lo que escribio una persona no lo sobreescribe
-# el agente ni el ERP; lo que trajo el ERP no lo sobreescribe una deduccion del
-# modelo. Al reves si. Es la unica logica del servicio.
+# Precedencia: humano > confirmado > erp > ia. Lo que escribio una persona no lo
+# sobreescribe nadie; un dato que el CLIENTE confirmo en el chat (H3A-17) le gana
+# al registro del ERP (que Karen advirtio que suele estar desactualizado), pero
+# no a la correccion de una persona; lo que trajo el ERP no lo sobreescribe una
+# simple deduccion del modelo. Al reves si. Es la unica logica del servicio.
 class Helic3::Casos::RegistrarDatos
   # el rango ES la precedencia; sin dato previo = rango 0, cualquiera lo llena.
-  RANGO = { 'ia' => 1, 'erp' => 2, 'humano' => 3 }.freeze
+  RANGO = { 'ia' => 1, 'erp' => 2, 'confirmado' => 3, 'humano' => 4 }.freeze
 
   def initialize(ticket:, campos:, fuente:)
     @ticket = ticket

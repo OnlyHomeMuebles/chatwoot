@@ -43,15 +43,17 @@ RSpec.describe 'Helic3 estado en vivo (H3A-15)', type: :request do
   end
 
   describe 'POST intervenir' do
-    # B3: intervenir saca la conversación del territorio del bot y la pone en manos del asesor.
-    it 'pasa la conversación a open, la asigna al asesor y marca la pausa (crit 2/B3)' do
+    # B3/B4: intervenir saca la conversación del territorio del bot y la pone en manos del asesor;
+    # marca la intervención como auditoría y limpia el agente activo (para la lista en vivo).
+    it 'pasa la conversación a open, la asigna al asesor, marca la intervención y limpia el agente (crit 2/B3/B4)' do
       post "#{base}/#{activa.display_id}/intervenir", headers: admin.create_new_auth_token, as: :json
 
       expect(response).to have_http_status(:success)
       activa.reload
       expect(activa.status).to eq('open')
       expect(activa.assignee).to eq(admin)
-      expect(activa.custom_attributes['helic3_ia_pausada']).to be(true)
+      expect(activa.custom_attributes['helic3_intervenido_at']).to be_present
+      expect(activa.custom_attributes).not_to have_key('helic3_agente_activo')
     end
 
     it 'la conversación intervenida deja de aparecer en la lista en vivo' do

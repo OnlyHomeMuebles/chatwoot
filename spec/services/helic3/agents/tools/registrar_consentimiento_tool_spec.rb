@@ -33,7 +33,7 @@ RSpec.describe Helic3::Agents::Tools::RegistrarConsentimientoTool do
     expect(chatwoot).to receive(:create_message)
       .with(conversation.display_id,
             hash_including(content: a_string_including('Aviso oficial de tratamiento de datos'),
-                           private_note: true))
+                           message_type: 'activity'))
 
     tool.perform(tool_context)
   end
