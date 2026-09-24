@@ -25,14 +25,23 @@ RSpec.describe Helic3::Agents::Tools::RegistrarDatosClienteTool do
     let!(:ticket) { create(:ticket, account: account, conversation_id: conversation.id) }
 
     it 'guarda los datos del cliente en la ficha con fuente confirmado' do
-      guardar(cedula: '123', direccion: 'Calle 1', ciudad: 'Armenia', factura_numero: 'OH-1')
+      guardar(cedula: '123', direccion: 'Calle 1', ciudad: 'Armenia', factura_numero: 'OH-1',
+              producto_nombre: 'cama')
 
       datos = ticket.reload.datos
       expect(datos.cedula).to eq('123')
       expect(datos.direccion).to eq('Calle 1')
       expect(datos.ciudad).to eq('Armenia')
       expect(datos.factura_numero).to eq('OH-1')
+      expect(datos.producto_nombre).to eq('cama')
       expect(datos.fuentes.values.uniq).to eq(['confirmado'])
+    end
+
+    # H3A-17: el producto se deduce de la descripción y se guarda aunque no venga otro dato.
+    it 'guarda solo el producto cuando es lo único que trae' do
+      guardar(producto_nombre: 'silla de comedor')
+
+      expect(ticket.reload.datos.producto_nombre).to eq('silla de comedor')
     end
 
     it 'guarda solo los datos que llegan; los vacios no tocan la ficha' do

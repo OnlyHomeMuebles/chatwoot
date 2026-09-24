@@ -133,4 +133,60 @@ RSpec.describe Helic3::ProcessConversationJob do
         .to have_enqueued_job(Helic3::RadicarAutomaticoJob)
     end
   end
+
+  # H3A-17 (determinista): en una garantía sin datos del titular, el SISTEMA los pide una sola vez.
+  describe 'solicitud determinista de datos del cliente (H3A-17)' do
+    let(:account) { create(:account) }
+    let(:inbox) { create(:inbox, account: account) }
+    let(:conversation) { create(:conversation, account: account, inbox: inbox) }
+    let(:garantia) { Helic3::Catalogo::Categoria.create!(account: account, nombre: 'Garantía', codigo: 'garantia') }
+    let(:otra) { Helic3::Catalogo::Categoria.create!(account: account, nombre: 'Petición', codigo: 'peticion') }
+    let(:pedir) { hash_including(content: described_class::MENSAJE_PEDIR_DATOS) }
+
+    before do
+      allow(runner).to receive(:run).and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
+      allow(client).to receive(:update_custom_attributes)
+    end
+
+    def correr
+      job.perform(account_id: account.id, conversation_id: conversation.display_id, content: 'hola')
+    end
+
+    it 'pide cédula/dirección/ciudad y marca la solicitud cuando la garantía no las tiene' do
+      create(:ticket, account: account, conversation_id: conversation.id, categoria: garantia)
+
+      expect(client).to receive(:create_message).with(conversation.display_id, pedir)
+      expect(client).to receive(:update_custom_attributes)
+        .with(conversation.display_id, { described_class::ATRIBUTO_DATOS_SOLICITADOS => true })
+
+      correr
+    end
+
+    it 'NO los pide si la ficha ya está completa' do
+      ticket = create(:ticket, account: account, conversation_id: conversation.id, categoria: garantia)
+      Helic3::Casos::RegistrarDatos.new(ticket: ticket, fuente: :confirmado,
+                                        campos: { cedula: '1', direccion: 'Calle 1', ciudad: 'Armenia' }).call
+
+      expect(client).not_to receive(:create_message).with(conversation.display_id, pedir)
+
+      correr
+    end
+
+    it 'NO los pide dos veces (ya se solicitaron)' do
+      create(:ticket, account: account, conversation_id: conversation.id, categoria: garantia)
+      conversation.update!(custom_attributes: { described_class::ATRIBUTO_DATOS_SOLICITADOS => true })
+
+      expect(client).not_to receive(:create_message).with(conversation.display_id, pedir)
+
+      correr
+    end
+
+    it 'NO los pide si el caso no es una garantía' do
+      create(:ticket, account: account, conversation_id: conversation.id, categoria: otra)
+
+      expect(client).not_to receive(:create_message).with(conversation.display_id, pedir)
+
+      correr
+    end
+  end
 end

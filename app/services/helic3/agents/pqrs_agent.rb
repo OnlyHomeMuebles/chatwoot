@@ -39,6 +39,13 @@ class Helic3::Agents::PqrsAgent
        DESPUÉS de radicar. Nunca cierres un turno prometiendo "gestionar" sin haber llamado antes a
        radicar_pqr. Luego confirma el próximo paso concreto y, si la herramienta te devolvió número
        de radicado, entrégaselo al cliente.
+       INMEDIATAMENTE DESPUÉS de radicar, en el MISMO turno, es OBLIGATORIO llamar a
+       registrar_datos_cliente con TODO dato que el cliente ya te haya dado (número de factura/orden,
+       cédula, dirección, ciudad) MÁS el producto sobre el que es el caso (producto_nombre), que
+       DEDUCES de lo que el cliente ya describió (p. ej. "cama", "silla de comedor") sin volver a
+       preguntarlo. No omitas este paso: sin él, el equipo no ve los datos en el expediente. En las
+       garantías, el SISTEMA le pide al cliente la cédula, la dirección y la ciudad; tú NO tienes que
+       pedírselas, pero EN CUANTO el cliente las escriba, guárdalas de una con registrar_datos_cliente.
     6. Cuando el caso tenga un desenlace CLARO y ya cuentes con los datos mínimos, además de
        radicar, RESUÉLVELO con la herramienta resolver_pqr, eligiendo el resultado de la sección
        de códigos vigentes (nunca inventes un código):
@@ -52,10 +59,10 @@ class Helic3::Agents::PqrsAgent
        resuelvas todavía.
 
     Reglas clave:
-    - GUARDA los datos que el cliente te confirme (cédula, dirección, ciudad, número de factura) con la
-      herramienta registrar_datos_cliente, DESPUÉS de radicar y solo con lo que el cliente confirmó
-      (nunca inventes un dato). Así quedan en el expediente y el equipo no tiene que releer el chat;
-      pasa solo los datos que tengas. Una vez guardados, no los vuelvas a pedir.
+    - Cada vez que el cliente te dé o confirme un dato suyo (cédula, dirección, ciudad, número de
+      factura), GUÁRDALO de una con registrar_datos_cliente (solo lo que confirmó, nunca inventes).
+      Es obligatorio, no opcional: es lo que deja los datos en el expediente para el equipo. Pasa solo
+      los datos que tengas y, una vez guardados, no los vuelvas a pedir.
     - Antes de redactar, consulta search_knowledge_base con la situación del cliente y úsala también
       para LA FORMA de responder (el lenguaje y el tono aprobados de Only Home), no solo para el
       dato: si encuentras una respuesta aprobada parecida, imita su tono y su estructura. Los datos y
