@@ -16,6 +16,10 @@ export const state = {
     metricas: null,
   },
   current: null,
+  // Archivo documental del expediente abierto (EVI-02/EVI-03), aparte de
+  // `current`: la sincronizacion perezosa del backend puede sumar filas sin
+  // que el resto del expediente haya cambiado.
+  documentos: [],
   decisiones: [],
   // VIS-05: contadores del rail, en su propio slice. Nunca se mezclan con records
   // ni meta: el rail no debe pisar lo que la bandeja tenga cargado.
@@ -24,6 +28,8 @@ export const state = {
     isFetching: false,
     isFetchingItem: false,
     isFetchingDecisiones: false,
+    isFetchingDocumentos: false,
+    isUploadingDocumento: false,
   },
 };
 
@@ -36,6 +42,9 @@ export const getters = {
   },
   getCurrent(_state) {
     return _state.current;
+  },
+  getDocumentos(_state) {
+    return _state.documentos;
   },
   getDecisiones(_state) {
     return _state.decisiones;
@@ -97,6 +106,31 @@ export const actions = {
     commit(types.SET_PQR_CURRENT, actualizado);
   },
 
+  // Archivo documental del expediente (EVI-02/EVI-03): sincroniza perezosamente
+  // en el backend antes de listar, asi que un fetch puede sumar filas que
+  // llegaron por fuera del ciclo normal del webhook.
+  fetchDocumentos: async ({ commit }, id) => {
+    commit(types.SET_PQR_INBOX_UI_FLAG, { isFetchingDocumentos: true });
+    try {
+      const { data } = await TicketsAPI.documentos(id);
+      commit(types.SET_PQR_DOCUMENTOS, data);
+    } finally {
+      commit(types.SET_PQR_INBOX_UI_FLAG, { isFetchingDocumentos: false });
+    }
+  },
+
+  // Carga manual del operador (EVI-03, 7.2). Sin catch: el error se propaga
+  // para que la pantalla avise.
+  subirDocumento: async ({ commit }, { id, formData }) => {
+    commit(types.SET_PQR_INBOX_UI_FLAG, { isUploadingDocumento: true });
+    try {
+      const { data } = await TicketsAPI.subirDocumento(id, formData);
+      commit(types.ADD_PQR_DOCUMENTO, data);
+    } finally {
+      commit(types.SET_PQR_INBOX_UI_FLAG, { isUploadingDocumento: false });
+    }
+  },
+
   // Cola de decisiones (DEC-01).
   fetchDecisiones: async ({ commit }) => {
     commit(types.SET_PQR_INBOX_UI_FLAG, { isFetchingDecisiones: true });
@@ -138,6 +172,12 @@ export const mutations = {
   },
   [types.SET_PQR_CURRENT](_state, record) {
     _state.current = record;
+  },
+  [types.SET_PQR_DOCUMENTOS](_state, documentos) {
+    _state.documentos = documentos;
+  },
+  [types.ADD_PQR_DOCUMENTO](_state, documento) {
+    _state.documentos = [..._state.documentos, documento];
   },
   [types.SET_PQR_DECISIONES](_state, decisiones) {
     _state.decisiones = decisiones;
