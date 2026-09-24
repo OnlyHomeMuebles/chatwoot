@@ -109,7 +109,11 @@
         "HARD_RULES": "Reglas duras (no editables)",
         "HARD_RULES_HINT": "Vienen del sistema y aplican a todos los agentes. Se muestran solo como referencia.",
         "CONFIDENCE": "Confianza mínima (%)",
+        "CONFIDENCE_SOON": "Próximamente — aún no tiene efecto.",
+        "SOON": "Próximamente",
         "MAX": "Máximo de respuestas seguidas",
+        "MAX_HINT": "Déjalo vacío para no poner tope.",
+        "NO_LIMIT": "Sin tope",
         "TEAM": "Equipo que recibe la conversación",
         "TEAM_NONE": "Sin equipo",
         "HANDOFF": "Mensaje al derivar"

@@ -41,8 +41,11 @@ const draft = reactive({
   activo: false,
   inbox_ids: [],
   herramientas: [],
-  confianza_minima: 85,
-  max_respuestas: 8,
+  // B1 (revisión de Jhan): sin tope por defecto. Poner 8/85 haría que crear/guardar
+  // un agente impusiera un límite que nadie decidió (con H3A-11 derivaría en la 8ª
+  // respuesta). null = "sin tope"; el admin lo fija solo si quiere.
+  confianza_minima: null,
+  max_respuestas: null,
   team_id: null,
   mensaje_handoff: '',
 });
@@ -60,8 +63,8 @@ const cargarDesde = agente => {
     activo: !!agente.activo,
     inbox_ids: (agente.bandejas || []).map(b => b.inbox_id),
     herramientas: [...(agente.herramientas || [])],
-    confianza_minima: agente.confianza_minima ?? 85,
-    max_respuestas: agente.max_respuestas ?? 8,
+    confianza_minima: agente.confianza_minima ?? null,
+    max_respuestas: agente.max_respuestas ?? null,
     team_id: agente.team_id ?? null,
     mensaje_handoff: agente.mensaje_handoff || '',
   });
@@ -314,11 +317,17 @@ const irTab = i => {
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block mb-1 text-sm font-medium text-n-slate-12" for="ai-confidence">{{ t('AI_AGENTS.EDITOR.FIELDS.CONFIDENCE') }}</label>
-              <input id="ai-confidence" v-model.number="draft.confianza_minima" type="number" min="50" max="100" class="w-full h-11 px-3.5 text-[15px] border rounded-lg outline-none border-n-weak bg-n-alpha-black1 text-n-slate-12" />
+              <!-- N1 (revisión de Jhan): confianza_minima aún no tiene efecto (el runner no
+                   produce un puntaje de confianza, ver #80). Se muestra deshabilitada con
+                   "próximamente" para no dejar que el admin fije un valor sin efecto. -->
+              <input id="ai-confidence" v-model.number="draft.confianza_minima" type="number" min="50" max="100" disabled :placeholder="t('AI_AGENTS.EDITOR.FIELDS.SOON')" class="w-full h-11 px-3.5 text-[15px] border rounded-lg outline-none border-n-weak bg-n-alpha-black1 text-n-slate-12 opacity-60 cursor-not-allowed" />
+              <p class="mt-1 text-xs text-n-slate-10">{{ t('AI_AGENTS.EDITOR.FIELDS.CONFIDENCE_SOON') }}</p>
             </div>
             <div>
               <label class="block mb-1 text-sm font-medium text-n-slate-12" for="ai-max">{{ t('AI_AGENTS.EDITOR.FIELDS.MAX') }}</label>
-              <input id="ai-max" v-model.number="draft.max_respuestas" type="number" min="1" max="30" class="w-full h-11 px-3.5 text-[15px] border rounded-lg outline-none border-n-weak bg-n-alpha-black1 text-n-slate-12" />
+              <!-- B1: null = sin tope (placeholder). Vacío se guarda como null. -->
+              <input id="ai-max" v-model.number="draft.max_respuestas" type="number" min="1" max="30" :placeholder="t('AI_AGENTS.EDITOR.FIELDS.NO_LIMIT')" class="w-full h-11 px-3.5 text-[15px] border rounded-lg outline-none border-n-weak bg-n-alpha-black1 text-n-slate-12" />
+              <p class="mt-1 text-xs text-n-slate-10">{{ t('AI_AGENTS.EDITOR.FIELDS.MAX_HINT') }}</p>
             </div>
           </div>
           <div>

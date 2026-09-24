@@ -109,7 +109,11 @@
         "HARD_RULES": "Hard rules (read-only)",
         "HARD_RULES_HINT": "They come from the system and apply to every agent. Shown for reference only.",
         "CONFIDENCE": "Minimum confidence (%)",
+        "CONFIDENCE_SOON": "Coming soon — no effect yet.",
+        "SOON": "Coming soon",
         "MAX": "Max consecutive replies",
+        "MAX_HINT": "Leave empty for no limit.",
+        "NO_LIMIT": "No limit",
         "TEAM": "Team that receives the conversation",
         "TEAM_NONE": "No team",
         "HANDOFF": "Handoff message"
