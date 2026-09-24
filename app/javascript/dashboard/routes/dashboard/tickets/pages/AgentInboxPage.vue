@@ -8,7 +8,7 @@ import Button from 'dashboard/components-next/button/Button.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
-// Bandeja del Agente IA (AGT-04): supervision de lo que el bot HELIC3 radico
+// Bandeja del Agente IA (BAN-02): supervision de lo que el bot HELIC3 radico
 // solo -- NO es una bandeja de edicion (por eso no hay filtros de categoria/tipo
 // ni un boton "Nueva PQR", que si tiene la bandeja humana en TICKETS.INBOX). Usa
 // el MISMO store pqrInbox que esa bandeja, con origen: 'agente' fijo: el backend

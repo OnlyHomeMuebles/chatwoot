@@ -106,7 +106,7 @@ class Helic3::Ticket < ApplicationRecord
   scope :con_decision_pendiente, lambda {
     where('pqrs_metadata ? :clave', clave: 'resultado_propuesto_id')
   }
-  # Expedientes que el Agente IA radico por su cuenta (AGT-04): la tool
+  # Expedientes que el Agente IA radico por su cuenta (BAN-02): la tool
   # radicar_pqr_tool fija pqrs_metadata['origen'] a 'agente' o 'humano'; es la
   # unica senal confiable, porque el bot HELIC3 no es un AgentBot nativo de
   # Chatwoot asignado a la conversacion (corre por webhook).

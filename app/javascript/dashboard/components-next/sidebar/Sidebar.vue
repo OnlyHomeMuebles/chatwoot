@@ -765,7 +765,7 @@ const menuItems = computed(() => {
       ],
     },
     {
-      // Bandeja de supervision del Agente IA (AGT-04): nivel superior a proposito,
+      // Bandeja de supervision del Agente IA (BAN-02): nivel superior a proposito,
       // no anidada en "PQR" -- el agente hoy solo toca PQR/garantias, pero la
       // pantalla es sobre EL AGENTE, no sobre el modulo de PQR en si.
       name: 'Agent Inbox',

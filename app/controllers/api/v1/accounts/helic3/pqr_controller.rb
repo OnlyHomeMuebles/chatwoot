@@ -135,7 +135,7 @@ class Api::V1::Accounts::Helic3::PqrController < Api::V1::Accounts::BaseControll
     scope.where(respondida_at: nil).where('plazo_respuesta_vence_at < ?', Time.current)
   end
 
-  # Bandeja del Agente IA (AGT-04): solo los expedientes que el agente radico
+  # Bandeja del Agente IA (BAN-02): solo los expedientes que el agente radico
   # por su cuenta. Mismo patron de filtro opcional que los de arriba.
   def filtrar_por_origen(scope)
     return scope unless params[:origen] == 'agente'

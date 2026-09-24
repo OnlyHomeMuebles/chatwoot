@@ -40,7 +40,7 @@ const filaConConversacion = {
   garantia: null,
 };
 
-describe('AgentInboxPage.vue — bandeja de supervisión del agente (AGT-04)', () => {
+describe('AgentInboxPage.vue — bandeja de supervisión del agente (BAN-02)', () => {
   beforeEach(() => {
     dispatch.mockClear();
     push.mockClear();

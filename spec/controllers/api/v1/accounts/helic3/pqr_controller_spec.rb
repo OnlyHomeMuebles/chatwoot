@@ -151,7 +151,7 @@ RSpec.describe 'Helic3 Bandeja de PQR (BAN-01)', type: :request do
     expect(fila['numero_radicado']).to be_nil
   end
 
-  it 'origen=agente solo trae los expedientes que radico el agente (AGT-04)' do
+  it 'origen=agente solo trae los expedientes que radico el agente (BAN-02)' do
     Helic3::Casos::Radicar.new(account: account, titulo: 'Radicado por el agente', origen: :agente,
                                motivo_pqr: motivo_garantia).call
     radicar(motivo_pqr: motivo_garantia) # origen humano, por defecto
