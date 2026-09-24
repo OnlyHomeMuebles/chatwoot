@@ -41,7 +41,7 @@ RSpec.describe Helic3::RadicarAutomaticoJob do
 
     it 'deja la nota privada de paridad al operador' do
       expect(client).to receive(:create_message)
-        .with(conversation.display_id, hash_including(private_note: true))
+        .with(conversation.display_id, hash_including(message_type: 'activity'))
       run
     end
 

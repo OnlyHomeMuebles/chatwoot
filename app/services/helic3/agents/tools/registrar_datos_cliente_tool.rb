@@ -81,7 +81,7 @@ class Helic3::Agents::Tools::RegistrarDatosClienteTool < Helic3::Agents::Tools::
     nota = 'Datos del cliente (confirmados en el chat) — expediente ' \
            "#{ticket.numero_radicado || ticket.ticket_number}: #{lista(campos)}."
     with_api_error_handling do
-      client(tool_context).create_message(display_id, content: nota, private_note: true)
+      client(tool_context).create_message(display_id, content: nota, message_type: 'activity')
     end
   end
 

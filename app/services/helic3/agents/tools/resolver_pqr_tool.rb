@@ -141,7 +141,7 @@ class Helic3::Agents::Tools::ResolverPqrTool < Helic3::Agents::Tools::BaseTool
     nota = "Resolucion del agente — expediente #{ticket.numero_radicado || ticket.ticket_number}: " \
            "resultado #{resultado.nombre}."
     with_api_error_handling do
-      client(tool_context).create_message(display_id, content: nota, private_note: true)
+      client(tool_context).create_message(display_id, content: nota, message_type: 'activity')
     end
   end
 
