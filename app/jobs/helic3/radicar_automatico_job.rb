@@ -31,7 +31,7 @@ class Helic3::RadicarAutomaticoJob < ApplicationJob
   # Deja la MISMA nota privada al operador que dejaria la tool: asi la traza "dorada"
   # aparece sin importar quien radico. Best-effort (queda el warn si falla).
   def nota_radicacion_automatica(client, display_id, ticket)
-    client.create_message(display_id, content: nota_de(ticket), private_note: true)
+    client.create_message(display_id, content: nota_de(ticket), message_type: 'activity')
   rescue StandardError => e
     Rails.logger.warn("[Helic3] no se pudo dejar la nota de radicacion conv=#{display_id}: #{e.message}")
   end

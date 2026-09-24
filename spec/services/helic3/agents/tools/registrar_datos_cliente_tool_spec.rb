@@ -53,7 +53,7 @@ RSpec.describe Helic3::Agents::Tools::RegistrarDatosClienteTool do
 
     it 'deja una nota privada para el operador' do
       expect(chatwoot).to receive(:create_message)
-        .with(conversation.display_id, hash_including(private_note: true))
+        .with(conversation.display_id, hash_including(message_type: 'activity'))
 
       guardar(ciudad: 'Armenia')
     end

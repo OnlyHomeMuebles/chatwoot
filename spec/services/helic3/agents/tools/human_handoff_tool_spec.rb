@@ -18,7 +18,7 @@ RSpec.describe Helic3::Agents::Tools::HumanHandoffTool do
   end
 
   it 'registra el motivo como nota privada, etiqueta y reabre la conversación para un humano' do
-    expect(chatwoot).to receive(:create_message).with(42, content: a_string_including('cliente muy molesto'), private_note: true)
+    expect(chatwoot).to receive(:create_message).with(42, content: a_string_including('cliente muy molesto'), message_type: 'activity')
     expect(chatwoot).to receive(:add_labels).with(42, 'escalado-humano')
     expect(chatwoot).to receive(:update_status).with(42, 'open')
 
