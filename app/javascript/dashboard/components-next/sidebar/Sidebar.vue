@@ -2,6 +2,7 @@
 import { h, ref, computed, onMounted, watch } from 'vue';
 import { provideSidebarContext, useSidebarResize } from './provider';
 import { useAccount } from 'dashboard/composables/useAccount';
+import { useAdmin } from 'dashboard/composables/useAdmin';
 import { useConfig } from 'dashboard/composables/useConfig';
 import { useKbd } from 'dashboard/composables/utils/useKbd';
 import { useMapGetter } from 'dashboard/composables/store';
@@ -45,6 +46,7 @@ const emit = defineEmits([
 ]);
 
 const { accountScopedRoute, isOnChatwootCloud } = useAccount();
+const { isAdmin } = useAdmin();
 const { isEnterprise } = useConfig();
 const store = useStore();
 
@@ -1001,6 +1003,19 @@ const menuItems = computed(() => {
         },
       ],
     },
+    // H3A-13: Agentes IA como entrada propia (no dentro de Ajustes), cerca del
+    // perfil, como en el mockup. Solo para administradores (crit 1).
+    ...(isAdmin.value
+      ? [
+          {
+            name: 'AI Agents',
+            label: t('SIDEBAR.AI_AGENTS'),
+            icon: 'i-lucide-bot',
+            to: accountScopedRoute('agentes_ia_index'),
+            activeOn: ['agentes_ia_index', 'agentes_ia_new', 'agentes_ia_edit'],
+          },
+        ]
+      : []),
   ];
 });
 </script>
