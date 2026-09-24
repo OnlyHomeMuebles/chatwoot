@@ -121,6 +121,7 @@ RSpec.describe Helic3::ProcessConversationJob do
     before do
       Helic3::AgenteBandeja.create!(agente: agente, inbox: inbox)
       allow(client).to receive(:assign)
+      allow(client).to receive(:update_status)
     end
 
     it 'al llegar al tope de respuestas deriva al equipo con el mensaje_handoff, sin correr el runner (crit 1)' do
@@ -130,6 +131,10 @@ RSpec.describe Helic3::ProcessConversationJob do
       expect(client).to receive(:create_message)
         .with(conversation.display_id, content: 'Te paso con un asesor 💙', message_type: 'outgoing')
       expect(client).to receive(:assign).with(conversation.display_id, team_id: team.id)
+      # B1: además saca la conversación de 'pending' -> el webhook deja de encolar el job
+      # (ver webhook_handler_spec: una conversación 'open' no se procesa), así el segundo
+      # mensaje del cliente NO vuelve a recibir el handoff.
+      expect(client).to receive(:update_status).with(conversation.display_id, 'open')
 
       job.perform(account_id: account.id, conversation_id: conversation.display_id, content: 'sigo molesto')
     end

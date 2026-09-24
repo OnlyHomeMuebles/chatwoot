@@ -32,12 +32,15 @@ class Helic3::Agents::LimitesService
   private
 
   # solo aplica a agentes marcados 'horario_atencion'; 'siempre' (o nulo) no se corta.
+  # B2 (revisión de Jhan): se usa Inbox#out_of_office?, que resuelve el día y la hora
+  # con la ZONA HORARIA de la bandeja (working_hours.today). El cálculo manual con
+  # Time.current.wday tomaba la zona de la app (UTC por defecto), así que entre las
+  # 19:00 y las 23:59 de Bogotá tomaba el horario del día siguiente. out_of_office?
+  # ya contempla working_hours_enabled?, así que no hace falta chequearlo aparte.
   def fuera_de_horario?
     return false unless @agente&.horario == 'horario_atencion'
-    return false unless @inbox&.working_hours_enabled?
 
-    horario_hoy = @inbox.working_hours.find_by(day_of_week: Time.current.wday)
-    horario_hoy.present? && horario_hoy.closed_now?
+    @inbox&.out_of_office? || false
   end
 
   def tope_de_respuestas?

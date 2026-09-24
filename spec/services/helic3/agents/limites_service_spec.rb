@@ -8,12 +8,10 @@ RSpec.describe Helic3::Agents::LimitesService do
                                     team_id: team_id, mensaje_handoff: mensaje_handoff)
   end
 
+  # B2: fuera_de_horario? usa Inbox#out_of_office?, que ya combina working_hours_enabled?
+  # con closed_now? en la zona horaria de la bandeja. Fuera de horario == habilitado y cerrado.
   def inbox_con_horario(habilitado:, cerrado: false)
-    inbox = instance_double(Inbox, working_hours_enabled?: habilitado)
-    relacion = instance_double(ActiveRecord::Relation)
-    allow(inbox).to receive(:working_hours).and_return(relacion)
-    allow(relacion).to receive(:find_by).and_return(instance_double(WorkingHour, closed_now?: cerrado))
-    inbox
+    instance_double(Inbox, out_of_office?: habilitado && cerrado)
   end
 
   def decision(agente:, inbox: nil, respuestas_previas: 0)

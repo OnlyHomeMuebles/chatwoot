@@ -49,9 +49,9 @@ class Helic3::ProcessConversationJob < ApplicationJob
   # en el primer mensaje) contra el numero de respuestas previas de la IA (turn_count).
   def evaluar_limites(conversation_id)
     contexto = Helic3::Agents::ConversationMemory.new(account_id: @account_id, conversation_id: conversation_id).load
-    @agente_activo = agente_activo(contexto[:current_agent])
+    @agente_limites = agente_activo(contexto[:current_agent])
     Helic3::Agents::LimitesService.new(
-      agente: @agente_activo, inbox: @inbox, respuestas_previas: contexto[:turn_count]
+      agente: @agente_limites, inbox: @inbox, respuestas_previas: contexto[:turn_count]
     ).evaluar
   end
 
@@ -74,10 +74,15 @@ class Helic3::ProcessConversationJob < ApplicationJob
   # crit 1: pasa la conversacion al equipo con su mensaje_handoff y team_id. El
   # historial ya vive en Chatwoot, asi que el equipo la retoma con contexto.
   def derivar_al_equipo(conversation_id)
-    mensaje = @agente_activo&.mensaje_handoff.presence || HANDOFF_REPLY
+    mensaje = @agente_limites&.mensaje_handoff.presence || HANDOFF_REPLY
     @client.create_message(conversation_id, content: mensaje, message_type: 'outgoing')
-    team_id = @agente_activo&.team_id
+    team_id = @agente_limites&.team_id
     @client.assign(conversation_id, team_id: team_id) if team_id.present?
+    # B1 (revisión de Jhan): sacar la conversación del territorio del bot, igual que
+    # HumanHandoffTool. Sin esto sigue en 'pending', que es lo que atiende el webhook:
+    # como el runner no corre, turn_count no cambia y cada mensaje siguiente del cliente
+    # volvería a recibir el handoff sin fin. Se hace SIEMPRE, aunque no haya team_id.
+    @client.update_status(conversation_id, 'open')
   rescue StandardError => e
     Rails.logger.warn("[Helic3][limites] no se pudo derivar al equipo conv=#{conversation_id}: #{e.message}")
   end
