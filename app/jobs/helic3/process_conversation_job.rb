@@ -20,6 +20,15 @@ class Helic3::ProcessConversationJob < ApplicationJob
   MAX_LLM_ATTEMPTS = 2
   MAX_RETRY_WAIT = 4
 
+  # H3A-17 (determinista): datos del titular que una garantía necesita para la visita/recolección.
+  # Si faltan en la ficha, el SISTEMA los pide una sola vez (no depende del LLM). El agente los
+  # GUARDA con registrar_datos_cliente cuando el cliente responde.
+  DATOS_CLIENTE_REQUERIDOS = %i[cedula direccion ciudad].freeze
+  ATRIBUTO_DATOS_SOLICITADOS = 'helic3_datos_solicitados'
+  CATEGORIA_GARANTIA = 'garantia'
+  MENSAJE_PEDIR_DATOS = 'Para completar tu garantía necesito unos datos del titular: tu número de ' \
+                        'cédula, tu dirección y tu ciudad. ¿Me los confirmas, por favor? 💙'
+
   def perform(account_id:, conversation_id:, content:)
     Helic3::Agents::LlmRuntime.configure_agents!
     @account_id = account_id
@@ -103,6 +112,39 @@ class Helic3::ProcessConversationJob < ApplicationJob
     @client.create_message(conversation_id, content: reply, message_type: 'outgoing') if reply.present?
     emitir_estado(conversation_id)
     encolar_radicacion(conversation_id)
+    pedir_datos_cliente_si_faltan(conversation_id)
+  end
+
+  # H3A-17 (determinista): en una garantía, si a la ficha le faltan cédula/dirección/ciudad, el
+  # SISTEMA los pide una sola vez (marca helic3_datos_solicitados), sin depender de que el agente
+  # los pida. El agente solo los GUARDA cuando el cliente responde (registrar_datos_cliente).
+  # Best-effort: nunca rompe la corrida.
+  def pedir_datos_cliente_si_faltan(display_id)
+    ticket = ticket_garantia_vigente(display_id)
+    return if ticket.nil? || datos_cliente_completos?(ticket) || datos_ya_solicitados?(display_id)
+
+    @client.create_message(display_id, content: MENSAJE_PEDIR_DATOS, message_type: 'outgoing')
+    @client.update_custom_attributes(display_id, { ATRIBUTO_DATOS_SOLICITADOS => true })
+  rescue StandardError => e
+    Rails.logger.warn("[Helic3] no se pudieron solicitar los datos del cliente conv=#{display_id}: #{e.message}")
+  end
+
+  # expediente de garantía vigente de la conversación (respondida_at: nil, categoría garantía)
+  def ticket_garantia_vigente(display_id)
+    cid = conversacion(display_id)&.id
+    return nil if cid.blank?
+
+    ticket = @account.tickets.where(conversation_id: cid, respondida_at: nil).order(:id).last
+    ticket if ticket&.categoria&.codigo == CATEGORIA_GARANTIA
+  end
+
+  def datos_cliente_completos?(ticket)
+    datos = ticket.datos
+    datos.present? && DATOS_CLIENTE_REQUERIDOS.all? { |campo| datos[campo].present? }
+  end
+
+  def datos_ya_solicitados?(display_id)
+    ActiveModel::Type::Boolean.new.cast(conversacion(display_id)&.custom_attributes&.dig(ATRIBUTO_DATOS_SOLICITADOS))
   end
 
   def dejar_al_humano(conversation_id)

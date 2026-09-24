@@ -16,11 +16,12 @@
 # persona (precedencia humano > confirmado > erp > ia).
 class Helic3::Agents::Tools::RegistrarDatosClienteTool < Helic3::Agents::Tools::BaseTool
   ETIQUETAS = { cedula: 'cédula', direccion: 'dirección', ciudad: 'ciudad',
-                factura_numero: 'número de factura' }.freeze
+                factura_numero: 'número de factura', producto_nombre: 'producto' }.freeze
 
-  description 'Guarda en el expediente los datos que el cliente te dio o te confirmó en el chat ' \
-              '(cédula, dirección, ciudad, número de factura). Úsala DESPUÉS de radicar el caso y ' \
-              'solo con datos que el cliente confirmó, nunca inventados. Pasa solo los que tengas.'
+  description 'Guarda en el expediente los datos del caso que salen del chat: cédula, dirección, ' \
+              'ciudad, número de factura y el producto sobre el que es la garantía/reclamo. Úsala ' \
+              'DESPUÉS de radicar. Cédula, dirección, ciudad y factura solo si el cliente los dio; el ' \
+              'producto lo deduces de lo que el cliente ya describió. Nunca inventes. Pasa lo que tengas.'
 
   param :cedula, type: 'string', required: false,
                  desc: 'Cédula del titular, si el cliente la dio o confirmó.'
@@ -30,16 +31,21 @@ class Helic3::Agents::Tools::RegistrarDatosClienteTool < Helic3::Agents::Tools::
                  desc: 'Ciudad del cliente, confirmada por él.'
   param :factura_numero, type: 'string', required: false,
                          desc: 'Número de factura u orden, si el cliente lo dio.'
+  param :producto_nombre, type: 'string', required: false,
+                          desc: 'Producto sobre el que es el caso (p. ej. "cama", "silla de comedor"), ' \
+                                'deducido de lo que el cliente describió. No lo preguntes aparte si ya lo dijo.'
 
-  def perform(tool_context, cedula: nil, direccion: nil, ciudad: nil, factura_numero: nil)
+  # la firma la dicta el contrato de parametros de la tool (los que ve el modelo), no el estilo.
+  # rubocop:disable Metrics/ParameterLists
+  def perform(tool_context, cedula: nil, direccion: nil, ciudad: nil, factura_numero: nil, producto_nombre: nil)
     account = resolve_account(tool_context)
     return 'No hay una cuenta configurada para guardar datos.' if account.blank?
 
-    campos = { cedula: cedula, direccion: direccion, ciudad: ciudad, factura_numero: factura_numero }
-             .compact_blank
+    campos = { cedula: cedula, direccion: direccion, ciudad: ciudad,
+               factura_numero: factura_numero, producto_nombre: producto_nombre }.compact_blank
     if campos.empty?
       return 'No recibí ningún dato para guardar. Pídele al cliente al menos uno (cédula, dirección, ' \
-             'ciudad o número de factura) y confírmalo antes de guardar.'
+             'ciudad, número de factura) o deduce el producto de lo que describió, y guárdalo.'
     end
 
     ticket = ticket_vigente(account, tool_context)
@@ -53,6 +59,7 @@ class Helic3::Agents::Tools::RegistrarDatosClienteTool < Helic3::Agents::Tools::
     "Datos guardados en el expediente #{ticket.numero_radicado || ticket.ticket_number}: " \
       "#{lista(campos)}. No los vuelvas a pedir."
   end
+  # rubocop:enable Metrics/ParameterLists
 
   private
 
