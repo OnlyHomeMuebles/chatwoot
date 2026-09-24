@@ -69,6 +69,20 @@ RSpec.describe Helic3::ProcessConversationJob do
     job.perform(account_id: 1, conversation_id: 7, content: '', imagenes: fotos)
   end
 
+  # B3 (revision de Jhan, 23-sep): antes, un adjunto que no es imagen (nota de
+  # voz, PDF, ubicacion) sin texto dejaba mensaje = "" y el runner se invocaba
+  # con una cadena vacia. Las notas de voz son muy frecuentes en WhatsApp.
+  it 'usa un mensaje de respaldo para el runner cuando el cliente solo mandó una nota de voz (sin texto ni imagenes)' do
+    expect(runner).to receive(:run)
+      .with(described_class::SOLO_ADJUNTO_CONTENT,
+            context: { account_id: 1,
+                       state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
+                                imagenes: [], texto_imagenes: nil } })
+      .and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
+
+    job.perform(account_id: 1, conversation_id: 7, content: '', imagenes: [], hay_adjuntos: true)
+  end
+
   it 'muestra el indicador de escritura y lo apaga al terminar' do
     allow(runner).to receive(:run).and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
 
