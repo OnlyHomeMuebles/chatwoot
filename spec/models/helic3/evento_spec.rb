@@ -13,8 +13,32 @@ RSpec.describe Helic3::Evento do
                                           actor: actor, payload: { 'motivo' => 'garantia_producto' })
 
       expect(evento).to have_attributes(tipo: 'radicada', origen: 'humano', actor: actor, account: account)
-      expect(evento.payload).to eq('motivo' => 'garantia_producto')
+      expect(evento.payload).to include('motivo' => 'garantia_producto')
       expect(ticket.reload.eventos).to include(evento)
+    end
+
+    it 'guarda una instantanea del nombre del actor en el payload (N1)' do
+      evento = described_class.registrar!(ticket: ticket, tipo: 'radicada', origen: :humano, actor: actor)
+
+      expect(evento.reload.payload['actor_nombre']).to eq(actor.name)
+    end
+
+    it 'no agrega actor_nombre cuando lo hace el agente (sin User)' do
+      evento = described_class.registrar!(ticket: ticket, tipo: 'radicada', origen: :agente)
+
+      expect(evento.reload.payload.keys).not_to include('actor_nombre')
+    end
+
+    # N1: borrar un agente en Chatwoot no debe reventar la bitacora. La FK es
+    # on_delete: :nullify; se borra a nivel BD (delete_all) para probar la restriccion
+    # sin depender de los callbacks de destroy de User.
+    it 'anula actor_id (no revienta) al borrar el User, conservando el nombre en payload' do
+      evento = described_class.registrar!(ticket: ticket, tipo: 'radicada', origen: :humano, actor: actor)
+      nombre = actor.name
+
+      expect { User.where(id: actor.id).delete_all }.not_to raise_error
+      expect(evento.reload.actor_id).to be_nil
+      expect(evento.payload['actor_nombre']).to eq(nombre)
     end
 
     it 'rechaza un tipo fuera de la lista cerrada' do

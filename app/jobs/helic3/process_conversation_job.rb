@@ -123,12 +123,15 @@ class Helic3::ProcessConversationJob < ApplicationJob
     # AGT-07: el estado de consentimiento se lee de la conversacion (no de la memoria del
     # modelo), para que el aviso no se repita entre corridas. El triage lo recibe en el state.
     @consentimiento_datos_at = consentimiento_de_datos(conversation_id)
+    # B1 (revision #95): el "escribiendo…" va ANTES del OCR. La lectura de imagenes es sincrona y
+    # lenta (descarga + tesseract); con 2-3 fotos el cliente veria el chat quieto mas de un minuto
+    # si el indicador se prendiera despues. Juan ya lo habia movido; el merge lo revirtio.
+    start_typing(@client, conversation_id)
     # AGT-08: el OCR corre SIEMPRE aqui, determinista, no como tool que el modelo deba acordarse
     # de llamar. El texto leido viaja en el state y PqrsAgent lo inyecta en el prompt (camino :bd
     # incluido, ver RunnerService#instrucciones_pqrs).
     @texto_imagenes = Helic3::Agents::LectorDeImagenes.leer(imagenes)
 
-    start_typing(@client, conversation_id)
     entrada = { content: content, imagenes: imagenes, hay_adjuntos: hay_adjuntos }
     reply = generate_reply(@client, memory, conversation_id, entrada)
     @client.create_message(conversation_id, content: reply, message_type: 'outgoing') if reply.present?

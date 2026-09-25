@@ -14,8 +14,10 @@ class CreateHelic3Eventos < ActiveRecord::Migration[7.2]
       # opcional: solo los eventos de garantia la traen
       t.references :garantia, foreign_key: { to_table: :helic3_garantias },
                               index: { name: 'idx_h3_eventos_garantia' }
-      # quien lo hizo (nulo cuando lo hace el agente, que no es un User)
-      t.references :actor, foreign_key: { to_table: :users },
+      # quien lo hizo (nulo cuando lo hace el agente, que no es un User). on_delete:
+      # :nullify -> borrar un agente en Chatwoot no debe reventar; el nombre queda
+      # como instantanea en payload (ver Helic3::Evento.registrar!).
+      t.references :actor, foreign_key: { to_table: :users, on_delete: :nullify },
                            index: { name: 'idx_h3_eventos_actor' }
 
       t.string :tipo, null: false     # el tipo de transicion (lista cerrada en el modelo)

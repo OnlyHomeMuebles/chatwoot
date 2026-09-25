@@ -58,6 +58,11 @@ class Helic3::Evento < ApplicationRecord
   # los campos del evento (contrato de la bitacora), por eso se nombran todos.
   # rubocop:disable Metrics/ParameterLists
   def self.registrar!(ticket:, tipo:, origen:, actor: nil, garantia: nil, payload: {})
+    # N1 (revision #95): se guarda una instantanea del nombre del actor en el payload.
+    # La FK actor_id es on_delete: :nullify, asi que si el User se borra en Chatwoot
+    # el actor_id queda en NULL; sin esta instantanea se perderia QUIEN hizo la
+    # transicion, que es justo lo que hay que poder sustentar ante la SIC.
+    payload = payload.merge(actor_nombre: actor.name) if actor
     create!(account: ticket.account, ticket: ticket, garantia: garantia,
             actor: actor, tipo: tipo, origen: origen.to_s, payload: payload)
   end

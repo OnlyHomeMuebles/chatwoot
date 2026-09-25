@@ -38,7 +38,9 @@ class CreateHelic3Documentos < ActiveRecord::Migration[7.2]
       # tipo explicito. on_delete: :nullify explicado arriba (B2).
       t.references :attachment, type: :integer, foreign_key: { on_delete: :nullify }, index: { name: 'idx_h3_documentos_attachment' }
       t.references :message, type: :integer, foreign_key: { on_delete: :nullify }, index: { name: 'idx_h3_documentos_message' }
-      t.references :remitente_user, foreign_key: { to_table: :users },
+      # on_delete: :nullify -> borrar un User en Chatwoot no debe reventar; el nombre
+      # ya queda como instantanea en remitente_nombre (mas abajo).
+      t.references :remitente_user, foreign_key: { to_table: :users, on_delete: :nullify },
                                     index: { name: 'idx_h3_documentos_remitente_user' }
 
       t.string :clase, null: false # evidencia | formato
