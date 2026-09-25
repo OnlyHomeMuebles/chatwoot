@@ -85,4 +85,31 @@ RSpec.describe Helic3::Agents::LectorDeImagenes do
 
     expect(described_class.leer([url])).to be_nil
   end
+
+  # Chatwoot arma la URL del adjunto con FRONTEND_URL (0.0.0.0/localhost en
+  # desarrollo Docker). Esa URL sirve para el navegador del cliente, pero este
+  # worker de Sidekiq vive en OTRO contenedor: su `localhost` es él mismo y a
+  # `0.0.0.0` nadie se conecta. Por eso reescribimos SOLO esos hosts de bucle
+  # local al host interno del servicio (rails:3000) antes de descargar.
+  it 'reescribe el host de bucle local al host interno del servicio antes de descargar' do
+    stub_const("#{described_class}::HOST_INTERNO", 'rails:3000')
+    allow(Resolv).to receive(:getaddresses).with('rails').and_return(['93.184.216.34'])
+    url_navegador = 'http://0.0.0.0:3000/rails/active_storage/blobs/factura.jpg'
+    url_interna = 'http://rails:3000/rails/active_storage/blobs/factura.jpg'
+    responder_con_imagen(url_interna)
+    allow(RTesseract).to receive(:new).and_return(instance_double(RTesseract, to_s: 'Factura 8821'))
+
+    expect(described_class.leer([url_navegador])).to eq('Factura 8821')
+    expect(a_request(:get, url_navegador)).not_to have_been_made
+    expect(a_request(:get, url_interna)).to have_been_made
+  end
+
+  it 'no toca una URL externa (CDN de WhatsApp/Instagram): su host no es de bucle local' do
+    url = 'https://cdn.chatwoot.test/factura.jpg'
+    responder_con_imagen(url)
+    allow(RTesseract).to receive(:new).and_return(instance_double(RTesseract, to_s: 'ok'))
+
+    expect(described_class.leer([url])).to eq('ok')
+    expect(a_request(:get, url)).to have_been_made
+  end
 end

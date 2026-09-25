@@ -142,6 +142,13 @@ class Helic3::ProcessConversationJob < ApplicationJob
   # los pida. El agente solo los GUARDA cuando el cliente responde (registrar_datos_cliente).
   # Best-effort: nunca rompe la corrida.
   def pedir_datos_cliente_si_faltan(display_id)
+    # Flujo del mockup: si en ESTE turno llegó una foto con texto legible, el OCR ya trae los
+    # datos y el agente los PRESENTA para que el cliente confirme (y los guarda al confirmar,
+    # ver PqrsAgent). El pedido determinista duplicaría ese mensaje justo debajo del "¿es
+    # correcto?", así que se salta este turno. Sigue de red de seguridad en los turnos SIN foto
+    # legible (el cliente solo escribe, o la foto no tenia texto).
+    return if @texto_imagenes.present?
+
     ticket = ticket_garantia_vigente(display_id)
     return if ticket.nil? || datos_cliente_completos?(ticket) || datos_ya_solicitados?(display_id)
 

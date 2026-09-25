@@ -324,5 +324,30 @@ RSpec.describe Helic3::ProcessConversationJob do
 
       correr
     end
+
+    # Flujo del mockup: cuando el cliente manda la FOTO de la factura, el OCR lee los datos
+    # y el agente los PRESENTA para que confirme (ver PqrsAgent). El pedido determinista
+    # duplicaría ese mensaje, así que en el turno de una foto legible NO se dispara.
+    it 'NO los pide en el turno de una foto con texto legible (el agente presenta el OCR para confirmar)' do
+      create(:ticket, account: account, conversation_id: conversation.id, categoria: garantia)
+      allow(Helic3::Agents::LectorDeImagenes).to receive(:leer).and_return('cliente Ana Ruiz, cedula 123, ciudad Pereira')
+
+      expect(client).not_to receive(:create_message).with(conversation.display_id, pedir)
+
+      job.perform(account_id: account.id, conversation_id: conversation.display_id,
+                  content: 'aquí está mi factura', imagenes: ['http://x/factura.jpg'])
+    end
+
+    # Red de seguridad intacta: si llegó una foto pero el OCR no leyó nada útil (foto borrosa,
+    # del producto y no de un documento), el pedido determinista SÍ debe dispararse.
+    it 'SÍ los pide si llegó una foto pero el OCR no leyó texto' do
+      create(:ticket, account: account, conversation_id: conversation.id, categoria: garantia)
+      allow(Helic3::Agents::LectorDeImagenes).to receive(:leer).and_return(nil)
+
+      expect(client).to receive(:create_message).with(conversation.display_id, pedir)
+
+      job.perform(account_id: account.id, conversation_id: conversation.display_id,
+                  content: 'aquí está mi factura', imagenes: ['http://x/borrosa.jpg'])
+    end
   end
 end

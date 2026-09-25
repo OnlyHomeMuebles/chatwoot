@@ -31,6 +31,17 @@ class Helic3::Agents::LectorDeImagenes
   # compleja o corrupta puede colgar el worker de Sidekiq indefinidamente.
   TIMEOUT_OCR = 15
 
+  # Hosts de "bucle local": Chatwoot arma la URL del adjunto con FRONTEND_URL
+  # (0.0.0.0 / localhost en desarrollo Docker). Esa URL sirve para el NAVEGADOR
+  # del cliente, pero este lector corre en el contenedor de Sidekiq, cuyo
+  # `localhost` es él mismo y que a `0.0.0.0` no se puede conectar. Reescribimos
+  # SOLO estos hosts al host interno del servicio antes de descargar.
+  HOSTS_LOCALES = %w[0.0.0.0 localhost 127.0.0.1].freeze
+  # Host interno alcanzable entre contenedores (nombre del servicio en Docker
+  # Compose). Es inofensivo en produccion: alli FRONTEND_URL es el dominio
+  # publico real, su host nunca esta en HOSTS_LOCALES y el reescrito no dispara.
+  HOST_INTERNO = ENV.fetch('OCR_HOST_INTERNO', 'rails:3000')
+
   def self.leer(urls)
     new.leer(urls)
   end
@@ -50,10 +61,32 @@ class Helic3::Agents::LectorDeImagenes
   private
 
   def leer_texto_seguro(url)
+    url = reescribir_host_interno(url)
     leer_texto(url).presence
   rescue StandardError => e
     Rails.logger.error("[Helic3] lector_de_imagenes fallo con #{url}: #{e.class}: #{e.message}")
     nil
+  end
+
+  # Cambia SOLO el host cuando es de bucle local (ver HOSTS_LOCALES); una URL
+  # externa (CDN de WhatsApp/Instagram) se devuelve intacta. Si la URL viene
+  # mal formada, se devuelve tal cual y el fetch fallará con su rescue de siempre.
+  def reescribir_host_interno(url)
+    return url if HOST_INTERNO.blank?
+
+    uri = URI.parse(url)
+    return url unless HOSTS_LOCALES.include?(uri.host)
+
+    host, sep, port = HOST_INTERNO.rpartition(':')
+    if sep.empty?
+      uri.host = HOST_INTERNO
+    else
+      uri.host = host
+      uri.port = port.to_i
+    end
+    uri.to_s
+  rescue URI::InvalidURIError
+    url
   end
 
   # SafeFetch (ya usado en el resto del repo para URLs externas) filtra SSRF y

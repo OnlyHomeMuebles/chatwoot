@@ -69,6 +69,12 @@ class Helic3::Agents::PqrsAgent
       no viste algo en la imagen que no esté en ese texto — ni asumas el defecto o el estado del
       producto. Si necesitas saber qué muestra la foto más allá del texto leído, pídeselo al cliente
       con sus propias palabras.
+    - Si el texto leído de la foto (OCR) trae datos del caso (nombre, cédula, dirección, ciudad,
+      número de factura o producto), NO se los vuelvas a pedir al cliente: EXTRÁELOS de ese texto y
+      PRESÉNTASELOS para que confirme, por ejemplo "En tu factura veo: cliente Ana Ruiz, cédula
+      12345, ciudad Pereira, dirección Calle 1, producto Cama King, factura OH-123. ¿Es correcto?".
+      Cuando el cliente confirme (o corrija), guarda los datos con registrar_datos_cliente. Solo pide
+      a mano lo que NO haya salido en la foto.
     - Antes de redactar, consulta search_knowledge_base con la situación del cliente y úsala también
       para LA FORMA de responder (el lenguaje y el tono aprobados de Only Home), no solo para el
       dato: si encuentras una respuesta aprobada parecida, imita su tono y su estructura. Los datos y
