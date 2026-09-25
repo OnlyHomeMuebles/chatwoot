@@ -44,8 +44,11 @@ class Helic3::ChatwootClient
   end
 
   # POST /conversations/:id/custom_attributes — merge/update conversation custom attributes.
+  # merge: true es OBLIGATORIO: el endpoint upstream (ConversationCustomAttributesConcern)
+  # REEMPLAZA el hash completo salvo que reciba merge. Sin esto, escribir un atributo borra
+  # el resto — p. ej. el sello de consentimiento AGT-07 (Ley 1581) al emitir el estado en vivo.
   def update_custom_attributes(conversation_id, attributes)
-    post("conversations/#{conversation_id}/custom_attributes", { custom_attributes: attributes })
+    post("conversations/#{conversation_id}/custom_attributes", { custom_attributes: attributes, merge: true })
   end
 
   # POST /conversations/:id/assignments — assign to an agent or a team (for human handoff).

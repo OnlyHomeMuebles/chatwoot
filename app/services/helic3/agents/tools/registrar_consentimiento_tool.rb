@@ -28,7 +28,7 @@ class Helic3::Agents::Tools::RegistrarConsentimientoTool < Helic3::Agents::Tools
   def dejar_nota(tool_context, cid, sello)
     nota = "Consentimiento de tratamiento de datos AUTORIZADO por el cliente el #{sello}. " \
            "Aviso vigente presentado: \"#{aviso_vigente(tool_context)}\""
-    client(tool_context).create_message(cid, content: nota, private_note: true)
+    client(tool_context).create_message(cid, content: nota, message_type: 'activity')
   end
 
   # el texto exacto del aviso sale del catalogo (AGT-07: nunca del prompt ni del codigo)

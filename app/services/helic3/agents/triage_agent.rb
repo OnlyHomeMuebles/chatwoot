@@ -60,6 +60,46 @@ class Helic3::Agents::TriageAgent
     #{Helic3::Agents::HumanTone::GUIDE}
   INST
 
+  # H3A-09: anclas del bloque de ruteo ESTATICO dentro de INSTRUCTIONS. En el
+  # camino BD ese bloque (REGLA DE ORO + Definicion de cada especialista) se
+  # reemplaza por un directorio armado desde los criterio_ruteo de la BD.
+  ANCLA_RUTEO_INICIO = 'REGLA DE ORO (decide rápido):'
+  ANCLA_RUTEO_FIN = 'Desambiguación (casos límite):'
+
+  # Directorio de ruteo armado desde los agentes activos de la bandeja (H3A-09
+  # crit 1): agregar un agente con su criterio hace que el enrutador lo considere
+  # sin tocar codigo. La ultima linea cubre el crit 2 (si nada encaja -> humano).
+  def self.directorio_dinamico(especialistas)
+    lineas = especialistas.map { |e| "· #{e.criterio_ruteo} → #{e.codigo}" }
+    <<~DIR.strip
+      Definición de cada especialista (transfiérele según la INTENCIÓN principal del cliente):
+
+      #{lineas.join("\n")}
+
+      Si NINGÚN criterio corresponde a lo que el cliente necesita, NO inventes un destino: deriva a una
+      persona con la herramienta de escalamiento.
+    DIR
+  end
+
+  # Reemplaza el bloque de ruteo estatico del cuerpo del triage por el dinamico.
+  # Fail-safe: si el admin editó el prompt y ya no trae las anclas, NO se rompe el
+  # ruteo; se anexa el directorio dinamico al final y se avisa en el log. Asi el
+  # triage siempre tiene su directorio, aunque el cuerpo cambie desde la UI.
+  def self.con_directorio_dinamico(cuerpo, especialistas)
+    cuerpo = cuerpo.to_s # robusto ante nil (defensa; el modelo ya valida presence)
+    inicio = cuerpo.index(ANCLA_RUTEO_INICIO)
+    fin = cuerpo.index(ANCLA_RUTEO_FIN)
+    return "#{cuerpo[0...inicio]}#{directorio_dinamico(especialistas)}\n\n#{cuerpo[fin..]}" if inicio && fin && inicio < fin
+
+    # error (no warn): si el cuerpo editado no trae las anclas, el reemplazo se
+    # desactiva en silencio y el prompt puede quedar con dos directorios; hay que
+    # verlo en los logs. El ruteo NO se rompe: se anexa el dinamico al final.
+    Rails.logger.error(
+      '[Helic3][ruteo] el cuerpo del triage no trae las anclas de ruteo; se anexa el directorio dinámico al final'
+    )
+    "#{cuerpo}\n\n#{directorio_dinamico(especialistas)}"
+  end
+
   def self.build(model: nil, provider: nil, assume_model_exists: false)
     Agents::Agent.new(
       name: 'agente_triage',
@@ -154,6 +194,8 @@ class Helic3::Agents::TriageAgent
   def self.default_model
     InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence || LlmConstants::DEFAULT_MODEL
   end
-  private_class_method :contextual_instructions, :seccion_apertura, :seccion_ya_autorizado,
+  # seccion_apertura queda PUBLICA: el runner dinamico (H3A-08) la reutiliza para
+  # reproducir el consentimiento AGT-07 del triage cuando lo construye desde la BD.
+  private_class_method :contextual_instructions, :seccion_ya_autorizado,
                        :seccion_pedir_consentimiento, :textos_apertura, :seccion_sin_config, :default_model
 end
