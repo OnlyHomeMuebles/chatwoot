@@ -168,4 +168,20 @@ RSpec.describe Helic3::Documento do
       expect(documento_con.archivo_eliminado?).to be(false)
     end
   end
+
+  # N1 (revision #95): borrar un agente/usuario en Chatwoot no debe reventar. La FK
+  # remitente_user es on_delete: :nullify; el nombre ya queda en remitente_nombre.
+  # Se borra a nivel BD (delete_all) para probar la restriccion sin los callbacks de User.
+  describe 'cuando se borra el User remitente (N1)' do
+    it 'nullifica remitente_user_id (no revienta) y conserva remitente_nombre' do
+      usuario = create(:user, account: account)
+      documento = documento_con(attachment: adjunto, remitente_user: usuario, remitente_nombre: usuario.name)
+      documento.save!
+      nombre = usuario.name
+
+      expect { User.where(id: usuario.id).delete_all }.not_to raise_error
+      expect(documento.reload.remitente_user_id).to be_nil
+      expect(documento.remitente_nombre).to eq(nombre)
+    end
+  end
 end

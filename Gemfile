@@ -43,10 +43,6 @@ gem 'json_refs'
 gem 'rack-attack', '>= 6.7.0'
 # a utility tool for streaming, flexible and safe downloading of remote files
 gem 'down'
-# OCR local (sin API ni key): lee texto de una imagen con el motor tesseract del
-# sistema. Requiere el binario `tesseract` instalado (brew install tesseract /
-# apt-get install tesseract-ocr) con el paquete de idioma que se vaya a leer.
-gem 'rtesseract', '~> 3.1'
 # SSRF-safe URL fetching
 gem 'ssrf_filter', '~> 1.5'
 # authentication type to fetch and send mail over oauth2.0

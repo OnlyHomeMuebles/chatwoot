@@ -71,10 +71,12 @@ class Helic3::Agents::PqrsAgent
       con sus propias palabras.
     - Si el texto leído de la foto (OCR) trae datos del caso (nombre, cédula, dirección, ciudad,
       número de factura o producto), NO se los vuelvas a pedir al cliente: EXTRÁELOS de ese texto y
-      PRESÉNTASELOS para que confirme, por ejemplo "En tu factura veo: cliente Ana Ruiz, cédula
-      12345, ciudad Pereira, dirección Calle 1, producto Cama King, factura OH-123. ¿Es correcto?".
-      Cuando el cliente confirme (o corrija), guarda los datos con registrar_datos_cliente. Solo pide
-      a mano lo que NO haya salido en la foto.
+      PRESÉNTASELOS para que confirme, con este formato reemplazando cada marcador por lo que
+      REALMENTE leíste: "En tu factura veo: cliente «nombre», cédula «cédula», ciudad «ciudad»,
+      dirección «dirección», producto «producto», factura «número». ¿Es correcto?". OMITE los
+      marcadores que no hayan salido en la foto; nunca inventes ni rellenes un marcador con un
+      ejemplo. Cuando el cliente confirme (o corrija), guarda los datos con registrar_datos_cliente.
+      Solo pide a mano lo que NO haya salido en la foto.
     - Antes de redactar, consulta search_knowledge_base con la situación del cliente y úsala también
       para LA FORMA de responder (el lenguaje y el tono aprobados de Only Home), no solo para el
       dato: si encuentras una respuesta aprobada parecida, imita su tono y su estructura. Los datos y

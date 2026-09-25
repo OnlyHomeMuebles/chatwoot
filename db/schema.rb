@@ -2017,11 +2017,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
   add_foreign_key "helic3_documentos", "helic3_garantias", column: "garantia_id"
   add_foreign_key "helic3_documentos", "helic3_tickets", column: "ticket_id"
   add_foreign_key "helic3_documentos", "messages", on_delete: :nullify
-  add_foreign_key "helic3_documentos", "users", column: "remitente_user_id"
+  add_foreign_key "helic3_documentos", "users", column: "remitente_user_id", on_delete: :nullify
   add_foreign_key "helic3_eventos", "accounts"
   add_foreign_key "helic3_eventos", "helic3_garantias", column: "garantia_id"
   add_foreign_key "helic3_eventos", "helic3_tickets", column: "ticket_id"
-  add_foreign_key "helic3_eventos", "users", column: "actor_id"
+  add_foreign_key "helic3_eventos", "users", column: "actor_id", on_delete: :nullify
   add_foreign_key "helic3_garantia_items", "helic3_catalogo_detalles_tipificados", column: "detalle_tipificado_id"
   add_foreign_key "helic3_garantia_items", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
   add_foreign_key "helic3_garantia_items", "helic3_catalogo_procesos_garantia", column: "proceso_id"
