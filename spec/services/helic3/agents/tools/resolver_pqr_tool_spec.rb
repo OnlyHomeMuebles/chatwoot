@@ -39,7 +39,7 @@ RSpec.describe Helic3::Agents::Tools::ResolverPqrTool do
 
   it 'deja nota privada con el resultado' do
     expect(chatwoot).to receive(:create_message)
-      .with(conversation.display_id, content: a_string_matching(/Resuelta con información/), private_note: true)
+      .with(conversation.display_id, content: a_string_matching(/Resuelta con información/), message_type: 'activity')
 
     resolver
   end

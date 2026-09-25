@@ -1,0 +1,162 @@
+{
+  "AI_AGENTS": {
+    "HEADER": "AI Agents",
+    "KICKER": "Only Home · Configuration",
+    "SUBTITLE": "Define who answers, in which inboxes, and when your team takes over.",
+    "CREATE": "Create agent",
+    "STATS": {
+      "TOTAL": "Configured agents",
+      "ACTIVE": "Active",
+      "INBOXES": "Inboxes with an active agent",
+      "OF": "of {total}"
+    },
+    "PROCESS": {
+      "TITLE": "From message to solution",
+      "S1_T": "1. A message arrives",
+      "S1_B": "The agent only serves its authorized inboxes.",
+      "S2_T": "2. Replies with your guidelines",
+      "S2_B": "Uses the tone and respects the limits you set.",
+      "S3_T": "3. Your team takes over",
+      "S3_B": "If a handoff condition is met, the AI stops intervening."
+    },
+    "COVERAGE": {
+      "TITLE": "Inbox coverage",
+      "HINT": "Which active agent serves each inbox.",
+      "HUMAN": "Handled by the human team",
+      "EMPTY": "There are no inboxes in this account."
+    },
+    "LIST": {
+      "TITLE": "Your AI team",
+      "SEARCH": "Search agent…",
+      "FILTER_ALL": "All statuses",
+      "FILTER_ACTIVE": "Active",
+      "FILTER_PAUSED": "Paused",
+      "LOADING": "Loading agents…",
+      "FOOTNOTE": "Pausing keeps the configuration. The agent stops replying until you activate it again."
+    },
+    "EMPTY": {
+      "TITLE": "Create your first agent",
+      "BODY": "Define its purpose, its inboxes, and when it should ask for help.",
+      "FILTERED_TITLE": "No agents match these filters",
+      "FILTERED_BODY": "Try another name or change the status.",
+      "CLEAR": "Clear filters"
+    },
+    "CARD": {
+      "SYSTEM": "System",
+      "ACTIVE": "Active",
+      "PAUSED": "Paused",
+      "NO_INBOXES": "No inboxes",
+      "TOOLS_COUNT": "{count} tools",
+      "HANDS_OFF_TO": "Hands off to {team}",
+      "EDIT": "Edit",
+      "PAUSE": "Pause",
+      "ACTIVATE": "Activate",
+      "DELETE": "Delete agent"
+    },
+    "TOGGLE": {
+      "ACTIVATED": "Agent activated",
+      "PAUSED": "Agent paused",
+      "ERROR": "Could not change the agent's status"
+    },
+    "DELETE": {
+      "TITLE": "Delete this agent?",
+      "BODY": "«{name}» will be permanently deleted. This action cannot be undone.",
+      "CANCEL": "Cancel",
+      "CONFIRM": "Delete agent",
+      "SUCCESS": "Agent deleted",
+      "ERROR": "Could not delete the agent"
+    },
+    "EDITOR": {
+      "NEW_TITLE": "Create agent",
+      "EDIT_TITLE": "Edit agent",
+      "SUBTITLE": "Set its identity, its scope, and the rules for serving your customers.",
+      "UNSAVED": "Unsaved changes",
+      "NO_CHANGES": "No pending changes",
+      "CANCEL": "Cancel",
+      "SAVE": "Save changes",
+      "SAVED": "Changes saved",
+      "CREATED": "Agent created",
+      "ERROR": "Could not save the agent",
+      "DISCARD_CONFIRM": "You have unsaved changes. Are you sure you want to leave?",
+      "STEP": "Step {n} of {total}",
+      "PREV": "Previous",
+      "NEXT": "Continue",
+      "BACK": "All agents",
+      "TABS": {
+        "IDENTITY": "Identity",
+        "INBOXES": "Inboxes",
+        "RESPONSE": "Response",
+        "POLICIES": "Capabilities & policies"
+      },
+      "FIELDS": {
+        "NAME": "Agent name",
+        "NAME_PH": "e.g. Sofía · Warranties",
+        "PURPOSE": "Purpose",
+        "PURPOSE_PH": "What does it handle and how far does it go?",
+        "PURPOSE_HINT": "The router uses this to decide when to hand a conversation to it.",
+        "PAUSED_HINT": "Keeps its configuration without replying to customers.",
+        "ACTIVE_HINT": "Serves the inboxes you authorize when you save.",
+        "INBOXES_INTRO": "The agent only steps in for the selected inboxes. The rest stay with your team.",
+        "NO_INBOXES": "There are no inboxes in this account.",
+        "SCHEDULE": "Availability",
+        "SCHEDULE_ALWAYS": "Always",
+        "SCHEDULE_HOURS": "Business hours",
+        "TONE": "Response tone",
+        "TONE_PH": "e.g. Warm and empathetic",
+        "PROMPT": "Response guidelines",
+        "PROMPT_HINT": "Say how to introduce itself, what to ask, and how to explain next steps.",
+        "TOOLS": "Capabilities (tools)",
+        "HARD_RULES": "Hard rules (read-only)",
+        "HARD_RULES_HINT": "They come from the system and apply to every agent. Shown for reference only.",
+        "CONFIDENCE": "Minimum confidence (%)",
+        "CONFIDENCE_SOON": "Coming soon — no effect yet.",
+        "SOON": "Coming soon",
+        "MAX": "Max consecutive replies",
+        "MAX_HINT": "Leave empty for no limit.",
+        "NO_LIMIT": "No limit",
+        "TEAM": "Team that receives the conversation",
+        "TEAM_NONE": "No team",
+        "HANDOFF": "Handoff message"
+      },
+      "ERRORS": {
+        "NAME": "Enter a name for the agent.",
+        "PURPOSE": "Describe the agent's purpose.",
+        "INBOXES": "Select at least one inbox before activating the agent.",
+        "PROMPT": "Add the response guidelines.",
+        "CONFIDENCE": "Minimum confidence must be between 50 and 100.",
+        "MAX": "The max must be between 1 and 30 replies.",
+        "HANDOFF": "Write the message the customer will see on handoff."
+      },
+      "SUMMARY": {
+        "KICKER": "Agent configuration",
+        "PLACEHOLDER": "Your new agent",
+        "PURPOSE_PH": "Define its purpose so your team knows when to use it.",
+        "INBOXES": "Authorized inboxes",
+        "INBOXES_UNIT": "inboxes",
+        "NO_INBOXES": "You haven't selected inboxes yet",
+        "TONE": "Tone & availability",
+        "TOOLS": "Capabilities",
+        "TOOLS_LIMITS": "{tools} tools · up to {max} replies",
+        "HANDOFF": "Human handoff",
+        "HANDOFF_HINT": "Confidence below {c}% or a handoff condition.",
+        "NOTE": "Configuration view. Attention is only simulated; changes are saved when you create/save the agent.",
+        "LIMITS": "Limits (max · confidence)"
+      }
+    },
+    "LIVE": {
+      "LINK": "Live status",
+      "TITLE": "Live status",
+      "SUBTITLE": "Conversations the AI is handling right now. You can step in and take over.",
+      "CONNECTED": "Live",
+      "DISCONNECTED": "Disconnected",
+      "NEUTRAL": "Status unavailable. Reconnecting… (possibly stale information is not shown).",
+      "LOADING": "Loading live status…",
+      "EMPTY": "No conversation is being handled by the AI right now.",
+      "NO_CONTACT": "Unnamed contact",
+      "HANDLED_BY": "Handled by {agent}",
+      "INTERVENE": "Step in",
+      "INTERVENED": "Stepped in: the AI stopped replying in this conversation.",
+      "INTERVENE_ERROR": "Could not step into the conversation."
+    }
+  }
+}

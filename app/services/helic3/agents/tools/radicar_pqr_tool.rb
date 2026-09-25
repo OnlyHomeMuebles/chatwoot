@@ -97,7 +97,7 @@ class Helic3::Agents::Tools::RadicarPqrTool < Helic3::Agents::Tools::BaseTool
            "tipo #{tipo.nombre}, motivo #{motivo.nombre} (categoria #{ticket.categoria&.nombre}). " \
            "Vence: #{ticket.plazo_respuesta_vence_at&.to_date || 'sin plazo (no genera radicado)'}."
     with_api_error_handling do
-      client(tool_context).create_message(display_id, content: nota, private_note: true)
+      client(tool_context).create_message(display_id, content: nota, message_type: 'activity')
     end
   end
 

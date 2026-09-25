@@ -39,6 +39,16 @@ class Helic3::Agents::PqrsAgent
        DESPUÉS de radicar. Nunca cierres un turno prometiendo "gestionar" sin haber llamado antes a
        radicar_pqr. Luego confirma el próximo paso concreto y, si la herramienta te devolvió número
        de radicado, entrégaselo al cliente.
+       INMEDIATAMENTE DESPUÉS de radicar, en el MISMO turno, es OBLIGATORIO llamar a
+       registrar_datos_cliente con TODO dato que el cliente ya te haya ESCRITO él mismo (número de
+       factura/orden, cédula, dirección, ciudad) MÁS el producto sobre el que es el caso
+       (producto_nombre), que DEDUCES de lo que el cliente ya describió (p. ej. "cama", "silla de
+       comedor") sin volver a preguntarlo. OJO: los datos que SOLO salieron del OCR de una factura NO
+       van aquí todavía —esos esperan que el cliente los confirme, ver la regla del OCR más abajo—;
+       aquí solo van los que el cliente escribió con sus palabras. No omitas este paso: sin él, el
+       equipo no ve los datos en el expediente. En las garantías, el SISTEMA le pide al cliente la
+       cédula, la dirección y la ciudad; tú NO tienes que pedírselas, pero EN CUANTO el cliente las
+       escriba, guárdalas de una con registrar_datos_cliente.
     6. Cuando el caso tenga un desenlace CLARO y ya cuentes con los datos mínimos, además de
        radicar, RESUÉLVELO con la herramienta resolver_pqr, eligiendo el resultado de la sección
        de códigos vigentes (nunca inventes un código):
@@ -52,6 +62,32 @@ class Helic3::Agents::PqrsAgent
        resuelvas todavía.
 
     Reglas clave:
+    - Cada vez que el cliente te dé o confirme un dato suyo (cédula, dirección, ciudad, número de
+      factura), GUÁRDALO de una con registrar_datos_cliente (solo lo que confirmó, nunca inventes).
+      Es obligatorio, no opcional: es lo que deja los datos en el expediente para el equipo. Pasa solo
+      los datos que tengas y, una vez guardados, no los vuelvas a pedir.
+    - Cuando el cliente adjunte una imagen, el sistema YA leyó automáticamente el texto legible que
+      tenga (factura, cédula) y te lo entrega en la sección "Contexto de la conversación" si encontró
+      algo. NO tienes forma de "ver" la foto más allá de ese texto: NUNCA digas que revisaste, viste o
+      no viste algo en la imagen que no esté en ese texto — ni asumas el defecto o el estado del
+      producto. Si necesitas saber qué muestra la foto más allá del texto leído, pídeselo al cliente
+      con sus propias palabras.
+    - Si el texto leído de la foto (OCR) trae datos del caso (nombre, cédula, dirección, ciudad,
+      número de factura o producto), ESO ES LO PRIMERO que haces con esa foto. Una factura es un
+      DOCUMENTO, NO la foto del daño: por eso NUNCA le pidas al cliente que "describa lo que se ve"
+      en ella ni la trates como evidencia del problema. En su lugar EXTRAE los datos y
+      PRESÉNTASELOS para que confirme, reemplazando cada marcador por lo que REALMENTE leíste:
+      "En tu factura veo: cliente «nombre», cédula «cédula», ciudad «ciudad», dirección «dirección»,
+      producto «producto», factura «número». ¿Es correcto?". OMITE los marcadores que no hayan
+      salido; nunca inventes ni rellenes un marcador con un ejemplo. Los datos leídos por OCR NO
+      cuentan como "dados por el cliente" hasta que él los confirme, así que en ESE turno (el de la
+      foto) tu respuesta es SOLO ese mensaje de confirmación: NO llames a registrar_datos_cliente
+      todavía, solo presenta y ESPERA la respuesta. Es un paso OBLIGATORIO: aunque estés seguro de
+      los datos, nunca los guardes sin antes preguntar "¿es correcto?" y recibir la respuesta. SOLO
+      cuando el cliente responda en el siguiente turno confirmando (o corrigiendo), guárdalos TODOS
+      de una con registrar_datos_cliente — INCLUIDO el número de factura. Solo pide a mano lo que NO
+      haya salido en la foto. Si además necesitas ver el DAÑO del producto, pídele una foto APARTE
+      del problema: eso es distinto de la factura y va DESPUÉS de guardar los datos que ella trajo.
     - Antes de redactar, consulta search_knowledge_base con la situación del cliente y úsala también
       para LA FORMA de responder (el lenguaje y el tono aprobados de Only Home), no solo para el
       dato: si encuentras una respuesta aprobada parecida, imita su tono y su estructura. Los datos y
@@ -89,7 +125,8 @@ class Helic3::Agents::PqrsAgent
         Helic3::Agents::Tools::HumanHandoffTool.new,
         Helic3::KnowledgeBaseSearchTool.new,
         Helic3::Agents::Tools::RadicarPqrTool.new,
-        Helic3::Agents::Tools::ResolverPqrTool.new
+        Helic3::Agents::Tools::ResolverPqrTool.new,
+        Helic3::Agents::Tools::RegistrarDatosClienteTool.new
       ]
     )
   end
@@ -107,9 +144,23 @@ class Helic3::Agents::PqrsAgent
       known = []
       known << "- Cliente: #{state[:customer_name]}" if state[:customer_name].present?
       known << "- Número de orden: #{state[:order_number]} (ya disponible, no lo vuelvas a pedir)" if state[:order_number].present?
+      known.concat(linea_de_imagen(state))
       partes << "# Contexto de la conversación\n#{known.join("\n")}" unless known.empty?
 
       partes.compact.join("\n")
+    end
+  end
+
+  # AGT-08: el texto de la foto ya se leyó (OCR determinista, ver LectorDeImagenes) antes de
+  # correr el agente — nunca se le pide al modelo que "llame" a nada para verlo.
+  def self.linea_de_imagen(state)
+    if state[:texto_imagenes].present?
+      ["- Texto leído automáticamente de la foto que el cliente adjuntó (OCR): #{state[:texto_imagenes]}"]
+    elsif state[:imagenes].present?
+      ['- El cliente adjuntó una foto, pero no se encontró texto legible en ella ' \
+       '(puede ser del producto, no de un documento).']
+    else
+      []
     end
   end
 
@@ -165,6 +216,9 @@ class Helic3::Agents::PqrsAgent
   def self.default_model
     InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence || LlmConstants::DEFAULT_MODEL
   end
-  private_class_method :contextual_instructions, :seccion_operativa, :seccion_tiempos,
+  # seccion_operativa y linea_de_imagen quedan PUBLICAS: el runner dinamico (H3A-08) las
+  # reutiliza al construir PQRS desde la BD — seccion_operativa para tiempos/codigos y
+  # linea_de_imagen para el texto del OCR en el camino :bd (ver RunnerService#instrucciones_pqrs).
+  private_class_method :contextual_instructions, :seccion_tiempos,
                        :seccion_codigos, :default_model
 end

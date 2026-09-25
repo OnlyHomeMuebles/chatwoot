@@ -15,7 +15,7 @@ class Helic3::Agents::Tools::HumanHandoffTool < Helic3::Agents::Tools::BaseTool
       cid = conversation_id(tool_context)
       chatwoot = client(tool_context)
 
-      chatwoot.create_message(cid, content: "Derivación a humano. Motivo: #{reason}", private_note: true)
+      chatwoot.create_message(cid, content: "Derivación a humano. Motivo: #{reason}", message_type: 'activity')
       chatwoot.add_labels(cid, ESCALATION_LABEL)
       team_id = tool_context.state[:human_team_id]
       chatwoot.assign(cid, team_id: team_id) if team_id
