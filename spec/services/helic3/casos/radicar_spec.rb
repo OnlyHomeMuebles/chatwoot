@@ -149,6 +149,28 @@ RSpec.describe Helic3::Casos::Radicar do
     end
   end
 
+  # H3A-17 (A): la factura/orden entra a la ficha de forma determinista, no solo a pqrs_metadata.
+  describe 'la factura en la ficha del expediente' do
+    it 'guarda el numero de orden en la ficha con fuente confirmado cuando radica el agente' do
+      ticket = radicar(tipo: reclamo, motivo_pqr: motivo_garantia, numero_orden: 'OH-123', origen: :agente)
+
+      expect(ticket.datos.factura_numero).to eq('OH-123')
+      expect(ticket.datos.fuentes['factura_numero']).to eq('confirmado')
+    end
+
+    it 'cuando radica una persona, la fuente de la factura es humano' do
+      ticket = radicar(tipo: reclamo, motivo_pqr: motivo_garantia, numero_orden: 'OH-9', origen: :humano)
+
+      expect(ticket.datos.fuentes['factura_numero']).to eq('humano')
+    end
+
+    it 'sin numero de orden no crea ficha' do
+      ticket = radicar(tipo: reclamo, motivo_pqr: motivo_garantia)
+
+      expect(ticket.datos).to be_nil
+    end
+  end
+
   describe 'barrido hacia atras de evidencias (EVI-02)' do
     it 'vincula al nacer las evidencias que el cliente ya habia mandado antes de radicar' do
       conversacion = create(:conversation, account: account)

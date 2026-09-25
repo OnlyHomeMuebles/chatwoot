@@ -96,4 +96,139 @@ RSpec.describe Helic3::Agents::RunnerService do
       expect(result.context[:current_agent]).to eq('agente_cotizaciones')
     end
   end
+
+  # H3A-08 (runner desde la BD) + H3A-12 (bandera por cuenta). Lo de arriba cubre el
+  # camino de clases; aqui el camino de base de datos.
+  describe 'desde la BD (H3A-08 y H3A-12)' do
+    let(:account) { create(:account) }
+    let(:inbox) { create(:inbox, account: account) }
+
+    before do
+      Helic3::Agents::SeederService.new(account).sembrar!
+      Helic3::Agente.where(account: account).find_each do |agente|
+        Helic3::AgenteBandeja.create!(agente: agente, inbox: inbox)
+      end
+    end
+
+    def prender_flag
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'agentes_desde_bd',
+                                          valor: 'true', unidad: 'booleano')
+    end
+
+    it 'con la bandera apagada usa las clases (modo :clases): comportamiento de hoy' do
+      expect(described_class.new(account: account, inbox: inbox).modo).to eq(:clases)
+    end
+
+    it 'con la bandera encendida lee la BD y arma la orquesta con el triage primero' do
+      prender_flag
+      servicio = described_class.new(account: account, inbox: inbox)
+
+      expect(servicio.modo).to eq(:bd)
+      expect(servicio.hay_agentes?).to be(true)
+
+      agentes = servicio.send(:build_agents)
+      expect(agentes.first.name).to eq('agente_triage')
+      expect(agentes.map(&:name)).to contain_exactly(
+        'agente_triage', 'agente_faq', 'agente_pqrs', 'agente_logistica', 'agente_cotizaciones'
+      )
+    end
+
+    it 'en modo :bd sin agentes para la bandeja, hay_agentes? es false (se deja al humano)' do
+      prender_flag
+      otra_bandeja = create(:inbox, account: account)
+
+      expect(described_class.new(account: account, inbox: otra_bandeja).hay_agentes?).to be(false)
+    end
+
+    # N1 (revision de Jhan): el modelo del agente sigue el mismo fallback que las
+    # clases -> fila.modelo (override), si no @model, si no default_model.
+    describe 'modelo del agente' do
+      before { prender_flag }
+
+      def agente_bd(codigo, model: nil)
+        servicio = described_class.new(account: account, inbox: inbox, model: model)
+        servicio.send(:build_agents).find { |a| a.name == codigo }
+      end
+
+      it 'respeta fila.modelo como override cuando esta presente' do
+        Helic3::Agente.find_by(account: account, codigo: 'agente_faq').update!(modelo: 'gpt-override')
+        expect(agente_bd('agente_faq').model).to eq('gpt-override')
+      end
+
+      it 'usa el @model del llamador cuando la fila no trae modelo' do
+        expect(agente_bd('agente_faq', model: 'gpt-del-runtime').model).to eq('gpt-del-runtime')
+      end
+
+      it 'cae al default_model cuando no hay ni fila.modelo ni @model' do
+        allow(InstallationConfig).to receive(:find_by).with(name: 'CAPTAIN_OPEN_AI_MODEL').and_return(nil)
+        expect(agente_bd('agente_faq').model).to eq(LlmConstants::DEFAULT_MODEL)
+      end
+    end
+
+    # H3A-09: el triage arma su directorio de ruteo desde los criterio_ruteo de la BD.
+    describe 'ruteo dinámico (H3A-09)' do
+      before { prender_flag }
+
+      # evalua las instrucciones del triage (son un lambda por corrida)
+      def instrucciones_triage(servicio)
+        triage = servicio.send(:build_agents).find { |a| a.name == 'agente_triage' }
+        ctx = Struct.new(:context).new({ account_id: account.id,
+                                         state: { consentimiento_datos_at: Time.current } })
+        triage.instructions.call(ctx)
+      end
+
+      it 'el triage considera un agente NUEVO por su criterio, sin tocar código (crit 1)' do
+        Helic3::Agente.create!(
+          account: account, codigo: 'agente_reventa', nombre: 'Reventa',
+          criterio_ruteo: 'Cliente que quiere revender muebles usados de segunda',
+          prompt: 'Especialista de recompra de usados', activo: true
+        ).tap { |a| Helic3::AgenteBandeja.create!(agente: a, inbox: inbox) }
+
+        texto = instrucciones_triage(described_class.new(account: account, inbox: inbox))
+
+        expect(texto).to include('agente_reventa')
+        expect(texto).to include('Cliente que quiere revender muebles usados de segunda')
+      end
+
+      it 'reemplaza el directorio estático por el dinámico y conserva la desambiguación' do
+        texto = instrucciones_triage(described_class.new(account: account, inbox: inbox))
+
+        expect(texto).not_to include('REGLA DE ORO (decide rápido):')
+        expect(texto).to include('Desambiguación (casos límite):')
+      end
+
+      it 'instruye derivar a humano si ningún criterio corresponde (crit 2)' do
+        texto = instrucciones_triage(described_class.new(account: account, inbox: inbox))
+        expect(texto).to include('NINGÚN criterio')
+      end
+
+      # Cruce E4 + evidencias/OCR (AGT-08): en el camino :bd, el texto leído de la foto también
+      # debe llegar al prompt de PQRS (si no, con la bandera encendida el OCR se perdería).
+      it 'inyecta el texto del OCR en el prompt de PQRS en el camino :bd' do
+        pqrs = described_class.new(account: account, inbox: inbox)
+                              .send(:build_agents).find { |a| a.name == 'agente_pqrs' }
+        ctx = Struct.new(:context).new({ account_id: account.id,
+                                         state: { texto_imagenes: 'FACTURA OH-777 total 1.200.000' } })
+
+        texto = pqrs.instructions.call(ctx)
+
+        expect(texto).to include('FACTURA OH-777 total 1.200.000')
+        expect(texto).to include('OCR')
+      end
+
+      it 'registra a qué agente enrutó y con qué criterio (crit 3)' do
+        servicio = described_class.new(account: account, inbox: inbox)
+        fake = instance_double(Agents::AgentRunner)
+        allow(Agents::Runner).to receive(:with_agents).and_return(fake)
+        allow(fake).to receive(:run).and_return(
+          instance_double(Agents::RunResult, output: 'ok', context: { current_agent: 'agente_pqrs' })
+        )
+
+        allow(Rails.logger).to receive(:info) # la cache tambien loguea HIT/MISS
+        servicio.run('quiero poner una queja')
+
+        expect(Rails.logger).to have_received(:info).with(/enrutó a agente_pqrs · criterio:/)
+      end
+    end
+  end
 end

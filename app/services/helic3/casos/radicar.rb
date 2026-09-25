@@ -36,6 +36,7 @@ class Helic3::Casos::Radicar
   def call
     Helic3::Ticket.transaction do
       ticket = Helic3::Ticket.create!(atributos)
+      guardar_factura_en_ficha(ticket)
       # bitacora (EVT-01): el nacimiento del expediente, con quien lo radico
       Helic3::Evento.registrar!(
         ticket: ticket, tipo: 'radicada', origen: @origen, actor: @creator,
@@ -50,6 +51,21 @@ class Helic3::Casos::Radicar
   end
 
   private
+
+  # H3A-17 (A): la factura/orden usada para radicar entra TAMBIEN a la ficha del
+  # expediente (helic3_ticket_datos.factura_numero), no solo a pqrs_metadata. Asi
+  # aparece en "Datos del caso" de forma DETERMINISTA siempre que se radique con
+  # una, sin depender de que el agente llame a registrar_datos_cliente. La fuente
+  # refleja quien la aporto: el operador (humano) o el cliente via el agente
+  # (confirmado). Va dentro de la misma transaccion que la radicacion.
+  def guardar_factura_en_ficha(ticket)
+    return if @numero_orden.blank?
+
+    fuente = @origen.to_s == 'humano' ? :humano : :confirmado
+    Helic3::Casos::RegistrarDatos.new(
+      ticket: ticket, campos: { factura_numero: @numero_orden }, fuente: fuente
+    ).call
+  end
 
   def atributos
     {

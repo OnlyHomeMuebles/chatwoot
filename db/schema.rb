@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_09_21_120000) do
+ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1104,6 +1104,46 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120000) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "helic3_agentes", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "codigo", null: false
+    t.string "nombre", null: false
+    t.text "descripcion"
+    t.text "criterio_ruteo"
+    t.text "prompt"
+    t.string "tono"
+    t.string "modelo"
+    t.string "horario"
+    t.jsonb "herramientas", default: [], null: false
+    t.jsonb "politicas", default: {}, null: false
+    t.text "politicas_texto"
+    t.jsonb "handoff_reglas", default: {}, null: false
+    t.integer "confianza_minima"
+    t.integer "max_respuestas"
+    t.bigint "team_id"
+    t.text "mensaje_handoff"
+    t.boolean "activo", default: true, null: false
+    t.boolean "es_sistema", default: false, null: false
+    t.bigint "creado_por_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "activo"], name: "idx_h3ag_account_activo"
+    t.index ["account_id", "codigo"], name: "idx_h3ag_account_codigo", unique: true
+    t.index ["account_id"], name: "idx_h3ag_account"
+    t.index ["creado_por_id"], name: "idx_h3ag_creado_por"
+    t.index ["team_id"], name: "idx_h3ag_team"
+  end
+
+  create_table "helic3_agentes_bandejas", force: :cascade do |t|
+    t.bigint "agente_id", null: false
+    t.bigint "inbox_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agente_id", "inbox_id"], name: "idx_h3agb_agente_inbox", unique: true
+    t.index ["agente_id"], name: "idx_h3agb_agente"
+    t.index ["inbox_id"], name: "idx_h3agb_inbox"
+  end
+
   create_table "helic3_catalogo_categorias", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "nombre", null: false
@@ -1454,17 +1494,17 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120000) do
     t.datetime "respondida_at"
     t.datetime "cerrada_at"
     t.datetime "plazo_respuesta_vence_at"
-    t.index ["categoria_id"], name: "idx_h3_tickets_categoria"
-    t.index ["etapa_id"], name: "idx_h3_tickets_etapa"
-    t.index ["motivo_pqr_id"], name: "idx_h3_tickets_motivo_pqr"
-    t.index ["resultado_id"], name: "idx_h3_tickets_resultado"
-    t.index ["tipo_id"], name: "idx_h3_tickets_tipo"
     t.index ["account_id", "display_id"], name: "index_helic3_tickets_on_account_id_and_display_id", unique: true
     t.index ["account_id", "pqrs_tipo"], name: "index_helic3_tickets_on_account_id_and_pqrs_tipo"
     t.index ["account_id", "status"], name: "index_helic3_tickets_on_account_id_and_status"
     t.index ["account_id"], name: "index_helic3_tickets_on_account_id"
     t.index ["assignee_id", "account_id"], name: "index_helic3_tickets_on_assignee_id_and_account_id"
+    t.index ["categoria_id"], name: "idx_h3_tickets_categoria"
     t.index ["conversation_id"], name: "index_helic3_tickets_on_conversation_id"
+    t.index ["etapa_id"], name: "idx_h3_tickets_etapa"
+    t.index ["motivo_pqr_id"], name: "idx_h3_tickets_motivo_pqr"
+    t.index ["resultado_id"], name: "idx_h3_tickets_resultado"
+    t.index ["tipo_id"], name: "idx_h3_tickets_tipo"
   end
 
   create_table "inbox_assignment_policies", force: :cascade do |t|
@@ -1965,6 +2005,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120000) do
   add_foreign_key "campaign_recipients", "campaigns", on_delete: :cascade
   add_foreign_key "campaign_recipients", "contacts", on_delete: :cascade
   add_foreign_key "campaign_recipients", "inboxes", on_delete: :cascade
+  add_foreign_key "helic3_agentes", "accounts", on_delete: :cascade
+  add_foreign_key "helic3_agentes", "teams", on_delete: :nullify
+  add_foreign_key "helic3_agentes", "users", column: "creado_por_id", on_delete: :nullify
+  add_foreign_key "helic3_agentes_bandejas", "helic3_agentes", column: "agente_id", on_delete: :cascade
+  add_foreign_key "helic3_agentes_bandejas", "inboxes", on_delete: :cascade
   add_foreign_key "helic3_catalogo_detalles_tipificados", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
   add_foreign_key "helic3_catalogo_motivos_pqr", "helic3_catalogo_categorias", column: "categoria_id"
   add_foreign_key "helic3_documentos", "accounts"

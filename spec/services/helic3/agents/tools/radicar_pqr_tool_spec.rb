@@ -110,7 +110,7 @@ RSpec.describe Helic3::Agents::Tools::RadicarPqrTool do
     expect(chatwoot).to receive(:create_message)
       .with(conversation.display_id,
             content: a_string_matching(/Garantía de producto.*#\d+|#\d+.*Garantía de producto/m),
-            private_note: true)
+            message_type: 'activity')
 
     radicar
   end

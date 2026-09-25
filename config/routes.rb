@@ -353,6 +353,17 @@ Rails.application.routes.draw do
               resources :items, only: [:update], controller: 'garantia_items'
             end
             resource :catalogos, only: [:show]
+            # H3A-03: catalogo fijo de herramientas + reglas duras (solo lectura),
+            # para que el panel de Agentes IA no duplique lo que vive en codigo.
+            # Va ANTES del resources :agentes para que 'catalogo' no lo capture #show.
+            get 'agentes/catalogo', to: 'agentes#catalogo'
+            # H3A-05: CRUD de agentes del panel (solo administrador). toggle prende/apaga.
+            resources :agentes, only: [:index, :show, :create, :update, :destroy] do
+              member { patch :toggle }
+            end
+            # H3A-15: estado en vivo por conversación (solo administrador).
+            get 'estado-en-vivo', to: 'estado_en_vivo#index'
+            post 'estado-en-vivo/:conversation_id/intervenir', to: 'estado_en_vivo#intervenir'
             # Bandeja de PQR (BAN-01): indice de solo lectura, filtrado y paginado
             # en servidor. Endpoint propio para no cambiar la forma de la respuesta
             # que el panel de conversacion ya consume por tickets#index.
