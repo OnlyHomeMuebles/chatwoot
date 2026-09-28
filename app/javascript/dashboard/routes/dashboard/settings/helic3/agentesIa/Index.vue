@@ -103,34 +103,34 @@ const limpiarFiltros = () => {
     </header>
 
     <!-- Contadores (H3A-13) -->
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <div class="flex items-center gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1">
-        <span class="flex items-center justify-center rounded-lg size-9 bg-n-slate-3 text-n-slate-11">
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="flex items-center py-4 gap-3.5 px-[1.125rem] border rounded-xl border-n-weak bg-n-solid-1">
+        <span class="flex items-center justify-center rounded-xl size-10 bg-n-slate-3 text-n-slate-11">
           <span class="i-lucide-bot size-5" />
         </span>
         <div>
-          <strong class="block text-xl font-semibold text-n-slate-12">{{ stats.total }}</strong>
-          <p class="text-sm text-n-slate-11">{{ t('AI_AGENTS.STATS.TOTAL') }}</p>
+          <strong class="block text-2xl font-semibold text-n-slate-12">{{ stats.total }}</strong>
+          <p class="text-xs text-n-slate-11">{{ t('AI_AGENTS.STATS.TOTAL') }}</p>
         </div>
       </div>
-      <div class="flex items-center gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1">
-        <span class="flex items-center justify-center rounded-lg size-9 bg-n-teal-3 text-n-teal-11">
+      <div class="flex items-center py-4 gap-3.5 px-[1.125rem] border rounded-xl border-n-weak bg-n-solid-1">
+        <span class="flex items-center justify-center rounded-xl size-10 bg-n-teal-3 text-n-teal-11">
           <span class="i-lucide-circle-play size-5" />
         </span>
         <div>
-          <strong class="block text-xl font-semibold text-n-slate-12">{{ stats.activos }}</strong>
-          <p class="text-sm text-n-slate-11">{{ t('AI_AGENTS.STATS.ACTIVE') }}</p>
+          <strong class="block text-2xl font-semibold text-n-slate-12">{{ stats.activos }}</strong>
+          <p class="text-xs text-n-slate-11">{{ t('AI_AGENTS.STATS.ACTIVE') }}</p>
         </div>
       </div>
-      <div class="flex items-center gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1">
-        <span class="flex items-center justify-center rounded-lg size-9 bg-n-slate-3 text-n-slate-11">
+      <div class="flex items-center py-4 gap-3.5 px-[1.125rem] border rounded-xl border-n-weak bg-n-solid-1">
+        <span class="flex items-center justify-center rounded-xl size-10 bg-n-slate-3 text-n-slate-11">
           <span class="i-lucide-inbox size-5" />
         </span>
         <div>
-          <strong class="block text-xl font-semibold text-n-slate-12">
-            {{ stats.bandejasCubiertas }} <span class="text-sm font-normal text-n-slate-10">{{ t('AI_AGENTS.STATS.OF', { total: inboxes.length }) }}</span>
+          <strong class="block text-2xl font-semibold text-n-slate-12">
+            {{ stats.bandejasCubiertas }} <span class="text-xs font-normal text-n-slate-10">{{ t('AI_AGENTS.STATS.OF', { total: inboxes.length }) }}</span>
           </strong>
-          <p class="text-sm text-n-slate-11">{{ t('AI_AGENTS.STATS.INBOXES') }}</p>
+          <p class="text-xs text-n-slate-11">{{ t('AI_AGENTS.STATS.INBOXES') }}</p>
         </div>
       </div>
     </div>
