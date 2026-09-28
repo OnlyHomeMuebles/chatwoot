@@ -1,0 +1,32 @@
+<% content_for :titulo, 'Diagnóstico de impresión · Only Home' %>
+
+<div class="encabezado">
+  <div>
+    <div class="marca">ONLY HOME MUEBLES</div>
+    <h1>Diagnóstico de impresión</h1>
+  </div>
+  <div class="numero-formato">PRUEBA</div>
+</div>
+
+<p>
+  Esta página comprueba que el motor de PDF (FMT-01) genera un A4 con márgenes
+  correctos y que las tildes y eñes salen bien: <strong>áéíóú ÁÉÍÓÚ ñÑ ¿? ¡!</strong>.
+  Generado el <%= @fecha %>.
+</p>
+
+<h2>Tabla de ejemplo</h2>
+<table>
+  <thead>
+    <tr><th>Campo</th><th>Valor</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Producto</td><td>Sofá modular en tela</td></tr>
+    <tr><td>Ciudad</td><td>Manizales</td></tr>
+    <tr><td>Daño reportado</td><td>Costura abierta en el apoyabrazos</td></tr>
+  </tbody>
+</table>
+
+<div class="firmas">
+  <div class="firma">Firma del cliente</div>
+  <div class="firma">Firma Only Home</div>
+</div>
