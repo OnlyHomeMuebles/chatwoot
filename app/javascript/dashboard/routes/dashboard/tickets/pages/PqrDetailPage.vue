@@ -363,6 +363,18 @@ const iconoDocumento = tipo => {
   return 'i-lucide-file';
 };
 
+// Los documentos-imagen vivos se muestran como tarjetas con PREVIEW (como el
+// mockup); el resto (PDF, otros, o imagenes cuyo archivo se borro del chat) se
+// listan como renglon con icono.
+const documentosImagen = computed(() =>
+  documentos.value.filter(doc => !doc.archivo_eliminado && esImagen(doc.tipo_archivo) && doc.url)
+);
+const documentosOtros = computed(() =>
+  documentos.value.filter(
+    doc => doc.archivo_eliminado || !esImagen(doc.tipo_archivo) || !doc.url
+  )
+);
+
 const remitenteDeDocumento = doc =>
   doc.remitente?.nombre ||
   t(
@@ -435,11 +447,11 @@ const formatFecha = valor =>
       {{ t('TICKETS.DETAIL.NOT_FOUND') }}
     </div>
 
-    <div v-else class="flex flex-col w-full max-w-6xl gap-6 p-6 mx-auto">
+    <div v-else class="flex flex-col w-full max-w-[1600px] gap-6 p-6 mx-auto">
       <!-- Cabecera del expediente: radicado, subtitulo y abrir conversacion -->
       <section class="flex flex-wrap items-end gap-3">
         <div class="flex flex-col gap-1 min-w-0">
-          <h2 class="mb-0 text-xl font-semibold tracking-tight text-n-slate-12">
+          <h2 class="mb-0 text-xl font-bold tracking-tight text-n-slate-12">
             {{ expediente.numero_radicado || t('TICKETS.INBOX.NO_RADICADO') }}
           </h2>
           <p class="mb-0 text-sm text-n-slate-11">
@@ -480,22 +492,27 @@ const formatFecha = valor =>
         }}
       </section>
 
-      <div class="grid grid-cols-1 gap-6 min-[1100px]:grid-cols-3">
+      <div class="grid grid-cols-1 gap-6 min-[1100px]:grid-cols-5">
         <!-- Columna izquierda: expediente legal + garantia -->
-        <div class="flex flex-col gap-6 min-[1100px]:col-span-2">
+        <div class="flex flex-col gap-6 min-[1100px]:col-span-3">
           <!-- PQR · expediente legal -->
           <section
             class="flex flex-col gap-4 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
-            <div class="flex items-center justify-between gap-2">
-              <div class="flex items-center gap-2">
-                <h3 class="mb-0 text-sm font-medium text-n-slate-12">
-                  {{ t('TICKETS.DETAIL.LEGAL_TITLE') }}
-                </h3>
-                <Helic3SourceBadge v-if="clasificacionEsIA" fuente="ia" />
+            <div class="flex items-start justify-between gap-2 pb-3 -mx-4 px-4 border-b border-n-weak">
+              <div class="flex flex-col gap-0.5 min-w-0">
+                <div class="flex items-center gap-2">
+                  <h3 class="mb-0 text-sm font-semibold text-n-slate-12">
+                    {{ t('TICKETS.DETAIL.LEGAL_TITLE') }}
+                  </h3>
+                  <Helic3SourceBadge v-if="clasificacionEsIA" fuente="ia" />
+                </div>
+                <p class="mb-0 text-xs text-n-slate-10">
+                  {{ t('TICKETS.DETAIL.LEGAL_SUBTITLE') }}
+                </p>
               </div>
               <span
-                class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-md"
+                class="inline-flex items-center self-start gap-1.5 px-2 py-0.5 text-xs font-medium rounded-md shrink-0"
                 :class="relojTag.cls"
               >
                 <span class="rounded-full size-1.5 bg-current" />
@@ -503,17 +520,15 @@ const formatFecha = valor =>
               </span>
             </div>
 
-            <dl
-              class="grid grid-cols-1 text-sm gap-x-6 gap-y-1.5 sm:grid-cols-2"
-            >
+            <dl class="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
               <div
                 v-for="campo in clasificacion"
                 :key="campo.label"
-                class="flex justify-between gap-3"
+                class="flex flex-col gap-0.5 min-w-0"
               >
-                <dt class="text-n-slate-11 shrink-0">{{ campo.label }}</dt>
+                <dt class="text-xs text-n-slate-10">{{ campo.label }}</dt>
                 <dd
-                  class="mb-0 text-right text-n-slate-12"
+                  class="mb-0 text-sm font-medium text-n-slate-12"
                   :class="campo.mono ? 'tabular-nums' : ''"
                 >
                   {{ campo.valor || t('TICKETS.INBOX.PENDING') }}
@@ -565,7 +580,7 @@ const formatFecha = valor =>
                   <dt class="text-n-slate-11">
                     {{ t('TICKETS.DETAIL.FILED_AT') }}
                   </dt>
-                  <dd class="mb-0 text-n-slate-12">
+                  <dd class="mb-0 font-medium text-n-slate-12">
                     {{ formatFecha(expediente.radicada_at) }}
                   </dd>
                 </div>
@@ -573,7 +588,7 @@ const formatFecha = valor =>
                   <dt class="text-n-slate-11">
                     {{ t('TICKETS.DETAIL.DUE_AT') }}
                   </dt>
-                  <dd class="mb-0 text-n-slate-12">
+                  <dd class="mb-0 font-medium text-n-slate-12">
                     {{ formatFecha(expediente.plazo_respuesta_vence_at) }}
                   </dd>
                 </div>
@@ -581,7 +596,7 @@ const formatFecha = valor =>
                   <dt class="text-n-slate-11">
                     {{ t('TICKETS.DETAIL.ANSWERED_AT') }}
                   </dt>
-                  <dd class="mb-0 text-n-slate-12">
+                  <dd class="mb-0 font-medium text-n-slate-12">
                     {{ formatFecha(expediente.respondida_at) }}
                   </dd>
                 </div>
@@ -592,12 +607,12 @@ const formatFecha = valor =>
           <!-- Garantia (GAR-02/03): expediente operativo, reloj de 30 dias habiles -->
           <section
             v-if="garantia"
-            class="flex flex-col gap-4 p-4 border rounded-xl border-n-weak bg-n-solid-1"
+            class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
             data-testid="bloque-garantia"
           >
-            <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center justify-between gap-2 pb-3 -mx-4 px-4 border-b border-n-weak">
               <div class="flex items-center gap-2">
-                <h3 class="mb-0 text-sm font-medium text-n-slate-12">
+                <h3 class="mb-0 text-sm font-semibold text-n-slate-12">
                   {{ t('TICKETS.DETAIL.WARRANTY') }}
                 </h3>
                 <span class="text-sm tabular-nums text-n-slate-11">
@@ -618,31 +633,29 @@ const formatFecha = valor =>
               </span>
             </div>
 
-            <dl
-              class="grid grid-cols-1 text-sm gap-x-6 gap-y-1.5 sm:grid-cols-2"
-            >
-              <div class="flex justify-between gap-3">
-                <dt class="text-n-slate-11">{{ t('TICKETS.DETAIL.CITY') }}</dt>
-                <dd class="mb-0 text-right text-n-slate-12">
+            <dl class="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
+              <div class="flex flex-col gap-0.5 min-w-0">
+                <dt class="text-xs text-n-slate-10">{{ t('TICKETS.DETAIL.CITY') }}</dt>
+                <dd class="mb-0 text-sm font-medium text-n-slate-12">
                   {{ garantia.cobertura_ciudad?.nombre || '—' }}
                   <span v-if="garantia.cobertura_ciudad?.tecnico_propio">
                     · {{ t('TICKETS.DETAIL.OWN_TECH') }}
                   </span>
                 </dd>
               </div>
-              <div class="flex justify-between gap-3">
-                <dt class="text-n-slate-11">
+              <div class="flex flex-col gap-0.5 min-w-0">
+                <dt class="text-xs text-n-slate-10">
                   {{ t('TICKETS.DETAIL.ASSIGNEE') }}
                 </dt>
-                <dd class="mb-0 text-right text-n-slate-12">
+                <dd class="mb-0 text-sm font-medium text-n-slate-12">
                   {{ expediente.assignee?.name || t('TICKETS.UNASSIGNED') }}
                 </dd>
               </div>
-              <div class="flex justify-between gap-3">
-                <dt class="text-n-slate-11">
+              <div class="flex flex-col gap-0.5 min-w-0">
+                <dt class="text-xs text-n-slate-10">
                   {{ t('TICKETS.DETAIL.PRODUCTS') }}
                 </dt>
-                <dd class="mb-0 text-right tabular-nums text-n-slate-12">
+                <dd class="mb-0 text-sm font-medium tabular-nums text-n-slate-12">
                   {{ numProductos }}
                 </dd>
               </div>
@@ -683,7 +696,7 @@ const formatFecha = valor =>
               <span class="text-xs font-medium text-n-slate-11">
                 {{ t('TICKETS.DETAIL.TIMELINE') }}
               </span>
-              <ol class="flex flex-col gap-2">
+              <ol class="grid grid-cols-2 gap-x-4 gap-y-1.5">
                 <li
                   v-for="paso in procesoTimeline"
                   :key="paso.id"
@@ -785,11 +798,11 @@ const formatFecha = valor =>
         </div>
 
         <!-- Columna derecha: siguiente accion, acciones, datos, actividad y documentos -->
-        <div class="flex flex-col gap-6">
+        <div class="flex flex-col gap-6 min-[1100px]:col-span-2">
           <section
             class="flex flex-col gap-2 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
-            <h3 class="mb-0 text-sm font-medium text-n-slate-12">
+            <h3 class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak">
               {{ t('TICKETS.DETAIL.NEXT_ACTION') }}
             </h3>
             <p class="mb-0 text-sm text-n-slate-11">{{ siguienteAccion }}</p>
@@ -798,7 +811,7 @@ const formatFecha = valor =>
           <section
             class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
-            <h3 class="mb-0 text-sm font-medium text-n-slate-12">
+            <h3 class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak">
               {{ t('TICKETS.DETAIL.OPERATOR_ACTIONS') }}
             </h3>
             <div class="flex flex-col gap-1">
@@ -829,17 +842,17 @@ const formatFecha = valor =>
           <section
             class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
-            <h3 class="mb-0 text-sm font-medium text-n-slate-12">
+            <h3 class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak">
               {{ t('TICKETS.DATA.TITLE') }}
             </h3>
-            <dl class="flex flex-col gap-2 text-sm">
+            <dl class="grid grid-cols-2 gap-x-4 gap-y-3">
               <div
                 v-for="dato in datosLista"
                 :key="dato.label"
-                class="flex flex-col gap-0.5"
+                class="flex flex-col gap-0.5 min-w-0"
               >
-                <dt class="text-xs text-n-slate-11">{{ dato.label }}</dt>
-                <dd class="flex items-center gap-2 mb-0 text-n-slate-12">
+                <dt class="text-xs text-n-slate-10">{{ dato.label }}</dt>
+                <dd class="flex items-center gap-2 mb-0 text-sm font-medium text-n-slate-12">
                   <template v-if="dato.valor">
                     <span class="min-w-0 break-words">{{ dato.valor }}</span>
                     <Helic3SourceBadge :fuente="dato.fuente" />
@@ -857,7 +870,7 @@ const formatFecha = valor =>
             v-if="actividad.length"
             class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
-            <h3 class="mb-0 text-sm font-medium text-n-slate-12">
+            <h3 class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak">
               {{ t('TICKETS.DETAIL.ACTIVITY') }}
             </h3>
             <ol class="flex flex-col gap-3">
@@ -885,7 +898,7 @@ const formatFecha = valor =>
           <section
             class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
-            <h3 class="mb-0 text-sm font-medium text-n-slate-12">
+            <h3 class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak">
               {{ t('TICKETS.DETAIL.DOCUMENTS') }}
             </h3>
 
@@ -896,8 +909,35 @@ const formatFecha = valor =>
               {{ t('TICKETS.DETAIL.DOC_EMPTY') }}
             </p>
 
+            <!-- Evidencias con imagen: tarjeta con PREVIEW (como el mockup). -->
+            <div v-if="documentosImagen.length" class="grid grid-cols-2 gap-3">
+              <a
+                v-for="doc in documentosImagen"
+                :key="doc.id"
+                :href="doc.url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="flex flex-col overflow-hidden transition-colors border rounded-lg border-n-weak bg-n-alpha-1 hover:border-n-slate-6"
+              >
+                <img
+                  :src="doc.url"
+                  class="object-cover w-full h-28 bg-n-alpha-2"
+                  alt=""
+                  loading="lazy"
+                />
+                <div class="flex flex-col gap-0.5 p-2 min-w-0">
+                  <span class="text-xs font-medium truncate text-n-slate-12">
+                    {{ doc.titulo }}
+                  </span>
+                  <span class="text-xs truncate text-n-slate-10">
+                    {{ remitenteDeDocumento(doc) }} · {{ formatFecha(doc.ocurrido_at) }}
+                  </span>
+                </div>
+              </a>
+            </div>
+
             <div
-              v-for="doc in documentos"
+              v-for="doc in documentosOtros"
               :key="doc.id"
               class="flex items-center gap-2.5 p-2.5 text-sm rounded-lg bg-n-alpha-1"
             >
