@@ -153,14 +153,20 @@ class Helic3::Agents::PqrsAgent
 
   # AGT-08: el texto de la foto ya se leyó (OCR determinista, ver LectorDeImagenes) antes de
   # correr el agente — nunca se le pide al modelo que "llame" a nada para verlo.
+  # AGT-09: si el OCR no estaba disponible (binario ausente en el despliegue), NO se dice que
+  # la foto no tenia texto legible -- eso seria falso y le echaria la culpa a la foto de un
+  # problema tecnico. Se le pide al cliente el numero de factura por chat como respaldo.
   def self.linea_de_imagen(state)
-    if state[:texto_imagenes].present?
-      ["- Texto leído automáticamente de la foto que el cliente adjuntó (OCR): #{state[:texto_imagenes]}"]
-    elsif state[:imagenes].present?
+    return ["- Texto leído automáticamente de la foto que el cliente adjuntó (OCR): #{state[:texto_imagenes]}"] if state[:texto_imagenes].present?
+    return [] if state[:imagenes].blank?
+
+    if state[:ocr_disponible] == false
+      ['- El cliente adjuntó una foto, pero ahora mismo no se pudo leer automáticamente ' \
+       '(problema técnico nuestro, no de la foto). Si era la factura, pídele el número de ' \
+       'factura u orden directamente por el chat.']
+    else
       ['- El cliente adjuntó una foto, pero no se encontró texto legible en ella ' \
        '(puede ser del producto, no de un documento).']
-    else
-      []
     end
   end
 

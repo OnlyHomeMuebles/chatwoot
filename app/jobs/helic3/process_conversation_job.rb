@@ -131,6 +131,10 @@ class Helic3::ProcessConversationJob < ApplicationJob
     # de llamar. El texto leido viaja en el state y PqrsAgent lo inyecta en el prompt (camino :bd
     # incluido, ver RunnerService#instrucciones_pqrs).
     @texto_imagenes = Helic3::Agents::LectorDeImagenes.leer(imagenes)
+    # AGT-09: si el binario no esta disponible (despliegue sin el paquete apt), el agente no debe
+    # decirle al cliente que la foto no tenia texto -- eso seria falso. disponible? esta memoizado
+    # por proceso, asi que esta llamada es barata incluso sin imagenes en este turno.
+    @ocr_disponible = Helic3::Agents::LectorDeImagenes.disponible?
 
     entrada = { content: content, imagenes: imagenes, hay_adjuntos: hay_adjuntos }
     reply = generate_reply(@client, memory, conversation_id, entrada)
@@ -285,7 +289,7 @@ class Helic3::ProcessConversationJob < ApplicationJob
       context[:account_id] = @account_id
       context[:state] = { conversation_id: conversation_id, chatwoot_client: client,
                           consentimiento_datos_at: @consentimiento_datos_at, imagenes: entrada[:imagenes],
-                          texto_imagenes: @texto_imagenes }
+                          texto_imagenes: @texto_imagenes, ocr_disponible: @ocr_disponible }
       # se conserva el runner de E4 (por cuenta/bandeja: respeta la bandera agentes_desde_bd)
       result = @runner_service.run(mensaje, context: context)
       return result if result.output.to_s.strip.present?
