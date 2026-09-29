@@ -942,7 +942,7 @@ const formatFecha = valor =>
               class="flex items-center gap-2.5 p-2.5 text-sm rounded-lg bg-n-alpha-1"
             >
               <img
-                v-if="!doc.archivo_eliminado && esImagen(doc.tipo_archivo)"
+                v-if="!doc.archivo_eliminado && esImagen(doc.tipo_archivo) && doc.url"
                 :src="doc.url"
                 class="rounded-md size-8 shrink-0 object-cover"
                 alt=""
