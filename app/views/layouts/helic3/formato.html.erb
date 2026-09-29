@@ -2,6 +2,12 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
+  <%# FMT-01 (revisión Jhan): CSP que el navegador OBLIGA. Chromium corre con
+      --no-sandbox sobre file://, y las plantillas llevan datos del cliente; sin
+      esto, un dato con raw/html_safe podria colar <iframe src="file:///..."> y
+      filtrar el sistema al PDF. default-src 'none' bloquea todo; solo se permite
+      el <style> inline, imagenes y fuentes en data URI. Nada remoto ni file://. %>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:">
   <title><%= content_for?(:titulo) ? yield(:titulo) : 'Formato Only Home' %></title>
   <style>
     /* FMT-01: CSS de impresion. CERO recursos remotos: todo va inline (el logo,

@@ -24,9 +24,11 @@ class Helic3::Formatos::RenderizadorPdf
 
   BIN = ENV.fetch('HELIC3_PDF_BIN', 'chromium')
   TIMEOUT = ENV.fetch('HELIC3_PDF_TIMEOUT', '20').to_i
-  # el chequeo de version es instantaneo; un tope corto evita colgarse si el
-  # binario existe pero no responde.
-  TIMEOUT_VERSION = 5
+  # tope del chequeo de version. Holgado a proposito: el PRIMER lanzamiento de
+  # chromium en frio (enlazado dinamico, carga de .so) puede tardar varios
+  # segundos en un contenedor lento, y un tope corto haria que disponible? diera
+  # un falso negativo ("motor no disponible") aunque el binario si sirva.
+  TIMEOUT_VERSION = 15
 
   def self.call(html)
     new.call(html)
@@ -70,11 +72,16 @@ class Helic3::Formatos::RenderizadorPdf
      "--print-to-pdf=#{salida}", "file://#{entrada}"]
   end
 
-  # Corre el binario y espera con timeout; si se pasa, lo mata (SIGKILL) y revienta.
+  # Corre el binario y espera con timeout; si se pasa, mata TODO el grupo y revienta.
   # La salida (stdout+stderr fusionados) se drena en un hilo para no bloquear el
   # pipe, y se descarta: el navegador es ruidoso y nada de eso es el PDF.
+  #
+  # pgroup: true hace al proceso lider de su propio grupo; Process.kill con pid
+  # NEGATIVO manda la señal a todo el grupo. Necesario porque chromium levanta
+  # hijos (zygote, renderer): matar solo al padre los dejaria huerfanos escribiendo
+  # en el --user-data-dir, y esa basura podria tumbar la limpieza del mktmpdir.
   def ejecutar(args, timeout: TIMEOUT)
-    Open3.popen2e(*args) do |entrada, salida, hilo|
+    Open3.popen2e(*args, pgroup: true) do |entrada, salida, hilo|
       entrada.close
       drenaje = Thread.new { salida.read }
       if hilo.join(timeout)
@@ -82,7 +89,7 @@ class Helic3::Formatos::RenderizadorPdf
         estado = hilo.value
         raise Error, "chromium salió con código #{estado.exitstatus}" unless estado.success?
       else
-        Process.kill('KILL', hilo.pid)
+        Process.kill('KILL', -hilo.pid)
         drenaje.kill
         raise Error, "chromium excedió el límite de #{timeout}s"
       end

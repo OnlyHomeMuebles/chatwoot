@@ -46,7 +46,9 @@ RSpec.describe Helic3::Formatos::RenderizadorPdf do
       expect(Open3).to have_received(:popen2e) do |*args|
         expect(args).to include('--headless', '--no-sandbox', '--disable-gpu', '--no-pdf-header-footer')
         expect(args.any? { |a| a.to_s.start_with?('--print-to-pdf=') }).to be(true)
-        expect(args.last).to start_with('file://')
+        expect(args.any? { |a| a.to_s.start_with?('file://') }).to be(true)
+        # ultimo argumento: opciones de spawn con el grupo de procesos propio
+        expect(args.last).to eq(pgroup: true)
       end
     end
 
@@ -68,12 +70,12 @@ RSpec.describe Helic3::Formatos::RenderizadorPdf do
       expect { described_class.call('<html></html>') }.to raise_error(described_class::Error, /no generó/)
     end
 
-    it 'mata el proceso (SIGKILL) y levanta Error si chromium se cuelga' do
+    it 'mata TODO el grupo de procesos (pid negativo) y levanta Error si chromium se cuelga' do
       stub_chromium(finished: false, escribe_pdf: false)
       allow(Process).to receive(:kill)
 
       expect { described_class.call('<html></html>') }.to raise_error(described_class::Error, /excedió/)
-      expect(Process).to have_received(:kill).with('KILL', 7777)
+      expect(Process).to have_received(:kill).with('KILL', -7777)
     end
 
     it 'no deja directorios temporales, ni cuando falla' do
@@ -112,6 +114,8 @@ RSpec.describe Helic3::Formatos::RenderizadorPdf do
 
   describe '.disponible?' do
     before { described_class.instance_variable_set(:@disponible, nil) }
+    # el memo queda vivo si no se limpia: podria contaminar otras specs de la suite.
+    after { described_class.instance_variable_set(:@disponible, nil) }
 
     it 'es true cuando el binario responde a --version' do
       stub_chromium(escribe_pdf: false)
