@@ -15,6 +15,23 @@ RSpec.describe Helic3::Agents::SeederService do
     expect(triage.es_sistema).to be(true)
   end
 
+  # SIE-01 (CA6): si la cuenta ya tiene un agente de sistema con OTRO codigo, crear
+  # agente_triage reventaria (el modelo exige un solo es_sistema por cuenta) y, al
+  # correr la siembra desde la migracion, tumbaria el arranque (start.sh con set -e).
+  # Se omite el triage con una advertencia y se siembran los otros 4.
+  it 'no crea el triage si ya hay un agente de sistema con otro codigo, y siembra el resto' do
+    Helic3::Agente.create!(account: account, codigo: 'recepcion_vieja', nombre: 'Recepción vieja',
+                           prompt: 'cuerpo de dominio', es_sistema: true, herramientas: [])
+    allow(Rails.logger).to receive(:warn)
+
+    expect { described_class.new(account).sembrar! }.not_to raise_error
+
+    expect(Helic3::Agente.find_by(account: account, codigo: 'agente_triage')).to be_nil
+    expect(Helic3::Agente.where(account: account).count).to eq(5)
+    expect(Helic3::Agente.where(account: account, es_sistema: true).count).to eq(1)
+    expect(Rails.logger).to have_received(:warn).with(/agente de sistema con otro codigo/)
+  end
+
   # Decision B: el prompt guardado es solo el cuerpo de dominio (sin reglas duras ni tono)
   it 'guarda el cuerpo sin CoreRules ni HumanTone' do
     described_class.new(account).sembrar!
