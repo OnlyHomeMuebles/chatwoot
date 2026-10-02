@@ -179,6 +179,19 @@ RSpec.describe Helic3::Catalogo::SeederService do
     expect(Helic3::Agents::FeatureFlag.agentes_desde_bd?(account)).to be(false)
   end
 
+  # SIE-01 (CA8): si alguien prendio agentes_desde_bd desde el panel, re-sembrar no
+  # la vuelve a false. Asi la migracion de siembra no cambia el comportamiento del
+  # bot en ese mismo despliegue.
+  it 'no cambia agentes_desde_bd si ya estaba prendida' do
+    service.sembrar!
+    flag = Helic3::Catalogo::Parametro.find_by!(account: account, clave: 'agentes_desde_bd')
+    flag.update!(valor: 'true')
+
+    described_class.new(account).sembrar!
+
+    expect(flag.reload.valor_booleano).to be(true)
+  end
+
   it 'siembra los cinco umbrales del semaforo y la autonomia (PRM-01, criterio 3)' do
     service.sembrar!
 
