@@ -192,7 +192,10 @@ const irTab = i => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 py-6">
+  <!-- VIS (revisión #102): el formulario se acota a 1200 (aunque PageWrapper deje
+       1600 para el índice y el estado en vivo), para que los textareas del prompt
+       no se estiren demasiado en pantallas anchas. -->
+  <div class="flex flex-col w-full gap-6 py-6 mx-auto max-w-[1200px]">
     <button class="flex items-center gap-1 text-sm w-fit text-n-slate-11 hover:text-n-slate-12" @click="salir">
       <span class="i-lucide-chevron-left size-4" /> {{ t('AI_AGENTS.EDITOR.BACK') }}
     </button>
