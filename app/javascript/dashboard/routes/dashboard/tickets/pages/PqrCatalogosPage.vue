@@ -261,18 +261,40 @@ const crear = () => {
 };
 
 // Aviso ANTES de guardar un parametro obligatorio vacio (no solo el error del back).
+// Devuelve true si el editor se puede cerrar (guardo o no habia cambios); false si
+// el valor quedo vacio (se mantiene abierto para corregir).
 const guardarParametro = (parametro, valor) => {
   if (valor === '' || valor === null) {
     useAlert(t('TICKETS.ADMIN.PARAM_REQUIRED', { param: parametro.etiqueta }));
-    return;
+    return false;
   }
-  if (valor === parametro.valor) return;
+  if (valor === parametro.valor) return true;
   conAviso(() =>
     store.dispatch('pqrCatalogos/updateParametro', {
       id: parametro.id,
       data: { valor },
     })
   );
+  return true;
+};
+
+// Editor de parametros en modal (PRM): algunos valores son mensajes largos del
+// agente, asi que se editan en un area de texto grande en lugar del input en linea.
+const editorParamRef = ref(null);
+const parametroEnEdicion = ref(null);
+const valorEnEdicion = ref('');
+
+const abrirEditorParametro = parametro => {
+  if (!esAdmin.value) return;
+  parametroEnEdicion.value = parametro;
+  valorEnEdicion.value = parametro.valor ?? '';
+  editorParamRef.value?.open();
+};
+
+const confirmarEditorParametro = () => {
+  if (guardarParametro(parametroEnEdicion.value, valorEnEdicion.value)) {
+    editorParamRef.value?.close();
+  }
 };
 </script>
 
@@ -377,28 +399,29 @@ const guardarParametro = (parametro, valor) => {
             <Spinner :size="24" />
           </div>
 
-          <!-- Parametros -->
-          <div v-else-if="esParametros" class="flex flex-col max-w-2xl gap-3">
-            <div
+          <!-- Parametros: cada fila abre un editor en modal con area de texto grande
+               (PRM), util para los mensajes largos del agente. -->
+          <div v-else-if="esParametros" class="flex flex-col max-w-2xl gap-2">
+            <button
               v-for="parametro in parametros"
               :key="parametro.id"
-              class="flex items-center gap-3"
+              type="button"
+              :disabled="!esAdmin"
+              class="flex items-center gap-3 p-3 text-left transition-colors border rounded-lg border-n-weak hover:bg-n-alpha-1 disabled:cursor-default disabled:opacity-70"
+              @click="abrirEditorParametro(parametro)"
             >
-              <div class="flex-1">
+              <div class="flex-1 min-w-0">
                 <p class="mb-0 text-sm font-medium text-n-slate-12">
                   {{ parametro.etiqueta }}
                 </p>
-                <p class="mb-0 text-xs text-n-slate-11">
-                  {{ parametro.unidad }}
+                <p class="mb-0 text-xs truncate text-n-slate-11">
+                  {{ parametro.valor }}
                 </p>
               </div>
-              <Input
-                :model-value="parametro.valor"
-                :disabled="!esAdmin"
-                class="w-32"
-                @blur="e => guardarParametro(parametro, e.target.value)"
-              />
-            </div>
+              <span class="text-xs shrink-0 text-n-slate-10">
+                {{ parametro.unidad }}
+              </span>
+            </button>
           </div>
 
           <!-- Catalogo -->
@@ -605,5 +628,23 @@ const guardarParametro = (parametro, valor) => {
       :confirm-button-label="t('TICKETS.ADMIN.DELETE_CONFIRM')"
       @confirm="eliminar"
     />
+
+    <!-- Editor de parametros (PRM): area de texto grande para el valor, util para
+         los mensajes largos del agente. El titulo es la etiqueta del parametro. -->
+    <Dialog
+      ref="editorParamRef"
+      type="edit"
+      :title="parametroEnEdicion?.etiqueta"
+      :description="parametroEnEdicion?.unidad"
+      :confirm-button-label="t('TICKETS.ADMIN.SAVE')"
+      width="2xl"
+      @confirm="confirmarEditorParametro"
+    >
+      <textarea
+        v-model="valorEnEdicion"
+        rows="8"
+        class="w-full p-3 text-sm border rounded-lg resize-y border-n-weak bg-n-alpha-1 text-n-slate-12 focus:outline-none focus:border-n-brand"
+      />
+    </Dialog>
   </div>
 </template>
