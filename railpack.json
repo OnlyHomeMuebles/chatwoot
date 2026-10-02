@@ -10,6 +10,7 @@
     }
   },
   "deploy": {
-    "startCommand": "bash deployment/start.sh"
+    "startCommand": "bash deployment/start.sh",
+    "aptPackages": ["tesseract-ocr", "tesseract-ocr-spa"]
   }
 }

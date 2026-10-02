@@ -74,6 +74,20 @@ RSpec.describe Helic3::Agents::PqrsAgent do
       expect(prompt).not_to include('Texto leído automáticamente')
       expect(prompt).not_to include('no se encontró texto legible')
     end
+
+    # AGT-09: sin el binario (despliegue sin el paquete apt), el agente no debe decir que la
+    # foto no tenia texto -- eso le echaria la culpa a la foto de un problema tecnico nuestro.
+    it 'no dice que la foto no tenia texto cuando el OCR no estaba disponible; pide el numero por chat' do
+      prompt = agent.get_system_prompt(
+        Agents::RunContext.new(
+          { state: { imagenes: ['https://cdn.chatwoot.test/factura.jpg'], texto_imagenes: nil, ocr_disponible: false } }
+        )
+      )
+
+      expect(prompt).not_to match(/no se encontró texto legible/i)
+      expect(prompt).to match(/no se pudo leer automáticamente/i)
+      expect(prompt).to match(/pídele el número de factura/i)
+    end
   end
 
   describe 'seccion operativa leida del catalogo (AGT-02)' do

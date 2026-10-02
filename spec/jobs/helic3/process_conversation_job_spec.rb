@@ -22,6 +22,8 @@ RSpec.describe Helic3::ProcessConversationJob do
     allow(client).to receive(:toggle_typing)
     # AGT-08: sin imagenes no hay nada que leer; cada test que las manda stubea su propio resultado.
     allow(Helic3::Agents::LectorDeImagenes).to receive(:leer).and_return(nil)
+    # AGT-09: se asume instalado salvo que el test diga lo contrario (ver describe dedicado).
+    allow(Helic3::Agents::LectorDeImagenes).to receive(:disponible?).and_return(true)
   end
 
   # H3A-08 criterio 3: sin agentes activos para la bandeja, se deja al humano.
@@ -39,7 +41,7 @@ RSpec.describe Helic3::ProcessConversationJob do
     expect(runner).to receive(:run)
       .with('hola', context: { account_id: 1,
                                state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
-                                        imagenes: [], texto_imagenes: nil } })
+                                        imagenes: [], texto_imagenes: nil, ocr_disponible: true } })
       .and_return(result)
 
     expect(client).to receive(:create_message).with(7, content: 'Con gusto, te ayudo con eso.', message_type: 'outgoing')
@@ -53,7 +55,7 @@ RSpec.describe Helic3::ProcessConversationJob do
     expect(runner).to receive(:run)
       .with('hola', context: { conversation_history: [{ role: :user, content: 'antes' }], account_id: 1,
                                state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
-                                        imagenes: [], texto_imagenes: nil } })
+                                        imagenes: [], texto_imagenes: nil, ocr_disponible: true } })
       .and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
 
     job.perform(account_id: 1, conversation_id: 7, content: 'hola')
@@ -65,7 +67,21 @@ RSpec.describe Helic3::ProcessConversationJob do
     expect(runner).to receive(:run)
       .with('hola', context: { account_id: 1,
                                state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
-                                        imagenes: fotos, texto_imagenes: 'Factura N.° 8821' } })
+                                        imagenes: fotos, texto_imagenes: 'Factura N.° 8821', ocr_disponible: true } })
+      .and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
+
+    job.perform(account_id: 1, conversation_id: 7, content: 'hola', imagenes: fotos)
+  end
+
+  # AGT-09: el state lleva ocr_disponible para que PqrsAgent.linea_de_imagen no le eche la
+  # culpa a la foto de un problema tecnico nuestro (binario ausente en el despliegue).
+  it 'suma ocr_disponible: false al state cuando el binario de tesseract no esta disponible' do
+    allow(Helic3::Agents::LectorDeImagenes).to receive(:disponible?).and_return(false)
+    fotos = ['https://cdn.chatwoot.test/factura.jpg']
+    expect(runner).to receive(:run)
+      .with('hola', context: { account_id: 1,
+                               state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
+                                        imagenes: fotos, texto_imagenes: nil, ocr_disponible: false } })
       .and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
 
     job.perform(account_id: 1, conversation_id: 7, content: 'hola', imagenes: fotos)
@@ -77,7 +93,7 @@ RSpec.describe Helic3::ProcessConversationJob do
       .with(described_class::SOLO_IMAGEN_CONTENT,
             context: { account_id: 1,
                        state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
-                                imagenes: fotos, texto_imagenes: nil } })
+                                imagenes: fotos, texto_imagenes: nil, ocr_disponible: true } })
       .and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
 
     job.perform(account_id: 1, conversation_id: 7, content: '', imagenes: fotos)
@@ -91,7 +107,7 @@ RSpec.describe Helic3::ProcessConversationJob do
       .with(described_class::SOLO_ADJUNTO_CONTENT,
             context: { account_id: 1,
                        state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
-                                imagenes: [], texto_imagenes: nil } })
+                                imagenes: [], texto_imagenes: nil, ocr_disponible: true } })
       .and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
 
     job.perform(account_id: 1, conversation_id: 7, content: '', imagenes: [], hay_adjuntos: true)

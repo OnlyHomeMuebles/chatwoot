@@ -30,8 +30,11 @@ require 'timeout'
 # hoy. Quien consuma el resultado no debe prometer mas de lo que da.
 #
 # Requisito de infraestructura (no de Ruby): el binario `tesseract` debe estar
-# instalado en el servidor, con el paquete del idioma que se vaya a leer. En este
-# repo ya viene en docker/Dockerfile (tesseract-ocr + tesseract-ocr-data-spa).
+# instalado en el servidor, con el paquete del idioma que se vaya a leer. En
+# produccion (Dokploy) se instala por railpack.json/nixpacks.toml (AGT-09); ver
+# docs/helic3/ocr.md para desarrollo local. docker/Dockerfile es upstream y no
+# lo trae -- `.disponible?` evita que una lectura fallida se confunda con "la
+# foto no tenia texto" cuando en realidad el binario no esta instalado.
 class Helic3::Agents::LectorDeImagenes
   IDIOMA = ENV.fetch('OCR_IDIOMA', 'spa')
   # Evita que una imagen enorme o una descarga lenta trabe el job del agente.
@@ -39,6 +42,9 @@ class Helic3::Agents::LectorDeImagenes
   # tesseract corre como proceso externo: sin tope, una imagen compleja o corrupta
   # puede colgar el worker de Sidekiq indefinidamente. Al vencer, se mata el proceso.
   TIMEOUT_OCR = 15
+  # AGT-09: `--list-langs` es rapido y no depende de un archivo externo (a
+  # diferencia de leer una imagen real); un timeout corto alcanza.
+  TIMEOUT_DISPONIBLE = 5
 
   # Hosts de "bucle local": Chatwoot arma la URL del adjunto con FRONTEND_URL
   # (0.0.0.0 / localhost en desarrollo Docker). Esa URL sirve para el NAVEGADOR
@@ -56,6 +62,28 @@ class Helic3::Agents::LectorDeImagenes
   def self.leer(urls)
     new.leer(urls)
   end
+
+  # AGT-09: en Dokploy el binario se instala por railpack/nixpacks (ver
+  # docker/Dockerfile, que ya NO lo trae -- es upstream). Si algun despliegue
+  # se queda sin el paquete apt, cada lectura fallaria en silencio (el rescue
+  # de leer_texto_seguro) y el agente le diria al cliente que la foto no tenia
+  # texto legible, lo cual seria falso. Por eso se chequea UNA vez antes de
+  # intentar imagen por imagen, y se memoiza por proceso: el binario no cambia
+  # durante la vida del worker.
+  def self.disponible?
+    return @disponible if defined?(@disponible)
+
+    @disponible = idioma_instalado?
+  end
+
+  def self.idioma_instalado?
+    salida = ''
+    Timeout.timeout(TIMEOUT_DISPONIBLE) { salida, = Open3.capture2e('tesseract', '--list-langs') }
+    salida.lines.map(&:strip).include?(IDIOMA)
+  rescue StandardError
+    false
+  end
+  private_class_method :idioma_instalado?
 
   # Corre `tesseract <archivo> stdout -l <IDIOMA>` por Open3 y devuelve el texto.
   # Si el proceso excede TIMEOUT_OCR, se MATA con SIGKILL (a diferencia de
@@ -84,6 +112,11 @@ class Helic3::Agents::LectorDeImagenes
   # no uno solo alrededor de todo el lote.
   def leer(urls)
     return nil if urls.blank?
+
+    unless self.class.disponible?
+      Rails.logger.error('[Helic3][ocr] tesseract no disponible')
+      return nil
+    end
 
     textos = urls.filter_map { |url| leer_texto_seguro(url) }
     textos.presence&.join("\n---\n")

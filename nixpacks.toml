@@ -28,5 +28,12 @@ ENABLE_ACCOUNT_SEEDING = "true"
 # Keep in sync with railpack.json.
 NODE_OPTIONS = "--max-old-space-size=4096"
 
+# AGT-09: el binario de tesseract lo necesita LectorDeImagenes (OCR de facturas
+# adjuntas) tanto en el contenedor web como en el de sidekiq. "..." extiende los
+# paquetes del provider en vez de reemplazarlos. Mantener en sync con
+# railpack.json (deploy.aptPackages) para que los dos archivos no diverjan.
+[phases.setup]
+aptPkgs = ["...", "tesseract-ocr", "tesseract-ocr-spa"]
+
 [start]
 cmd = "bash deployment/start.sh"

@@ -8,6 +8,12 @@ RSpec.describe Helic3::Agents::LectorDeImagenes do
   before do
     allow(Resolv).to receive(:getaddresses).and_call_original
     allow(Resolv).to receive(:getaddresses).with('cdn.chatwoot.test').and_return(['93.184.216.34'])
+    # AGT-09: estos tests no verifican disponibilidad -- se asume instalado, para no depender
+    # de si la maquina que corre la suite tiene tesseract. disponible? se memoiza por proceso
+    # (incluso en false/nil, @disponible queda "defined?"); hay que remover la variable, no
+    # ponerla en nil, o la version real nunca vuelve a calcular nada.
+    described_class.remove_instance_variable(:@disponible) if described_class.instance_variable_defined?(:@disponible)
+    allow(described_class).to receive(:disponible?).and_return(true)
   end
 
   def responder_con_imagen(url, cuerpo: File.read(Rails.root.join('spec/assets/avatar.png')))
@@ -107,6 +113,68 @@ RSpec.describe Helic3::Agents::LectorDeImagenes do
 
     expect(described_class.leer([url])).to eq('ok')
     expect(a_request(:get, url)).to have_been_made
+  end
+
+  # AGT-09: si el binario o el idioma faltan (un despliegue sin el paquete apt), la lectura
+  # NO debe confundirse con "la foto no tenia texto" -- eso le echaria la culpa a la foto de un
+  # problema tecnico nuestro. Estos tests restauran el metodo real (el before general lo stubea
+  # a true) para probar la deteccion en si.
+  describe '.disponible?' do
+    before { allow(described_class).to receive(:disponible?).and_call_original }
+
+    it 'es true cuando tesseract lista el idioma configurado' do
+      allow(Open3).to receive(:capture2e).with('tesseract',
+                                               '--list-langs').and_return(["List of available languages...\neng\nspa\n",
+                                                                           instance_double(Process::Status)])
+
+      expect(described_class.disponible?).to be true
+    end
+
+    it 'es false cuando el idioma configurado no esta en la lista' do
+      allow(Open3).to receive(:capture2e).with('tesseract',
+                                               '--list-langs').and_return(["List of available languages...\neng\n", instance_double(Process::Status)])
+
+      expect(described_class.disponible?).to be false
+    end
+
+    it 'es false, sin levantar excepcion, cuando el binario no existe' do
+      allow(Open3).to receive(:capture2e).and_raise(Errno::ENOENT)
+
+      expect(described_class.disponible?).to be false
+    end
+
+    it 'es false si tesseract --list-langs se cuelga mas de TIMEOUT_DISPONIBLE' do
+      allow(Open3).to receive(:capture2e).and_raise(Timeout::Error)
+
+      expect(described_class.disponible?).to be false
+    end
+
+    it 'se memoiza: una segunda llamada no vuelve a invocar Open3' do
+      allow(Open3).to receive(:capture2e).and_return(["spa\n", instance_double(Process::Status)])
+
+      2.times { described_class.disponible? }
+
+      expect(Open3).to have_received(:capture2e).once
+    end
+  end
+
+  # AGT-09: honestidad del agente -- sin el binario, el rescue por imagen nunca se ejecuta
+  # (no hay nada que rescatar) y el log dice la verdad UNA sola vez, no por cada foto.
+  it 'no intenta descargar ninguna imagen y registra una sola linea de error cuando tesseract no esta disponible' do
+    allow(described_class).to receive(:disponible?).and_return(false)
+    url = 'https://cdn.chatwoot.test/factura.jpg'
+
+    expect(described_class.leer([url, url])).to be_nil
+    expect(a_request(:get, url)).not_to have_been_made
+  end
+
+  it 'registra el motivo exacto cuando tesseract no esta disponible' do
+    allow(described_class).to receive(:disponible?).and_return(false)
+    allow(Rails.logger).to receive(:error)
+
+    described_class.leer(['https://cdn.chatwoot.test/factura.jpg'])
+
+    expect(Rails.logger).to have_received(:error).with('[Helic3][ocr] tesseract no disponible').once
   end
 
   describe '.ocr (motor tesseract por Open3)' do
