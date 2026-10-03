@@ -63,7 +63,7 @@ class Helic3::Agents::PqrExtractor
     # que reintroducia el bug que este flujo viene a eliminar).
     if @api_key.blank?
       Rails.logger.error(
-        "[Helic3] PqrExtractor sin credencial LLM (proveedor=#{Helic3::Agents::LlmRuntime.provider}); " \
+        '[Helic3] PqrExtractor sin llave de OpenAI (Super Admin > Helic3 · Agentes IA); ' \
         'no se pudo clasificar el caso'
       )
       return nil
@@ -82,9 +82,8 @@ class Helic3::Agents::PqrExtractor
 
   def pedir_clasificacion(texto)
     Llm::Config.with_api_key(@api_key, api_base: @api_base) do |context|
-      # provider :openai cubre OpenAI y los endpoints openai-compatibles (Gemini, Groq,
-      # Ollama); assume_model_exists evita que RubyLLM valide el modelo contra su registro
-      # (los modelos de Gemini/Groq no estan ahi), igual que hace el gem ai-agents.
+      # assume_model_exists evita que RubyLLM valide el modelo contra su registro
+      # local antes de llamar, igual que hace el gem ai-agents.
       chat = context.chat(model: @model, provider: :openai, assume_model_exists: true)
       chat.with_temperature(0)
       chat.with_instructions("#{SYSTEM}\n\n#{listas_vigentes}")
