@@ -2,70 +2,91 @@
 
 require 'rails_helper'
 
+# CFG-01: unico proveedor OpenAI; la llave sale de Super Admin
+# (installation_configs, HELIC3_OPENAI_API_KEY), nunca del entorno ni de Captain.
 RSpec.describe Helic3::Agents::LlmRuntime do
-  before do
-    allow(ENV).to receive(:[]).and_call_original
-    allow(InstallationConfig).to receive(:find_by).and_call_original
-    %w[ONLY_HOME_LLM_PROVIDER GEMINI_API_KEY OPENAI_API_KEY GROQ_API_KEY ONLY_HOME_OPENAI_MODEL]
-      .each { |k| allow(ENV).to receive(:[]).with(k).and_return(nil) }
+  before { GlobalConfig.clear_cache }
+
+  after { GlobalConfig.clear_cache }
+
+  describe '.api_key' do
+    it 'sale de HELIC3_OPENAI_API_KEY en Super Admin' do
+      InstallationConfig.create!(name: 'HELIC3_OPENAI_API_KEY', value: 'sk-helic3', locked: false)
+      GlobalConfig.clear_cache
+
+      expect(described_class.api_key).to eq('sk-helic3')
+    end
+
+    it 'es nil cuando no hay registro' do
+      expect(described_class.api_key).to be_nil
+    end
+
+    it 'NO lee OPENAI_API_KEY del entorno ni la llave de Captain' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('OPENAI_API_KEY').and_return('sk-del-entorno')
+      InstallationConfig.create!(name: 'CAPTAIN_OPEN_AI_API_KEY', value: 'sk-captain', locked: false)
+      GlobalConfig.clear_cache
+
+      expect(described_class.api_key).to be_nil
+    end
   end
 
-  def env(key, value)
-    allow(ENV).to receive(:[]).with(key).and_return(value)
-  end
-
-  describe '.provider' do
-    it 'respeta el proveedor explicito de ONLY_HOME_LLM_PROVIDER' do
-      env('ONLY_HOME_LLM_PROVIDER', 'groq')
-      expect(described_class.provider).to eq(:groq)
-    end
-
-    it 'elige gemini cuando hay GEMINI_API_KEY' do
-      env('GEMINI_API_KEY', 'g-key')
-      expect(described_class.provider).to eq(:gemini)
-    end
-
-    it 'elige openai cuando solo hay OPENAI_API_KEY' do
-      env('OPENAI_API_KEY', 'o-key')
-      expect(described_class.provider).to eq(:openai)
-    end
-
-    it 'cae a ollama sin ninguna credencial' do
-      expect(described_class.provider).to eq(:ollama)
+  describe '.api_base' do
+    it 'es el endpoint de OpenAI explicito (no hereda el de Captain)' do
+      expect(described_class.api_base).to eq("#{LlmConstants::OPENAI_API_ENDPOINT}/v1")
     end
   end
 
   describe '.agents_options' do
-    it 'mapea gemini al provider :openai (endpoint compatible) con assume_model_exists' do
-      env('GEMINI_API_KEY', 'g-key')
+    it 'siempre usa provider :openai con assume_model_exists' do
       opts = described_class.agents_options
+
       expect(opts[:provider]).to eq(:openai)
       expect(opts[:assume_model_exists]).to be(true)
-    end
-
-    it 'mantiene :ollama como provider propio' do
-      expect(described_class.agents_options[:provider]).to eq(:ollama)
+      expect(opts[:model]).to eq(described_class.model)
     end
   end
 
-  describe '.model del proveedor OpenAI' do
-    before { env('OPENAI_API_KEY', 'o-key') }
-
+  describe '.model (sin cambios respecto a antes de CFG-01)' do
     it 'se puede cambiar desde Super Admin con CAPTAIN_OPEN_AI_MODEL' do
-      allow(InstallationConfig).to receive(:find_by).with(name: 'CAPTAIN_OPEN_AI_MODEL')
-                                                    .and_return(instance_double(InstallationConfig, value: 'gpt-super'))
+      InstallationConfig.create!(name: 'CAPTAIN_OPEN_AI_MODEL', value: 'gpt-super', locked: false)
+
       expect(described_class.model).to eq('gpt-super')
     end
+
+    it 'cae al default del sistema sin configuracion' do
+      expect(described_class.model).to eq(LlmConstants::DEFAULT_MODEL)
+    end
   end
 
-  describe '.api_key' do
-    it 'para ollama devuelve una credencial ficticia (cliente local sin llave)' do
-      expect(described_class.api_key(:ollama)).to eq('ollama')
+  describe '.configure_agents!' do
+    # double simple: el objeto que yield Agents.configure es interno del gem
+    # ai-agents, sin una clase publica estable contra la cual verificar.
+    # rubocop:disable RSpec/VerifiedDoubles
+    let(:config) do
+      double('agents_config', :openai_api_key= => nil, :openai_api_base= => nil)
+    end
+    # rubocop:enable RSpec/VerifiedDoubles
+
+    before { allow(Agents).to receive(:configure).and_yield(config) }
+
+    it 'registra el error y deja la llave nil cuando no hay llave' do
+      expect(Rails.logger).to receive(:error).with(described_class::SIN_LLAVE)
+
+      described_class.configure_agents!
+
+      expect(config).to have_received(:openai_api_key=).with(nil)
+      expect(config).to have_received(:openai_api_base=).with(described_class::API_BASE)
     end
 
-    it 'para gemini devuelve la llave de Gemini' do
-      env('GEMINI_API_KEY', 'g-key')
-      expect(described_class.api_key(:gemini)).to eq('g-key')
+    it 'fija la llave vigente y el API_BASE cuando hay llave' do
+      InstallationConfig.create!(name: 'HELIC3_OPENAI_API_KEY', value: 'sk-helic3', locked: false)
+      GlobalConfig.clear_cache
+
+      described_class.configure_agents!
+
+      expect(config).to have_received(:openai_api_key=).with('sk-helic3')
+      expect(config).to have_received(:openai_api_base=).with(described_class::API_BASE)
     end
   end
 end
