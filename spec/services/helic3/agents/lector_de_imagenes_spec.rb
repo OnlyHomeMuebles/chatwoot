@@ -20,6 +20,19 @@ RSpec.describe Helic3::Agents::LectorDeImagenes do
     stub_request(:get, url).to_return(status: 200, body: cuerpo, headers: { 'Content-Type' => 'image/png' })
   end
 
+  # wait_thr real (un objeto con pid/join) para no usar dobles sin verificar. La usan
+  # tanto .ocr como idioma_instalado? -- desde la revision de Jhan (PR #111, N2) las dos
+  # pasan por el mismo Open3.popen2 + SIGKILL (ver correr_con_timeout).
+  def stub_tesseract(salida_texto, finished:)
+    hilo = Object.new
+    hilo.define_singleton_method(:pid) { 4242 }
+    hilo.define_singleton_method(:join) { |_timeout| finished ? self : nil }
+    allow(Open3).to receive(:popen2) do |*_args, &blk|
+      blk.call(StringIO.new, StringIO.new(salida_texto), hilo)
+    end
+    hilo
+  end
+
   it 'devuelve nil si no hay imagenes' do
     expect(described_class.leer(nil)).to be_nil
     expect(described_class.leer([])).to be_nil
@@ -123,38 +136,59 @@ RSpec.describe Helic3::Agents::LectorDeImagenes do
     before { allow(described_class).to receive(:disponible?).and_call_original }
 
     it 'es true cuando tesseract lista el idioma configurado' do
-      allow(Open3).to receive(:capture2e).with('tesseract',
-                                               '--list-langs').and_return(["List of available languages...\neng\nspa\n",
-                                                                           instance_double(Process::Status)])
+      stub_tesseract("List of available languages...\neng\nspa\n", finished: true)
 
       expect(described_class.disponible?).to be true
     end
 
     it 'es false cuando el idioma configurado no esta en la lista' do
-      allow(Open3).to receive(:capture2e).with('tesseract',
-                                               '--list-langs').and_return(["List of available languages...\neng\n", instance_double(Process::Status)])
+      stub_tesseract("List of available languages...\neng\n", finished: true)
 
       expect(described_class.disponible?).to be false
     end
 
     it 'es false, sin levantar excepcion, cuando el binario no existe' do
-      allow(Open3).to receive(:capture2e).and_raise(Errno::ENOENT)
+      allow(Open3).to receive(:popen2).and_raise(Errno::ENOENT)
 
       expect(described_class.disponible?).to be false
     end
 
-    it 'es false si tesseract --list-langs se cuelga mas de TIMEOUT_DISPONIBLE' do
-      allow(Open3).to receive(:capture2e).and_raise(Timeout::Error)
+    # N2 (revision de Jhan, PR #111): mata el proceso colgado igual que .ocr, no solo deja
+    # de esperarlo -- antes Timeout.timeout no mataba el shell-out.
+    it 'mata el proceso y es false si tesseract --list-langs se cuelga mas de TIMEOUT_DISPONIBLE' do
+      stub_tesseract('', finished: false)
+      allow(Process).to receive(:kill)
 
       expect(described_class.disponible?).to be false
+      expect(Process).to have_received(:kill).with('KILL', 4242)
     end
 
-    it 'se memoiza: una segunda llamada no vuelve a invocar Open3' do
-      allow(Open3).to receive(:capture2e).and_return(["spa\n", instance_double(Process::Status)])
+    it 'un true se memoiza: una segunda llamada no vuelve a invocar Open3' do
+      stub_tesseract("spa\n", finished: true)
 
       2.times { described_class.disponible? }
 
-      expect(Open3).to have_received(:capture2e).once
+      expect(Open3).to have_received(:popen2).once
+    end
+
+    # N1 (revision de Jhan, PR #103): un false NO se memoiza para siempre -- un timeout
+    # transitorio al arrancar el worker no debe apagar el OCR hasta el proximo reinicio.
+    it 'un false NO se memoiza: una segunda llamada lo vuelve a intentar' do
+      allow(Open3).to receive(:popen2).and_raise(Errno::ENOENT)
+
+      2.times { described_class.disponible? }
+
+      expect(Open3).to have_received(:popen2).twice
+    end
+
+    # N3 (revision de Jhan, PR #111): spec de recuperacion explicito -- la primera llamada
+    # falla (binario realmente caido en ese momento) y la segunda, ya repuesto, es true.
+    it 'se recupera: una llamada en false no impide que la siguiente sea true' do
+      allow(Open3).to receive(:popen2).and_raise(Errno::ENOENT)
+      expect(described_class.disponible?).to be false
+
+      stub_tesseract("spa\n", finished: true)
+      expect(described_class.disponible?).to be true
     end
   end
 

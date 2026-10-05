@@ -132,9 +132,12 @@ class Helic3::ProcessConversationJob < ApplicationJob
     # incluido, ver RunnerService#instrucciones_pqrs).
     @texto_imagenes = Helic3::Agents::LectorDeImagenes.leer(imagenes)
     # AGT-09: si el binario no esta disponible (despliegue sin el paquete apt), el agente no debe
-    # decirle al cliente que la foto no tenia texto -- eso seria falso. disponible? esta memoizado
-    # por proceso, asi que esta llamada es barata incluso sin imagenes en este turno.
-    @ocr_disponible = Helic3::Agents::LectorDeImagenes.disponible?
+    # decirle al cliente que la foto no tenia texto -- eso seria falso. Solo se consulta cuando
+    # hay imagenes: desde la revision de Jhan (#111), un `false` ya NO se memoiza para siempre
+    # (N1), asi que llamarlo en CADA turno -tambien sin fotos- pagaria el timeout completo de
+    # idioma_instalado? (hasta TIMEOUT_DISPONIBLE) en cada mensaje mientras el binario este
+    # realmente caido. linea_de_imagen tampoco lee este valor cuando no hay imagenes.
+    @ocr_disponible = Helic3::Agents::LectorDeImagenes.disponible? if imagenes.present?
 
     entrada = { content: content, imagenes: imagenes, hay_adjuntos: hay_adjuntos }
     reply = generate_reply(@client, memory, conversation_id, entrada)

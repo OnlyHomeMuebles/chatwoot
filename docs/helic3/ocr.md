@@ -33,12 +33,16 @@ bundle exec rake helic3:ocr:diagnostico
 
 ## Si el binario falta
 
-`LectorDeImagenes.disponible?` corre `tesseract --list-langs` una sola vez por
-proceso (memoizado) y confirma que el idioma configurado (`OCR_IDIOMA`, por
-defecto `spa`) esté instalado. Si no está disponible, `leer` no intenta imagen
-por imagen: registra una sola línea `[Helic3][ocr] tesseract no disponible` a
-nivel error y devuelve `nil`, sin tumbar el job. El agente tampoco miente: en
-vez de decir que la foto no tenía texto legible, dice que no se pudo leer
+`LectorDeImagenes.disponible?` corre `tesseract --list-langs` y confirma que el
+idioma configurado (`OCR_IDIOMA`, por defecto `spa`) esté instalado. Solo se
+memoiza el resultado `true` (el binario no desaparece a mitad de la vida del
+worker); un `false` no se memoiza para siempre, porque puede ser transitorio
+(p. ej. un timeout al arrancar con el worker cargado) y se vuelve a confirmar
+en la siguiente llamada, sin esperar a un reinicio. Si no está disponible,
+`leer` no intenta imagen por imagen: registra una sola línea
+`[Helic3][ocr] tesseract no disponible` a nivel error y devuelve `nil`, sin
+tumbar el job. El agente tampoco miente: en vez de decir que la foto no tenía
+texto legible, dice que no se pudo leer
 automáticamente (ver `PqrsAgent.linea_de_imagen`).
 
 ## Docker (desarrollo con `docker-compose`)
