@@ -12,6 +12,10 @@
 # confirmacion seria resolver por cuenta propia.
 #
 # Lo que sigue sin confirmar esta en app/models/helic3/catalogo/PENDIENTES.md.
+#
+# rubocop:disable Metrics/ClassLength -- la longitud la dominan las constantes de
+# datos validados con Only Home (los catalogos), que viven junto al seeder a
+# proposito; partirlas en otra clase solo por el conteo no aporta claridad.
 class Helic3::Catalogo::SeederService
   # codigos explicitos (no derivados del nombre): los motivos de PQR los
   # referencian, y un ajuste de redaccion del nombre no debe romper la semilla
@@ -162,6 +166,16 @@ class Helic3::Catalogo::SeederService
     { clave: 'enlace_politica_datos', valor: 'https://www.onlyhome.co/politica-de-datos', unidad: 'texto' }
   ].freeze
 
+  # FMT-02: los 4 formatos de Karen como catalogo. El codigo es explicito (no derivado
+  # del nombre) porque lo referencian las plantillas y la logica. Karen puede renombrar
+  # o desactivar desde el admin; la semilla solo CREA (no pisa ediciones).
+  FORMATOS = [
+    { nombre: 'No. 2 · Cumplimiento — entrega de mercancía reparada', codigo: 'cumplimiento_mercancia_reparada' },
+    { nombre: 'No. 3 · Visita de técnico',                            codigo: 'visita_tecnica' },
+    { nombre: 'No. 5 · Recolección de productos',                     codigo: 'recoleccion_productos' },
+    { nombre: 'No. 8 · Cumplimiento — cambio o devolución',           codigo: 'cumplimiento_cambio_devolucion' }
+  ].freeze
+
   def initialize(account)
     @account = account
   end
@@ -175,6 +189,7 @@ class Helic3::Catalogo::SeederService
     sembrar_con_atributos(Helic3::Catalogo::MotivoGarantia, MOTIVOS_GARANTIA)
     sembrar_simple(Helic3::Catalogo::DetalleTipificado, DETALLES_TIPIFICADOS)
     sembrar_con_atributos(Helic3::Catalogo::ProcesoGarantia, PROCESOS_GARANTIA)
+    sembrar_con_atributos(Helic3::Catalogo::Formato, FORMATOS)
     sembrar_coberturas
     sembrar_parametros
     resumen
@@ -243,7 +258,9 @@ class Helic3::Catalogo::SeederService
       detalles_tipificados: Helic3::Catalogo::DetalleTipificado.where(account: @account).count,
       procesos_garantia: Helic3::Catalogo::ProcesoGarantia.where(account: @account).count,
       coberturas_ciudad: Helic3::Catalogo::CoberturaCiudad.where(account: @account).count,
-      parametros: Helic3::Catalogo::Parametro.where(account: @account).count
+      parametros: Helic3::Catalogo::Parametro.where(account: @account).count,
+      formatos: Helic3::Catalogo::Formato.where(account: @account).count
     }
   end
 end
+# rubocop:enable Metrics/ClassLength

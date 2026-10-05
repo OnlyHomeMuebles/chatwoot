@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
+ActiveRecord::Schema[7.2].define(version: 2026_10_06_120000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1199,6 +1199,18 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
     t.index ["account_id"], name: "idx_h3cat_etapas_pqr_account"
   end
 
+  create_table "helic3_catalogo_formatos", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "nombre", null: false
+    t.string "codigo", null: false
+    t.integer "posicion", default: 0, null: false
+    t.boolean "activo", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "codigo"], name: "idx_h3cat_formatos_account_codigo", unique: true
+    t.index ["account_id"], name: "idx_h3cat_formatos_account"
+  end
+
   create_table "helic3_catalogo_motivos_garantia", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "nombre", null: false
@@ -2011,6 +2023,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
   add_foreign_key "helic3_agentes_bandejas", "helic3_agentes", column: "agente_id", on_delete: :cascade
   add_foreign_key "helic3_agentes_bandejas", "inboxes", on_delete: :cascade
   add_foreign_key "helic3_catalogo_detalles_tipificados", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
+  add_foreign_key "helic3_catalogo_formatos", "accounts"
   add_foreign_key "helic3_catalogo_motivos_pqr", "helic3_catalogo_categorias", column: "categoria_id"
   add_foreign_key "helic3_documentos", "accounts"
   add_foreign_key "helic3_documentos", "attachments", on_delete: :nullify
