@@ -83,8 +83,10 @@ namespace :helic3 do
         pdf = Helic3::Formatos::Conversor.a_pdf(fodt, extension: 'fodt')
         ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
 
+        # el .fodt vuelve como bytes (ASCII-8BIT); es UTF-8 de verdad, asi que se
+        # reinterpreta antes de buscar (si no, include? de un token acentuado revienta).
         # tags fuera (con espacio para no pegar palabras de runs distintos) y se busca cada token.
-        texto = fodt.gsub(/<[^>]+>/, ' ')
+        texto = fodt.to_s.dup.force_encoding('UTF-8').gsub(/<[^>]+>/, ' ')
         faltan = formato[:espera].reject { |token| texto.include?(token) }
 
         destino = salida.join(formato[:archivo].sub(/\.docx\z/, '.pdf'))
