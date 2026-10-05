@@ -36,6 +36,8 @@ class Helic3::Formatos::Conversor
   # soffice en frio puede tardar varios segundos en un contenedor lento.
   TIMEOUT_VERSION = 20
   EXT_ENTRADA = %w[docx fodt].freeze
+  # un .docx es un zip: empieza con la firma "PK\x03\x04". Sirve para validar la salida.
+  FIRMA_ZIP = "PK\x03\x04".b.freeze
 
   # XML del documento como .fodt. Lo usa Helic3::Formatos::LlenarPlantilla (FMT-02).
   def self.a_fodt(docx_bytes)
@@ -45,6 +47,11 @@ class Helic3::Formatos::Conversor
   # bytes del PDF a partir de un .docx o de un .fodt ya relleno.
   def self.a_pdf(bytes, extension:)
     new.convertir(bytes, extension: extension, destino: 'pdf')
+  end
+
+  # bytes del .docx (Word editable) a partir de un .docx o de un .fodt ya relleno.
+  def self.a_docx(bytes, extension:)
+    new.convertir(bytes, extension: extension, destino: 'docx')
   end
 
   # ¿esta el binario en el sistema? Memoizado por proceso (como AGT-09).
@@ -112,6 +119,7 @@ class Helic3::Formatos::Conversor
 
     bytes = File.binread(ruta)
     raise Error, 'el PDF no empieza con %PDF' if destino == 'pdf' && !bytes.start_with?('%PDF')
+    raise Error, 'el .docx no es un zip válido' if destino == 'docx' && !bytes.b.start_with?(FIRMA_ZIP)
 
     bytes
   end

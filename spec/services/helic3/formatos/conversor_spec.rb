@@ -66,6 +66,21 @@ RSpec.describe Helic3::Formatos::Conversor do
     end
   end
 
+  describe '.a_docx' do
+    it 'convierte un .fodt a .docx y devuelve bytes que empiezan con PK (zip)' do
+      stub_soffice(contenido: "PK\x03\x04 docx")
+
+      expect(described_class.a_docx('<office/>', extension: 'fodt')).to start_with('PK')
+    end
+
+    it 'levanta Error si la salida no parece un .docx (sin PK)' do
+      stub_soffice(contenido: 'no es docx')
+
+      expect { described_class.a_docx('<office/>', extension: 'fodt') }
+        .to raise_error(described_class::Error, /docx/)
+    end
+  end
+
   describe 'aislamiento por conversion (concurrencia, CA3)' do
     it 'cada conversion usa su propio -env:UserInstallation' do
       perfiles = []
