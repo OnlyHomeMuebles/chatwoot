@@ -41,7 +41,7 @@ RSpec.describe Helic3::ProcessConversationJob do
     expect(runner).to receive(:run)
       .with('hola', context: { account_id: 1,
                                state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
-                                        imagenes: [], texto_imagenes: nil, ocr_disponible: true } })
+                                        imagenes: [], texto_imagenes: nil, ocr_disponible: nil } })
       .and_return(result)
 
     expect(client).to receive(:create_message).with(7, content: 'Con gusto, te ayudo con eso.', message_type: 'outgoing')
@@ -55,7 +55,7 @@ RSpec.describe Helic3::ProcessConversationJob do
     expect(runner).to receive(:run)
       .with('hola', context: { conversation_history: [{ role: :user, content: 'antes' }], account_id: 1,
                                state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
-                                        imagenes: [], texto_imagenes: nil, ocr_disponible: true } })
+                                        imagenes: [], texto_imagenes: nil, ocr_disponible: nil } })
       .and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
 
     job.perform(account_id: 1, conversation_id: 7, content: 'hola')
@@ -107,7 +107,7 @@ RSpec.describe Helic3::ProcessConversationJob do
       .with(described_class::SOLO_ADJUNTO_CONTENT,
             context: { account_id: 1,
                        state: { conversation_id: 7, chatwoot_client: client, consentimiento_datos_at: nil,
-                                imagenes: [], texto_imagenes: nil, ocr_disponible: true } })
+                                imagenes: [], texto_imagenes: nil, ocr_disponible: nil } })
       .and_return(instance_double(Agents::RunResult, output: 'ok', context: {}))
 
     job.perform(account_id: 1, conversation_id: 7, content: '', imagenes: [], hay_adjuntos: true)

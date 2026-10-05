@@ -84,34 +84,45 @@ class Helic3::Agents::LectorDeImagenes
     @disponible = idioma_instalado?
   end
 
+  # N2 (revision de Jhan, PR #111): antes solo .ocr mataba el proceso colgado con SIGKILL;
+  # idioma_instalado? envolvia con Timeout.timeout, que NO mata el shell-out. Con el `false`
+  # ya sin memoizar para siempre (N1), un --list-langs colgado podia dejar un huerfano por
+  # CADA llamada en vez de a lo sumo uno por worker. Ahora comparten el mismo mecanismo.
   def self.idioma_instalado?
-    salida = ''
-    Timeout.timeout(TIMEOUT_DISPONIBLE) { salida, = Open3.capture2e('tesseract', '--list-langs') }
+    salida = correr_con_timeout('tesseract', '--list-langs', timeout: TIMEOUT_DISPONIBLE, combinar_stderr: true)
     salida.lines.map(&:strip).include?(IDIOMA)
   rescue StandardError
     false
   end
   private_class_method :idioma_instalado?
 
-  # Corre `tesseract <archivo> stdout -l <IDIOMA>` por Open3 y devuelve el texto.
-  # Si el proceso excede TIMEOUT_OCR, se MATA con SIGKILL (a diferencia de
-  # Timeout.timeout, que no mata el shell-out) y se levanta Timeout::Error para que
-  # el rescue de leer_texto_seguro lo registre sin tumbar el job. La stderr de
-  # tesseract (avisos de resolucion, etc.) se descarta para no ensuciar el log.
+  # Corre `tesseract <archivo> stdout -l <IDIOMA>` y devuelve el texto. La stderr de
+  # tesseract (avisos de resolucion, etc.) se descarta para no ensuciar el log -- a
+  # diferencia de idioma_instalado?, que SI necesita leerla (--list-langs imprime la
+  # lista ahi en algunas versiones).
   def self.ocr(ruta)
-    Open3.popen2('tesseract', ruta, 'stdout', '-l', IDIOMA, err: File::NULL) do |entrada, salida, hilo|
+    correr_con_timeout('tesseract', ruta, 'stdout', '-l', IDIOMA, timeout: TIMEOUT_OCR).strip
+  end
+
+  # Corre un binario externo con el pid vivo para poder matarlo con SIGKILL si se cuelga
+  # mas del timeout (Timeout.timeout por si solo NO mata el proceso externo: un comando
+  # colgado seguiria consumiendo CPU del worker). La comparten .ocr e idioma_instalado?.
+  def self.correr_con_timeout(*comando, timeout:, combinar_stderr: false)
+    err = combinar_stderr ? [:child, :out] : File::NULL
+    Open3.popen2(*comando, err: err) do |entrada, salida, hilo|
       entrada.close
-      # se lee en un hilo aparte para no bloquear si tesseract llena el buffer del pipe
+      # se lee en un hilo aparte para no bloquear si el comando llena el buffer del pipe
       lector = Thread.new { salida.read }
-      if hilo.join(TIMEOUT_OCR)
-        lector.value.to_s.strip
+      if hilo.join(timeout)
+        lector.value.to_s
       else
         Process.kill('KILL', hilo.pid)
         lector.kill
-        raise Timeout::Error, "tesseract excedio el limite de #{TIMEOUT_OCR}s"
+        raise Timeout::Error, "#{comando.first} excedio el limite de #{timeout}s"
       end
     end
   end
+  private_class_method :correr_con_timeout
 
   # nil si no hay imagenes, o si ninguna trae texto legible; el texto unido
   # (varias imagenes, separadas) si encuentra algo. Una imagen que falla
