@@ -45,6 +45,17 @@ tumbar el job. El agente tampoco miente: en vez de decir que la foto no tenía
 texto legible, dice que no se pudo leer
 automáticamente (ver `PqrsAgent.linea_de_imagen`).
 
+## Formatos que tesseract no decodifica (HEIC/HEIF)
+
+tesseract/leptonica no leen HEIC/HEIF — el formato por defecto de las fotos de
+iPhone cuando el canal no las convierte antes de llegar (WhatsApp casi siempre
+reconvierte a JPEG, pero el widget web y otros canales no). Para esos
+content-types, `LectorDeImagenes` normaliza la imagen a PNG con `libvips` antes
+de pasarla por tesseract — `libvips` ya está en el `Gemfile` vía
+`image_processing` (dependencia de ActiveStorage), así que esto no agrega
+ninguna gema nueva. El resto de formatos (JPEG, PNG, etc., la gran mayoría) no
+paga ningún paso extra.
+
 ## Docker (desarrollo con `docker-compose`)
 
 El `docker/Dockerfile` de este repo (imagen usada por `docker-compose.yaml`,

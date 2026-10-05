@@ -16,8 +16,8 @@ RSpec.describe Helic3::Agents::LectorDeImagenes do
     allow(described_class).to receive(:disponible?).and_return(true)
   end
 
-  def responder_con_imagen(url, cuerpo: File.read(Rails.root.join('spec/assets/avatar.png')))
-    stub_request(:get, url).to_return(status: 200, body: cuerpo, headers: { 'Content-Type' => 'image/png' })
+  def responder_con_imagen(url, cuerpo: File.read(Rails.root.join('spec/assets/avatar.png')), content_type: 'image/png')
+    stub_request(:get, url).to_return(status: 200, body: cuerpo, headers: { 'Content-Type' => content_type })
   end
 
   # wait_thr real (un objeto con pid/join) para no usar dobles sin verificar. La usan
@@ -126,6 +126,40 @@ RSpec.describe Helic3::Agents::LectorDeImagenes do
 
     expect(described_class.leer([url])).to eq('ok')
     expect(a_request(:get, url)).to have_been_made
+  end
+
+  # AGT-09 (mas formatos): tesseract/leptonica no decodifican HEIC/HEIF -- el formato por
+  # defecto de las fotos de iPhone cuando el canal no las convierte antes de llegar.
+  describe 'formatos que tesseract no decodifica directamente (HEIC/HEIF)' do
+    it 'normaliza un HEIC a PNG con libvips antes de leerlo con tesseract' do
+      url = 'https://cdn.chatwoot.test/factura.heic'
+      responder_con_imagen(url, content_type: 'image/heic')
+      convertido = instance_double(Vips::Image)
+      allow(Vips::Image).to receive(:new_from_file).and_return(convertido)
+      allow(convertido).to receive(:write_to_file)
+      expect(described_class).to receive(:ocr).with(a_string_ending_with('.png')).and_return('Factura 8821')
+
+      expect(described_class.leer([url])).to eq('Factura 8821')
+    end
+
+    it 'no pasa por libvips para un formato que tesseract ya soporta' do
+      url = 'https://cdn.chatwoot.test/factura.jpg'
+      responder_con_imagen(url, content_type: 'image/jpeg')
+      allow(described_class).to receive(:ocr).and_return('Factura 8821')
+      expect(Vips::Image).not_to receive(:new_from_file)
+
+      expect(described_class.leer([url])).to eq('Factura 8821')
+    end
+
+    it 'si libvips tampoco puede decodificarla, se registra el error y no tumba el job' do
+      url = 'https://cdn.chatwoot.test/corrupta.heic'
+      responder_con_imagen(url, content_type: 'image/heic')
+      allow(Vips::Image).to receive(:new_from_file).and_raise(Vips::Error, 'formato no reconocido')
+      allow(Rails.logger).to receive(:error)
+
+      expect(described_class.leer([url])).to be_nil
+      expect(Rails.logger).to have_received(:error).with(a_string_matching(/lector_de_imagenes fallo/))
+    end
   end
 
   # AGT-09: si el binario o el idioma faltan (un despliegue sin el paquete apt), la lectura

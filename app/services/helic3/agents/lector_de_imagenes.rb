@@ -2,6 +2,8 @@
 
 require 'open3'
 require 'timeout'
+require 'tempfile'
+require 'vips'
 
 # AGT-08: lee el texto de las fotos que el cliente adjunta, con el binario local
 # `tesseract`, invocado DIRECTAMENTE por Open3 (sin gema).
@@ -58,6 +60,14 @@ class Helic3::Agents::LectorDeImagenes
   # Nota: el fetch a un host interno (IP privada) requiere que SafeFetch tenga
   # SAFE_FETCH_ALLOW_PRIVATE_NETWORK habilitado; si no, el filtro SSRF lo bloquea.
   HOST_INTERNO = ENV.fetch('OCR_HOST_INTERNO', 'rails:3000')
+
+  # tesseract/leptonica no decodifican HEIC/HEIF -- el formato por defecto de las
+  # fotos de iPhone cuando el canal no las convierte antes de llegar (WhatsApp casi
+  # siempre reconvierte a JPEG, pero el widget web y otros canales no). Para esos
+  # content-types se normaliza a PNG con libvips antes de pasarselos a tesseract
+  # (ver #normalizar_si_hace_falta). libvips ya esta en el Gemfile via
+  # image_processing (dependencia de ActiveStorage); no es una gema nueva.
+  FORMATOS_SIN_SOPORTE_DIRECTO = %w[image/heic image/heif].freeze
 
   def self.leer(urls)
     new.leer(urls)
@@ -179,7 +189,26 @@ class Helic3::Agents::LectorDeImagenes
   # propio de Chatwoot).
   def leer_texto(url)
     SafeFetch.fetch(url, allowed_content_type_prefixes: ['image/'], read_timeout: TIMEOUT_DESCARGA) do |archivo|
-      self.class.ocr(archivo.tempfile.path)
+      if FORMATOS_SIN_SOPORTE_DIRECTO.include?(archivo.content_type)
+        normalizar_y_leer(archivo.tempfile.path)
+      else
+        self.class.ocr(archivo.tempfile.path)
+      end
+    end
+  end
+
+  # Decodifica con libvips (que si soporta HEIC/HEIF) y reescribe como PNG -- un
+  # formato que tesseract siempre entiende -- antes de leerlo. El Tempfile se
+  # mantiene vivo en una variable local durante toda la lectura: si solo se
+  # devolviera la ruta, el recolector de basura podria borrar el archivo (via el
+  # finalizer de Tempfile) mientras tesseract todavia lo esta leyendo.
+  def normalizar_y_leer(ruta_original)
+    convertido = Tempfile.new(['helic3-ocr-normalizado', '.png'])
+    begin
+      Vips::Image.new_from_file(ruta_original).write_to_file(convertido.path)
+      self.class.ocr(convertido.path)
+    ensure
+      convertido.close!
     end
   end
 end
