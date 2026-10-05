@@ -67,11 +67,19 @@ class Helic3::Agents::LectorDeImagenes
   # docker/Dockerfile, que ya NO lo trae -- es upstream). Si algun despliegue
   # se queda sin el paquete apt, cada lectura fallaria en silencio (el rescue
   # de leer_texto_seguro) y el agente le diria al cliente que la foto no tenia
-  # texto legible, lo cual seria falso. Por eso se chequea UNA vez antes de
-  # intentar imagen por imagen, y se memoiza por proceso: el binario no cambia
-  # durante la vida del worker.
+  # texto legible, lo cual seria falso. Por eso se chequea antes de intentar
+  # imagen por imagen.
+  #
+  # N1 (revision de Jhan, PR #103): solo se memoiza el `true`. El binario no
+  # desaparece a mitad de la vida del worker, pero un `false` SI puede ser
+  # transitorio (p. ej. un timeout de TIMEOUT_DISPONIBLE con el worker cargado
+  # al arrancar) -- memoizarlo para siempre apagaria el OCR hasta el proximo
+  # reinicio por un hipo puntual. Un `false` real y persistente simplemente se
+  # vuelve a confirmar en cada corrida (idioma_instalado? es rapido: ENOENT
+  # responde al instante, y solo paga el timeout completo si de verdad esta
+  # colgado).
   def self.disponible?
-    return @disponible if defined?(@disponible)
+    return true if @disponible
 
     @disponible = idioma_instalado?
   end

@@ -149,12 +149,22 @@ RSpec.describe Helic3::Agents::LectorDeImagenes do
       expect(described_class.disponible?).to be false
     end
 
-    it 'se memoiza: una segunda llamada no vuelve a invocar Open3' do
+    it 'un true se memoiza: una segunda llamada no vuelve a invocar Open3' do
       allow(Open3).to receive(:capture2e).and_return(["spa\n", instance_double(Process::Status)])
 
       2.times { described_class.disponible? }
 
       expect(Open3).to have_received(:capture2e).once
+    end
+
+    # N1 (revision de Jhan, PR #103): un false NO se memoiza para siempre -- un timeout
+    # transitorio al arrancar el worker no debe apagar el OCR hasta el proximo reinicio.
+    it 'un false NO se memoiza: una segunda llamada lo vuelve a intentar' do
+      allow(Open3).to receive(:capture2e).and_raise(Errno::ENOENT)
+
+      2.times { described_class.disponible? }
+
+      expect(Open3).to have_received(:capture2e).twice
     end
   end
 
