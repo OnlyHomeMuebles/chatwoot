@@ -40,4 +40,16 @@ RSpec.describe Helic3::Formatos::LlenarPlantilla do
     xml = fodt('<text:h><text:span>{{RADICADO}}</text:span></text:h><text:p><text:span>{{CLIENTE}}</text:span></text:p>')
     expect(described_class.marcadores_de(xml)).to contain_exactly('RADICADO', 'CLIENTE')
   end
+
+  it 'no re-interpreta un marcador que venga dentro de un valor (evita inyeccion)' do
+    xml = fodt('<text:p><text:span>{{CLIENTE}}</text:span></text:p>')
+    salida = described_class.call(xml, 'CLIENTE' => 'Pedro {{PRODUCTO}}', 'PRODUCTO' => 'Sofa')
+    expect(Nokogiri::XML(salida).text).to eq('Pedro {{PRODUCTO}}')
+  end
+
+  it 'un valor que es literalmente un marcador no cuelga el proceso' do
+    xml = fodt('<text:p><text:span>{{CLIENTE}}</text:span></text:p>')
+    salida = described_class.call(xml, 'CLIENTE' => '{{CLIENTE}}')
+    expect(Nokogiri::XML(salida).text).to eq('{{CLIENTE}}')
+  end
 end

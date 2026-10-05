@@ -47,15 +47,15 @@ class Helic3::Formatos::LlenarPlantilla
     nodos(parrafo).map(&:content).join
   end
 
-  # reemplaza el PRIMER marcador del parrafo y repite hasta que no queden; asi varios
-  # marcadores en el mismo parrafo no se corren los indices entre si.
+  # escanea el texto original UNA sola vez y reemplaza de DERECHA A IZQUIERDA. Asi los
+  # indices de los marcadores a la izquierda no se corren por los reemplazos de la
+  # derecha, y NUNCA se re-interpreta lo insertado: un valor que contenga {{X}} (dato del
+  # cliente) queda literal y no cuelga el proceso.
   def reemplazar_en(parrafo, valores)
-    loop do
-      lista = nodos(parrafo)
-      completo = lista.map(&:content).join
-      coincidencia = completo.match(PATRON)
-      break unless coincidencia
-
+    lista = nodos(parrafo)
+    completo = lista.map(&:content).join
+    coincidencias = completo.to_enum(:scan, PATRON).map { Regexp.last_match }
+    coincidencias.reverse_each do |coincidencia|
       valor = (valores[coincidencia[1]] || '').to_s.gsub(/\s*\n\s*/, ' ')
       aplicar(lista, coincidencia.begin(0), coincidencia.end(0), valor)
     end
