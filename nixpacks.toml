@@ -33,6 +33,7 @@ NODE_OPTIONS = "--max-old-space-size=4096"
 # Si choca con AGT-09 (tesseract) en la misma lista al integrar, se queda la union.
 [phases.setup]
 aptPkgs = [
+  "...",
   "libreoffice-writer-nogui",
   "fonts-crosextra-carlito",
   "fonts-crosextra-caladea",

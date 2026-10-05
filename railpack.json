@@ -11,6 +11,7 @@
   },
   "deploy": {
     "aptPackages": [
+      "...",
       "libreoffice-writer-nogui",
       "fonts-crosextra-carlito",
       "fonts-crosextra-caladea",

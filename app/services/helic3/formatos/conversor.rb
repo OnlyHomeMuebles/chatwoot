@@ -7,11 +7,12 @@ require 'tmpdir'
 # headless (soffice), invocado por Open3 — el MISMO patron de robustez que
 # Helic3::Agents::LectorDeImagenes.ocr.
 #
-# Por que LibreOffice y no Chromium: las plantillas ahora son los .docx de Karen,
-# y Chromium no lee .docx. Por que un binario y no una gema: el Gemfile es de
-# upstream y la frontera del fork no permite agregar gemas de .docx (rubyzip,
-# docx, sablon, caracal). LibreOffice ademas da el .fodt (OpenDocument plano: un
-# solo XML) que FMT-02 rellena con Nokogiri.
+# Por que LibreOffice: las plantillas ahora son los .docx de Karen, y hace falta
+# un motor que abra .docx respetando fuentes, tablas y estilos de Word. Por que un
+# binario y no una gema: el Gemfile es de upstream y la frontera del fork no
+# permite agregar gemas de .docx (rubyzip, docx, sablon, caracal). LibreOffice
+# ademas da el .fodt (OpenDocument plano: un solo XML) que FMT-02 rellena con
+# Nokogiri.
 #
 # Robustez (igual que antes): argumentos en arreglo (nunca por shell, sin
 # inyeccion), SIGKILL a TODO el grupo si vence el timeout (Timeout.timeout no mata
