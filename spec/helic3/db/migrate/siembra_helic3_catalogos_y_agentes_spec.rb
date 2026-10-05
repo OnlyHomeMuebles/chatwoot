@@ -22,7 +22,8 @@ RSpec.describe SiembraHelic3CatalogosYAgentes do
     cuentas.each do |cuenta|
       expect(Helic3::Catalogo::Categoria.where(account: cuenta).count).to eq(6)
       expect(Helic3::Catalogo::MotivoPqr.where(account: cuenta).count).to eq(7)
-      expect(Helic3::Catalogo::Parametro.where(account: cuenta).count).to eq(19)
+      expect(Helic3::Catalogo::Parametro.where(account: cuenta).count)
+        .to eq(Helic3::Catalogo::SeederService::PARAMETROS.size)
       expect(Helic3::Agente.where(account: cuenta).count).to eq(5)
     end
   end
