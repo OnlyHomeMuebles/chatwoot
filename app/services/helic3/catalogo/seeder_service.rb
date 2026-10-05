@@ -168,7 +168,11 @@ class Helic3::Catalogo::SeederService
     # desde el panel de Parametros. El nombre del asesor es VARIABLE (lo inyecta el
     # runtime): va como marcador «nombre». Los plazos de los textos (visita 12-15,
     # cambio 15) son los de Karen; difieren del catalogo de procesos (8 y 20) y se
-    # conciliaran con Karen (son editables desde el panel).
+    # conciliaran con Karen (son editables desde el panel; ver PENDIENTES.md).
+    #
+    # FASE 1 (solo almacenamiento): hoy NINGUN runtime los lee. Se siembran como
+    # parametros editables para tenerlos listos; cablear el envio (que agente, en
+    # que disparador) es un ticket aparte.
     { clave: 'mensaje_solicitud_datos',
       valor: 'Mucho gusto, mi nombre es «nombre» y seré tu asesor(a) para gestionar tu solicitud de ' \
              'garantía. Para iniciar el proceso, por favor envíanos: nombre completo, número de cédula, ' \
