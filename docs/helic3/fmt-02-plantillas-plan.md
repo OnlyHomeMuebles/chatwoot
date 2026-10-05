@@ -659,6 +659,10 @@ git add -A && git commit --no-verify -m "feat(formatos): LlenarPlantilla reempla
 - Consumes: `Conversor.a_fodt`/`.a_pdf` (FMT-01), `LlenarPlantilla` (Task 4), `Marcadores` (Task 3), `PlantillaFormato` (Task 2).
 - Produces: `SubirPlantilla.call(formato:, archivo:, user:) → Resultado(ok?, plantilla, errores, advertencias)`; `VistaPrevia.call(plantilla:, item: nil, user: nil) → String(bytes PDF)`.
 
+> Nota: `VistaPrevia` gana el parámetro `formato: :pdf|:docx` (y cambia su retorno a
+> un hash) en la **Task 8**; impleméntalas juntas si prefieres (la Task 8 trae el
+> `Conversor.a_docx` que necesita).
+
 - [ ] **Step 1: Escribir los tests (fallan) — cubre CA1, CA2, CA8, Review Focus 3**
 
 `spec/services/helic3/formatos/subir_plantilla_spec.rb`:
@@ -1131,6 +1135,136 @@ Run: `git diff --name-only origin/dev | grep -v -E "helic3|spec/|railpack.json|n
 Expected: imprime **solo** `config/routes.rb`.
 
 - [ ] **Step 5: Abrir PR a `integracion/entrega-7-formatos-pdf`** (cuando #110 esté mergeado) con el resumen y marcar la decisión 401/403 pendiente de Jhan.
+
+---
+
+### Task 8: Salida en Word (.docx) — decisión de Jhan (spec §7.3)
+
+> Se implementa **junto con la Task 5**: `Conversor.a_docx` debe existir antes de que
+> `VistaPrevia` lo use. Aquí va aparte para no inflar la Task 5.
+
+**Files:**
+- Modify: `app/services/helic3/formatos/conversor.rb` (motor FMT-01: destino `docx`)
+- Modify: `app/services/helic3/formatos/vista_previa.rb` (param `formato:`)
+- Modify: `app/controllers/api/v1/accounts/helic3/admin/plantillas_controller.rb` (`?formato=`)
+- Test: `spec/services/helic3/formatos/conversor_spec.rb` (CA12), `vista_previa_spec.rb`, `plantillas_controller_spec.rb` (CA11)
+
+**Interfaces:**
+- Produces: `Conversor.a_docx(bytes, extension:) → String` (bytes `.docx`);
+  `VistaPrevia.call(plantilla:, item: nil, user: nil, formato: :pdf) → { bytes:, tipo_mime:, extension: }`.
+
+- [ ] **Step 1: Test de `Conversor.a_docx` (falla) [CA12]**
+
+En `spec/services/helic3/formatos/conversor_spec.rb`, dentro del `describe`:
+```ruby
+  describe '.a_docx' do
+    it 'convierte un .fodt a .docx y devuelve bytes que empiezan con PK (zip)' do
+      stub_soffice(contenido: "PK\x03\x04 docx")
+      expect(described_class.a_docx('<office/>', extension: 'fodt')).to start_with('PK')
+    end
+
+    it 'levanta Error si la salida no parece un .docx (sin PK)' do
+      stub_soffice(contenido: 'no es docx')
+      expect { described_class.a_docx('<office/>', extension: 'fodt') }
+        .to raise_error(described_class::Error, /PK|docx/)
+    end
+  end
+```
+
+- [ ] **Step 2: Correr y ver que falla**
+
+Run: `docker compose exec -e RAILS_ENV=test rails bundle exec rspec spec/services/helic3/formatos/conversor_spec.rb`
+Expected: FAIL (`a_docx` no existe).
+
+- [ ] **Step 3: Implementar `docx` en el `Conversor`**
+
+En `app/services/helic3/formatos/conversor.rb`:
+```ruby
+  FIRMA_ZIP = "PK\x03\x04".b  # .docx es un zip
+
+  # bytes del .docx a partir de un .docx o de un .fodt ya relleno (salida editable).
+  def self.a_docx(bytes, extension:)
+    new.convertir(bytes, extension: extension, destino: 'docx')
+  end
+```
+Y en `leer_salida`, reemplazar la verificación de `%PDF` por una por destino:
+```ruby
+  def leer_salida(ruta, destino)
+    raise Error, "soffice no generó la salida .#{destino}" unless File.exist?(ruta)
+
+    bytes = File.binread(ruta)
+    raise Error, 'el PDF no empieza con %PDF' if destino == 'pdf' && !bytes.start_with?('%PDF')
+    raise Error, 'el .docx no es un zip válido' if destino == 'docx' && !bytes.b.start_with?(FIRMA_ZIP)
+
+    bytes
+  end
+```
+(`convertir` ya acepta cualquier `destino`; no hace falta tocar `comando`.)
+
+- [ ] **Step 4: Correr el spec (pasa)** — `rspec spec/services/helic3/formatos/conversor_spec.rb`.
+
+- [ ] **Step 5: `VistaPrevia` con `formato:` (test primero)**
+
+En `vista_previa_spec.rb`:
+```ruby
+  it 'con formato :docx devuelve bytes de Word' do
+    allow(Helic3::Formatos::LlenarPlantilla).to receive(:call).and_return('<office/>')
+    allow(Helic3::Formatos::Conversor).to receive(:a_docx).and_return("PK\x03\x04 ok")
+    r = described_class.call(plantilla: plantilla, formato: :docx)
+    expect(r[:extension]).to eq('docx')
+    expect(r[:bytes]).to start_with('PK')
+  end
+```
+
+- [ ] **Step 6: Implementar `VistaPrevia`** (reemplaza la versión de la Task 5):
+```ruby
+class Helic3::Formatos::VistaPrevia
+  SALIDAS = {
+    pdf:  { mime: 'application/pdf', ext: 'pdf' },
+    docx: { mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', ext: 'docx' }
+  }.freeze
+
+  def self.call(plantilla:, item: nil, user: nil, formato: :pdf)
+    salida = SALIDAS.fetch(formato.to_sym) { raise ArgumentError, "formato no soportado: #{formato}" }
+    valores = item ? Helic3::Formatos::DatosDelFormato.call(item: item, user: user) : Helic3::Formatos::DatosDelFormato::DATOS_DE_EJEMPLO
+    lleno = Helic3::Formatos::LlenarPlantilla.call(plantilla.fodt.download, valores)
+    bytes = formato.to_sym == :docx ? Helic3::Formatos::Conversor.a_docx(lleno, extension: 'fodt') : Helic3::Formatos::Conversor.a_pdf(lleno, extension: 'fodt')
+    { bytes: bytes, tipo_mime: salida[:mime], extension: salida[:ext] }
+  end
+end
+```
+
+- [ ] **Step 7: Controlador `?formato` (test CA11 + implementación)**
+
+Test en `plantillas_controller_spec.rb`:
+```ruby
+  it 'vista_previa ?formato=docx devuelve un .docx [CA11]' do
+    plantilla = formato.plantillas.create!(account: account, version: 1, estado: 'activa')
+    allow(Helic3::Formatos::VistaPrevia).to receive(:call)
+      .and_return({ bytes: "PK\x03\x04", tipo_mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', extension: 'docx' })
+    get "/api/v1/accounts/#{account.id}/helic3/admin/plantillas/#{plantilla.id}/vista_previa?formato=docx",
+        headers: admin.create_new_auth_token
+    expect(response.media_type).to eq('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+  end
+```
+Implementación en `PlantillasController#vista_previa` (reemplaza la de la Task 6):
+```ruby
+  def vista_previa
+    plantilla = plantilla_de_la_cuenta
+    formato = (params[:formato].presence || 'pdf').to_sym
+    return render_json({ errores: ['formato no soportado'] }, :unprocessable_entity) unless %i[pdf docx].include?(formato)
+
+    salida = Helic3::Formatos::VistaPrevia.call(plantilla: plantilla, item: item_opcional, user: current_user, formato: formato)
+    disposicion = formato == :docx ? 'attachment' : 'inline'
+    send_data salida[:bytes], type: salida[:tipo_mime], disposition: disposicion,
+                              filename: "formato-#{plantilla.id}.#{salida[:extension]}"
+  end
+```
+(`render_json` es un helper inline simple: `render json: ..., status: ...`.)
+
+- [ ] **Step 8: Correr specs (pasan)** — `rspec spec/services/helic3/formatos/ spec/controllers/api/v1/accounts/helic3/admin/`.
+
+- [ ] **Step 9: rubocop + guardián + commit** — `feat(formatos): salida en PDF o Word (.docx) (FMT-02)`.
 
 ## Notas de ejecución
 
