@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_10_06_120000) do
+ActiveRecord::Schema[7.2].define(version: 2026_10_06_120100) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1418,6 +1418,24 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_06_120000) do
     t.index ["conversation_id"], name: "index_helic3_knowledge_faq_suggestions_on_conversation_id"
   end
 
+  create_table "helic3_plantillas_formato", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "formato_id", null: false
+    t.integer "version", null: false
+    t.string "estado", default: "borrador", null: false
+    t.jsonb "marcadores", default: [], null: false
+    t.bigint "subido_por_id"
+    t.string "subido_por_nombre"
+    t.datetime "activada_at"
+    t.bigint "activada_por_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "idx_h3_plantilla_formato_account"
+    t.index ["formato_id", "version"], name: "idx_h3_plantilla_formato_version", unique: true
+    t.index ["formato_id"], name: "idx_h3_plantilla_activa_unica", unique: true, where: "((estado)::text = 'activa'::text)"
+    t.index ["formato_id"], name: "idx_h3_plantilla_formato_formato"
+  end
+
   create_table "helic3_pqrs_centros_operacion", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "nombre", null: false
@@ -2041,6 +2059,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_06_120000) do
   add_foreign_key "helic3_garantia_items", "helic3_garantias", column: "garantia_id"
   add_foreign_key "helic3_garantias", "helic3_catalogo_coberturas_ciudad", column: "cobertura_ciudad_id"
   add_foreign_key "helic3_garantias", "helic3_tickets", column: "ticket_id"
+  add_foreign_key "helic3_plantillas_formato", "accounts"
+  add_foreign_key "helic3_plantillas_formato", "helic3_catalogo_formatos", column: "formato_id"
+  add_foreign_key "helic3_plantillas_formato", "users", column: "activada_por_id", on_delete: :nullify
+  add_foreign_key "helic3_plantillas_formato", "users", column: "subido_por_id", on_delete: :nullify
   add_foreign_key "helic3_pqrs_detalles", "helic3_pqrs_motivos", column: "motivo_id"
   add_foreign_key "helic3_ticket_datos", "accounts"
   add_foreign_key "helic3_ticket_datos", "helic3_catalogo_detalles_tipificados", column: "detalle_tipificado_id"
