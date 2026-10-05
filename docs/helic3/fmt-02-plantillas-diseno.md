@@ -8,7 +8,9 @@
 
 Que una plantilla `.docx` entre al sistema, se **valide**, se **llene** con datos y
 se **active**, todo **por API** (sin pantalla). Es el motor que FMT-03 (pantalla) y
-FMT-04 (generar desde el expediente) consumen después.
+FMT-04 (generar desde el expediente) consumen después. La salida se puede generar en
+**PDF o en Word (`.docx`)** — misma fuente (`.fodt` relleno), mismo motor
+(LibreOffice); ver §7.3 (decisión de Jhan, 2026-10-05).
 
 **Fuera de alcance:** pantalla (FMT-03); generar desde el expediente (FMT-04);
 editar el `.docx` en el navegador; plantillas en PDF/ODT/Excel; tablas que crecen
@@ -193,12 +195,31 @@ sobre texto XML) → se testea 100% en local con `.fodt` de prueba fabricados
 - Devuelve un objeto resultado (ok?/errores/plantilla/advertencias) que el
   controlador traduce a 201 o 422.
 
-### 7.2 `Helic3::Formatos::VistaPrevia.call(plantilla:, item: nil, user:)`
+### 7.2 `Helic3::Formatos::VistaPrevia.call(plantilla:, item: nil, user:, formato: :pdf)`
 
 - Toma el `.fodt` de la plantilla, lo llena con `DATOS_DE_EJEMPLO` (si `item` nil) o
-  con `DatosDelFormato.call(item:, user:)`, y lo pasa a PDF con `Conversor.a_pdf(_, extension: 'fodt')`.
-- Devuelve los bytes del PDF. **Es la misma función que usa FMT-04** para generar
-  (un solo camino: lo que se ve es lo que se guarda).
+  con `DatosDelFormato.call(item:, user:)`.
+- Según `formato` (`:pdf` por defecto, o `:docx`), convierte el `.fodt` relleno a PDF
+  (`Conversor.a_pdf(_, extension: 'fodt')`) o a Word (`Conversor.a_docx(_, extension: 'fodt')`).
+- Devuelve `{ bytes:, tipo_mime:, extension: }`. **Es la misma función que usa FMT-04**
+  para generar (un solo camino: lo que se ve es lo que se guarda).
+
+### 7.3 Salida en Word además de PDF (decisión de Jhan, 2026-10-05)
+
+- **Motivo:** el PDF es final; un Word editable permite ajustar el documento antes de
+  enviarlo al cliente. Verificado el 2026-10-05 que LibreOffice produce un `.docx`
+  válido desde el `.fodt` relleno (misma orden `--convert-to`, mismo motor).
+- **Cambio en el `Conversor` (FMT-01):** se agrega `docx` como destino de salida:
+  método `self.a_docx(bytes, extension:)` y `'docx'` en la lista de destinos de
+  `convertir`. `leer_salida` verifica `%PDF` solo para `pdf`; para `docx` valida la
+  cabecera `PK\x03\x04` (zip) en vez de devolver vacío. Esto toca el `Conversor`, que
+  es de FMT-01; va en esta rama porque FMT-02 parte de FMT-01.
+- **Caveat de fidelidad:** el Word de salida lo genera LibreOffice (Word lo abre bien,
+  puede tener diferencias mínimas vs el original de Karen). Es el mismo motor que el
+  PDF, así que la puerta de fidelidad (FMT-01 §4.5) cubre ambos; revisar el `.docx` en
+  la misma sesión con Julián.
+- **Gobernanza:** el **PDF guardado en el expediente sigue siendo el oficial**; el Word
+  es una descarga de conveniencia para editar, no reemplaza al PDF archivado.
 
 ## 8. API de administración (ticket H)
 
@@ -209,8 +230,8 @@ Dentro del `namespace :admin` de Helic3 ya existente en `config/routes.rb`
 GET    helic3/admin/formatos                         # formatos con su activa y versiones
 GET    helic3/admin/formatos/marcadores              # el diccionario (descripcion + ejemplo)
 POST   helic3/admin/formatos/:formato_id/plantillas  # multipart "archivo" → 201 | 422
-GET    helic3/admin/plantillas/:id/vista_previa       # ?item_id= opcional → application/pdf inline
-GET    helic3/admin/plantillas/:id/original           # descarga el .docx subido
+GET    helic3/admin/plantillas/:id/vista_previa       # ?item_id= opcional, ?formato=pdf|docx (def pdf) → PDF inline o .docx
+GET    helic3/admin/plantillas/:id/original           # descarga el .docx subido (la plantilla en blanco)
 POST   helic3/admin/plantillas/:id/activar            # la activa anterior → retirada (transacción)
 DELETE helic3/admin/plantillas/:id                    # solo borrador
 ```
@@ -224,8 +245,12 @@ Controladores (`Api::V1::Accounts::Helic3::Admin::FormatosController` y
 - `activar`: transacción que pone la activa anterior en `retirada` y esta en `activa`
   con `activada_at`/`activada_por_id`; el índice parcial es la última red.
 - `destroy`: 422 si no es `borrador`.
+- `vista_previa`: `?formato=docx` devuelve el Word (`send_data` con
+  `application/vnd.openxmlformats-officedocument.wordprocessingml.document`,
+  `disposition: attachment`); por defecto o `?formato=pdf` devuelve el PDF inline.
+  Un `formato` distinto de `pdf`/`docx` → 422.
 
-## 9. Pruebas (los 10 CA)
+## 9. Pruebas (los 10 CA del ticket + 2 de la salida Word)
 
 Ubicación: `spec/services/helic3/formatos/`, `spec/models/helic3/plantilla_formato_spec.rb`,
 `spec/controllers/api/v1/accounts/helic3/admin/`.
@@ -242,6 +267,8 @@ Ubicación: `spec/services/helic3/formatos/`, `spec/models/helic3/plantilla_form
 | 8 | PDF renombrado a `.docx`, o `.xlsx` → 422 | **Sí** (chequeo de bytes) |
 | 9 | Sin rol admin → 401 (ver §3.3); plantilla de otra cuenta → 404 | **Sí** |
 | 10 | Migraciones corren y revierten limpio; `schema.rb` solo suma las 2 tablas; único upstream `config/routes.rb` | **Sí** |
+| 11 | `?formato=docx` devuelve `...wordprocessingml.document` cuyos bytes empiezan con `PK\x03\x04`; `?formato=xlsx` → 422 | Stub soffice |
+| 12 | `Conversor.a_docx` devuelve bytes con cabecera `PK` (zip); salida vacía o sin `PK` → `Conversor::Error` | **Sí** (stub Open3, como `conversor_spec`) |
 
 > Lo que invoca `soffice` (SubirPlantilla, VistaPrevia) se **stubea** como en
 > `spec/services/helic3/formatos/conversor_spec.rb` (dev local no tiene LibreOffice).
@@ -269,6 +296,7 @@ git diff --name-only origin/dev | grep -v -E "helic3|spec/|railpack.json|nixpack
 1. Migraciones + modelos (`Catalogo::Formato`, `PlantillaFormato`) + seeder `FORMATOS`.
 2. `Marcadores::DICCIONARIO` + `DatosDelFormato` (con `DATOS_DE_EJEMPLO`).
 3. `LlenarPlantilla` (+ sus specs locales: CA3, CA4) — la pieza de riesgo, primero probada.
-4. `SubirPlantilla` + `VistaPrevia` (stub soffice en specs).
-5. Controladores + rutas admin + specs de controlador (CA1,2,7,8,9).
-6. Pasada de `rubocop` + guardián OSS + comandos de verificación.
+4. `Conversor.a_docx` (salida Word en el motor FMT-01) + su spec (CA12, stub Open3).
+5. `SubirPlantilla` + `VistaPrevia` con `formato:` pdf/docx (stub soffice en specs).
+6. Controladores + rutas admin + specs de controlador (CA1,2,7,8,9,11).
+7. Pasada de `rubocop` + guardián OSS + comandos de verificación.
