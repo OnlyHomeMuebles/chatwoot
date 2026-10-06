@@ -365,6 +365,19 @@
       "SUCCESS": "Ticket deleted",
       "ERROR": "There was an error deleting the ticket",
       "FORBIDDEN": "You don't have permission to delete this ticket."
+    },
+    "GENERAR_FORMATO": {
+      "TITLE": "Generate format",
+      "GENERAR": "Generate and save",
+      "PREVIEW": "Preview",
+      "ITEM_LABEL": "Product",
+      "FORMATO_LABEL": "Format",
+      "SUGERIDO": "Suggested",
+      "SIN_PLANTILLA": "No active template",
+      "FALTANTES_TITLE": "Missing data in the case sheet:",
+      "SIN_GARANTIA": "This case has no warranty; there are no formats to generate.",
+      "GUARDADO": "Format generated and saved to the case file",
+      "ERROR": "The format could not be generated"
     }
   }
 }

@@ -30,5 +30,9 @@ class Helic3::Catalogo::ProcesoGarantia < ApplicationRecord
 
   include Helic3::Catalogo::Comun
 
+  # FMT-04 (parte D): el formato que se sugiere al generar desde un item en este
+  # proceso. Opcional: no todos los procesos tienen un formato asociado.
+  belongs_to :formato_sugerido, class_name: 'Helic3::Catalogo::Formato', optional: true
+
   validates :plazo_dias_habiles, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
 end

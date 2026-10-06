@@ -176,6 +176,17 @@ class Helic3::Catalogo::SeederService
     { nombre: 'No. 8 · Cumplimiento — cambio o devolución',           codigo: 'cumplimiento_cambio_devolucion' }
   ].freeze
 
+  # FMT-04 (parte D): formato sugerido por proceso (codigo_proceso => codigo_formato).
+  # Entrega de producto -> No. 2 queda A CONFIRMAR con Karen (ticket §7.D). Reparacion
+  # en fabrica y garantia negada no sugieren formato. Solo se precarga donde este vacio.
+  SUGERENCIA_FORMATO = {
+    'visita_tecnica' => 'visita_tecnica',
+    'recoleccion' => 'recoleccion_productos',
+    'cambio_producto' => 'cumplimiento_cambio_devolucion',
+    'devolucion_dinero' => 'cumplimiento_cambio_devolucion',
+    'entrega_producto' => 'cumplimiento_mercancia_reparada'
+  }.freeze
+
   def initialize(account)
     @account = account
   end
@@ -190,6 +201,7 @@ class Helic3::Catalogo::SeederService
     sembrar_simple(Helic3::Catalogo::DetalleTipificado, DETALLES_TIPIFICADOS)
     sembrar_con_atributos(Helic3::Catalogo::ProcesoGarantia, PROCESOS_GARANTIA)
     sembrar_con_atributos(Helic3::Catalogo::Formato, FORMATOS)
+    sembrar_sugerencia_formato
     sembrar_coberturas
     sembrar_parametros
     resumen
@@ -215,6 +227,18 @@ class Helic3::Catalogo::SeederService
       categoria = Helic3::Catalogo::Categoria.find_by!(account: @account, codigo: fila[:categoria])
       atributos = fila.except(:codigo, :categoria).merge(posicion: indice, categoria: categoria)
       sembrar_fila(Helic3::Catalogo::MotivoPqr, fila[:codigo], atributos)
+    end
+  end
+
+  # FMT-04 (parte D): precarga formato_sugerido en cada proceso SOLO si esta vacio,
+  # para no pisar lo que Karen haya configurado desde el admin de catalogos.
+  def sembrar_sugerencia_formato
+    SUGERENCIA_FORMATO.each do |codigo_proceso, codigo_formato|
+      proceso = Helic3::Catalogo::ProcesoGarantia.find_by(account: @account, codigo: codigo_proceso)
+      next if proceso.nil? || proceso.formato_sugerido_id.present?
+
+      formato = Helic3::Catalogo::Formato.find_by(account: @account, codigo: codigo_formato)
+      proceso.update!(formato_sugerido: formato) if formato
     end
   end
 
