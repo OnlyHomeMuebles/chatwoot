@@ -65,9 +65,20 @@ class Helic3::Agents::LectorDeImagenes
   # fotos de iPhone cuando el canal no las convierte antes de llegar (WhatsApp casi
   # siempre reconvierte a JPEG, pero el widget web y otros canales no). Para esos
   # content-types se normaliza a PNG con libvips antes de pasarselos a tesseract
-  # (ver #normalizar_si_hace_falta). libvips ya esta en el Gemfile via
-  # image_processing (dependencia de ActiveStorage); no es una gema nueva.
-  FORMATOS_SIN_SOPORTE_DIRECTO = %w[image/heic image/heif].freeze
+  # (ver #normalizar_y_leer). libvips ya esta en el Gemfile via image_processing
+  # (dependencia de ActiveStorage); no es una gema nueva. heic-sequence/
+  # heif-sequence son las Live Photos / rafagas de iPhone -- mismo contenedor,
+  # mismo motor, y un canal que preserve el content-type real del navegador
+  # puede mandarlas con ese sufijo.
+  FORMATOS_SIN_SOPORTE_DIRECTO = %w[image/heic image/heif image/heic-sequence image/heif-sequence].freeze
+  # libvips decodifica DENTRO del proceso Ruby (a diferencia de tesseract, que
+  # corre aparte y se puede matar con SIGKILL): un archivo HEIC pequeño pero
+  # diseñado para expandirse a una imagen gigante (bomba de descompresion)
+  # podria colgar el worker igual que uno corrupto. Un tope de megapixeles
+  # (chequeable sin decodificar los pixeles: libvips es perezoso, width/height
+  # son del encabezado) mas un timeout acotan el riesgo.
+  MAX_MEGAPIXELES_NORMALIZAR = 40_000_000
+  TIMEOUT_NORMALIZAR = 10
 
   def self.leer(urls)
     new.leer(urls)
@@ -205,10 +216,22 @@ class Helic3::Agents::LectorDeImagenes
   def normalizar_y_leer(ruta_original)
     convertido = Tempfile.new(['helic3-ocr-normalizado', '.png'])
     begin
-      Vips::Image.new_from_file(ruta_original).write_to_file(convertido.path)
+      Timeout.timeout(TIMEOUT_NORMALIZAR) { normalizar(ruta_original, convertido.path) }
       self.class.ocr(convertido.path)
     ensure
       convertido.close!
     end
+  end
+
+  # new_from_file es perezoso: leer width/height solo decodifica el encabezado.
+  # El rechazo por tamaño corre ANTES de write_to_file (la decodificacion real
+  # y cara) a proposito.
+  def normalizar(ruta_original, ruta_destino)
+    imagen = Vips::Image.new_from_file(ruta_original)
+    if imagen.width * imagen.height > MAX_MEGAPIXELES_NORMALIZAR
+      raise Vips::Error, "imagen de #{imagen.width}x#{imagen.height} supera el tope de #{MAX_MEGAPIXELES_NORMALIZAR} px"
+    end
+
+    imagen.write_to_file(ruta_destino)
   end
 end

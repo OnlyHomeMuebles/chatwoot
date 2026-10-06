@@ -131,15 +131,56 @@ RSpec.describe Helic3::Agents::LectorDeImagenes do
   # AGT-09 (mas formatos): tesseract/leptonica no decodifican HEIC/HEIF -- el formato por
   # defecto de las fotos de iPhone cuando el canal no las convierte antes de llegar.
   describe 'formatos que tesseract no decodifica directamente (HEIC/HEIF)' do
+    def stub_vips_image(ancho: 800, alto: 600)
+      imagen = instance_double(Vips::Image, width: ancho, height: alto)
+      allow(Vips::Image).to receive(:new_from_file).and_return(imagen)
+      allow(imagen).to receive(:write_to_file)
+      imagen
+    end
+
     it 'normaliza un HEIC a PNG con libvips antes de leerlo con tesseract' do
       url = 'https://cdn.chatwoot.test/factura.heic'
       responder_con_imagen(url, content_type: 'image/heic')
-      convertido = instance_double(Vips::Image)
-      allow(Vips::Image).to receive(:new_from_file).and_return(convertido)
-      allow(convertido).to receive(:write_to_file)
+      stub_vips_image
       expect(described_class).to receive(:ocr).with(a_string_ending_with('.png')).and_return('Factura 8821')
 
       expect(described_class.leer([url])).to eq('Factura 8821')
+    end
+
+    # Live Photos / rafagas de iPhone: mismo contenedor, mismo motor que HEIC.
+    it 'tambien normaliza image/heic-sequence (Live Photos de iPhone)' do
+      url = 'https://cdn.chatwoot.test/rafaga.heic'
+      responder_con_imagen(url, content_type: 'image/heic-sequence')
+      stub_vips_image
+      expect(described_class).to receive(:ocr).with(a_string_ending_with('.png')).and_return('Factura 8821')
+
+      expect(described_class.leer([url])).to eq('Factura 8821')
+    end
+
+    # libvips corre DENTRO del proceso Ruby, a diferencia de tesseract (proceso
+    # aparte, matable con SIGKILL) -- una imagen que decodificara a un tamaño
+    # absurdo (bomba de descompresion) se rechaza ANTES de la decodificacion
+    # real (write_to_file), sin tumbar el job.
+    it 'rechaza una imagen que decodificaria mas alla del tope de megapixeles, sin tumbar el job' do
+      url = 'https://cdn.chatwoot.test/bomba.heic'
+      responder_con_imagen(url, content_type: 'image/heic')
+      imagen = stub_vips_image(ancho: 50_000, alto: 50_000)
+      allow(Rails.logger).to receive(:error)
+
+      expect(described_class.leer([url])).to be_nil
+      expect(imagen).not_to have_received(:write_to_file)
+      expect(Rails.logger).to have_received(:error).with(a_string_matching(/lector_de_imagenes fallo/))
+    end
+
+    it 'corta y sigue si la normalizacion con libvips se cuelga mas de TIMEOUT_NORMALIZAR' do
+      url = 'https://cdn.chatwoot.test/colgada.heic'
+      responder_con_imagen(url, content_type: 'image/heic')
+      allow(Vips::Image).to receive(:new_from_file) { sleep 0.2 }
+      stub_const("#{described_class}::TIMEOUT_NORMALIZAR", 0.05)
+      allow(Rails.logger).to receive(:error)
+
+      expect(described_class.leer([url])).to be_nil
+      expect(Rails.logger).to have_received(:error).with(a_string_matching(/lector_de_imagenes fallo/))
     end
 
     it 'no pasa por libvips para un formato que tesseract ya soporta' do
