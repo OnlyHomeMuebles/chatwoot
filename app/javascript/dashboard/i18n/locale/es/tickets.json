@@ -205,6 +205,28 @@
         "PARAMETROS": "Tiempos y umbrales de operación del módulo."
       }
     },
+    "FORMATOS": {
+      "TITLE": "Formatos",
+      "SIN_PLANTILLA": "Aún no tiene plantilla; no se puede generar.",
+      "VERSION_ACTIVA": "Versión %{version} · activada el %{fecha} por %{quien}",
+      "SUBIR": "Subir nueva versión",
+      "DESCARGAR": "Descargar .docx",
+      "ACTIVAR": "Activar esta versión",
+      "ACTIVAR_CONFIRMACION": "Desde ahora todos los casos usan esta versión del formato. ¿Activar?",
+      "DESCARTAR": "Descartar borrador",
+      "VISTA_PREVIA": "Vista previa",
+      "ABRIR_NUEVA_PESTANA": "Abrir en pestaña nueva",
+      "DESCONOCIDOS": "Marcadores no reconocidos:",
+      "MARCADORES": {
+        "TITLE": "Marcadores disponibles",
+        "COPIAR": "Copiar",
+        "COPIADO": "Copiado"
+      },
+      "SOLO_LECTURA": "Solo lectura",
+      "GUARDADO": "Listo",
+      "FORBIDDEN": "No tienes permiso para esta acción.",
+      "ERROR": "Ocurrió un error. Inténtalo de nuevo."
+    },
     "DETAIL": {
       "TITLE": "Detalle del expediente",
       "NOT_FOUND": "No se encontró el expediente",

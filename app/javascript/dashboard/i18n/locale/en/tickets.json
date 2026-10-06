@@ -205,6 +205,28 @@
         "PARAMETROS": "Operational times and thresholds of the module."
       }
     },
+    "FORMATOS": {
+      "TITLE": "Formats",
+      "SIN_PLANTILLA": "No template yet; it cannot be generated.",
+      "VERSION_ACTIVA": "Version %{version} · activated on %{fecha} by %{quien}",
+      "SUBIR": "Upload new version",
+      "DESCARGAR": "Download .docx",
+      "ACTIVAR": "Activate this version",
+      "ACTIVAR_CONFIRMACION": "From now on all cases use this version of the format. Activate?",
+      "DESCARTAR": "Discard draft",
+      "VISTA_PREVIA": "Preview",
+      "ABRIR_NUEVA_PESTANA": "Open in new tab",
+      "DESCONOCIDOS": "Unrecognized markers:",
+      "MARCADORES": {
+        "TITLE": "Available markers",
+        "COPIAR": "Copy",
+        "COPIADO": "Copied"
+      },
+      "SOLO_LECTURA": "Read only",
+      "GUARDADO": "Done",
+      "FORBIDDEN": "You don't have permission for this action.",
+      "ERROR": "Something went wrong. Please try again."
+    },
     "DETAIL": {
       "TITLE": "Case detail",
       "NOT_FOUND": "Case not found",
