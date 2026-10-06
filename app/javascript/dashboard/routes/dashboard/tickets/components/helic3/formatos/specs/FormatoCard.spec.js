@@ -69,4 +69,30 @@ describe('FormatoCard', () => {
     );
     expect(wrapper.emitted('subir')[0][0].archivo.name).toBe('p.docx');
   });
+
+  it('al confirmar, emite activar y CIERRA el dialogo', () => {
+    const close = vi.fn();
+    const formatoConBorrador = {
+      id: 3,
+      codigo: 'x',
+      nombre: 'X',
+      activa_id: null,
+      versiones: [{ id: 20, version: 1, estado: 'borrador', marcadores: [] }],
+    };
+    const wrapper = shallowMount(FormatoCard, {
+      props: { esAdmin: true, formato: formatoConBorrador },
+      global: {
+        stubs: {
+          Dialog: {
+            name: 'Dialog',
+            template: '<div />',
+            methods: { open: vi.fn(), close },
+          },
+        },
+      },
+    });
+    wrapper.findComponent({ name: 'Dialog' }).vm.$emit('confirm');
+    expect(wrapper.emitted('activar')[0]).toEqual([20]);
+    expect(close).toHaveBeenCalled();
+  });
 });

@@ -210,7 +210,7 @@
     "FORMATOS": {
       "TITLE": "Formats",
       "SIN_PLANTILLA": "No template yet; it cannot be generated.",
-      "VERSION_ACTIVA": "Version %{version} · activated on %{fecha} by %{quien}",
+      "VERSION_ACTIVA": "Version %{version} (active)",
       "SUBIR": "Upload new version",
       "DESCARGAR": "Download .docx",
       "ACTIVAR": "Activate this version",

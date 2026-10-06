@@ -42,6 +42,7 @@ const alElegirArchivo = event => {
 
 const confirmarActivar = () => {
   if (borrador.value) emit('activar', borrador.value.id);
+  dialogoActivar.value?.close();
 };
 </script>
 
@@ -53,13 +54,7 @@ const confirmarActivar = () => {
     <h3 class="text-base font-medium text-n-slate-12">{{ formato.nombre }}</h3>
 
     <p v-if="activa" class="text-sm text-n-slate-11">
-      {{
-        t('TICKETS.FORMATOS.VERSION_ACTIVA', {
-          version: activa.version,
-          fecha: '',
-          quien: '',
-        })
-      }}
+      {{ t('TICKETS.FORMATOS.VERSION_ACTIVA', { version: activa.version }) }}
     </p>
     <p v-else data-testid="sin-plantilla" class="text-sm text-n-ruby-11">
       {{ t('TICKETS.FORMATOS.SIN_PLANTILLA') }}
