@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
@@ -29,6 +29,8 @@ const cargando = computed(
 const ANIO_ACTUAL = new Date().getFullYear();
 const ANIOS = Array.from({ length: 5 }, (_, i) => ANIO_ACTUAL - i);
 const MESES = Array.from({ length: 12 }, (_, i) => i + 1);
+const ALTURA_GRAFICA = 240;
+const DEBOUNCE_BUSQUEDA_MS = 300;
 
 const filtros = reactive({
   anio: '',
@@ -62,14 +64,18 @@ const motivoOptions = opcionesDe('motivos_garantia');
 const detalleOptions = opcionesDe('detalles_tipificados');
 const procesoOptions = opcionesDe('procesos_garantia');
 
+const huboError = ref(false);
+
 const cargar = async () => {
   const params = {};
   Object.entries(filtros).forEach(([clave, valor]) => {
     if (valor !== '') params[clave] = valor;
   });
+  huboError.value = false;
   try {
     await indicadoresStore.fetchGarantias(params);
   } catch (error) {
+    huboError.value = true;
     useAlert(t('HELIC3_INDICADORES.ERROR'));
   }
 };
@@ -93,9 +99,31 @@ onMounted(() => {
   cargar();
 });
 
-// cualquier cambio de filtro vuelve a pedir al servidor: los indicadores son
-// pocas filas (GROUP BY), no vale la pena filtrar en cliente ni paginar.
-watch(() => ({ ...filtros }), cargar, { deep: true });
+// los selectores aplican de inmediato: los indicadores son pocas filas
+// (GROUP BY), no vale la pena filtrar en cliente ni paginar.
+watch(
+  () => [
+    filtros.anio,
+    filtros.mes,
+    filtros.cobertura_ciudad_id,
+    filtros.motivo_garantia_id,
+    filtros.detalle_tipificado_id,
+    filtros.proceso_id,
+  ],
+  cargar
+);
+
+// producto es texto libre: sin debounce, cada tecla dispararia una consulta y
+// una respuesta tardia de un termino viejo podria pisar una mas nueva (mismo
+// patron que TicketsPage.vue con su filtro de busqueda).
+let debounceBusqueda = null;
+watch(
+  () => filtros.producto,
+  () => {
+    clearTimeout(debounceBusqueda);
+    debounceBusqueda = setTimeout(cargar, DEBOUNCE_BUSQUEDA_MS);
+  }
+);
 
 const sinDatos = computed(
   () => !!datos.value && datos.value.kpis.garantias === 0
@@ -177,6 +205,23 @@ const graficaTrimestral = computed(() =>
       <Spinner :size="32" />
     </div>
 
+    <!-- CA: un fallo del servidor no debe dejar el panel en blanco sin
+    explicacion -- queda el aviso (ya avisado tambien por toast) y un boton
+    para reintentar sin tener que tocar un filtro. -->
+    <div
+      v-else-if="huboError"
+      class="py-12 text-sm text-center text-n-slate-11"
+    >
+      <p class="mb-3">{{ t('HELIC3_INDICADORES.ERROR') }}</p>
+      <Button
+        :label="t('HELIC3_INDICADORES.RETRY')"
+        variant="outline"
+        color="slate"
+        size="sm"
+        @click="cargar"
+      />
+    </div>
+
     <template v-else-if="datos">
       <p v-if="sinDatos" class="py-12 text-sm text-center text-n-slate-11">
         {{ t('HELIC3_INDICADORES.EMPTY') }}
@@ -238,7 +283,7 @@ const graficaTrimestral = computed(() =>
             <BarChart
               v-if="datos.mensual.length"
               :data="graficaMensual"
-              :height="240"
+              :height="ALTURA_GRAFICA"
               :aria-label="t('HELIC3_INDICADORES.GARANTIAS.MONTHLY')"
             />
           </div>
@@ -251,7 +296,7 @@ const graficaTrimestral = computed(() =>
             <BarChart
               v-if="datos.trimestral.length"
               :data="graficaTrimestral"
-              :height="240"
+              :height="ALTURA_GRAFICA"
               :aria-label="t('HELIC3_INDICADORES.GARANTIAS.QUARTERLY')"
             />
           </div>

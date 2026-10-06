@@ -1,4 +1,5 @@
-import { shallowMount } from '@vue/test-utils';
+import { shallowMount, mount, flushPromises } from '@vue/test-utils';
+import Button from 'dashboard/components-next/button/Button.vue';
 import GarantiasTab from '../GarantiasTab.vue';
 
 // vi.mock(...) se iza (hoisted) al tope del archivo; vi.hoisted() es la forma
@@ -25,6 +26,10 @@ vi.mock('dashboard/composables/store', () => ({
 
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({ t: key => key }),
+}));
+
+vi.mock('dashboard/composables', () => ({
+  useAlert: vi.fn(),
 }));
 
 let garantiasRef;
@@ -96,5 +101,54 @@ describe('GarantiasTab.vue (IND-01)', () => {
     expect(wrapper.text()).toContain('2');
     expect(wrapper.text()).toContain('3');
     expect(wrapper.text()).toContain('7');
+  });
+
+  // CA: un fallo del servidor no debe dejar el panel en blanco sin explicacion.
+  it('muestra un aviso de error con boton de reintentar cuando el fetch falla, y reintentar vuelve a pedir', async () => {
+    fetchGarantias.mockRejectedValueOnce(new Error('500'));
+    const wrapper = shallowMount(GarantiasTab);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('HELIC3_INDICADORES.ERROR');
+    const reintentar = wrapper
+      .findAllComponents(Button)
+      .find(boton => boton.props('label') === 'HELIC3_INDICADORES.RETRY');
+    expect(reintentar).toBeTruthy();
+
+    fetchGarantias.mockClear();
+    fetchGarantias.mockResolvedValueOnce();
+    await reintentar.vm.$emit('click');
+
+    expect(fetchGarantias).toHaveBeenCalledTimes(1);
+  });
+
+  describe('filtro de producto (texto libre)', () => {
+    beforeEach(() => {
+      garantiasRef = indicadoresVacios();
+    });
+
+    // a diferencia de los selectores (aplican de inmediato), el texto libre se
+    // debounca: sin esto, cada tecla dispara una consulta y una respuesta
+    // tardia de un termino viejo podria pisar una mas nueva en pantalla. Mount
+    // completo (no shallow) para que el Input real dispare el v-model.
+    it('no pide los indicadores de inmediato al escribir; espera el debounce', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const wrapper = mount(GarantiasTab);
+      await flushPromises();
+      fetchGarantias.mockClear();
+
+      await wrapper
+        .find(
+          'input[placeholder="HELIC3_INDICADORES.FILTERS.PRODUCT_PLACEHOLDER"]'
+        )
+        .setValue('Cama');
+      expect(fetchGarantias).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(300);
+      await flushPromises();
+      expect(fetchGarantias).toHaveBeenCalledTimes(1);
+      expect(fetchGarantias).toHaveBeenCalledWith({ producto: 'Cama' });
+      vi.useRealTimers();
+    });
   });
 });

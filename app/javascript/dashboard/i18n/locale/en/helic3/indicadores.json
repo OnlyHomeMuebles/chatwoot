@@ -20,6 +20,7 @@
     },
     "EMPTY": "No data for this filter",
     "ERROR": "Could not load the indicators",
+    "RETRY": "Retry",
     "GARANTIAS": {
       "KPI_TOTAL": "Warranties",
       "KPI_SOLVED": "Solved",
