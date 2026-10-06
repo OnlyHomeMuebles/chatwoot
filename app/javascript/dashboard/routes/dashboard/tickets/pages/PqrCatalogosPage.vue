@@ -8,6 +8,7 @@ import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
+import FormatosPanel from '../components/helic3/formatos/FormatosPanel.vue';
 
 // Catalogos y parametros editables (ADM-01). Karen edita el vocabulario, las
 // marcas de comportamiento y los tiempos del modulo sin consola. Lectura para
@@ -27,6 +28,7 @@ const TIPOS = [
   'coberturas_ciudad',
 ];
 const PARAMETROS = 'parametros';
+const FORMATOS = 'formatos';
 
 // Campos propios de cada catalogo, con el CONTROL resuelto por el tipo de columna
 // (no por el nombre): abre_garantia es enum en motivos y booleano en resultados.
@@ -92,11 +94,13 @@ const nuevo = reactive({});
 const uiFlags = useMapGetter('pqrCatalogos/getUIFlags');
 const getCatalogo = useMapGetter('pqrCatalogos/getCatalogo');
 const parametros = useMapGetter('pqrCatalogos/getParametros');
+const formatos = useMapGetter('helic3Formatos/getFormatos');
 const currentRole = useMapGetter('getCurrentRole');
 const catalogosPanel = useMapGetter('tickets/getCatalogos');
 
 const esAdmin = computed(() => currentRole.value === 'administrator');
 const esParametros = computed(() => tabActivo.value === PARAMETROS);
+const esFormatos = computed(() => tabActivo.value === FORMATOS);
 const registros = computed(() => getCatalogo.value(tabActivo.value));
 const camposActivos = computed(() => CAMPOS[tabActivo.value] || []);
 
@@ -150,6 +154,8 @@ const reiniciarNuevo = () => {
 };
 
 const cargar = () => {
+  // formatos tiene su propio panel (FormatosPanel) que carga sus datos al montarse.
+  if (esFormatos.value) return;
   if (esParametros.value) {
     store.dispatch('pqrCatalogos/fetchParametros');
   } else {
@@ -169,10 +175,11 @@ onMounted(() => {
 });
 
 // Conteo por catalogo para el badge del menu lateral.
-const conteoDe = tipo =>
-  tipo === PARAMETROS
-    ? parametros.value.length
-    : (getCatalogo.value(tipo) || []).length;
+const conteoDe = tipo => {
+  if (tipo === PARAMETROS) return parametros.value.length;
+  if (tipo === FORMATOS) return formatos.value.length;
+  return (getCatalogo.value(tipo) || []).length;
+};
 
 const labelDe = tipo => t(`TICKETS.ADMIN.TABS.${tipo.toUpperCase()}`);
 const descripcionDe = tipo => t(`TICKETS.ADMIN.DESC.${tipo.toUpperCase()}`);
@@ -345,6 +352,20 @@ const guardarParametro = (parametro, valor) => {
               {{ conteoDe(PARAMETROS) }}
             </span>
           </button>
+          <button
+            class="flex items-center justify-between gap-2 px-2 py-1.5 text-sm rounded-lg"
+            :class="
+              esFormatos
+                ? 'bg-n-alpha-2 text-n-slate-12 font-medium'
+                : 'text-n-slate-11 hover:bg-n-alpha-1'
+            "
+            @click="tabActivo = FORMATOS"
+          >
+            <span class="truncate">{{ labelDe(FORMATOS) }}</span>
+            <span class="text-xs tabular-nums text-n-slate-10">
+              {{ conteoDe(FORMATOS) }}
+            </span>
+          </button>
         </div>
       </aside>
 
@@ -370,8 +391,10 @@ const guardarParametro = (parametro, valor) => {
         </div>
 
         <div class="flex-1 p-6 overflow-y-auto">
+          <FormatosPanel v-if="esFormatos" />
+
           <div
-            v-if="uiFlags.isFetching"
+            v-else-if="uiFlags.isFetching"
             class="flex items-center justify-center py-12 text-n-slate-11"
           >
             <Spinner :size="24" />

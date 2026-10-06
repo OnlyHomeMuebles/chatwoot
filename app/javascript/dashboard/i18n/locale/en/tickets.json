@@ -183,7 +183,8 @@
         "MOTIVOS_GARANTIA": "Warranty motives",
         "PROCESOS_GARANTIA": "Warranty processes",
         "COBERTURAS_CIUDAD": "City coverage",
-        "PARAMETROS": "Parameters"
+        "PARAMETROS": "Parameters",
+        "FORMATOS": "Formats"
       },
       "SUBTITLE": "The module vocabulary is managed here. No value is hard-coded.",
       "ACTIVE": "Active",
@@ -202,7 +203,8 @@
         "MOTIVOS_GARANTIA": "What happened to the product; can drive a date-based assignment rule.",
         "PROCESOS_GARANTIA": "Milestones within the same business-day budget; they do not reset the clock.",
         "COBERTURAS_CIUDAD": "With an in-house technician the warranty starts with a visit; otherwise, with pickup.",
-        "PARAMETROS": "Operational times and thresholds of the module."
+        "PARAMETROS": "Operational times and thresholds of the module.",
+        "FORMATOS": ".docx templates for the warranty formats."
       }
     },
     "FORMATOS": {
