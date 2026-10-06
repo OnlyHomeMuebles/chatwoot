@@ -1,0 +1,38 @@
+{
+  "HELIC3_INDICADORES": {
+    "MENU": "Indicadores",
+    "TITLE": "Indicadores",
+    "SUBTITLE": "Los mismos indicadores del Dash CX externo, ahora dentro del CRM.",
+    "TABS": {
+      "GARANTIAS": "Garantías"
+    },
+    "FILTERS": {
+      "YEAR": "Año",
+      "MONTH": "Mes",
+      "CITY": "Ciudad",
+      "MOTIVE": "Motivo",
+      "DETAIL": "Detalle",
+      "STAGE": "Etapa",
+      "PRODUCT": "Producto",
+      "PRODUCT_PLACEHOLDER": "Buscar por nombre de producto",
+      "CLEAR": "Limpiar filtros",
+      "ALL": "Todos"
+    },
+    "EMPTY": "Sin datos para este filtro",
+    "ERROR": "No se pudieron cargar los indicadores",
+    "GARANTIAS": {
+      "KPI_TOTAL": "Garantías",
+      "KPI_SOLVED": "Solucionadas",
+      "KPI_IN_PROGRESS": "En proceso",
+      "KPI_PRODUCTS": "Productos",
+      "MONTHLY": "Detalle mensual",
+      "QUARTERLY": "Detalle trimestral",
+      "BY_CITY": "Por ciudad",
+      "BY_MOTIVE": "Por motivo",
+      "BY_DETAIL": "Por detalle",
+      "BY_STAGE": "Por etapa",
+      "BY_PRODUCT": "Por producto (top 20)",
+      "COUNT": "Garantías"
+    }
+  }
+}
