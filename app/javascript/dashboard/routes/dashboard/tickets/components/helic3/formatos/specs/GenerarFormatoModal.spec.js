@@ -118,4 +118,21 @@ describe('GenerarFormatoModal.vue (FMT-04)', () => {
     });
     expect(dispatch).toHaveBeenCalledWith('pqrInbox/fetchDocumentos', 7);
   });
+
+  it('al fallar la generación muestra el mensaje del servidor [N3]', async () => {
+    GenerarFormatoAPI.generar.mockRejectedValue({
+      response: {
+        status: 422,
+        data: { error: 'el formato no tiene una plantilla activa' },
+      },
+    });
+    const wrapper = await montarYAbrir();
+
+    await wrapper.findComponent(Dialog).vm.$emit('confirm');
+    await flushPromises();
+
+    expect(alert).toHaveBeenCalledWith(
+      'el formato no tiene una plantilla activa'
+    );
+  });
 });

@@ -177,14 +177,15 @@ class Helic3::Catalogo::SeederService
   ].freeze
 
   # FMT-04 (parte D): formato sugerido por proceso (codigo_proceso => codigo_formato).
-  # Entrega de producto -> No. 2 queda A CONFIRMAR con Karen (ticket §7.D). Reparacion
-  # en fabrica y garantia negada no sugieren formato. Solo se precarga donde este vacio.
+  # Solo se precarga donde este vacio. 'entrega_producto' -> No. 2 NO se precarga: el
+  # ticket lo marcaba "a confirmar con Karen" (N1 revision Jhan), asi que se deja sin
+  # sugerencia hasta que ella lo confirme y lo asigne desde el admin de catalogos.
+  # Reparacion en fabrica y garantia negada no sugieren formato.
   SUGERENCIA_FORMATO = {
     'visita_tecnica' => 'visita_tecnica',
     'recoleccion' => 'recoleccion_productos',
     'cambio_producto' => 'cumplimiento_cambio_devolucion',
-    'devolucion_dinero' => 'cumplimiento_cambio_devolucion',
-    'entrega_producto' => 'cumplimiento_mercancia_reparada'
+    'devolucion_dinero' => 'cumplimiento_cambio_devolucion'
   }.freeze
 
   def initialize(account)
@@ -233,6 +234,12 @@ class Helic3::Catalogo::SeederService
   # FMT-04 (parte D): precarga formato_sugerido en cada proceso SOLO si esta vacio,
   # para no pisar lo que Karen haya configurado desde el admin de catalogos.
   def sembrar_sugerencia_formato
+    # guardas (B1 revision Jhan): si SIE-01 corre el seeder antes de que exista la
+    # tabla de formatos o la columna formato_sugerido_id, salir sin tocar nada en vez
+    # de reventar (NoMethodError/UndefinedTable) y tumbar el arranque.
+    return unless Helic3::Catalogo::Formato.table_exists?
+    return unless Helic3::Catalogo::ProcesoGarantia.column_names.include?('formato_sugerido_id')
+
     SUGERENCIA_FORMATO.each do |codigo_proceso, codigo_formato|
       proceso = Helic3::Catalogo::ProcesoGarantia.find_by(account: @account, codigo: codigo_proceso)
       next if proceso.nil? || proceso.formato_sugerido_id.present?

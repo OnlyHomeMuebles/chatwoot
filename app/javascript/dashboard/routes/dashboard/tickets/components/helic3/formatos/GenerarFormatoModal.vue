@@ -127,7 +127,12 @@ const confirmar = async () => {
     useAlert(t('TICKETS.GENERAR_FORMATO.GUARDADO'));
     cerrar();
   } catch (error) {
-    useAlert(t('TICKETS.GENERAR_FORMATO.ERROR'));
+    // N3 (revision Jhan #116): muestra el mensaje real del servidor (ej. "el
+    // formato no tiene una plantilla activa") para que la operadora sepa que
+    // hacer; si no viene, cae al mensaje generico.
+    useAlert(
+      error?.response?.data?.error || t('TICKETS.GENERAR_FORMATO.ERROR')
+    );
   } finally {
     generando.value = false;
   }

@@ -23,11 +23,21 @@ class Helic3::Formatos::Generar
 
   def call
     validar!
-    numero = generacion
+    # el PDF se arma FUERA del lock: LibreOffice es lento y no debe bloquear la
+    # garantia durante la conversion.
     salida = Helic3::Formatos::VistaPrevia.call(plantilla: plantilla, item: @item, user: @user, formato: :pdf)
-    documento = crear_documento(salida[:bytes], numero)
-    registrar_evento(documento, numero)
-    documento
+    # N2 (revision Jhan #116): el numero de generacion (count + 1) y el guardado van
+    # DENTRO de un lock sobre la garantia (SELECT ... FOR UPDATE). Asi dos clics
+    # rapidos se serializan y no repiten el numero (1, 2, ...), no dos veces 1.
+    # reload limpia el display_id que el trigger deja marcado como "cambiado"
+    # (load_attributes_created_by_db_triggers); si no, with_lock lo rechaza.
+    garantia.reload
+    garantia.with_lock do
+      numero = generacion
+      documento = crear_documento(salida[:bytes], numero)
+      registrar_evento(documento, numero)
+      documento
+    end
   end
 
   private
