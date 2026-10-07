@@ -227,7 +227,17 @@
       "SOLO_LECTURA": "Read only",
       "GUARDADO": "Done",
       "FORBIDDEN": "You don't have permission for this action.",
-      "ERROR": "Something went wrong. Please try again."
+      "ERROR": "Something went wrong. Please try again.",
+      "NUEVO": "New format",
+      "NUEVO_TITULO": "Create format",
+      "NOMBRE": "Name",
+      "CODIGO": "Code",
+      "CODIGO_AYUDA": "If left blank, it is generated from the name.",
+      "CREAR": "Create",
+      "CREADO": "Format created",
+      "DESACTIVAR": "Deactivate",
+      "DESACTIVAR_CONFIRMACION": "The format stops being offered, but the history is kept. Deactivate?",
+      "DESACTIVADO": "Format deactivated"
     },
     "DETAIL": {
       "TITLE": "Case detail",

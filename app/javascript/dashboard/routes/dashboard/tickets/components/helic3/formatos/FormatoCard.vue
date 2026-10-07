@@ -17,11 +17,13 @@ const emit = defineEmits([
   'descartar',
   'descargar',
   'previsualizar',
+  'desactivar',
 ]);
 const { t } = useI18n();
 
 const archivoRef = ref(null);
 const dialogoActivar = ref(null);
+const dialogoDesactivar = ref(null);
 
 const activa = computed(() =>
   props.formato.versiones.find(
@@ -43,6 +45,11 @@ const alElegirArchivo = event => {
 const confirmarActivar = () => {
   if (borrador.value) emit('activar', borrador.value.id);
   dialogoActivar.value?.close();
+};
+
+const confirmarDesactivar = () => {
+  emit('desactivar', props.formato.id);
+  dialogoDesactivar.value?.close();
 };
 </script>
 
@@ -109,6 +116,14 @@ const confirmarActivar = () => {
           :label="t('TICKETS.FORMATOS.DESCARTAR')"
           @click="emit('descartar', borrador.id)"
         />
+        <Button
+          v-if="formato.activo"
+          sm
+          ghost
+          data-testid="btn-desactivar"
+          :label="t('TICKETS.FORMATOS.DESACTIVAR')"
+          @click="dialogoDesactivar.open()"
+        />
       </template>
     </div>
 
@@ -128,6 +143,15 @@ const confirmarActivar = () => {
       :description="t('TICKETS.FORMATOS.ACTIVAR_CONFIRMACION')"
       :confirm-button-label="t('TICKETS.FORMATOS.ACTIVAR')"
       @confirm="confirmarActivar"
+    />
+
+    <Dialog
+      ref="dialogoDesactivar"
+      type="alert"
+      :title="t('TICKETS.FORMATOS.DESACTIVAR')"
+      :description="t('TICKETS.FORMATOS.DESACTIVAR_CONFIRMACION')"
+      :confirm-button-label="t('TICKETS.FORMATOS.DESACTIVAR')"
+      @confirm="confirmarDesactivar"
     />
   </div>
 </template>

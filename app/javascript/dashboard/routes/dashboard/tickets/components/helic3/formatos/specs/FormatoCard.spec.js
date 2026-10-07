@@ -70,6 +70,29 @@ describe('FormatoCard', () => {
     expect(wrapper.emitted('subir')[0][0].archivo.name).toBe('p.docx');
   });
 
+  it('un formato activo muestra desactivar y al confirmar emite su id [FMT-06]', () => {
+    const close = vi.fn();
+    const wrapper = shallowMount(FormatoCard, {
+      props: { esAdmin: true, formato: { ...formatoConActiva, activo: true } },
+      global: {
+        stubs: {
+          Dialog: {
+            name: 'Dialog',
+            template: '<div />',
+            methods: { open: vi.fn(), close },
+          },
+        },
+      },
+    });
+
+    expect(wrapper.find('[data-testid="btn-desactivar"]').exists()).toBe(true);
+    // hay dos Dialog (activar y desactivar); el de desactivar es el ultimo.
+    const dialogos = wrapper.findAllComponents({ name: 'Dialog' });
+    dialogos[dialogos.length - 1].vm.$emit('confirm');
+    expect(wrapper.emitted('desactivar')[0]).toEqual([1]);
+    expect(close).toHaveBeenCalled();
+  });
+
   it('al confirmar, emite activar y CIERRA el dialogo', () => {
     const close = vi.fn();
     const formatoConBorrador = {

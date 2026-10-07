@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import Button from 'dashboard/components-next/button/Button.vue';
+import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 import FormatoCard from './FormatoCard.vue';
 
 // FMT-03: panel de la pestana Formatos. Es el CONTENEDOR: habla con el store, arma la
@@ -17,6 +18,11 @@ const esAdmin = computed(() => currentRole.value === 'administrator');
 
 const desconocidosPorFormato = ref({});
 const urlPrevia = ref(null);
+
+// FMT-06: alta de formato nuevo (Karen, sin devs).
+const dialogoNuevo = ref(null);
+const nuevoNombre = ref('');
+const nuevoCodigo = ref('');
 
 onMounted(() => {
   store.dispatch('helic3Formatos/fetchFormatos');
@@ -104,10 +110,56 @@ const copiar = async nombre => {
   await navigator.clipboard.writeText(comoMarcador(nombre));
   useAlert(t('TICKETS.FORMATOS.MARCADORES.COPIADO'));
 };
+
+// FMT-06: codigo a partir del nombre (sin tildes, minusculas, guion bajo) para
+// que Karen solo escriba el nombre; puede sobreescribirlo si quiere.
+const comoCodigo = nombre =>
+  (nombre || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+const abrirNuevo = () => {
+  nuevoNombre.value = '';
+  nuevoCodigo.value = '';
+  dialogoNuevo.value?.open();
+};
+
+const crearFormato = async () => {
+  const codigo = (nuevoCodigo.value || comoCodigo(nuevoNombre.value)).trim();
+  if (!nuevoNombre.value.trim() || !codigo) return;
+  try {
+    await store.dispatch('helic3Formatos/crearFormato', {
+      nombre: nuevoNombre.value.trim(),
+      codigo,
+    });
+    useAlert(t('TICKETS.FORMATOS.CREADO'));
+    dialogoNuevo.value?.close();
+  } catch (error) {
+    useAlert(error?.response?.data?.error || t('TICKETS.FORMATOS.ERROR'));
+  }
+};
+
+const desactivar = formatoId =>
+  conAviso(async () => {
+    await store.dispatch('helic3Formatos/desactivarFormato', formatoId);
+    useAlert(t('TICKETS.FORMATOS.DESACTIVADO'));
+  });
 </script>
 
 <template>
   <div class="flex flex-col gap-4">
+    <div v-if="esAdmin" class="flex justify-end">
+      <Button
+        sm
+        data-testid="btn-nuevo-formato"
+        :label="t('TICKETS.FORMATOS.NUEVO')"
+        @click="abrirNuevo"
+      />
+    </div>
+
     <FormatoCard
       v-for="formato in formatos"
       :key="formato.id"
@@ -119,6 +171,7 @@ const copiar = async nombre => {
       @descartar="descartar"
       @descargar="descargar"
       @previsualizar="previsualizar"
+      @desactivar="desactivar"
     />
 
     <div v-if="urlPrevia" class="flex flex-col gap-2">
@@ -162,5 +215,40 @@ const copiar = async nombre => {
         </li>
       </ul>
     </details>
+
+    <Dialog
+      ref="dialogoNuevo"
+      :title="t('TICKETS.FORMATOS.NUEVO_TITULO')"
+      :confirm-button-label="t('TICKETS.FORMATOS.CREAR')"
+      :disable-confirm-button="!nuevoNombre.trim()"
+      @confirm="crearFormato"
+    >
+      <div class="flex flex-col gap-3">
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium text-n-slate-12">
+            {{ t('TICKETS.FORMATOS.NOMBRE') }}
+          </span>
+          <input
+            v-model="nuevoNombre"
+            data-testid="input-nombre"
+            class="p-2 border rounded border-n-weak bg-n-alpha-black1"
+          />
+        </label>
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium text-n-slate-12">
+            {{ t('TICKETS.FORMATOS.CODIGO') }}
+          </span>
+          <input
+            v-model="nuevoCodigo"
+            :placeholder="comoCodigo(nuevoNombre)"
+            data-testid="input-codigo"
+            class="p-2 border rounded border-n-weak bg-n-alpha-black1"
+          />
+          <span class="text-xs text-n-slate-10">
+            {{ t('TICKETS.FORMATOS.CODIGO_AYUDA') }}
+          </span>
+        </label>
+      </div>
+    </Dialog>
   </div>
 </template>

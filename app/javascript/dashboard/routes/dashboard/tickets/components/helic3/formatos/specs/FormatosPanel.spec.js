@@ -2,6 +2,7 @@ import { shallowMount, flushPromises } from '@vue/test-utils';
 import { ref } from 'vue';
 import FormatosPanel from '../FormatosPanel.vue';
 import FormatoCard from '../FormatoCard.vue';
+import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 
 const formatosRef = ref([
   {
@@ -71,6 +72,33 @@ describe('FormatosPanel', () => {
     expect(dispatch).toHaveBeenCalledWith(
       'helic3Formatos/subirPlantilla',
       expect.objectContaining({ formatoId: 1 })
+    );
+  });
+
+  it('crear un formato despacha crearFormato con el código derivado del nombre [FMT-06]', async () => {
+    const wrapper = shallowMount(FormatosPanel, {
+      global: { renderStubDefaultSlot: true },
+    });
+    await wrapper
+      .find('[data-testid="input-nombre"]')
+      .setValue('Acta Especial');
+    await wrapper.findComponent(Dialog).vm.$emit('confirm');
+    await flushPromises();
+
+    expect(dispatch).toHaveBeenCalledWith('helic3Formatos/crearFormato', {
+      nombre: 'Acta Especial',
+      codigo: 'acta_especial',
+    });
+  });
+
+  it('desactivar un formato despacha desactivarFormato [FMT-06]', async () => {
+    const wrapper = montar();
+    wrapper.findComponent(FormatoCard).vm.$emit('desactivar', 1);
+    await flushPromises();
+
+    expect(dispatch).toHaveBeenCalledWith(
+      'helic3Formatos/desactivarFormato',
+      1
     );
   });
 

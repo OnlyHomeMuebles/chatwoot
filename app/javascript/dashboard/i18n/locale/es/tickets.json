@@ -227,7 +227,17 @@
       "SOLO_LECTURA": "Solo lectura",
       "GUARDADO": "Listo",
       "FORBIDDEN": "No tienes permiso para esta acción.",
-      "ERROR": "Ocurrió un error. Inténtalo de nuevo."
+      "ERROR": "Ocurrió un error. Inténtalo de nuevo.",
+      "NUEVO": "Nuevo formato",
+      "NUEVO_TITULO": "Crear formato",
+      "NOMBRE": "Nombre",
+      "CODIGO": "Código",
+      "CODIGO_AYUDA": "Si lo dejas vacío, se genera del nombre.",
+      "CREAR": "Crear",
+      "CREADO": "Formato creado",
+      "DESACTIVAR": "Desactivar",
+      "DESACTIVAR_CONFIRMACION": "El formato deja de ofrecerse, pero se conserva el historial. ¿Desactivar?",
+      "DESACTIVADO": "Formato desactivado"
     },
     "DETAIL": {
       "TITLE": "Detalle del expediente",
