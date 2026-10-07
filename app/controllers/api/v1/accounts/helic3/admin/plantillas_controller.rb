@@ -6,6 +6,14 @@
 class Api::V1::Accounts::Helic3::Admin::PlantillasController < Api::V1::Accounts::BaseController
   before_action :check_admin_authorization?, only: %i[create activar destroy]
 
+  # N1 (revision Jhan #114): dos subidas del mismo formato chocan con el indice
+  # unico (formato_id, version) y dos activaciones con el indice parcial de una
+  # sola activa. En vez de un 500, se devuelve 422 para que la operadora reintente.
+  rescue_from ActiveRecord::RecordNotUnique do
+    render json: { errores: ['otra operacion modifico esta plantilla al mismo tiempo; reintenta'] },
+           status: :unprocessable_entity
+  end
+
   FORMATOS_SALIDA = %i[pdf docx].freeze
 
   def create

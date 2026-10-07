@@ -259,7 +259,10 @@ class Helic3::Catalogo::SeederService
       procesos_garantia: Helic3::Catalogo::ProcesoGarantia.where(account: @account).count,
       coberturas_ciudad: Helic3::Catalogo::CoberturaCiudad.where(account: @account).count,
       parametros: Helic3::Catalogo::Parametro.where(account: @account).count,
-      formatos: Helic3::Catalogo::Formato.where(account: @account).count
+      # formatos es la tabla mas nueva: si SIE-01 corre el seeder en una migracion
+      # anterior a la de esta tabla, contar aqui daria PG::UndefinedTable y tumbaria
+      # el arranque (start.sh con set -e). Se devuelve 0 cuando aun no existe.
+      formatos: Helic3::Catalogo::Formato.table_exists? ? Helic3::Catalogo::Formato.where(account: @account).count : 0
     }
   end
 end

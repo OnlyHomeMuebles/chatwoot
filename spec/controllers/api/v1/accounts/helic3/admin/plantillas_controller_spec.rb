@@ -31,6 +31,12 @@ RSpec.describe 'Helic3 admin plantillas (FMT-02)', type: :request do
     expect(response).to have_http_status(:unauthorized)
   end
 
+  it 'una colision de version concurrente devuelve 422, no 500 [N1 Jhan]' do
+    allow(Helic3::Formatos::SubirPlantilla).to receive(:call).and_raise(ActiveRecord::RecordNotUnique)
+    post url("formatos/#{formato.id}/plantillas"), params: { archivo: docx }, headers: admin.create_new_auth_token
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
   it 'una plantilla de otra cuenta devuelve 404 [CA9]' do
     otra = Helic3::PlantillaFormato.create!(account: create(:account), formato: formato, version: 1, estado: 'borrador')
     delete url("plantillas/#{otra.id}"), headers: admin.create_new_auth_token
