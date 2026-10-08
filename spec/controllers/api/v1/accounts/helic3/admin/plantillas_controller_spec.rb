@@ -37,6 +37,11 @@ RSpec.describe 'Helic3 admin plantillas (FMT-02)', type: :request do
     expect(response).to have_http_status(:unprocessable_entity)
   end
 
+  it 'subir sin archivo devuelve 422, no 500 [caceria #5]' do
+    post url("formatos/#{formato.id}/plantillas"), headers: admin.create_new_auth_token
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
   it 'una plantilla de otra cuenta devuelve 404 [CA9]' do
     otra = Helic3::PlantillaFormato.create!(account: create(:account), formato: formato, version: 1, estado: 'borrador')
     delete url("plantillas/#{otra.id}"), headers: admin.create_new_auth_token
