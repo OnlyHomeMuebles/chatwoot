@@ -2,6 +2,7 @@
 
 require 'open3'
 require 'timeout'
+require 'tempfile'
 
 # AGT-08: lee el texto de las fotos que el cliente adjunta, con el binario local
 # `tesseract`, invocado DIRECTAMENTE por Open3 (sin gema).
@@ -59,6 +60,35 @@ class Helic3::Agents::LectorDeImagenes
   # SAFE_FETCH_ALLOW_PRIVATE_NETWORK habilitado; si no, el filtro SSRF lo bloquea.
   HOST_INTERNO = ENV.fetch('OCR_HOST_INTERNO', 'rails:3000')
 
+  # tesseract/leptonica no decodifican HEIC/HEIF -- el formato por defecto de las
+  # fotos de iPhone cuando el canal no las convierte antes de llegar (WhatsApp casi
+  # siempre reconvierte a JPEG, pero el widget web y otros canales no). Para esos
+  # content-types se normaliza a PNG con `vipsthumbnail` (libvips-tools) antes de
+  # pasarselos a tesseract (ver #normalizar_y_leer). heic-sequence/heif-sequence
+  # son las Live Photos / rafagas de iPhone -- mismo contenedor, mismo motor, y
+  # un canal que preserve el content-type real del navegador puede mandarlas
+  # con ese sufijo.
+  #
+  # Revision de Jhan (PR #112, B1): la primera version usaba la gema ruby-vips
+  # (FFI sobre libvips.so) con `require 'vips'` al cargar la clase. Si el
+  # runtime no tenia la libreria, ESE require tumbaba el OCR completo (no solo
+  # HEIC) con un LoadError. Al invocar el binario `vipsthumbnail` por Open3 --
+  # mismo patron que tesseract -- no hay ningun require que pueda fallar: si
+  # falta el binario, Open3 levanta Errno::ENOENT, que el rescue de
+  # leer_texto_seguro atrapa igual que cualquier otro fallo de ESA imagen, sin
+  # afectar las demas ni el OCR de formatos que si soporta tesseract.
+  FORMATOS_SIN_SOPORTE_DIRECTO = %w[image/heic image/heif image/heic-sequence image/heif-sequence].freeze
+  # N1/N2 (revision de Jhan, PR #112): Timeout.timeout no corta codigo nativo
+  # (si vipsthumbnail se cuelga decodificando, la excepcion solo llega cuando
+  # devuelve el control) y un tope duro de megapixeles dejaria fuera las fotos
+  # de 48MP del iPhone Pro (8064x6048). En vez de decodificar y rechazar,
+  # -s 4000x4000 reduce ANTES de escribir: libvips igual decodifica una vez,
+  # pero nunca produce un archivo mas grande de lo que tesseract necesita (unos
+  # 4000px de lado sobran para leer texto), y el proceso SI se puede matar con
+  # SIGKILL via correr_con_timeout si se cuelga.
+  LADO_MAXIMO_NORMALIZAR = 4000
+  TIMEOUT_NORMALIZAR = 10
+
   def self.leer(urls)
     new.leer(urls)
   end
@@ -102,6 +132,14 @@ class Helic3::Agents::LectorDeImagenes
   # lista ahi en algunas versiones).
   def self.ocr(ruta)
     correr_con_timeout('tesseract', ruta, 'stdout', '-l', IDIOMA, timeout: TIMEOUT_OCR).strip
+  end
+
+  # Reescribe ruta_original como PNG en ruta_destino, con el lado mas largo
+  # acotado a LADO_MAXIMO_NORMALIZAR (ver constante). `vipsthumbnail` (paquete
+  # libvips-tools) decodifica HEIC/HEIF, que tesseract no entiende.
+  def self.normalizar(ruta_original, ruta_destino)
+    lado = "#{LADO_MAXIMO_NORMALIZAR}x#{LADO_MAXIMO_NORMALIZAR}"
+    correr_con_timeout('vipsthumbnail', ruta_original, '-s', lado, '-o', ruta_destino, timeout: TIMEOUT_NORMALIZAR)
   end
 
   # Corre un binario externo con el pid vivo para poder matarlo con SIGKILL si se cuelga
@@ -179,7 +217,27 @@ class Helic3::Agents::LectorDeImagenes
   # propio de Chatwoot).
   def leer_texto(url)
     SafeFetch.fetch(url, allowed_content_type_prefixes: ['image/'], read_timeout: TIMEOUT_DESCARGA) do |archivo|
-      self.class.ocr(archivo.tempfile.path)
+      if FORMATOS_SIN_SOPORTE_DIRECTO.include?(archivo.content_type)
+        normalizar_y_leer(archivo.tempfile.path)
+      else
+        self.class.ocr(archivo.tempfile.path)
+      end
+    end
+  end
+
+  # Reescribe como PNG -- un formato que tesseract siempre entiende -- con
+  # `vipsthumbnail -s LADO_MAXIMOxLADO_MAXIMO` (libvips-tools), que de paso
+  # reduce la imagen si hace falta, en vez de rechazarla. El Tempfile se
+  # mantiene vivo en una variable local durante toda la lectura: si solo se
+  # devolviera la ruta, el recolector de basura podria borrar el archivo (via
+  # el finalizer de Tempfile) mientras tesseract todavia lo esta leyendo.
+  def normalizar_y_leer(ruta_original)
+    convertido = Tempfile.new(['helic3-ocr-normalizado', '.png'])
+    begin
+      self.class.normalizar(ruta_original, convertido.path)
+      self.class.ocr(convertido.path)
+    ensure
+      convertido.close!
     end
   end
 end
