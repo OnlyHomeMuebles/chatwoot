@@ -237,7 +237,10 @@
       "CREADO": "Formato creado",
       "DESACTIVAR": "Desactivar",
       "DESACTIVAR_CONFIRMACION": "El formato deja de ofrecerse, pero se conserva el historial. ¿Desactivar?",
-      "DESACTIVADO": "Formato desactivado"
+      "DESACTIVADO": "Formato desactivado",
+      "REACTIVAR": "Reactivar",
+      "REACTIVADO": "Formato reactivado",
+      "DESACTIVADO_BADGE": "Desactivado"
     },
     "DETAIL": {
       "TITLE": "Detalle del expediente",

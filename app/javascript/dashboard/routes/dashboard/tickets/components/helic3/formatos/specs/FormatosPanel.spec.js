@@ -102,6 +102,14 @@ describe('FormatosPanel', () => {
     );
   });
 
+  it('reactivar un formato despacha reactivarFormato [FMT-06]', async () => {
+    const wrapper = montar();
+    wrapper.findComponent(FormatoCard).vm.$emit('reactivar', 1);
+    await flushPromises();
+
+    expect(dispatch).toHaveBeenCalledWith('helic3Formatos/reactivarFormato', 1);
+  });
+
   it('un fallo al previsualizar no rompe el panel (Review Focus 4)', async () => {
     dispatch.mockImplementation(accion =>
       accion === 'helic3Formatos/vistaPrevia'

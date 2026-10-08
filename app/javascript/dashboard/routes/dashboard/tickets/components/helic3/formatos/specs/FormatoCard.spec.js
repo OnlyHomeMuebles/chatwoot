@@ -1,5 +1,6 @@
 import { shallowMount } from '@vue/test-utils';
 import FormatoCard from '../FormatoCard.vue';
+import Button from 'dashboard/components-next/button/Button.vue';
 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: clave => clave }) }));
 
@@ -91,6 +92,21 @@ describe('FormatoCard', () => {
     dialogos[dialogos.length - 1].vm.$emit('confirm');
     expect(wrapper.emitted('desactivar')[0]).toEqual([1]);
     expect(close).toHaveBeenCalled();
+  });
+
+  it('un formato desactivado muestra badge y botón Reactivar, y emite su id [FMT-06]', () => {
+    const wrapper = montar({ formato: { ...formatoConActiva, activo: false } });
+
+    expect(wrapper.find('[data-testid="badge-desactivado"]').exists()).toBe(
+      true
+    );
+    expect(wrapper.find('[data-testid="btn-desactivar"]').exists()).toBe(false);
+
+    const reactivar = wrapper
+      .findAllComponents(Button)
+      .find(b => b.attributes('data-testid') === 'btn-reactivar');
+    reactivar.vm.$emit('click');
+    expect(wrapper.emitted('reactivar')[0]).toEqual([1]);
   });
 
   it('al confirmar, emite activar y CIERRA el dialogo', () => {

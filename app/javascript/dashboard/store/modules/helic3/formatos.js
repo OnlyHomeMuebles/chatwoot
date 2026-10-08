@@ -92,6 +92,16 @@ export const actions = {
       commit(types.SET_HELIC3_FORMATOS_UI_FLAG, { isSaving: false });
     }
   },
+  // FMT-06 (revision Jhan #117): volver a activar un formato desactivado.
+  reactivarFormato: async ({ commit, dispatch }, formatoId) => {
+    commit(types.SET_HELIC3_FORMATOS_UI_FLAG, { isSaving: true });
+    try {
+      await Helic3FormatosAPI.actualizarFormato(formatoId, { activo: true });
+      await dispatch('fetchFormatos');
+    } finally {
+      commit(types.SET_HELIC3_FORMATOS_UI_FLAG, { isSaving: false });
+    }
+  },
   // devuelven el blob (el panel arma la URL); el componente NO llama la API directo.
   vistaPrevia: (_store, plantillaId) =>
     Helic3FormatosAPI.vistaPrevia(plantillaId).then(

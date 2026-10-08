@@ -147,6 +147,12 @@ const desactivar = formatoId =>
     await store.dispatch('helic3Formatos/desactivarFormato', formatoId);
     useAlert(t('TICKETS.FORMATOS.DESACTIVADO'));
   });
+
+const reactivar = formatoId =>
+  conAviso(async () => {
+    await store.dispatch('helic3Formatos/reactivarFormato', formatoId);
+    useAlert(t('TICKETS.FORMATOS.REACTIVADO'));
+  });
 </script>
 
 <template>
@@ -172,6 +178,7 @@ const desactivar = formatoId =>
       @descargar="descargar"
       @previsualizar="previsualizar"
       @desactivar="desactivar"
+      @reactivar="reactivar"
     />
 
     <div v-if="urlPrevia" class="flex flex-col gap-2">

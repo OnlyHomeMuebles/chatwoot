@@ -18,6 +18,7 @@ const emit = defineEmits([
   'descargar',
   'previsualizar',
   'desactivar',
+  'reactivar',
 ]);
 const { t } = useI18n();
 
@@ -58,7 +59,16 @@ const confirmarDesactivar = () => {
     class="flex flex-col gap-2 p-4 border border-n-weak rounded-lg"
     :data-testid="`card-${formato.codigo}`"
   >
-    <h3 class="text-base font-medium text-n-slate-12">{{ formato.nombre }}</h3>
+    <h3 class="flex items-center gap-2 text-base font-medium text-n-slate-12">
+      {{ formato.nombre }}
+      <span
+        v-if="!formato.activo"
+        data-testid="badge-desactivado"
+        class="px-1.5 py-0.5 text-xs rounded bg-n-slate-3 text-n-slate-11"
+      >
+        {{ t('TICKETS.FORMATOS.DESACTIVADO_BADGE') }}
+      </span>
+    </h3>
 
     <p v-if="activa" class="text-sm text-n-slate-11">
       {{ t('TICKETS.FORMATOS.VERSION_ACTIVA', { version: activa.version }) }}
@@ -123,6 +133,14 @@ const confirmarDesactivar = () => {
           data-testid="btn-desactivar"
           :label="t('TICKETS.FORMATOS.DESACTIVAR')"
           @click="dialogoDesactivar.open()"
+        />
+        <Button
+          v-else
+          sm
+          faded
+          data-testid="btn-reactivar"
+          :label="t('TICKETS.FORMATOS.REACTIVAR')"
+          @click="emit('reactivar', formato.id)"
         />
       </template>
     </div>

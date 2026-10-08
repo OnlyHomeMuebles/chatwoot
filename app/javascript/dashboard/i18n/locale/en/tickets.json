@@ -237,7 +237,10 @@
       "CREADO": "Format created",
       "DESACTIVAR": "Deactivate",
       "DESACTIVAR_CONFIRMACION": "The format stops being offered, but the history is kept. Deactivate?",
-      "DESACTIVADO": "Format deactivated"
+      "DESACTIVADO": "Format deactivated",
+      "REACTIVAR": "Reactivate",
+      "REACTIVADO": "Format reactivated",
+      "DESACTIVADO_BADGE": "Deactivated"
     },
     "DETAIL": {
       "TITLE": "Case detail",
