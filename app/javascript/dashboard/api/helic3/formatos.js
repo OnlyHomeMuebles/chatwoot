@@ -47,6 +47,18 @@ class Helic3FormatosAPI extends ApiClient {
   descartar(plantillaId) {
     return axios.delete(`${this.url}/plantillas/${plantillaId}`);
   }
+
+  // FMT-06: crear/actualizar el formato mismo (no sus plantillas) por el CRUD
+  // generico de catalogos. Asi Karen agrega o desactiva formatos sin devs.
+  crearFormato(payload) {
+    return axios.post(`${this.url}/catalogos/formatos`, { catalogo: payload });
+  }
+
+  actualizarFormato(id, payload) {
+    return axios.patch(`${this.url}/catalogos/formatos/${id}`, {
+      catalogo: payload,
+    });
+  }
 }
 
 export default new Helic3FormatosAPI();
