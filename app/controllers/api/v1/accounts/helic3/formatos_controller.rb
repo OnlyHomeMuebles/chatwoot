@@ -13,7 +13,8 @@ class Api::V1::Accounts::Helic3::FormatosController < Api::V1::Accounts::BaseCon
   # garantia con su formato sugerido y los marcadores que les quedan vacios.
   # El front calcula los faltantes cruzando ambos.
   def index
-    @formatos = Helic3::Catalogo::Formato.where(account: Current.account)
+    # solo formatos activos: uno desactivado (FMT-06) no se ofrece para generar.
+    @formatos = Helic3::Catalogo::Formato.where(account: Current.account, activo: true)
                                          .includes(:plantillas).order(:posicion)
     @items = items_con_vacios
   end
@@ -21,6 +22,7 @@ class Api::V1::Accounts::Helic3::FormatosController < Api::V1::Accounts::BaseCon
   # POST vista_previa: PDF con los datos reales del item; NO se guarda.
   def vista_previa
     return render_item_ajeno unless item.garantia&.ticket_id == @ticket.id
+    return render_formato_inactivo unless formato.activo
     return render_sin_plantilla if plantilla_activa.nil?
 
     salida = Helic3::Formatos::VistaPrevia.call(plantilla: plantilla_activa, item: item,
@@ -78,6 +80,10 @@ class Api::V1::Accounts::Helic3::FormatosController < Api::V1::Accounts::BaseCon
 
   def render_sin_plantilla
     render json: { error: 'el formato no tiene una plantilla activa' }, status: :unprocessable_entity
+  end
+
+  def render_formato_inactivo
+    render json: { error: 'el formato esta desactivado' }, status: :unprocessable_entity
   end
 
   def render_item_ajeno

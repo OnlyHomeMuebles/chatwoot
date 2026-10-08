@@ -85,4 +85,13 @@ RSpec.describe Helic3::Formatos::Generar do
       described_class.call(ticket: ticket, item: otro_item, formato: formato, user: user)
     end.to raise_error(described_class::Error, /este expediente/)
   end
+
+  it 'un formato desactivado no se puede generar aunque tenga plantilla activa [bug A Jhan #117]' do
+    plantilla_activa
+    formato.update!(activo: false)
+
+    expect do
+      described_class.call(ticket: ticket, item: item, formato: formato, user: user)
+    end.to raise_error(described_class::Error, /desactivado/)
+  end
 end

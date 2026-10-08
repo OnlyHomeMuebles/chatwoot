@@ -53,6 +53,9 @@ class Helic3::Formatos::Generar
   end
 
   def validar!
+    # un formato desactivado no se genera (revision Jhan #117): aunque tenga una
+    # plantilla activa, Karen lo retiro a proposito.
+    raise Error, 'el formato esta desactivado' unless @formato.activo
     raise Error, 'el item no pertenece a una garantia de este expediente' if garantia.nil? || garantia.ticket_id != @ticket.id
     raise Error, 'el formato no tiene una plantilla activa' if plantilla.nil?
   end

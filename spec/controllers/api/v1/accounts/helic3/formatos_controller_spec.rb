@@ -59,6 +59,15 @@ RSpec.describe 'Helic3 formatos desde el expediente (FMT-04)', type: :request do
       item_json = response.parsed_body['items'].first
       expect(item_json['marcadores_vacios']).to include('CEDULA')
     end
+
+    it 'NO lista los formatos desactivados [bug A Jhan #117]' do
+      plantilla_activa
+      formato.update!(activo: false)
+      get url, headers: admin.create_new_auth_token, as: :json
+
+      codigos = response.parsed_body['formatos'].map { |f| f['codigo'] }
+      expect(codigos).not_to include('visita_tecnica')
+    end
   end
 
   describe 'POST create' do
@@ -75,6 +84,14 @@ RSpec.describe 'Helic3 formatos desde el expediente (FMT-04)', type: :request do
     it 'sin plantilla activa devuelve 422 [CA5]' do
       post url, params: { formato_id: formato.id, item_id: item.id }, headers: admin.create_new_auth_token
       expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it 'un formato desactivado devuelve 422 [bug A Jhan #117]' do
+      plantilla_activa
+      formato.update!(activo: false)
+      post url, params: { formato_id: formato.id, item_id: item.id }, headers: admin.create_new_auth_token
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.parsed_body['error']).to match(/desactivado/)
     end
 
     it 'con un ítem de otra garantía devuelve 422 [CA5]' do
