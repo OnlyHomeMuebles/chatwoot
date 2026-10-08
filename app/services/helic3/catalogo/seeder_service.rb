@@ -14,8 +14,8 @@
 # Lo que sigue sin confirmar esta en app/models/helic3/catalogo/PENDIENTES.md.
 #
 # rubocop:disable Metrics/ClassLength -- la longitud la dominan las constantes de
-# datos validados con Only Home (los catalogos), que viven junto al seeder a
-# proposito; partirlas en otra clase solo por el conteo no aporta claridad.
+# datos validados con Only Home (catalogos y mensajes del agente), que viven junto
+# al seeder a proposito; partirlas en otra clase solo por el conteo no aporta claridad.
 class Helic3::Catalogo::SeederService
   # codigos explicitos (no derivados del nombre): los motivos de PQR los
   # referencian, y un ajuste de redaccion del nombre no debe romper la semilla
@@ -163,7 +163,43 @@ class Helic3::Catalogo::SeederService
       valor: '[PROVISIONAL — validar con Luisa] Para atender tu caso vamos a tratar tus datos ' \
              'personales conforme a nuestra Política de Tratamiento de Datos. ¿Nos autorizas a continuar?',
       unidad: 'texto' },
-    { clave: 'enlace_politica_datos', valor: 'https://www.onlyhome.co/politica-de-datos', unidad: 'texto' }
+    { clave: 'enlace_politica_datos', valor: 'https://www.onlyhome.co/politica-de-datos', unidad: 'texto' },
+    # PRM: mensajes del agente por caso (personalizacion de Karen). Textos editables
+    # desde el panel de Parametros. El nombre del asesor es VARIABLE (lo inyecta el
+    # runtime): va como marcador «nombre». Los plazos de los textos (visita 12-15,
+    # cambio 15) son los de Karen; difieren del catalogo de procesos (8 y 20) y se
+    # conciliaran con Karen (son editables desde el panel; ver PENDIENTES.md).
+    #
+    # FASE 1 (solo almacenamiento): hoy NINGUN runtime los lee. Se siembran como
+    # parametros editables para tenerlos listos; cablear el envio (que agente, en
+    # que disparador) es un ticket aparte.
+    { clave: 'mensaje_solicitud_datos',
+      valor: 'Mucho gusto, mi nombre es «nombre» y seré tu asesor(a) para gestionar tu solicitud de ' \
+             'garantía. Para iniciar el proceso, por favor envíanos: nombre completo, número de cédula, ' \
+             'dirección completa y ciudad, número de contacto alterno, y una breve descripción del ' \
+             'inconveniente. Adicionalmente, es requerido enviar: factura de compra y fotografías donde ' \
+             'se evidencie claramente el inconveniente. Quedo atenta para ayudarte. 💙',
+      unidad: 'texto' },
+    { clave: 'mensaje_visita_tecnica',
+      valor: 'Tu PQR N° ( ) ha sido aprobada para *Visita Técnica*. 🩵 Nuestro técnico especializado ' \
+             'realizará la visita en un plazo de 12 a 15 días hábiles. Un día antes se comunicará para ' \
+             'confirmar la cita, por lo que te pedimos estar pendiente de la llamada. En caso de no ' \
+             'lograr contacto, la visita deberá ser reprogramada. ¡Estaremos atentos al proceso! 💙',
+      unidad: 'texto' },
+    { clave: 'mensaje_recoleccion',
+      valor: 'Tu PQR N° ( ) ha sido aprobada para *Recolección de producto*. 🩵 La recolección se ' \
+             'programará dentro de los próximos 15 días hábiles para su verificación en fábrica. Nos ' \
+             'comunicaremos un día antes para confirmar; la llamada será desde un número terminado en ' \
+             '83. El producto debe estar limpio al momento de la recolección. Solo se recogen los ' \
+             'productos reportados en este momento. Feliz día 💙',
+      unidad: 'texto' },
+    { clave: 'mensaje_cambio_producto',
+      valor: 'Tu PQR N° ( ) ha sido aprobada para *Cambio de Producto*. 🩵 El proceso de cambio se ' \
+             'gestionará dentro de los próximos 15 días hábiles, teniendo en cuenta los tiempos de ' \
+             'producción (fabricamos bajo pedido). Nos comunicaremos para coordinar los detalles del ' \
+             'cambio; la llamada será desde un número terminado en 83. ¡Gracias por tu paciencia! 🩵',
+      unidad: 'texto' },
+    { clave: 'correo_retracto', valor: 'servicioalcliente@onlyhome.co', unidad: 'texto' }
   ].freeze
 
   def initialize(account)
