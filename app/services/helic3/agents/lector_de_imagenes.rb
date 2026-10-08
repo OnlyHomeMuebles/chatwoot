@@ -3,7 +3,6 @@
 require 'open3'
 require 'timeout'
 require 'tempfile'
-require 'vips'
 
 # AGT-08: lee el texto de las fotos que el cliente adjunta, con el binario local
 # `tesseract`, invocado DIRECTAMENTE por Open3 (sin gema).
@@ -64,20 +63,30 @@ class Helic3::Agents::LectorDeImagenes
   # tesseract/leptonica no decodifican HEIC/HEIF -- el formato por defecto de las
   # fotos de iPhone cuando el canal no las convierte antes de llegar (WhatsApp casi
   # siempre reconvierte a JPEG, pero el widget web y otros canales no). Para esos
-  # content-types se normaliza a PNG con libvips antes de pasarselos a tesseract
-  # (ver #normalizar_y_leer). libvips ya esta en el Gemfile via image_processing
-  # (dependencia de ActiveStorage); no es una gema nueva. heic-sequence/
-  # heif-sequence son las Live Photos / rafagas de iPhone -- mismo contenedor,
-  # mismo motor, y un canal que preserve el content-type real del navegador
-  # puede mandarlas con ese sufijo.
+  # content-types se normaliza a PNG con `vipsthumbnail` (libvips-tools) antes de
+  # pasarselos a tesseract (ver #normalizar_y_leer). heic-sequence/heif-sequence
+  # son las Live Photos / rafagas de iPhone -- mismo contenedor, mismo motor, y
+  # un canal que preserve el content-type real del navegador puede mandarlas
+  # con ese sufijo.
+  #
+  # Revision de Jhan (PR #112, B1): la primera version usaba la gema ruby-vips
+  # (FFI sobre libvips.so) con `require 'vips'` al cargar la clase. Si el
+  # runtime no tenia la libreria, ESE require tumbaba el OCR completo (no solo
+  # HEIC) con un LoadError. Al invocar el binario `vipsthumbnail` por Open3 --
+  # mismo patron que tesseract -- no hay ningun require que pueda fallar: si
+  # falta el binario, Open3 levanta Errno::ENOENT, que el rescue de
+  # leer_texto_seguro atrapa igual que cualquier otro fallo de ESA imagen, sin
+  # afectar las demas ni el OCR de formatos que si soporta tesseract.
   FORMATOS_SIN_SOPORTE_DIRECTO = %w[image/heic image/heif image/heic-sequence image/heif-sequence].freeze
-  # libvips decodifica DENTRO del proceso Ruby (a diferencia de tesseract, que
-  # corre aparte y se puede matar con SIGKILL): un archivo HEIC pequeño pero
-  # diseñado para expandirse a una imagen gigante (bomba de descompresion)
-  # podria colgar el worker igual que uno corrupto. Un tope de megapixeles
-  # (chequeable sin decodificar los pixeles: libvips es perezoso, width/height
-  # son del encabezado) mas un timeout acotan el riesgo.
-  MAX_MEGAPIXELES_NORMALIZAR = 40_000_000
+  # N1/N2 (revision de Jhan, PR #112): Timeout.timeout no corta codigo nativo
+  # (si vipsthumbnail se cuelga decodificando, la excepcion solo llega cuando
+  # devuelve el control) y un tope duro de megapixeles dejaria fuera las fotos
+  # de 48MP del iPhone Pro (8064x6048). En vez de decodificar y rechazar,
+  # -s 4000x4000 reduce ANTES de escribir: libvips igual decodifica una vez,
+  # pero nunca produce un archivo mas grande de lo que tesseract necesita (unos
+  # 4000px de lado sobran para leer texto), y el proceso SI se puede matar con
+  # SIGKILL via correr_con_timeout si se cuelga.
+  LADO_MAXIMO_NORMALIZAR = 4000
   TIMEOUT_NORMALIZAR = 10
 
   def self.leer(urls)
@@ -123,6 +132,14 @@ class Helic3::Agents::LectorDeImagenes
   # lista ahi en algunas versiones).
   def self.ocr(ruta)
     correr_con_timeout('tesseract', ruta, 'stdout', '-l', IDIOMA, timeout: TIMEOUT_OCR).strip
+  end
+
+  # Reescribe ruta_original como PNG en ruta_destino, con el lado mas largo
+  # acotado a LADO_MAXIMO_NORMALIZAR (ver constante). `vipsthumbnail` (paquete
+  # libvips-tools) decodifica HEIC/HEIF, que tesseract no entiende.
+  def self.normalizar(ruta_original, ruta_destino)
+    lado = "#{LADO_MAXIMO_NORMALIZAR}x#{LADO_MAXIMO_NORMALIZAR}"
+    correr_con_timeout('vipsthumbnail', ruta_original, '-s', lado, '-o', ruta_destino, timeout: TIMEOUT_NORMALIZAR)
   end
 
   # Corre un binario externo con el pid vivo para poder matarlo con SIGKILL si se cuelga
@@ -208,30 +225,19 @@ class Helic3::Agents::LectorDeImagenes
     end
   end
 
-  # Decodifica con libvips (que si soporta HEIC/HEIF) y reescribe como PNG -- un
-  # formato que tesseract siempre entiende -- antes de leerlo. El Tempfile se
+  # Reescribe como PNG -- un formato que tesseract siempre entiende -- con
+  # `vipsthumbnail -s LADO_MAXIMOxLADO_MAXIMO` (libvips-tools), que de paso
+  # reduce la imagen si hace falta, en vez de rechazarla. El Tempfile se
   # mantiene vivo en una variable local durante toda la lectura: si solo se
-  # devolviera la ruta, el recolector de basura podria borrar el archivo (via el
-  # finalizer de Tempfile) mientras tesseract todavia lo esta leyendo.
+  # devolviera la ruta, el recolector de basura podria borrar el archivo (via
+  # el finalizer de Tempfile) mientras tesseract todavia lo esta leyendo.
   def normalizar_y_leer(ruta_original)
     convertido = Tempfile.new(['helic3-ocr-normalizado', '.png'])
     begin
-      Timeout.timeout(TIMEOUT_NORMALIZAR) { normalizar(ruta_original, convertido.path) }
+      self.class.normalizar(ruta_original, convertido.path)
       self.class.ocr(convertido.path)
     ensure
       convertido.close!
     end
-  end
-
-  # new_from_file es perezoso: leer width/height solo decodifica el encabezado.
-  # El rechazo por tamaño corre ANTES de write_to_file (la decodificacion real
-  # y cara) a proposito.
-  def normalizar(ruta_original, ruta_destino)
-    imagen = Vips::Image.new_from_file(ruta_original)
-    if imagen.width * imagen.height > MAX_MEGAPIXELES_NORMALIZAR
-      raise Vips::Error, "imagen de #{imagen.width}x#{imagen.height} supera el tope de #{MAX_MEGAPIXELES_NORMALIZAR} px"
-    end
-
-    imagen.write_to_file(ruta_destino)
   end
 end

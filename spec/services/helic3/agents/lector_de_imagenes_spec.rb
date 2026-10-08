@@ -130,18 +130,26 @@ RSpec.describe Helic3::Agents::LectorDeImagenes do
 
   # AGT-09 (mas formatos): tesseract/leptonica no decodifican HEIC/HEIF -- el formato por
   # defecto de las fotos de iPhone cuando el canal no las convierte antes de llegar.
+  #
+  # Revision de Jhan (PR #112, B1): la normalizacion ya no pasa por la gema ruby-vips
+  # (FFI + require 'vips' al cargar la clase); se invoca el binario `vipsthumbnail`
+  # (paquete libvips-tools) por el mismo Open3 + SIGKILL que tesseract. Por eso estos
+  # specs stubean Open3.popen2 (como stub_tesseract) en vez de Vips::Image.
   describe 'formatos que tesseract no decodifica directamente (HEIC/HEIF)' do
-    def stub_vips_image(ancho: 800, alto: 600)
-      imagen = instance_double(Vips::Image, width: ancho, height: alto)
-      allow(Vips::Image).to receive(:new_from_file).and_return(imagen)
-      allow(imagen).to receive(:write_to_file)
-      imagen
+    def stub_vipsthumbnail(finished: true)
+      hilo = Object.new
+      hilo.define_singleton_method(:pid) { 4343 }
+      hilo.define_singleton_method(:join) { |_timeout| finished ? self : nil }
+      allow(Open3).to receive(:popen2).with('vipsthumbnail', any_args) do |*_args, &blk|
+        blk.call(StringIO.new, StringIO.new(''), hilo)
+      end
+      hilo
     end
 
-    it 'normaliza un HEIC a PNG con libvips antes de leerlo con tesseract' do
+    it 'normaliza un HEIC a PNG con vipsthumbnail antes de leerlo con tesseract' do
       url = 'https://cdn.chatwoot.test/factura.heic'
       responder_con_imagen(url, content_type: 'image/heic')
-      stub_vips_image
+      stub_vipsthumbnail
       expect(described_class).to receive(:ocr).with(a_string_ending_with('.png')).and_return('Factura 8821')
 
       expect(described_class.leer([url])).to eq('Factura 8821')
@@ -151,51 +159,60 @@ RSpec.describe Helic3::Agents::LectorDeImagenes do
     it 'tambien normaliza image/heic-sequence (Live Photos de iPhone)' do
       url = 'https://cdn.chatwoot.test/rafaga.heic'
       responder_con_imagen(url, content_type: 'image/heic-sequence')
-      stub_vips_image
+      stub_vipsthumbnail
       expect(described_class).to receive(:ocr).with(a_string_ending_with('.png')).and_return('Factura 8821')
 
       expect(described_class.leer([url])).to eq('Factura 8821')
     end
 
-    # libvips corre DENTRO del proceso Ruby, a diferencia de tesseract (proceso
-    # aparte, matable con SIGKILL) -- una imagen que decodificara a un tamaño
-    # absurdo (bomba de descompresion) se rechaza ANTES de la decodificacion
-    # real (write_to_file), sin tumbar el job.
-    it 'rechaza una imagen que decodificaria mas alla del tope de megapixeles, sin tumbar el job' do
-      url = 'https://cdn.chatwoot.test/bomba.heic'
+    # N2 (revision de Jhan, PR #112): ya no se rechazan imagenes grandes (el tope de
+    # megapixeles dejaba fuera las fotos de 48MP del iPhone Pro) -- vipsthumbnail
+    # las reduce con -s LADO_MAXIMOxLADO_MAXIMO en vez de rechazarlas.
+    it 'reduce con -s al lado maximo configurado antes de pasarla por tesseract' do
+      url = 'https://cdn.chatwoot.test/grande.heic'
       responder_con_imagen(url, content_type: 'image/heic')
-      imagen = stub_vips_image(ancho: 50_000, alto: 50_000)
-      allow(Rails.logger).to receive(:error)
-
-      expect(described_class.leer([url])).to be_nil
-      expect(imagen).not_to have_received(:write_to_file)
-      expect(Rails.logger).to have_received(:error).with(a_string_matching(/lector_de_imagenes fallo/))
-    end
-
-    it 'corta y sigue si la normalizacion con libvips se cuelga mas de TIMEOUT_NORMALIZAR' do
-      url = 'https://cdn.chatwoot.test/colgada.heic'
-      responder_con_imagen(url, content_type: 'image/heic')
-      allow(Vips::Image).to receive(:new_from_file) { sleep 0.2 }
-      stub_const("#{described_class}::TIMEOUT_NORMALIZAR", 0.05)
-      allow(Rails.logger).to receive(:error)
-
-      expect(described_class.leer([url])).to be_nil
-      expect(Rails.logger).to have_received(:error).with(a_string_matching(/lector_de_imagenes fallo/))
-    end
-
-    it 'no pasa por libvips para un formato que tesseract ya soporta' do
-      url = 'https://cdn.chatwoot.test/factura.jpg'
-      responder_con_imagen(url, content_type: 'image/jpeg')
-      allow(described_class).to receive(:ocr).and_return('Factura 8821')
-      expect(Vips::Image).not_to receive(:new_from_file)
+      hilo = Object.new
+      hilo.define_singleton_method(:pid) { 4343 }
+      hilo.define_singleton_method(:join) { |_timeout| self }
+      expect(Open3).to receive(:popen2).with('vipsthumbnail', a_string_matching(%r{\A/}), '-s', '4000x4000', '-o',
+                                             a_string_ending_with('.png'), err: File::NULL) do |*_args, &blk|
+        blk.call(StringIO.new, StringIO.new(''), hilo)
+      end
+      expect(described_class).to receive(:ocr).and_return('Factura 8821')
 
       expect(described_class.leer([url])).to eq('Factura 8821')
     end
 
-    it 'si libvips tampoco puede decodificarla, se registra el error y no tumba el job' do
+    # N1 (revision de Jhan, PR #112): Timeout.timeout no mata codigo nativo -- vipsthumbnail
+    # ahora corre por el mismo Open3 + SIGKILL que tesseract, matable de verdad si se cuelga.
+    it 'mata el proceso y corta si vipsthumbnail se cuelga mas de TIMEOUT_NORMALIZAR' do
+      url = 'https://cdn.chatwoot.test/colgada.heic'
+      responder_con_imagen(url, content_type: 'image/heic')
+      hilo = stub_vipsthumbnail(finished: false)
+      allow(Process).to receive(:kill)
+      allow(Rails.logger).to receive(:error)
+
+      expect(described_class.leer([url])).to be_nil
+      expect(Process).to have_received(:kill).with('KILL', hilo.pid)
+      expect(Rails.logger).to have_received(:error).with(a_string_matching(/lector_de_imagenes fallo/))
+    end
+
+    it 'no pasa por vipsthumbnail para un formato que tesseract ya soporta' do
+      url = 'https://cdn.chatwoot.test/factura.jpg'
+      responder_con_imagen(url, content_type: 'image/jpeg')
+      allow(described_class).to receive(:ocr).and_return('Factura 8821')
+      expect(Open3).not_to receive(:popen2).with('vipsthumbnail', any_args)
+
+      expect(described_class.leer([url])).to eq('Factura 8821')
+    end
+
+    # B1 (revision de Jhan, PR #112): si el binario vipsthumbnail no esta instalado (un
+    # despliegue sin libvips-tools), Open3 levanta Errno::ENOENT -- se registra el error
+    # de ESA imagen, sin tumbar el OCR de las demas ni del resto de formatos.
+    it 'si el binario vipsthumbnail no existe, se registra el error y no tumba el job' do
       url = 'https://cdn.chatwoot.test/corrupta.heic'
       responder_con_imagen(url, content_type: 'image/heic')
-      allow(Vips::Image).to receive(:new_from_file).and_raise(Vips::Error, 'formato no reconocido')
+      allow(Open3).to receive(:popen2).with('vipsthumbnail', any_args).and_raise(Errno::ENOENT)
       allow(Rails.logger).to receive(:error)
 
       expect(described_class.leer([url])).to be_nil

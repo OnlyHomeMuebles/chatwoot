@@ -11,6 +11,6 @@
   },
   "deploy": {
     "startCommand": "bash deployment/start.sh",
-    "aptPackages": ["...", "tesseract-ocr", "tesseract-ocr-spa"]
+    "aptPackages": ["...", "tesseract-ocr", "tesseract-ocr-spa", "libvips-tools"]
   }
 }

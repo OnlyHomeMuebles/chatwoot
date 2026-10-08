@@ -8,9 +8,10 @@ código (web y worker de Sidekiq).
 
 ## Producción (Dokploy / railpack / nixpacks)
 
-`tesseract-ocr` y `tesseract-ocr-spa` se instalan como paquetes apt en el
-`deploy` de `railpack.json` y en el `[phases.setup]` de `nixpacks.toml`. Ambos
-archivos se mantienen en sync a propósito.
+`tesseract-ocr`, `tesseract-ocr-spa` y `libvips-tools` (trae `vipsthumbnail`,
+ver sección HEIC/HEIF más abajo) se instalan como paquetes apt en el `deploy`
+de `railpack.json` y en el `[phases.setup]` de `nixpacks.toml`. Ambos archivos
+se mantienen en sync a propósito.
 
 ## Desarrollo local (nativo, sin Docker)
 
@@ -50,11 +51,19 @@ automáticamente (ver `PqrsAgent.linea_de_imagen`).
 tesseract/leptonica no leen HEIC/HEIF — el formato por defecto de las fotos de
 iPhone cuando el canal no las convierte antes de llegar (WhatsApp casi siempre
 reconvierte a JPEG, pero el widget web y otros canales no). Para esos
-content-types, `LectorDeImagenes` normaliza la imagen a PNG con `libvips` antes
-de pasarla por tesseract — `libvips` ya está en el `Gemfile` vía
-`image_processing` (dependencia de ActiveStorage), así que esto no agrega
-ninguna gema nueva. El resto de formatos (JPEG, PNG, etc., la gran mayoría) no
-paga ningún paso extra.
+content-types, `LectorDeImagenes` normaliza la imagen a PNG (reduciéndola al
+lado máximo configurado) con el binario `vipsthumbnail`, del paquete apt
+`libvips-tools`, invocado DIRECTAMENTE por `Open3` — mismo patrón y mismo
+timeout con SIGKILL que `tesseract` (ver `correr_con_timeout`). El resto de
+formatos (JPEG, PNG, etc., la gran mayoría) no paga ningún paso extra.
+
+Revisión de Jhan (PR #112, B1): la primera versión usaba la gema `ruby-vips`
+(FFI sobre `libvips.so`) con un `require 'vips'` al cargar la clase — si el
+runtime no tenía la librería, ese `require` tumbaba el OCR completo (no solo
+HEIC) con un `LoadError`. Invocar el binario por `Open3`, como ya se hace con
+tesseract, elimina ese riesgo: si falta `vipsthumbnail`, Open3 levanta
+`Errno::ENOENT`, que se rescata por imagen igual que cualquier otro fallo, sin
+afectar las demás.
 
 ## Docker (desarrollo con `docker-compose`)
 

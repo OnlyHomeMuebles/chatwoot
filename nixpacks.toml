@@ -32,8 +32,10 @@ NODE_OPTIONS = "--max-old-space-size=4096"
 # adjuntas) tanto en el contenedor web como en el de sidekiq. "..." extiende los
 # paquetes del provider en vez de reemplazarlos. Mantener en sync con
 # railpack.json (deploy.aptPackages) para que los dos archivos no diverjan.
+# libvips-tools trae `vipsthumbnail`, usado para normalizar HEIC/HEIF a PNG
+# antes de pasarlos por tesseract (ver FORMATOS_SIN_SOPORTE_DIRECTO).
 [phases.setup]
-aptPkgs = ["...", "tesseract-ocr", "tesseract-ocr-spa"]
+aptPkgs = ["...", "tesseract-ocr", "tesseract-ocr-spa", "libvips-tools"]
 
 [start]
 cmd = "bash deployment/start.sh"
