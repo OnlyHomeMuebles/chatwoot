@@ -21,6 +21,7 @@ const marcadoresRef = ref({
 const uiFlagsRef = ref({ isFetching: false, isSaving: false });
 const roleRef = ref('administrator');
 const dispatch = vi.fn().mockResolvedValue();
+const alert = vi.fn();
 
 vi.mock('dashboard/composables/store', () => ({
   useStore: () => ({ dispatch }),
@@ -33,13 +34,16 @@ vi.mock('dashboard/composables/store', () => ({
 }));
 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: clave => clave }) }));
-vi.mock('dashboard/composables', () => ({ useAlert: vi.fn() }));
+vi.mock('dashboard/composables', () => ({
+  useAlert: (...args) => alert(...args),
+}));
 
 const montar = () => shallowMount(FormatosPanel);
 
 beforeEach(() => {
   dispatch.mockClear();
   dispatch.mockResolvedValue();
+  alert.mockClear();
 });
 
 describe('FormatosPanel', () => {
@@ -89,6 +93,24 @@ describe('FormatosPanel', () => {
       nombre: 'Acta Especial',
       codigo: 'acta_especial',
     });
+  });
+
+  it('al fallar la creación muestra el mensaje del servidor, no el genérico [#4]', async () => {
+    const error = new Error('422');
+    error.response = { data: { message: 'Codigo ya ha sido tomado' } };
+    dispatch.mockImplementation(accion =>
+      accion === 'helic3Formatos/crearFormato'
+        ? Promise.reject(error)
+        : Promise.resolve()
+    );
+    const wrapper = shallowMount(FormatosPanel, {
+      global: { renderStubDefaultSlot: true },
+    });
+    await wrapper.find('[data-testid="input-nombre"]').setValue('Visita');
+    await wrapper.findComponent(Dialog).vm.$emit('confirm');
+    await flushPromises();
+
+    expect(alert).toHaveBeenCalledWith('Codigo ya ha sido tomado');
   });
 
   it('desactivar un formato despacha desactivarFormato [FMT-06]', async () => {

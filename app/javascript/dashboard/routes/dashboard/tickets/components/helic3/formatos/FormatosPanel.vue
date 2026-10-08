@@ -138,7 +138,10 @@ const crearFormato = async () => {
     useAlert(t('TICKETS.FORMATOS.CREADO'));
     dialogoNuevo.value?.close();
   } catch (error) {
-    useAlert(error?.response?.data?.error || t('TICKETS.FORMATOS.ERROR'));
+    // el CRUD generico valida con create!: un codigo repetido levanta
+    // RecordInvalid, que Chatwoot renderiza como { message }, no { error }.
+    const data = error?.response?.data;
+    useAlert(data?.error || data?.message || t('TICKETS.FORMATOS.ERROR'));
   }
 };
 
