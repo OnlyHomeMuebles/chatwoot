@@ -382,6 +382,16 @@ Rails.application.routes.draw do
               patch  'catalogos/:tipo/:id', to: 'catalogos#update'
               delete 'catalogos/:tipo/:id', to: 'catalogos#destroy'
               resources :parametros, only: [:index, :update]
+
+              # FMT-02: formatos (lectura abierta a agentes) y plantillas versionadas
+              # (escritura solo administradores). marcadores va antes de cualquier :id.
+              get    'formatos',                        to: 'formatos#index'
+              get    'formatos/marcadores',             to: 'formatos#marcadores'
+              post   'formatos/:formato_id/plantillas', to: 'plantillas#create'
+              get    'plantillas/:id/vista_previa',     to: 'plantillas#vista_previa'
+              get    'plantillas/:id/original',         to: 'plantillas#original'
+              post   'plantillas/:id/activar',          to: 'plantillas#activar'
+              delete 'plantillas/:id',                  to: 'plantillas#destroy'
             end
           end
 

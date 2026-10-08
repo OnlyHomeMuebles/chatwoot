@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
+ActiveRecord::Schema[7.2].define(version: 2026_10_06_120200) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1199,6 +1199,18 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
     t.index ["account_id"], name: "idx_h3cat_etapas_pqr_account"
   end
 
+  create_table "helic3_catalogo_formatos", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "nombre", null: false
+    t.string "codigo", null: false
+    t.integer "posicion", default: 0, null: false
+    t.boolean "activo", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "codigo"], name: "idx_h3cat_formatos_account_codigo", unique: true
+    t.index ["account_id"], name: "idx_h3cat_formatos_account"
+  end
+
   create_table "helic3_catalogo_motivos_garantia", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "nombre", null: false
@@ -1404,6 +1416,24 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
     t.index ["account_id", "status"], name: "index_helic3_knowledge_faq_suggestions_on_account_id_and_status"
     t.index ["account_id"], name: "index_helic3_knowledge_faq_suggestions_on_account_id"
     t.index ["conversation_id"], name: "index_helic3_knowledge_faq_suggestions_on_conversation_id"
+  end
+
+  create_table "helic3_plantillas_formato", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "formato_id", null: false
+    t.integer "version", null: false
+    t.string "estado", default: "borrador", null: false
+    t.jsonb "marcadores", default: [], null: false
+    t.bigint "subido_por_id"
+    t.string "subido_por_nombre"
+    t.datetime "activada_at"
+    t.bigint "activada_por_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "idx_h3_plantilla_formato_account"
+    t.index ["formato_id", "version"], name: "idx_h3_plantilla_formato_version", unique: true
+    t.index ["formato_id"], name: "idx_h3_plantilla_activa_unica", unique: true, where: "((estado)::text = 'activa'::text)"
+    t.index ["formato_id"], name: "idx_h3_plantilla_formato_formato"
   end
 
   create_table "helic3_pqrs_centros_operacion", force: :cascade do |t|
@@ -2011,6 +2041,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
   add_foreign_key "helic3_agentes_bandejas", "helic3_agentes", column: "agente_id", on_delete: :cascade
   add_foreign_key "helic3_agentes_bandejas", "inboxes", on_delete: :cascade
   add_foreign_key "helic3_catalogo_detalles_tipificados", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
+  add_foreign_key "helic3_catalogo_formatos", "accounts"
   add_foreign_key "helic3_catalogo_motivos_pqr", "helic3_catalogo_categorias", column: "categoria_id"
   add_foreign_key "helic3_documentos", "accounts"
   add_foreign_key "helic3_documentos", "attachments", on_delete: :nullify
@@ -2028,6 +2059,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
   add_foreign_key "helic3_garantia_items", "helic3_garantias", column: "garantia_id"
   add_foreign_key "helic3_garantias", "helic3_catalogo_coberturas_ciudad", column: "cobertura_ciudad_id"
   add_foreign_key "helic3_garantias", "helic3_tickets", column: "ticket_id"
+  add_foreign_key "helic3_plantillas_formato", "accounts"
+  add_foreign_key "helic3_plantillas_formato", "helic3_catalogo_formatos", column: "formato_id"
+  add_foreign_key "helic3_plantillas_formato", "users", column: "activada_por_id", on_delete: :nullify
+  add_foreign_key "helic3_plantillas_formato", "users", column: "subido_por_id", on_delete: :nullify
   add_foreign_key "helic3_pqrs_detalles", "helic3_pqrs_motivos", column: "motivo_id"
   add_foreign_key "helic3_ticket_datos", "accounts"
   add_foreign_key "helic3_ticket_datos", "helic3_catalogo_detalles_tipificados", column: "detalle_tipificado_id"
