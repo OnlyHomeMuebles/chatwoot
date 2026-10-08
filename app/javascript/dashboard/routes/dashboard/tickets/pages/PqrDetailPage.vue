@@ -11,6 +11,8 @@ import Select from 'dashboard/components-next/select/Select.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import Helic3BudgetBar from 'dashboard/components-next/helic3/Helic3BudgetBar.vue';
 import Helic3SourceBadge from 'dashboard/components-next/helic3/Helic3SourceBadge.vue';
+// FMT-04: modal para generar formatos desde la garantia del expediente.
+import GenerarFormatoModal from '../components/helic3/formatos/GenerarFormatoModal.vue';
 
 // Detalle del expediente (DET-01 + VIS-03). Consume el show (GET helic3/tickets/:id)
 // que trae los dos relojes separados (PQR legal y garantia), la clasificacion, los
@@ -29,6 +31,11 @@ const uiFlags = useMapGetter('pqrInbox/getUIFlags');
 const agents = useMapGetter('agents/getAgents');
 const documentos = useMapGetter('pqrInbox/getDocumentos');
 const noEncontrado = ref(false);
+
+// FMT-04: el modal de generar formatos se abre por ref desde el boton de la
+// seccion de garantia. El permiso real lo hace cumplir el backend (403).
+const generarModalRef = ref(null);
+const abrirGenerarFormato = () => generarModalRef.value?.open();
 
 const STATUSES = ['open', 'pending', 'resolved', 'closed'];
 
@@ -618,6 +625,18 @@ const formatFecha = valor =>
               </span>
             </div>
 
+            <!-- FMT-04: generar un formato (PDF) desde esta garantia. El backend
+                 valida el permiso; el modal muestra el error si no se puede. -->
+            <Button
+              sm
+              faded
+              icon="i-lucide-file-text"
+              :label="t('TICKETS.GENERAR_FORMATO.TITLE')"
+              data-testid="btn-generar-formato"
+              class="self-start"
+              @click="abrirGenerarFormato"
+            />
+
             <dl
               class="grid grid-cols-1 text-sm gap-x-6 gap-y-1.5 sm:grid-cols-2"
             >
@@ -769,6 +788,9 @@ const formatFecha = valor =>
                 {{ t('TICKETS.DETAIL.BUDGET_NO_RESET') }}
               </p>
             </div>
+
+            <!-- FMT-04: modal de generacion; se abre con el boton de arriba. -->
+            <GenerarFormatoModal ref="generarModalRef" :ticket-id="props.id" />
           </section>
 
           <!-- Aviso cuando la PQR no abrio garantia (abre_garantia: nunca) -->

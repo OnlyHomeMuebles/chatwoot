@@ -183,7 +183,8 @@
         "MOTIVOS_GARANTIA": "Warranty motives",
         "PROCESOS_GARANTIA": "Warranty processes",
         "COBERTURAS_CIUDAD": "City coverage",
-        "PARAMETROS": "Parameters"
+        "PARAMETROS": "Parameters",
+        "FORMATOS": "Formats"
       },
       "SUBTITLE": "The module vocabulary is managed here. No value is hard-coded.",
       "ACTIVE": "Active",
@@ -202,8 +203,44 @@
         "MOTIVOS_GARANTIA": "What happened to the product; can drive a date-based assignment rule.",
         "PROCESOS_GARANTIA": "Milestones within the same business-day budget; they do not reset the clock.",
         "COBERTURAS_CIUDAD": "With an in-house technician the warranty starts with a visit; otherwise, with pickup.",
-        "PARAMETROS": "Operational times and thresholds of the module."
+        "PARAMETROS": "Operational times and thresholds of the module.",
+        "FORMATOS": ".docx templates for the warranty formats."
       }
+    },
+    "FORMATOS": {
+      "TITLE": "Formats",
+      "SIN_PLANTILLA": "No template yet; it cannot be generated.",
+      "VERSION_ACTIVA": "Version %{version} (active)",
+      "SUBIR": "Upload new version",
+      "DESCARGAR": "Download .docx",
+      "ACTIVAR": "Activate this version",
+      "ACTIVAR_CONFIRMACION": "From now on all cases use this version of the format. Activate?",
+      "DESCARTAR": "Discard draft",
+      "VISTA_PREVIA": "Preview",
+      "ABRIR_NUEVA_PESTANA": "Open in new tab",
+      "DESCONOCIDOS": "Unrecognized markers:",
+      "MARCADORES": {
+        "TITLE": "Available markers",
+        "COPIAR": "Copy",
+        "COPIADO": "Copied"
+      },
+      "SOLO_LECTURA": "Read only",
+      "GUARDADO": "Done",
+      "FORBIDDEN": "You don't have permission for this action.",
+      "ERROR": "Something went wrong. Please try again.",
+      "NUEVO": "New format",
+      "NUEVO_TITULO": "Create format",
+      "NOMBRE": "Name",
+      "CODIGO": "Code",
+      "CODIGO_AYUDA": "If left blank, it is generated from the name.",
+      "CREAR": "Create",
+      "CREADO": "Format created",
+      "DESACTIVAR": "Deactivate",
+      "DESACTIVAR_CONFIRMACION": "The format stops being offered, but the history is kept. Deactivate?",
+      "DESACTIVADO": "Format deactivated",
+      "REACTIVAR": "Reactivate",
+      "REACTIVADO": "Format reactivated",
+      "DESACTIVADO_BADGE": "Deactivated"
     },
     "DETAIL": {
       "TITLE": "Case detail",
@@ -365,6 +402,19 @@
       "SUCCESS": "Ticket deleted",
       "ERROR": "There was an error deleting the ticket",
       "FORBIDDEN": "You don't have permission to delete this ticket."
+    },
+    "GENERAR_FORMATO": {
+      "TITLE": "Generate format",
+      "GENERAR": "Generate and save",
+      "PREVIEW": "Preview",
+      "ITEM_LABEL": "Product",
+      "FORMATO_LABEL": "Format",
+      "SUGERIDO": "Suggested",
+      "SIN_PLANTILLA": "No active template",
+      "FALTANTES_TITLE": "Missing data in the case sheet:",
+      "SIN_GARANTIA": "This case has no warranty; there are no formats to generate.",
+      "GUARDADO": "Format generated and saved to the case file",
+      "ERROR": "The format could not be generated"
     }
   }
 }

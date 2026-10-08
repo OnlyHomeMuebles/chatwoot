@@ -41,6 +41,9 @@ class Helic3::Formatos::SubirPlantilla
 
   # extension .docx Y cabecera de bytes PK (un .docx es un zip) + tope de tamano.
   def validar_archivo
+    # cacería #5: sin archivo (o con algo que no es un archivo subido) daria
+    # NoMethodError -> 500 al llamar original_filename; se devuelve 422 legible.
+    return 'falta el archivo' unless @archivo.respond_to?(:original_filename)
     return 'solo se aceptan archivos .docx' unless @archivo.original_filename.to_s.downcase.end_with?('.docx')
     return 'el archivo no es un .docx válido' unless cabecera_docx?
     return "el archivo supera #{max_mb} MB" if @archivo.size.to_i > max_mb * 1_000_000

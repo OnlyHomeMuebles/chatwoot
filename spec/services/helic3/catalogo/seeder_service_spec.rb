@@ -16,6 +16,18 @@ RSpec.describe Helic3::Catalogo::SeederService do
     )
   end
 
+  it 'precarga el formato sugerido por proceso, salvo entrega_producto (N1 Jhan)' do
+    service.sembrar!
+
+    visita = Helic3::Catalogo::ProcesoGarantia.find_by!(account: account, codigo: 'visita_tecnica')
+    entrega = Helic3::Catalogo::ProcesoGarantia.find_by!(account: account, codigo: 'entrega_producto')
+    formato_visita = Helic3::Catalogo::Formato.find_by!(account: account, codigo: 'visita_tecnica')
+
+    expect(visita.formato_sugerido).to eq(formato_visita)
+    # entrega_producto -> No. 2 queda sin precargar hasta que Karen lo confirme.
+    expect(entrega.formato_sugerido_id).to be_nil
+  end
+
   it 'se ejecuta dos veces seguidas sin generar duplicados' do
     primera = service.sembrar!
     segunda = described_class.new(account).sembrar!
