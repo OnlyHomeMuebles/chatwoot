@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_10_06_120200) do
+ActiveRecord::Schema[7.2].define(version: 2026_10_07_120100) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1262,8 +1262,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_06_120200) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "es_terminal", default: false, null: false
+    t.bigint "formato_sugerido_id"
     t.index ["account_id", "codigo"], name: "idx_h3cat_procesos_garantia_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_procesos_garantia_account"
+    t.index ["formato_sugerido_id"], name: "idx_h3cat_procesos_garantia_formato_sugerido"
   end
 
   create_table "helic3_catalogo_resultados", force: :cascade do |t|
@@ -2043,6 +2045,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_06_120200) do
   add_foreign_key "helic3_catalogo_detalles_tipificados", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
   add_foreign_key "helic3_catalogo_formatos", "accounts"
   add_foreign_key "helic3_catalogo_motivos_pqr", "helic3_catalogo_categorias", column: "categoria_id"
+  add_foreign_key "helic3_catalogo_procesos_garantia", "helic3_catalogo_formatos", column: "formato_sugerido_id", on_delete: :nullify
   add_foreign_key "helic3_documentos", "accounts"
   add_foreign_key "helic3_documentos", "attachments", on_delete: :nullify
   add_foreign_key "helic3_documentos", "helic3_garantias", column: "garantia_id"

@@ -389,6 +389,19 @@
       "SUCCESS": "Ticket eliminado",
       "ERROR": "Hubo un error al eliminar el ticket",
       "FORBIDDEN": "No tienes permiso para eliminar este ticket."
+    },
+    "GENERAR_FORMATO": {
+      "TITLE": "Generar formato",
+      "GENERAR": "Generar y guardar",
+      "PREVIEW": "Vista previa",
+      "ITEM_LABEL": "Producto",
+      "FORMATO_LABEL": "Formato",
+      "SUGERIDO": "Sugerido",
+      "SIN_PLANTILLA": "Sin plantilla activa",
+      "FALTANTES_TITLE": "Faltan datos en la ficha:",
+      "SIN_GARANTIA": "Este caso no tiene garantía; no hay formatos para generar.",
+      "GUARDADO": "Formato generado y guardado en el expediente",
+      "ERROR": "No se pudo generar el formato"
     }
   }
 }
