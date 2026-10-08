@@ -25,7 +25,7 @@ vi.mock('dashboard/composables/store', () => ({
 }));
 
 vi.mock('vue-i18n', () => ({
-  useI18n: () => ({ t: key => key }),
+  useI18n: () => ({ t: key => key, locale: { value: 'es' } }),
 }));
 
 vi.mock('dashboard/composables', () => ({
@@ -120,6 +120,34 @@ describe('GarantiasTab.vue (IND-01)', () => {
     await reintentar.vm.$emit('click');
 
     expect(fetchGarantias).toHaveBeenCalledTimes(1);
+  });
+
+  // N3 (revision de Jhan, PR #113): el backend devuelve etiqueta: null en vez de
+  // "Sin ciudad" quemado en español; el frontend traduce con la clave del i18n.
+  it('N3: traduce una etiqueta nula con la clave NO_CITY de la seccion', () => {
+    garantiasRef = {
+      ...indicadoresVacios(),
+      kpis: { garantias: 2, solucionadas: 0, en_proceso: 2, productos: 0 },
+      por_ciudad: [{ etiqueta: null, cantidad: 2 }],
+    };
+    const wrapper = shallowMount(GarantiasTab);
+
+    expect(wrapper.text()).toContain('HELIC3_INDICADORES.GARANTIAS.NO_CITY');
+  });
+
+  // N4 (revision de Jhan, PR #113): el selector de mes muestra nombres, no 1-12.
+  it('N4: el selector de mes muestra nombres de mes, no numeros', () => {
+    const wrapper = mount(GarantiasTab);
+
+    const selectorMes = wrapper.find(
+      'select[aria-label="HELIC3_INDICADORES.FILTERS.MONTH"]'
+    );
+    const opcionesDeMes = selectorMes
+      .findAll('option')
+      .map(opcion => opcion.text());
+
+    expect(opcionesDeMes).toContain('Enero');
+    expect(opcionesDeMes).not.toContain('1');
   });
 
   describe('filtro de producto (texto libre)', () => {

@@ -33,7 +33,11 @@
       "BY_DETAIL": "Por detalle",
       "BY_STAGE": "Por etapa",
       "BY_PRODUCT": "Por producto (top 20)",
-      "COUNT": "Garantías"
+      "COUNT": "Garantías",
+      "NO_CITY": "Sin ciudad",
+      "NO_MOTIVE": "Sin motivo",
+      "NO_DETAIL": "Sin detalle",
+      "NO_STAGE": "Sin etapa"
     }
   }
 }

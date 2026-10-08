@@ -13,6 +13,13 @@
 class Helic3::Indicadores::Garantias
   TOP_PRODUCTOS = 20
 
+  # abierta_at es un timestamp sin zona en UTC. Agrupar/filtrar directo sobre esa
+  # columna corre el riesgo de que una garantia abierta el 31 a las 9pm en Bogota
+  # (2am UTC del dia siguiente) caiga en el mes/trimestre equivocado, lo cual
+  # tambien podria desalinear estas cifras frente al Dash CX en los cierres de
+  # mes. Se convierte explicitamente a la zona del modulo antes de truncar/extraer.
+  FECHA_LOCAL = "(abierta_at AT TIME ZONE 'UTC') AT TIME ZONE '#{Helic3::CalendarioHabil::ZONA}'".freeze
+
   def self.call(account:, filtros: {})
     new(account: account, filtros: filtros).call
   end
@@ -52,19 +59,21 @@ class Helic3::Indicadores::Garantias
   # DATE_TRUNC agrupa por anio+mes a la vez (no solo "mes del calendario"), asi
   # datos de anios distintos nunca se mezclan en la misma barra.
   def mensual
-    agrupar_por_fecha("DATE_TRUNC('month', abierta_at)") { |fecha| fecha.strftime('%Y-%m') }
+    agrupar_por_fecha("DATE_TRUNC('month', #{FECHA_LOCAL})") { |fecha| fecha.strftime('%Y-%m') }
   end
 
   def trimestral
-    agrupar_por_fecha("DATE_TRUNC('quarter', abierta_at)") { |fecha| "#{fecha.year}-T#{((fecha.month - 1) / 3) + 1}" }
+    agrupar_por_fecha("DATE_TRUNC('quarter', #{FECHA_LOCAL})") { |fecha| "#{fecha.year}-T#{((fecha.month - 1) / 3) + 1}" }
   end
 
   # CA: "no aparecen meses posteriores al actual" -- se descarta cualquier grupo
   # cuya fecha truncada caiga despues de este mes, sin importar el anio filtrado.
+  # La fecha agrupada llega sin zona (DATE_TRUNC sobre FECHA_LOCAL ya la resto),
+  # asi que el limite tambien se calcula en hora de Bogota, no en UTC.
   def agrupar_por_fecha(expresion_sql)
-    limite = Time.current.end_of_month
+    limite = Time.current.in_time_zone(Helic3::CalendarioHabil::ZONA).to_date.end_of_month
     garantias_filtradas.group(Arel.sql(expresion_sql)).count
-                       .filter_map { |fecha, cantidad| { clave: yield(fecha), cantidad: cantidad } if fecha <= limite }
+                       .filter_map { |fecha, cantidad| { clave: yield(fecha), cantidad: cantidad } if fecha.to_date <= limite }
                        .sort_by { |fila| fila[:clave] }
                        .map { |fila| { periodo: fila[:clave], cantidad: fila[:cantidad] } }
   end
@@ -72,25 +81,25 @@ class Helic3::Indicadores::Garantias
   def por_ciudad
     conteos = garantias_filtradas.group(:cobertura_ciudad_id).count
     nombres = Helic3::Catalogo::CoberturaCiudad.where(id: conteos.keys.compact).pluck(:id, :nombre).to_h
-    ordenar_por_cantidad(conteos) { |id| nombres.fetch(id, 'Sin ciudad') }
+    ordenar_por_cantidad(conteos) { |id| nombres[id] }
   end
 
   def por_motivo
     conteos = items_filtrados.group(:motivo_garantia_id).count
     nombres = Helic3::Catalogo::MotivoGarantia.where(id: conteos.keys.compact).pluck(:id, :nombre).to_h
-    ordenar_por_cantidad(conteos) { |id| nombres.fetch(id, 'Sin motivo') }
+    ordenar_por_cantidad(conteos) { |id| nombres[id] }
   end
 
   def por_detalle
     conteos = items_filtrados.group(:detalle_tipificado_id).count
     nombres = Helic3::Catalogo::DetalleTipificado.where(id: conteos.keys.compact).pluck(:id, :nombre).to_h
-    ordenar_por_cantidad(conteos) { |id| nombres.fetch(id, 'Sin detalle') }
+    ordenar_por_cantidad(conteos) { |id| nombres[id] }
   end
 
   def por_proceso
     conteos = items_filtrados.group(:proceso_id).count
     nombres = Helic3::Catalogo::ProcesoGarantia.where(id: conteos.keys.compact).pluck(:id, :nombre).to_h
-    ordenar_por_cantidad(conteos) { |id| nombres.fetch(id, 'Sin proceso') }
+    ordenar_por_cantidad(conteos) { |id| nombres[id] }
   end
 
   def por_producto
@@ -107,10 +116,22 @@ class Helic3::Indicadores::Garantias
 
   def garantias_filtradas
     scope = Helic3::Garantia.where(account: account)
-    scope = scope.where('EXTRACT(year FROM abierta_at) = ?', filtros[:anio]) if filtros[:anio].present?
-    scope = scope.where('EXTRACT(month FROM abierta_at) = ?', filtros[:mes]) if filtros[:mes].present?
+    anio = filtro_entero(:anio)
+    mes = filtro_entero(:mes)
+    scope = scope.where("EXTRACT(year FROM #{FECHA_LOCAL}) = ?", anio) if anio
+    scope = scope.where("EXTRACT(month FROM #{FECHA_LOCAL}) = ?", mes) if mes
     scope = scope.where(cobertura_ciudad_id: filtros[:cobertura_ciudad_id]) if filtros[:cobertura_ciudad_id].present?
     filtrar_por_item(scope)
+  end
+
+  # N1 (revision de Jhan, PR #113): anio/mes no numericos (p. ej. un parametro
+  # manipulado) hacian que Postgres comparara numeric con texto y tumbaran la
+  # consulta con un 500. Un valor invalido simplemente se ignora, como si no
+  # se hubiera filtrado.
+  def filtro_entero(clave)
+    Integer(filtros[clave])
+  rescue ArgumentError, TypeError
+    nil
   end
 
   # columna directa del item -> filtro del mismo nombre (mismo patron de

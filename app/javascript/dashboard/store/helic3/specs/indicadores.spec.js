@@ -30,7 +30,10 @@ describe('helic3Indicadores store', () => {
 
     await store.fetchGarantias({ anio: 2026 });
 
-    expect(IndicadoresAPI.garantias).toHaveBeenCalledWith({ anio: 2026 });
+    expect(IndicadoresAPI.garantias).toHaveBeenCalledWith(
+      { anio: 2026 },
+      { signal: expect.any(AbortSignal) }
+    );
     expect(store.getGarantias).toEqual(payload);
   });
 
@@ -54,5 +57,30 @@ describe('helic3Indicadores store', () => {
 
     await expect(store.fetchGarantias()).rejects.toThrow('500');
     expect(store.getUIFlags.isFetchingGarantias).toBe(false);
+  });
+
+  // N2 (revision de Jhan, PR #113): el debounce reduce peticiones, pero no evita
+  // que una respuesta tardia pise una mas nueva. fetchGarantias cancela la
+  // peticion anterior (useAbortableRequest) e ignora su resultado si llega tarde.
+  it('N2: una respuesta tardia no pisa la mas nueva', async () => {
+    const store = useIndicadoresStore();
+    let resolverLenta;
+    IndicadoresAPI.garantias.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolverLenta = resolve;
+        })
+    );
+    const peticionLenta = store.fetchGarantias({ anio: 2025 });
+
+    IndicadoresAPI.garantias.mockResolvedValueOnce({
+      data: { kpis: { garantias: 9 } },
+    });
+    await store.fetchGarantias({ anio: 2026 });
+
+    resolverLenta({ data: { kpis: { garantias: 1 } } });
+    await peticionLenta;
+
+    expect(store.getGarantias).toEqual({ kpis: { garantias: 9 } });
   });
 });

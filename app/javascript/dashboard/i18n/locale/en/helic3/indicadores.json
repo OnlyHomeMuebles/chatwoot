@@ -33,7 +33,11 @@
       "BY_DETAIL": "By detail",
       "BY_STAGE": "By stage",
       "BY_PRODUCT": "By product (top 20)",
-      "COUNT": "Warranties"
+      "COUNT": "Warranties",
+      "NO_CITY": "No city",
+      "NO_MOTIVE": "No motive",
+      "NO_DETAIL": "No detail",
+      "NO_STAGE": "No stage"
     }
   }
 }

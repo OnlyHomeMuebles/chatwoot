@@ -82,12 +82,14 @@ RSpec.describe Helic3::Indicadores::Garantias do
       expect(llamar[:trimestral]).to contain_exactly({ periodo: '2026-T1', cantidad: 3 })
     end
 
-    it 'por_ciudad: Manizales 1, Pereira 1, Sin ciudad 1' do
+    # N3 (revision de Jhan, PR #113): sin catalogo asociado, etiqueta es nil (no un
+    # texto en español quemado en el backend) -- el frontend decide como traducirlo.
+    it 'por_ciudad: Manizales 1, Pereira 1, sin ciudad (nil) 1' do
       por_ciudad = llamar[:por_ciudad].index_by { |fila| fila[:etiqueta] }
 
       expect(por_ciudad['Manizales'][:cantidad]).to eq(1)
       expect(por_ciudad['Pereira'][:cantidad]).to eq(1)
-      expect(por_ciudad['Sin ciudad'][:cantidad]).to eq(1)
+      expect(por_ciudad[nil][:cantidad]).to eq(1)
     end
 
     it 'por_motivo cuenta PRODUCTOS, no radicados: calidad aparece 2 veces (en dos garantias distintas)' do
@@ -95,7 +97,7 @@ RSpec.describe Helic3::Indicadores::Garantias do
 
       expect(por_motivo['Calidad - producto comprado'][:cantidad]).to eq(2)
       expect(por_motivo['Reparación - primera entrega'][:cantidad]).to eq(1)
-      expect(por_motivo['Sin motivo'][:cantidad]).to eq(1)
+      expect(por_motivo[nil][:cantidad]).to eq(1)
     end
 
     it 'por_detalle: solo un producto tiene detalle tipificado' do
@@ -130,10 +132,11 @@ RSpec.describe Helic3::Indicadores::Garantias do
 
   it 'CA: no aparecen meses posteriores al actual' do
     travel_to Time.zone.local(2026, 6, 15) do
-      crear_garantia(abierta_at: Time.zone.local(2026, 6, 1))
+      # mediodia UTC para no cruzar el borde del mes al convertir a Bogota (UTC-5)
+      crear_garantia(abierta_at: Time.zone.local(2026, 6, 1, 12, 0))
       # fecha futura "real" no deberia existir en produccion, pero si llegara (reloj mal puesto,
       # dato corregido a mano) el indicador no debe mostrarla igual.
-      futuro = Helic3::Garantia.new(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 9, 1))
+      futuro = Helic3::Garantia.new(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 9, 1, 12, 0))
       futuro.save!(validate: false)
 
       periodos = llamar[:mensual].map { |fila| fila[:periodo] }
@@ -141,6 +144,17 @@ RSpec.describe Helic3::Indicadores::Garantias do
       expect(periodos).to include('2026-06')
       expect(periodos).not_to include('2026-09')
     end
+  end
+
+  # B1 (revision de Jhan, PR #113): abierta_at se agrupa en hora de Bogota, no en UTC.
+  it 'CA (revision de Jhan, B1): una garantia abierta el ultimo dia del mes a las 21:00 de Bogota cuenta en ese mes' do
+    # 2026-01-31 21:00 hora Bogota == 2026-02-01 02:00 UTC. Sin la conversion de
+    # zona, DATE_TRUNC la agruparia (mal) en febrero.
+    crear_garantia(abierta_at: Time.utc(2026, 2, 1, 2, 0))
+
+    periodos = llamar[:mensual].map { |fila| fila[:periodo] }
+
+    expect(periodos).to eq(['2026-01'])
   end
 
   it 'CA: con un filtro sin resultados, todos los desgloses quedan vacios (el "sin datos" lo pinta el frontend)' do
@@ -155,9 +169,10 @@ RSpec.describe Helic3::Indicadores::Garantias do
 
   describe 'filtros directos sobre la garantia' do
     before do
-      crear_garantia(abierta_at: Time.zone.local(2025, 1, 1), ciudad: manizales)
-      crear_garantia(abierta_at: Time.zone.local(2026, 1, 1), ciudad: pereira)
-      crear_garantia(abierta_at: Time.zone.local(2026, 5, 1), ciudad: manizales)
+      # mediodia UTC para no cruzar el borde del mes/anio al convertir a Bogota (UTC-5)
+      crear_garantia(abierta_at: Time.zone.local(2025, 1, 1, 12, 0), ciudad: manizales)
+      crear_garantia(abierta_at: Time.zone.local(2026, 1, 1, 12, 0), ciudad: pereira)
+      crear_garantia(abierta_at: Time.zone.local(2026, 5, 1, 12, 0), ciudad: manizales)
     end
 
     it 'filtra por anio' do
@@ -170,6 +185,12 @@ RSpec.describe Helic3::Indicadores::Garantias do
 
     it 'filtra por ciudad' do
       expect(llamar(filtros: { cobertura_ciudad_id: manizales.id })[:kpis][:garantias]).to eq(2)
+    end
+
+    # N1 (revision de Jhan, PR #113): un anio/mes no numerico tumbaba la consulta con un 500
+    # (Postgres comparando numeric con texto) -- ahora se ignora como si no se hubiera filtrado.
+    it 'ignora un anio/mes no numerico en vez de tumbar la consulta' do
+      expect(llamar(filtros: { anio: 'abc', mes: 'xyz' })[:kpis][:garantias]).to eq(3)
     end
   end
 

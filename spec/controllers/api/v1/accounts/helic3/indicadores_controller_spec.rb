@@ -41,6 +41,17 @@ RSpec.describe 'Helic3 Indicadores (IND-01)', type: :request do
     expect(response.parsed_body['kpis']['garantias']).to eq(1)
   end
 
+  # N1 (revision de Jhan, PR #113): un anio/mes no numerico tumbaba la consulta con un 500
+  # (Postgres comparando numeric con texto) -- ahora se ignora, no se rechaza la peticion.
+  it 'no revienta con un anio/mes no numerico, simplemente los ignora' do
+    Helic3::Garantia.create!(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 1, 1, 12, 0))
+
+    get_garantias(anio: 'abc', mes: 'xyz')
+
+    expect(response).to have_http_status(:success)
+    expect(response.parsed_body['kpis']['garantias']).to eq(1)
+  end
+
   it 'no expone las garantias de otra cuenta' do
     otra_cuenta = create(:account)
     otro_ticket = create(:ticket, account: otra_cuenta)

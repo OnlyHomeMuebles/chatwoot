@@ -13,7 +13,7 @@ import { useIndicadoresStore } from 'dashboard/store/helic3/indicadores';
 // IND-01: primera pestaña de Indicadores. Garantías que YA están en el CRM,
 // con filtros resueltos en el servidor (GET helic3/indicadores/garantias).
 // Nº de facturas, ratio y subtotal llegan con IND-03; histórico con IND-04.
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const store = useStore();
 const indicadoresStore = useIndicadoresStore();
 
@@ -47,9 +47,23 @@ const anioOptions = computed(() => [
   todos(),
   ...ANIOS.map(anio => ({ value: anio, label: String(anio) })),
 ]);
+
+// N4 (revision de Jhan, PR #113): Karen espera nombres de mes, no 1-12. Mismo
+// patron de Intl.DateTimeFormat que HeatmapDateRangeSelector.vue; el dia/anio
+// de la fecha de referencia no importa, solo se usa para leer el mes.
+const monthFormatter = computed(
+  () =>
+    new Intl.DateTimeFormat((locale.value || 'es').replace('_', '-'), {
+      month: 'long',
+    })
+);
+const nombreDeMes = mes => {
+  const nombre = monthFormatter.value.format(new Date(2026, mes - 1, 1));
+  return nombre.charAt(0).toUpperCase() + nombre.slice(1);
+};
 const mesOptions = computed(() => [
   todos(),
-  ...MESES.map(mes => ({ value: mes, label: String(mes) })),
+  ...MESES.map(mes => ({ value: mes, label: nombreDeMes(mes) })),
 ]);
 const opcionesDe = tipo =>
   computed(() => [
@@ -149,6 +163,22 @@ const graficaMensual = computed(() => comoGrafica(datos.value?.mensual || []));
 const graficaTrimestral = computed(() =>
   comoGrafica(datos.value?.trimestral || [])
 );
+
+// N3 (revision de Jhan, PR #113): el backend ya no quema "Sin ciudad"/"Sin
+// motivo"/etc en español -- devuelve etiqueta: null para que el frontend
+// traduzca. por_producto no entra aqui: Jhan solo senalo ciudad/motivo/
+// detalle/proceso.
+const ETIQUETA_SIN_DATO = {
+  BY_CITY: 'NO_CITY',
+  BY_MOTIVE: 'NO_MOTIVE',
+  BY_DETAIL: 'NO_DETAIL',
+  BY_STAGE: 'NO_STAGE',
+};
+const etiquetaDe = (seccionTitulo, etiqueta) => {
+  if (etiqueta !== null && etiqueta !== undefined) return etiqueta;
+  const clave = ETIQUETA_SIN_DATO[seccionTitulo];
+  return clave ? t(`HELIC3_INDICADORES.GARANTIAS.${clave}`) : etiqueta;
+};
 </script>
 
 <template>
@@ -328,7 +358,9 @@ const graficaTrimestral = computed(() =>
                 :key="fila.etiqueta"
                 class="border-t border-n-weak"
               >
-                <td class="px-3 py-2 text-n-slate-11">{{ fila.etiqueta }}</td>
+                <td class="px-3 py-2 text-n-slate-11">
+                  {{ etiquetaDe(seccion.titulo, fila.etiqueta) }}
+                </td>
                 <td class="px-3 py-2 font-medium text-right text-n-slate-12">
                   {{ fila.cantidad }}
                 </td>

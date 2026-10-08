@@ -8,8 +8,8 @@ class IndicadoresAPI extends ApiClient {
     super('helic3/indicadores', { accountScoped: true });
   }
 
-  garantias(params) {
-    return axios.get(`${this.url}/garantias`, { params });
+  garantias(params, { signal } = {}) {
+    return axios.get(`${this.url}/garantias`, { params, signal });
   }
 }
 
