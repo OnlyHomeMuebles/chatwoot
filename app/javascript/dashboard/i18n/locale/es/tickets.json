@@ -183,7 +183,8 @@
         "MOTIVOS_GARANTIA": "Motivos de garantía",
         "PROCESOS_GARANTIA": "Procesos de garantía",
         "COBERTURAS_CIUDAD": "Cobertura por ciudad",
-        "PARAMETROS": "Parámetros"
+        "PARAMETROS": "Parámetros",
+        "FORMATOS": "Formatos"
       },
       "SUBTITLE": "El vocabulario del módulo se administra aquí. Ningún valor está escrito en el código.",
       "ACTIVE": "Activa",
@@ -202,8 +203,31 @@
         "MOTIVOS_GARANTIA": "Qué pasó con el producto; puede activar una regla de asignación por fecha.",
         "PROCESOS_GARANTIA": "Hitos dentro del mismo presupuesto de días hábiles; no reinician el reloj.",
         "COBERTURAS_CIUDAD": "Con técnico propio la garantía arranca en visita; sin técnico, en recolección.",
-        "PARAMETROS": "Tiempos y umbrales de operación del módulo."
+        "PARAMETROS": "Tiempos y umbrales de operación del módulo.",
+        "FORMATOS": "Plantillas .docx de los formatos de garantía."
       }
+    },
+    "FORMATOS": {
+      "TITLE": "Formatos",
+      "SIN_PLANTILLA": "Aún no tiene plantilla; no se puede generar.",
+      "VERSION_ACTIVA": "Versión %{version} (activa)",
+      "SUBIR": "Subir nueva versión",
+      "DESCARGAR": "Descargar .docx",
+      "ACTIVAR": "Activar esta versión",
+      "ACTIVAR_CONFIRMACION": "Desde ahora todos los casos usan esta versión del formato. ¿Activar?",
+      "DESCARTAR": "Descartar borrador",
+      "VISTA_PREVIA": "Vista previa",
+      "ABRIR_NUEVA_PESTANA": "Abrir en pestaña nueva",
+      "DESCONOCIDOS": "Marcadores no reconocidos:",
+      "MARCADORES": {
+        "TITLE": "Marcadores disponibles",
+        "COPIAR": "Copiar",
+        "COPIADO": "Copiado"
+      },
+      "SOLO_LECTURA": "Solo lectura",
+      "GUARDADO": "Listo",
+      "FORBIDDEN": "No tienes permiso para esta acción.",
+      "ERROR": "Ocurrió un error. Inténtalo de nuevo."
     },
     "DETAIL": {
       "TITLE": "Detalle del expediente",
