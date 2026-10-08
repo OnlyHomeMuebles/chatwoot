@@ -3,8 +3,10 @@
 # FMT-02: tabla del catalogo de formatos. Mismo patron que los demas catalogos de
 # clasificacion (cuenta, codigo, nombre, posicion, activo). Indices con nombre corto
 # porque los autogenerados por Rails superan el limite de 63 chars de Postgres.
-# La SIEMBRA de los 4 formatos la hace el seeder (Helic3::Catalogo::SeederService),
-# igual que el resto de catalogos en esta rama (via rake catalogos:sembrar).
+# La SIEMBRA de los 4 formatos la hace una migracion idempotente aparte
+# (20261006120200_siembra_helic3_formatos), que corre Helic3::Catalogo::SeederService
+# en el despliegue. Patron SIE-01: cada PR que agrega filas trae su propia migracion
+# de siembra, nunca por consola.
 class CreateHelic3CatalogoFormatos < ActiveRecord::Migration[7.2]
   def change
     create_table :helic3_catalogo_formatos do |t|
