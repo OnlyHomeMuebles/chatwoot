@@ -17,11 +17,14 @@ const emit = defineEmits([
   'descartar',
   'descargar',
   'previsualizar',
+  'desactivar',
+  'reactivar',
 ]);
 const { t } = useI18n();
 
 const archivoRef = ref(null);
 const dialogoActivar = ref(null);
+const dialogoDesactivar = ref(null);
 
 const activa = computed(() =>
   props.formato.versiones.find(
@@ -44,6 +47,11 @@ const confirmarActivar = () => {
   if (borrador.value) emit('activar', borrador.value.id);
   dialogoActivar.value?.close();
 };
+
+const confirmarDesactivar = () => {
+  emit('desactivar', props.formato.id);
+  dialogoDesactivar.value?.close();
+};
 </script>
 
 <template>
@@ -51,7 +59,16 @@ const confirmarActivar = () => {
     class="flex flex-col gap-2 p-4 border border-n-weak rounded-lg"
     :data-testid="`card-${formato.codigo}`"
   >
-    <h3 class="text-base font-medium text-n-slate-12">{{ formato.nombre }}</h3>
+    <h3 class="flex items-center gap-2 text-base font-medium text-n-slate-12">
+      {{ formato.nombre }}
+      <span
+        v-if="!formato.activo"
+        data-testid="badge-desactivado"
+        class="px-1.5 py-0.5 text-xs rounded bg-n-slate-3 text-n-slate-11"
+      >
+        {{ t('TICKETS.FORMATOS.DESACTIVADO_BADGE') }}
+      </span>
+    </h3>
 
     <p v-if="activa" class="text-sm text-n-slate-11">
       {{ t('TICKETS.FORMATOS.VERSION_ACTIVA', { version: activa.version }) }}
@@ -109,6 +126,22 @@ const confirmarActivar = () => {
           :label="t('TICKETS.FORMATOS.DESCARTAR')"
           @click="emit('descartar', borrador.id)"
         />
+        <Button
+          v-if="formato.activo"
+          sm
+          ghost
+          data-testid="btn-desactivar"
+          :label="t('TICKETS.FORMATOS.DESACTIVAR')"
+          @click="dialogoDesactivar.open()"
+        />
+        <Button
+          v-else
+          sm
+          faded
+          data-testid="btn-reactivar"
+          :label="t('TICKETS.FORMATOS.REACTIVAR')"
+          @click="emit('reactivar', formato.id)"
+        />
       </template>
     </div>
 
@@ -128,6 +161,15 @@ const confirmarActivar = () => {
       :description="t('TICKETS.FORMATOS.ACTIVAR_CONFIRMACION')"
       :confirm-button-label="t('TICKETS.FORMATOS.ACTIVAR')"
       @confirm="confirmarActivar"
+    />
+
+    <Dialog
+      ref="dialogoDesactivar"
+      type="alert"
+      :title="t('TICKETS.FORMATOS.DESACTIVAR')"
+      :description="t('TICKETS.FORMATOS.DESACTIVAR_CONFIRMACION')"
+      :confirm-button-label="t('TICKETS.FORMATOS.DESACTIVAR')"
+      @confirm="confirmarDesactivar"
     />
   </div>
 </template>

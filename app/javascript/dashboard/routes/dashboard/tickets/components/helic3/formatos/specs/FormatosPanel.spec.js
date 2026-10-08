@@ -2,6 +2,7 @@ import { shallowMount, flushPromises } from '@vue/test-utils';
 import { ref } from 'vue';
 import FormatosPanel from '../FormatosPanel.vue';
 import FormatoCard from '../FormatoCard.vue';
+import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 
 const formatosRef = ref([
   {
@@ -20,6 +21,7 @@ const marcadoresRef = ref({
 const uiFlagsRef = ref({ isFetching: false, isSaving: false });
 const roleRef = ref('administrator');
 const dispatch = vi.fn().mockResolvedValue();
+const alert = vi.fn();
 
 vi.mock('dashboard/composables/store', () => ({
   useStore: () => ({ dispatch }),
@@ -32,13 +34,16 @@ vi.mock('dashboard/composables/store', () => ({
 }));
 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: clave => clave }) }));
-vi.mock('dashboard/composables', () => ({ useAlert: vi.fn() }));
+vi.mock('dashboard/composables', () => ({
+  useAlert: (...args) => alert(...args),
+}));
 
 const montar = () => shallowMount(FormatosPanel);
 
 beforeEach(() => {
   dispatch.mockClear();
   dispatch.mockResolvedValue();
+  alert.mockClear();
 });
 
 describe('FormatosPanel', () => {
@@ -72,6 +77,59 @@ describe('FormatosPanel', () => {
       'helic3Formatos/subirPlantilla',
       expect.objectContaining({ formatoId: 1 })
     );
+  });
+
+  it('crear un formato despacha crearFormato con el código derivado del nombre [FMT-06]', async () => {
+    const wrapper = shallowMount(FormatosPanel, {
+      global: { renderStubDefaultSlot: true },
+    });
+    await wrapper
+      .find('[data-testid="input-nombre"]')
+      .setValue('Acta Especial');
+    await wrapper.findComponent(Dialog).vm.$emit('confirm');
+    await flushPromises();
+
+    expect(dispatch).toHaveBeenCalledWith('helic3Formatos/crearFormato', {
+      nombre: 'Acta Especial',
+      codigo: 'acta_especial',
+    });
+  });
+
+  it('al fallar la creación muestra el mensaje del servidor, no el genérico [#4]', async () => {
+    const error = new Error('422');
+    error.response = { data: { message: 'Codigo ya ha sido tomado' } };
+    dispatch.mockImplementation(accion =>
+      accion === 'helic3Formatos/crearFormato'
+        ? Promise.reject(error)
+        : Promise.resolve()
+    );
+    const wrapper = shallowMount(FormatosPanel, {
+      global: { renderStubDefaultSlot: true },
+    });
+    await wrapper.find('[data-testid="input-nombre"]').setValue('Visita');
+    await wrapper.findComponent(Dialog).vm.$emit('confirm');
+    await flushPromises();
+
+    expect(alert).toHaveBeenCalledWith('Codigo ya ha sido tomado');
+  });
+
+  it('desactivar un formato despacha desactivarFormato [FMT-06]', async () => {
+    const wrapper = montar();
+    wrapper.findComponent(FormatoCard).vm.$emit('desactivar', 1);
+    await flushPromises();
+
+    expect(dispatch).toHaveBeenCalledWith(
+      'helic3Formatos/desactivarFormato',
+      1
+    );
+  });
+
+  it('reactivar un formato despacha reactivarFormato [FMT-06]', async () => {
+    const wrapper = montar();
+    wrapper.findComponent(FormatoCard).vm.$emit('reactivar', 1);
+    await flushPromises();
+
+    expect(dispatch).toHaveBeenCalledWith('helic3Formatos/reactivarFormato', 1);
   });
 
   it('un fallo al previsualizar no rompe el panel (Review Focus 4)', async () => {
