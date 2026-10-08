@@ -12,6 +12,10 @@
 # confirmacion seria resolver por cuenta propia.
 #
 # Lo que sigue sin confirmar esta en app/models/helic3/catalogo/PENDIENTES.md.
+#
+# rubocop:disable Metrics/ClassLength -- la longitud la dominan las constantes de
+# datos validados con Only Home (los catalogos), que viven junto al seeder a
+# proposito; partirlas en otra clase solo por el conteo no aporta claridad.
 class Helic3::Catalogo::SeederService
   # codigos explicitos (no derivados del nombre): los motivos de PQR los
   # referencian, y un ajuste de redaccion del nombre no debe romper la semilla
@@ -183,12 +187,16 @@ class Helic3::Catalogo::SeederService
   private
 
   def sembrar_simple(modelo, nombres)
+    return unless tabla_lista?(modelo)
+
     nombres.each_with_index do |nombre, indice|
       sembrar_fila(modelo, codigo_de(nombre), nombre: nombre, posicion: indice)
     end
   end
 
   def sembrar_con_atributos(modelo, filas)
+    return unless tabla_lista?(modelo)
+
     filas.each_with_index do |fila, indice|
       atributos = fila.except(:codigo).merge(posicion: indice)
       sembrar_fila(modelo, fila[:codigo], atributos)
@@ -196,6 +204,8 @@ class Helic3::Catalogo::SeederService
   end
 
   def sembrar_motivos_pqr
+    return unless tabla_lista?(Helic3::Catalogo::MotivoPqr)
+
     MOTIVOS_PQR.each_with_index do |fila, indice|
       categoria = Helic3::Catalogo::Categoria.find_by!(account: @account, codigo: fila[:categoria])
       atributos = fila.except(:codigo, :categoria).merge(posicion: indice, categoria: categoria)
@@ -204,6 +214,8 @@ class Helic3::Catalogo::SeederService
   end
 
   def sembrar_coberturas
+    return unless tabla_lista?(Helic3::Catalogo::CoberturaCiudad)
+
     CIUDADES.each_with_index do |ciudad, indice|
       con_tecnico = CIUDADES_CON_TECNICO.include?(ciudad)
       sembrar_fila(Helic3::Catalogo::CoberturaCiudad, codigo_de(ciudad),
@@ -213,11 +225,25 @@ class Helic3::Catalogo::SeederService
   end
 
   def sembrar_parametros
+    return unless tabla_lista?(Helic3::Catalogo::Parametro)
+
     PARAMETROS.each do |fila|
       next if Helic3::Catalogo::Parametro.exists?(account: @account, clave: fila[:clave])
 
       Helic3::Catalogo::Parametro.create!(fila.merge(account: @account))
     end
+  end
+
+  # SIE-01: si la tabla de un catalogo todavia no existe (p. ej. un ambiente
+  # atrasado que corre la siembra por migracion ANTES de la migracion que crea
+  # esa tabla), se omite ese catalogo con una linea de log y se sigue con el
+  # resto, en vez de reventar la migracion y tumbar el arranque (start.sh corre
+  # con set -e). En operacion normal las tablas existen y esto es un no-op.
+  def tabla_lista?(modelo)
+    return true if modelo.table_exists?
+
+    Rails.logger.warn("[Helic3][semilla] la tabla #{modelo.table_name} aun no existe; se omite ese catalogo")
+    false
   end
 
   # la semilla solo CREA: si la fila ya existe, no la toca (criterio 7 de
@@ -247,3 +273,4 @@ class Helic3::Catalogo::SeederService
     }
   end
 end
+# rubocop:enable Metrics/ClassLength
