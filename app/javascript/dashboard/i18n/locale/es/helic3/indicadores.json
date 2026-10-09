@@ -1,8 +1,6 @@
 {
   "HELIC3_INDICADORES": {
     "MENU": "Indicadores",
-    "TITLE": "Indicadores",
-    "SUBTITLE": "Los mismos indicadores del Dash CX externo, ahora dentro del CRM.",
     "TABS": {
       "GARANTIAS": "Garantías"
     },
