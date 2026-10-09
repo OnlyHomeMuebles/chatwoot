@@ -1,8 +1,6 @@
 {
   "HELIC3_INDICADORES": {
     "MENU": "Indicators",
-    "TITLE": "Indicators",
-    "SUBTITLE": "The same indicators as the external CX Dashboard, now inside the CRM.",
     "TABS": {
       "GARANTIAS": "Warranties"
     },

@@ -184,39 +184,83 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
 <template>
   <div class="flex flex-col gap-6">
     <!-- Filtros -->
-    <div
-      class="flex flex-wrap items-end gap-3 p-3 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
-    >
-      <Select
-        v-model="filtros.anio"
-        :options="anioOptions"
-        :aria-label="t('HELIC3_INDICADORES.FILTERS.YEAR')"
-      />
-      <Select
-        v-model="filtros.mes"
-        :options="mesOptions"
-        :aria-label="t('HELIC3_INDICADORES.FILTERS.MONTH')"
-      />
-      <Select
-        v-model="filtros.cobertura_ciudad_id"
-        :options="ciudadOptions"
-        :aria-label="t('HELIC3_INDICADORES.FILTERS.CITY')"
-      />
-      <Select
-        v-model="filtros.motivo_garantia_id"
-        :options="motivoOptions"
-        :aria-label="t('HELIC3_INDICADORES.FILTERS.MOTIVE')"
-      />
-      <Select
-        v-model="filtros.detalle_tipificado_id"
-        :options="detalleOptions"
-        :aria-label="t('HELIC3_INDICADORES.FILTERS.DETAIL')"
-      />
-      <Select
-        v-model="filtros.proceso_id"
-        :options="procesoOptions"
-        :aria-label="t('HELIC3_INDICADORES.FILTERS.STAGE')"
-      />
+    <div class="flex flex-wrap items-stretch gap-3">
+      <div
+        class="flex flex-wrap items-center divide-x divide-n-weak rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 overflow-hidden"
+      >
+        <div class="flex items-center gap-2 px-3 py-2">
+          <span
+            class="text-xs font-medium tracking-wide uppercase text-n-slate-11"
+          >
+            {{ t('HELIC3_INDICADORES.FILTERS.YEAR') }}
+          </span>
+          <Select
+            v-model="filtros.anio"
+            :options="anioOptions"
+            :aria-label="t('HELIC3_INDICADORES.FILTERS.YEAR')"
+          />
+        </div>
+        <div class="flex items-center gap-2 px-3 py-2">
+          <span
+            class="text-xs font-medium tracking-wide uppercase text-n-slate-11"
+          >
+            {{ t('HELIC3_INDICADORES.FILTERS.MONTH') }}
+          </span>
+          <Select
+            v-model="filtros.mes"
+            :options="mesOptions"
+            :aria-label="t('HELIC3_INDICADORES.FILTERS.MONTH')"
+          />
+        </div>
+        <div class="flex items-center gap-2 px-3 py-2">
+          <span
+            class="text-xs font-medium tracking-wide uppercase text-n-slate-11"
+          >
+            {{ t('HELIC3_INDICADORES.FILTERS.CITY') }}
+          </span>
+          <Select
+            v-model="filtros.cobertura_ciudad_id"
+            :options="ciudadOptions"
+            :aria-label="t('HELIC3_INDICADORES.FILTERS.CITY')"
+          />
+        </div>
+        <div class="flex items-center gap-2 px-3 py-2">
+          <span
+            class="text-xs font-medium tracking-wide uppercase text-n-slate-11"
+          >
+            {{ t('HELIC3_INDICADORES.FILTERS.MOTIVE') }}
+          </span>
+          <Select
+            v-model="filtros.motivo_garantia_id"
+            :options="motivoOptions"
+            :aria-label="t('HELIC3_INDICADORES.FILTERS.MOTIVE')"
+          />
+        </div>
+        <div class="flex items-center gap-2 px-3 py-2">
+          <span
+            class="text-xs font-medium tracking-wide uppercase text-n-slate-11"
+          >
+            {{ t('HELIC3_INDICADORES.FILTERS.DETAIL') }}
+          </span>
+          <Select
+            v-model="filtros.detalle_tipificado_id"
+            :options="detalleOptions"
+            :aria-label="t('HELIC3_INDICADORES.FILTERS.DETAIL')"
+          />
+        </div>
+        <div class="flex items-center gap-2 px-3 py-2">
+          <span
+            class="text-xs font-medium tracking-wide uppercase text-n-slate-11"
+          >
+            {{ t('HELIC3_INDICADORES.FILTERS.STAGE') }}
+          </span>
+          <Select
+            v-model="filtros.proceso_id"
+            :options="procesoOptions"
+            :aria-label="t('HELIC3_INDICADORES.FILTERS.STAGE')"
+          />
+        </div>
+      </div>
       <Input
         v-model="filtros.producto"
         :placeholder="t('HELIC3_INDICADORES.FILTERS.PRODUCT_PLACEHOLDER')"

@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 
@@ -9,27 +10,21 @@ import { useRoute } from 'vue-router';
 const { t } = useI18n();
 const route = useRoute();
 
-const TABS = [
+// computed, no un array plano: un array plano evalua t() UNA sola vez al
+// montar el componente, antes de que el locale de la cuenta termine de
+// resolverse -- la pestaña quedaba en ingles ("Warranties") aunque el resto
+// de la pagina ya mostrara espanol, porque nunca se volvia a recalcular.
+const TABS = computed(() => [
   {
     name: 'helic3_indicadores_garantias',
     label: t('HELIC3_INDICADORES.TABS.GARANTIAS'),
   },
-];
+]);
 </script>
 
 <template>
   <div class="flex flex-col h-full overflow-hidden">
-    <div class="p-6 pb-0 shrink-0">
-      <h1 class="text-lg font-medium text-n-slate-12">
-        {{ t('HELIC3_INDICADORES.TITLE') }}
-      </h1>
-      <p class="text-sm text-n-slate-11">
-        {{ t('HELIC3_INDICADORES.SUBTITLE') }}
-      </p>
-    </div>
-    <div
-      class="flex gap-1 p-0.5 m-6 mb-0 rounded-lg bg-n-alpha-1 w-fit shrink-0"
-    >
+    <div class="flex gap-1 p-0.5 m-6 rounded-lg bg-n-alpha-1 w-fit shrink-0">
       <router-link
         v-for="tab in TABS"
         :key="tab.name"
