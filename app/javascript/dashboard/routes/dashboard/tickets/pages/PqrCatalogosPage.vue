@@ -96,7 +96,6 @@ const getCatalogo = useMapGetter('pqrCatalogos/getCatalogo');
 const parametros = useMapGetter('pqrCatalogos/getParametros');
 const formatos = useMapGetter('helic3Formatos/getFormatos');
 const currentRole = useMapGetter('getCurrentRole');
-const catalogosPanel = useMapGetter('tickets/getCatalogos');
 
 const esAdmin = computed(() => currentRole.value === 'administrator');
 const esParametros = computed(() => tabActivo.value === PARAMETROS);
@@ -104,14 +103,15 @@ const esFormatos = computed(() => tabActivo.value === FORMATOS);
 const registros = computed(() => getCatalogo.value(tabActivo.value));
 const camposActivos = computed(() => CAMPOS[tabActivo.value] || []);
 
-// Categorias para el selector de motivos (API-01 las trae embebidas en los motivos).
-const categoriaOptions = computed(() => {
-  const vistas = new Map();
-  (catalogosPanel.value.motivos_pqr || []).forEach(m => {
-    if (m.categoria) vistas.set(m.categoria.id, m.categoria);
-  });
-  return [...vistas.values()].map(c => ({ value: c.id, label: c.nombre }));
-});
+// Categorias para el selector de motivos: se leen del catalogo de categorias
+// (ya precargado en onMounted), no de los motivos existentes. Reconstruirlas
+// desde los motivos dejaba el selector vacio hasta que existiera el primer
+// motivo — y no se podia crear ese primero sin elegir categoria.
+const categoriaOptions = computed(() =>
+  (getCatalogo.value('categorias') || [])
+    .filter(c => c.activo)
+    .map(c => ({ value: c.id, label: c.nombre }))
+);
 
 const enumOptions = campo =>
   campo.opciones.map(op => ({
@@ -164,14 +164,14 @@ const cargar = () => {
 };
 
 onMounted(() => {
-  store
-    .dispatch('tickets/getCatalogos')
-    .catch(() => useAlert(t('TICKETS.ADMIN.ERROR')));
   reiniciarNuevo();
   cargar();
-  // Precarga todos los catalogos para que el menu lateral muestre sus conteos.
-  TIPOS.forEach(tipo => store.dispatch('pqrCatalogos/fetchCatalogo', tipo));
-  store.dispatch('pqrCatalogos/fetchParametros');
+  // Precarga todos los catalogos: alimenta los conteos del menu lateral y el
+  // selector de categorias de los motivos.
+  Promise.all([
+    ...TIPOS.map(tipo => store.dispatch('pqrCatalogos/fetchCatalogo', tipo)),
+    store.dispatch('pqrCatalogos/fetchParametros'),
+  ]).catch(() => useAlert(t('TICKETS.ADMIN.ERROR')));
 });
 
 // Conteo por catalogo para el badge del menu lateral.

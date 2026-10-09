@@ -117,3 +117,14 @@
   font-size: 0.72rem;
   line-height: 1rem;
 }
+
+// VIS · Menú de perfil / cuenta (DropdownBody) dentro del rail. Jhan: debe quedar
+// con el café del rail y el texto claro del tema (como la navegación de Agentes/PQR),
+// NO en superficie clara. El DropdownBody trae `bg-n-alpha-3` + backdrop-blur, que
+// sobre el lienzo se ve casi blanco; con el texto claro heredado del rail quedaba
+// blanco-sobre-blanco e ilegible. Aquí se fuerza el fondo al café del rail
+// (--background-color = 36 31 27) y el texto se queda claro. Fuera de @layer a
+// propósito, para ganarle a la utilidad bg-n-alpha-3 de Tailwind.
+:root[data-helic3-theme='nogal']:not(.dark) [data-helic3-rail] .n-dropdown-body {
+  background-color: rgb(var(--background-color));
+}
