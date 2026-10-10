@@ -47,6 +47,13 @@ class Api::V1::Accounts::Helic3::Admin::CatalogosController < Api::V1::Accounts:
     'coberturas_ciudad' => {
       modelo: Helic3::Catalogo::CoberturaCiudad,
       campos: %i[nombre codigo activo posicion origen_ruta tecnico_propio]
+    },
+    # FMT-06 (idea Jhan): Karen crea/renombra/desactiva formatos sin devs. Formato
+    # hereda Comun, asi que encaja en el CRUD generico. Las plantillas de cada
+    # formato se siguen administrando en su panel (FMT-03), no aqui.
+    'formatos' => {
+      modelo: Helic3::Catalogo::Formato,
+      campos: %i[nombre codigo activo posicion]
     }
   }.freeze
 
@@ -83,7 +90,10 @@ class Api::V1::Accounts::Helic3::Admin::CatalogosController < Api::V1::Accounts:
   def destroy
     @registro.destroy!
     head :ok
-  rescue ActiveRecord::InvalidForeignKey
+  # InvalidForeignKey: lo referencia un expediente (FK). RecordNotDestroyed: lo
+  # frena un dependent: :restrict_with_error (p. ej. un formato con plantillas,
+  # FMT-06). En ambos casos se pide desactivar en vez de borrar.
+  rescue ActiveRecord::InvalidForeignKey, ActiveRecord::RecordNotDestroyed
     render json: { error: I18n.t('helic3.catalogos.referenciado') }, status: :unprocessable_entity
   end
 

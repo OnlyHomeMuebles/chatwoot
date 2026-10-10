@@ -28,5 +28,17 @@ ENABLE_ACCOUNT_SEEDING = "true"
 # Keep in sync with railpack.json.
 NODE_OPTIONS = "--max-old-space-size=4096"
 
+# FMT-01: LibreOffice headless convierte los .docx de Karen a PDF (Helic3::Formatos::Conversor).
+# Las fuentes dan las metricas de Calibri/Cambria/Arial/Times para que el PDF salga como en Word.
+# Si choca con AGT-09 (tesseract) en la misma lista al integrar, se queda la union.
+[phases.setup]
+aptPkgs = [
+  "...",
+  "libreoffice-writer-nogui",
+  "fonts-crosextra-carlito",
+  "fonts-crosextra-caladea",
+  "fonts-liberation",
+]
+
 [start]
 cmd = "bash deployment/start.sh"

@@ -166,6 +166,28 @@ class Helic3::Catalogo::SeederService
     { clave: 'enlace_politica_datos', valor: 'https://www.onlyhome.co/politica-de-datos', unidad: 'texto' }
   ].freeze
 
+  # FMT-02: los 4 formatos de Karen como catalogo. El codigo es explicito (no derivado
+  # del nombre) porque lo referencian las plantillas y la logica. Karen puede renombrar
+  # o desactivar desde el admin; la semilla solo CREA (no pisa ediciones).
+  FORMATOS = [
+    { nombre: 'No. 2 · Cumplimiento — entrega de mercancía reparada', codigo: 'cumplimiento_mercancia_reparada' },
+    { nombre: 'No. 3 · Visita de técnico',                            codigo: 'visita_tecnica' },
+    { nombre: 'No. 5 · Recolección de productos',                     codigo: 'recoleccion_productos' },
+    { nombre: 'No. 8 · Cumplimiento — cambio o devolución',           codigo: 'cumplimiento_cambio_devolucion' }
+  ].freeze
+
+  # FMT-04 (parte D): formato sugerido por proceso (codigo_proceso => codigo_formato).
+  # Solo se precarga donde este vacio. 'entrega_producto' -> No. 2 NO se precarga: el
+  # ticket lo marcaba "a confirmar con Karen" (N1 revision Jhan), asi que se deja sin
+  # sugerencia hasta que ella lo confirme y lo asigne desde el admin de catalogos.
+  # Reparacion en fabrica y garantia negada no sugieren formato.
+  SUGERENCIA_FORMATO = {
+    'visita_tecnica' => 'visita_tecnica',
+    'recoleccion' => 'recoleccion_productos',
+    'cambio_producto' => 'cumplimiento_cambio_devolucion',
+    'devolucion_dinero' => 'cumplimiento_cambio_devolucion'
+  }.freeze
+
   def initialize(account)
     @account = account
   end
@@ -179,6 +201,8 @@ class Helic3::Catalogo::SeederService
     sembrar_con_atributos(Helic3::Catalogo::MotivoGarantia, MOTIVOS_GARANTIA)
     sembrar_simple(Helic3::Catalogo::DetalleTipificado, DETALLES_TIPIFICADOS)
     sembrar_con_atributos(Helic3::Catalogo::ProcesoGarantia, PROCESOS_GARANTIA)
+    sembrar_con_atributos(Helic3::Catalogo::Formato, FORMATOS)
+    sembrar_sugerencia_formato
     sembrar_coberturas
     sembrar_parametros
     resumen
@@ -210,6 +234,24 @@ class Helic3::Catalogo::SeederService
       categoria = Helic3::Catalogo::Categoria.find_by!(account: @account, codigo: fila[:categoria])
       atributos = fila.except(:codigo, :categoria).merge(posicion: indice, categoria: categoria)
       sembrar_fila(Helic3::Catalogo::MotivoPqr, fila[:codigo], atributos)
+    end
+  end
+
+  # FMT-04 (parte D): precarga formato_sugerido en cada proceso SOLO si esta vacio,
+  # para no pisar lo que Karen haya configurado desde el admin de catalogos.
+  def sembrar_sugerencia_formato
+    # guardas (B1 revision Jhan): si SIE-01 corre el seeder antes de que exista la
+    # tabla de formatos o la columna formato_sugerido_id, salir sin tocar nada en vez
+    # de reventar (NoMethodError/UndefinedTable) y tumbar el arranque.
+    return unless Helic3::Catalogo::Formato.table_exists?
+    return unless Helic3::Catalogo::ProcesoGarantia.column_names.include?('formato_sugerido_id')
+
+    SUGERENCIA_FORMATO.each do |codigo_proceso, codigo_formato|
+      proceso = Helic3::Catalogo::ProcesoGarantia.find_by(account: @account, codigo: codigo_proceso)
+      next if proceso.nil? || proceso.formato_sugerido_id.present?
+
+      formato = Helic3::Catalogo::Formato.find_by(account: @account, codigo: codigo_formato)
+      proceso.update!(formato_sugerido: formato) if formato
     end
   end
 
@@ -269,7 +311,11 @@ class Helic3::Catalogo::SeederService
       detalles_tipificados: Helic3::Catalogo::DetalleTipificado.where(account: @account).count,
       procesos_garantia: Helic3::Catalogo::ProcesoGarantia.where(account: @account).count,
       coberturas_ciudad: Helic3::Catalogo::CoberturaCiudad.where(account: @account).count,
-      parametros: Helic3::Catalogo::Parametro.where(account: @account).count
+      parametros: Helic3::Catalogo::Parametro.where(account: @account).count,
+      # formatos es la tabla mas nueva: si SIE-01 corre el seeder en una migracion
+      # anterior a la de esta tabla, contar aqui daria PG::UndefinedTable y tumbaria
+      # el arranque (start.sh con set -e). Se devuelve 0 cuando aun no existe.
+      formatos: Helic3::Catalogo::Formato.table_exists? ? Helic3::Catalogo::Formato.where(account: @account).count : 0
     }
   end
 end
