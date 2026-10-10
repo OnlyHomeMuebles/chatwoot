@@ -374,7 +374,9 @@ const iconoDocumento = tipo => {
 // mockup); el resto (PDF, otros, o imagenes cuyo archivo se borro del chat) se
 // listan como renglon con icono.
 const documentosImagen = computed(() =>
-  documentos.value.filter(doc => !doc.archivo_eliminado && esImagen(doc.tipo_archivo) && doc.url)
+  documentos.value.filter(
+    doc => !doc.archivo_eliminado && esImagen(doc.tipo_archivo) && doc.url
+  )
 );
 const documentosOtros = computed(() =>
   documentos.value.filter(
@@ -506,7 +508,9 @@ const formatFecha = valor =>
           <section
             class="flex flex-col gap-4 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
-            <div class="flex items-start justify-between gap-2 pb-3 -mx-4 px-4 border-b border-n-weak">
+            <div
+              class="flex items-start justify-between gap-2 pb-3 -mx-4 px-4 border-b border-n-weak"
+            >
               <div class="flex flex-col gap-0.5 min-w-0">
                 <div class="flex items-center gap-2">
                   <h3 class="mb-0 text-sm font-semibold text-n-slate-12">
@@ -617,7 +621,9 @@ const formatFecha = valor =>
             class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
             data-testid="bloque-garantia"
           >
-            <div class="flex items-center justify-between gap-2 pb-3 -mx-4 px-4 border-b border-n-weak">
+            <div
+              class="flex items-center justify-between gap-2 pb-3 -mx-4 px-4 border-b border-n-weak"
+            >
               <div class="flex items-center gap-2">
                 <h3 class="mb-0 text-sm font-semibold text-n-slate-12">
                   {{ t('TICKETS.DETAIL.WARRANTY') }}
@@ -654,7 +660,9 @@ const formatFecha = valor =>
 
             <dl class="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
               <div class="flex flex-col gap-0.5 min-w-0">
-                <dt class="text-xs text-n-slate-10">{{ t('TICKETS.DETAIL.CITY') }}</dt>
+                <dt class="text-xs text-n-slate-10">
+                  {{ t('TICKETS.DETAIL.CITY') }}
+                </dt>
                 <dd class="mb-0 text-sm font-medium text-n-slate-12">
                   {{ garantia.cobertura_ciudad?.nombre || '—' }}
                   <span v-if="garantia.cobertura_ciudad?.tecnico_propio">
@@ -674,7 +682,9 @@ const formatFecha = valor =>
                 <dt class="text-xs text-n-slate-10">
                   {{ t('TICKETS.DETAIL.PRODUCTS') }}
                 </dt>
-                <dd class="mb-0 text-sm font-medium tabular-nums text-n-slate-12">
+                <dd
+                  class="mb-0 text-sm font-medium tabular-nums text-n-slate-12"
+                >
                   {{ numProductos }}
                 </dd>
               </div>
@@ -824,7 +834,9 @@ const formatFecha = valor =>
           <section
             class="flex flex-col gap-2 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
-            <h3 class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak">
+            <h3
+              class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak"
+            >
               {{ t('TICKETS.DETAIL.NEXT_ACTION') }}
             </h3>
             <p class="mb-0 text-sm text-n-slate-11">{{ siguienteAccion }}</p>
@@ -833,7 +845,9 @@ const formatFecha = valor =>
           <section
             class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
-            <h3 class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak">
+            <h3
+              class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak"
+            >
               {{ t('TICKETS.DETAIL.OPERATOR_ACTIONS') }}
             </h3>
             <div class="flex flex-col gap-1">
@@ -864,7 +878,9 @@ const formatFecha = valor =>
           <section
             class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
-            <h3 class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak">
+            <h3
+              class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak"
+            >
               {{ t('TICKETS.DATA.TITLE') }}
             </h3>
             <dl class="grid grid-cols-2 gap-x-4 gap-y-3">
@@ -874,7 +890,9 @@ const formatFecha = valor =>
                 class="flex flex-col gap-0.5 min-w-0"
               >
                 <dt class="text-xs text-n-slate-10">{{ dato.label }}</dt>
-                <dd class="flex items-center gap-2 mb-0 text-sm font-medium text-n-slate-12">
+                <dd
+                  class="flex items-center gap-2 mb-0 text-sm font-medium text-n-slate-12"
+                >
                   <template v-if="dato.valor">
                     <span class="min-w-0 break-words">{{ dato.valor }}</span>
                     <Helic3SourceBadge :fuente="dato.fuente" />
@@ -892,7 +910,9 @@ const formatFecha = valor =>
             v-if="actividad.length"
             class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
-            <h3 class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak">
+            <h3
+              class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak"
+            >
               {{ t('TICKETS.DETAIL.ACTIVITY') }}
             </h3>
             <ol class="flex flex-col gap-3">
@@ -920,7 +940,9 @@ const formatFecha = valor =>
           <section
             class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
-            <h3 class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak">
+            <h3
+              class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak"
+            >
               {{ t('TICKETS.DETAIL.DOCUMENTS') }}
             </h3>
 
@@ -952,7 +974,8 @@ const formatFecha = valor =>
                     {{ doc.titulo }}
                   </span>
                   <span class="text-xs truncate text-n-slate-10">
-                    {{ remitenteDeDocumento(doc) }} · {{ formatFecha(doc.ocurrido_at) }}
+                    {{ remitenteDeDocumento(doc) }} ·
+                    {{ formatFecha(doc.ocurrido_at) }}
                   </span>
                 </div>
               </a>
@@ -964,7 +987,11 @@ const formatFecha = valor =>
               class="flex items-center gap-2.5 p-2.5 text-sm rounded-lg bg-n-alpha-1"
             >
               <img
-                v-if="!doc.archivo_eliminado && esImagen(doc.tipo_archivo) && doc.url"
+                v-if="
+                  !doc.archivo_eliminado &&
+                  esImagen(doc.tipo_archivo) &&
+                  doc.url
+                "
                 :src="doc.url"
                 class="rounded-md size-8 shrink-0 object-cover"
                 alt=""

@@ -147,19 +147,34 @@ describe('PqrDetailPage.vue — documentos del expediente (EVI-03)', () => {
     expedienteRef.value = { ...expedienteBase, garantia: null };
     documentosRef.value = [
       {
-        id: 1, clase: 'evidencia', origen: 'cliente', titulo: 'foto.png',
-        tipo_archivo: 'image/png', url: 'https://x.test/foto.png',
-        ocurrido_at: '2026-09-20T10:00:00Z', remitente: { nombre: 'Ana', user_id: null },
+        id: 1,
+        clase: 'evidencia',
+        origen: 'cliente',
+        titulo: 'foto.png',
+        tipo_archivo: 'image/png',
+        url: 'https://x.test/foto.png',
+        ocurrido_at: '2026-09-20T10:00:00Z',
+        remitente: { nombre: 'Ana', user_id: null },
       },
       {
-        id: 2, clase: 'evidencia', origen: 'cliente', titulo: 'factura.pdf',
-        tipo_archivo: 'application/pdf', url: 'https://x.test/factura.pdf',
-        ocurrido_at: '2026-09-20T10:00:00Z', remitente: { nombre: 'Ana', user_id: null },
+        id: 2,
+        clase: 'evidencia',
+        origen: 'cliente',
+        titulo: 'factura.pdf',
+        tipo_archivo: 'application/pdf',
+        url: 'https://x.test/factura.pdf',
+        ocurrido_at: '2026-09-20T10:00:00Z',
+        remitente: { nombre: 'Ana', user_id: null },
       },
       {
-        id: 3, clase: 'evidencia', origen: 'cliente', titulo: 'rota.png',
-        tipo_archivo: 'image/png', url: null,
-        ocurrido_at: '2026-09-20T10:00:00Z', remitente: { nombre: 'Ana', user_id: null },
+        id: 3,
+        clase: 'evidencia',
+        origen: 'cliente',
+        titulo: 'rota.png',
+        tipo_archivo: 'image/png',
+        url: null,
+        ocurrido_at: '2026-09-20T10:00:00Z',
+        remitente: { nombre: 'Ana', user_id: null },
       },
     ];
 
