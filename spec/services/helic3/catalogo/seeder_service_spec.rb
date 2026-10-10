@@ -45,6 +45,32 @@ RSpec.describe Helic3::Catalogo::SeederService do
     expect(proceso.reload.plazo_dias_habiles).to eq(12)
   end
 
+  # SIE-01 (CA5): parte de lo que Samuel creo a mano en el CRM desplegado. Si las
+  # categorias manuales usan los codigos de la semilla, la siembra completa las que
+  # faltan y crea los motivos (que las referencian por codigo) sin error.
+  it 'completa lo que falta cuando ya hay categorias creadas a mano con el codigo de la semilla' do
+    Helic3::Catalogo::Categoria.create!(account: account, codigo: 'garantia', nombre: 'Garantía', posicion: 0)
+    Helic3::Catalogo::Categoria.create!(account: account, codigo: 'servicio', nombre: 'Servicio', posicion: 1)
+
+    expect { service.sembrar! }.not_to raise_error
+    expect(Helic3::Catalogo::Categoria.where(account: account).count).to eq(6)
+    expect(Helic3::Catalogo::MotivoPqr.where(account: account).count).to eq(7)
+  end
+
+  # SIE-01 (CA7): si la tabla de un catalogo todavia no existe (un ambiente atrasado
+  # que corre la siembra antes de la migracion que crea esa tabla), se omite ese
+  # catalogo con una advertencia y se siembra el resto, sin romper la migracion.
+  it 'omite un catalogo cuya tabla aun no existe y siembra el resto' do
+    allow(Helic3::Catalogo::DetalleTipificado).to receive(:table_exists?).and_return(false)
+    allow(Rails.logger).to receive(:warn)
+
+    resumen = service.sembrar!
+
+    expect(resumen[:detalles_tipificados]).to eq(0)
+    expect(resumen[:categorias]).to eq(6)
+    expect(Rails.logger).to have_received(:warn).with(/helic3_catalogo_detalles_tipificados/)
+  end
+
   it 'siembra los 7 motivos de PQR con su politica de garantia (frente D)' do
     service.sembrar!
 
@@ -163,6 +189,19 @@ RSpec.describe Helic3::Catalogo::SeederService do
     expect(flag.unidad).to eq('booleano')
     expect(flag.valor_booleano).to be(false)
     expect(Helic3::Agents::FeatureFlag.agentes_desde_bd?(account)).to be(false)
+  end
+
+  # SIE-01 (CA8): si alguien prendio agentes_desde_bd desde el panel, re-sembrar no
+  # la vuelve a false. Asi la migracion de siembra no cambia el comportamiento del
+  # bot en ese mismo despliegue.
+  it 'no cambia agentes_desde_bd si ya estaba prendida' do
+    service.sembrar!
+    flag = Helic3::Catalogo::Parametro.find_by!(account: account, clave: 'agentes_desde_bd')
+    flag.update!(valor: 'true')
+
+    described_class.new(account).sembrar!
+
+    expect(flag.reload.valor_booleano).to be(true)
   end
 
   it 'siembra los cinco umbrales del semaforo y la autonomia (PRM-01, criterio 3)' do
