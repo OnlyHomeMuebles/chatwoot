@@ -1244,7 +1244,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_07_120100) do
   create_table "helic3_catalogo_parametros", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "clave", null: false
-    t.string "valor", null: false
+    t.text "valor", null: false
     t.string "unidad", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
