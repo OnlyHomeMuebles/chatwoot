@@ -142,6 +142,55 @@ describe('PqrDetailPage.vue — documentos del expediente (EVI-03)', () => {
 
     expect(wrapper.text()).toContain('TICKETS.DETAIL.ACT_BY_AGENT');
   });
+
+  it('separa imágenes (preview) de otros documentos, y no pinta una imagen sin url', () => {
+    expedienteRef.value = { ...expedienteBase, garantia: null };
+    documentosRef.value = [
+      {
+        id: 1,
+        clase: 'evidencia',
+        origen: 'cliente',
+        titulo: 'foto.png',
+        tipo_archivo: 'image/png',
+        url: 'https://x.test/foto.png',
+        ocurrido_at: '2026-09-20T10:00:00Z',
+        remitente: { nombre: 'Ana', user_id: null },
+      },
+      {
+        id: 2,
+        clase: 'evidencia',
+        origen: 'cliente',
+        titulo: 'factura.pdf',
+        tipo_archivo: 'application/pdf',
+        url: 'https://x.test/factura.pdf',
+        ocurrido_at: '2026-09-20T10:00:00Z',
+        remitente: { nombre: 'Ana', user_id: null },
+      },
+      {
+        id: 3,
+        clase: 'evidencia',
+        origen: 'cliente',
+        titulo: 'rota.png',
+        tipo_archivo: 'image/png',
+        url: null,
+        ocurrido_at: '2026-09-20T10:00:00Z',
+        remitente: { nombre: 'Ana', user_id: null },
+      },
+    ];
+
+    const wrapper = montar();
+    const srcsDeDocumentos = wrapper
+      .findAll('img')
+      .map(img => img.attributes('src'))
+      .filter(src => src && src.includes('x.test'));
+
+    // solo la imagen CON url se pinta como preview; el PDF y la imagen sin url no
+    expect(srcsDeDocumentos).toEqual(['https://x.test/foto.png']);
+    // pero los tres se listan igual (imagen como preview, los otros como fila)
+    expect(wrapper.text()).toContain('foto.png');
+    expect(wrapper.text()).toContain('factura.pdf');
+    expect(wrapper.text()).toContain('rota.png');
+  });
 });
 
 describe('PqrDetailPage.vue — actividad desde la bitácora real (EVI-03, cobro de EVT-01)', () => {

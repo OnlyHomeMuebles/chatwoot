@@ -5,6 +5,8 @@ import PqrCatalogosPage from './pages/PqrCatalogosPage.vue';
 import PqrDetailPage from './pages/PqrDetailPage.vue';
 import PqrDecisionesPage from './pages/PqrDecisionesPage.vue';
 import AgentInboxPage from './pages/AgentInboxPage.vue';
+import IndicadoresPage from './pages/IndicadoresPage.vue';
+import GarantiasTab from './pages/indicadores/GarantiasTab.vue';
 
 const ticketsRoutes = {
   routes: [
@@ -54,6 +56,29 @@ const ticketsRoutes = {
         permissions: ['administrator', 'agent'],
       },
       component: AgentInboxPage,
+    },
+    {
+      // IND-01: seccion "Indicadores" -- lo que hoy se consulta en el Dash CX
+      // externo, dentro del CRM. Ruta padre + una hija por pestaña, para que
+      // cada una tenga su propia URL compartible; esta entrega solo registra
+      // "garantias" y la ruta padre redirige a ella.
+      path: frontendURL('accounts/:accountId/helic3/indicadores'),
+      name: 'helic3_indicadores',
+      meta: {
+        permissions: ['administrator', 'agent'],
+      },
+      component: IndicadoresPage,
+      redirect: { name: 'helic3_indicadores_garantias' },
+      children: [
+        {
+          path: 'garantias',
+          name: 'helic3_indicadores_garantias',
+          meta: {
+            permissions: ['administrator', 'agent'],
+          },
+          component: GarantiasTab,
+        },
+      ],
     },
   ],
 };

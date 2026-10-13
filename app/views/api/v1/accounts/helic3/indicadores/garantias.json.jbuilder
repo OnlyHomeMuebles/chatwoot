@@ -1,0 +1,8 @@
+json.kpis @indicadores[:kpis]
+json.mensual @indicadores[:mensual]
+json.trimestral @indicadores[:trimestral]
+json.por_ciudad @indicadores[:por_ciudad]
+json.por_motivo @indicadores[:por_motivo]
+json.por_detalle @indicadores[:por_detalle]
+json.por_proceso @indicadores[:por_proceso]
+json.por_producto @indicadores[:por_producto]

@@ -1,0 +1,41 @@
+{
+  "HELIC3_INDICADORES": {
+    "MENU": "Indicators",
+    "TABS": {
+      "GARANTIAS": "Warranties"
+    },
+    "FILTERS": {
+      "YEAR": "Year",
+      "MONTH": "Month",
+      "CITY": "City",
+      "MOTIVE": "Motive",
+      "DETAIL": "Detail",
+      "STAGE": "Stage",
+      "PRODUCT": "Product",
+      "PRODUCT_PLACEHOLDER": "Search by product name",
+      "CLEAR": "Clear filters",
+      "ALL": "All"
+    },
+    "EMPTY": "No data for this filter",
+    "ERROR": "Could not load the indicators",
+    "RETRY": "Retry",
+    "GARANTIAS": {
+      "KPI_TOTAL": "Warranties",
+      "KPI_SOLVED": "Solved",
+      "KPI_IN_PROGRESS": "In progress",
+      "KPI_PRODUCTS": "Products",
+      "MONTHLY": "Monthly detail",
+      "QUARTERLY": "Quarterly detail",
+      "BY_CITY": "By city",
+      "BY_MOTIVE": "By motive",
+      "BY_DETAIL": "By detail",
+      "BY_STAGE": "By stage",
+      "BY_PRODUCT": "By product (top 20)",
+      "COUNT": "Warranties",
+      "NO_CITY": "No city",
+      "NO_MOTIVE": "No motive",
+      "NO_DETAIL": "No detail",
+      "NO_STAGE": "No stage"
+    }
+  }
+}

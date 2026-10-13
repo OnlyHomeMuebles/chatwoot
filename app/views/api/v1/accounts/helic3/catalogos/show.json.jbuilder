@@ -31,3 +31,8 @@ end
 json.detalles_tipificados @detalles_tipificados do |detalle|
   json.call(detalle, :id, :codigo, :nombre)
 end
+
+# IND-01: etapa del producto de garantia, para el filtro de la seccion Indicadores.
+json.procesos_garantia @procesos_garantia do |proceso|
+  json.call(proceso, :id, :codigo, :nombre)
+end

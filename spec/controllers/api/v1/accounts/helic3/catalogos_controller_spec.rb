@@ -18,16 +18,27 @@ RSpec.describe 'Helic3 Catalogos API', type: :request do
     end
 
     context 'when the user is authenticated' do
-      it 'devuelve los cuatro catalogos con sus campos' do
+      it 'devuelve los catalogos con sus campos' do
         get "/api/v1/accounts/#{account.id}/helic3/catalogos",
             headers: agent.create_new_auth_token, as: :json
 
         expect(response).to have_http_status(:success)
         body = response.parsed_body
-        expect(body.keys).to include('tipos', 'motivos_pqr', 'etapas_pqr', 'resultados')
+        expect(body.keys).to include('tipos', 'motivos_pqr', 'etapas_pqr', 'resultados', 'coberturas_ciudad',
+                                     'motivos_garantia', 'detalles_tipificados', 'procesos_garantia')
         expect(body['tipos'].first.keys).to match_array(%w[id codigo nombre plazo_dias_habiles])
         expect(body['etapas_pqr'].first.keys).to match_array(%w[id codigo nombre detiene_reloj visible_cliente])
         expect(body['resultados'].first.keys).to match_array(%w[id codigo nombre cierra_pqr abre_garantia aprobacion_humana requiere_admin])
+      end
+
+      # IND-01: el filtro de etapa de Indicadores lee este catalogo de la misma peticion.
+      it 'incluye procesos_garantia (IND-01)' do
+        get "/api/v1/accounts/#{account.id}/helic3/catalogos",
+            headers: agent.create_new_auth_token, as: :json
+
+        esperado = Helic3::Catalogo::ProcesoGarantia.where(account: account).activos.pluck(:codigo)
+        expect(response.parsed_body['procesos_garantia'].map { |proceso| proceso['codigo'] }).to eq(esperado)
+        expect(response.parsed_body['procesos_garantia'].first.keys).to match_array(%w[id codigo nombre])
       end
 
       it 'devuelve cada catalogo en el orden de posicion' do
