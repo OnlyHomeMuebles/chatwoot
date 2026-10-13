@@ -30,6 +30,7 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
   # y reloj legal corriendo que nadie atenderia. No se rescata aqui: la excepcion
   # debe salir de la transaccion para que haya rollback (el rescue_from base responde).
   def create
+    validar_radicacion_manual!
     Helic3::Ticket.transaction do
       @ticket = Helic3::Casos::Radicar.new(
         account: Current.account,
@@ -39,10 +40,12 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
         tipo: catalogo_de_cuenta(Helic3::Catalogo::Tipo, create_params[:tipo_id]),
         motivo_pqr: catalogo_de_cuenta(Helic3::Catalogo::MotivoPqr, create_params[:motivo_pqr_id]),
         creator: Current.user,
+        numero_orden: create_params[:numero_orden],
         origen: :humano
       ).call
       aplicar_operativos_al_crear
       registrar_detalle_al_crear
+      registrar_datos_cliente_al_crear
     end
   end
 
@@ -153,12 +156,76 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
     ).call
   end
 
+  # MAN-01: escribe en la ficha los datos del cliente y la compra que llegaron en el
+  # bloque `datos`, con fuente humano (lo escribio el operador). Corre bajo la
+  # transaccion del create: si falla, se revierte todo (ni ticket, ni ficha, ni
+  # evento radicada). RegistrarDatos ignora los vacios y los campos que no conoce.
+  def registrar_datos_cliente_al_crear
+    campos = datos_cliente_params.to_h.symbolize_keys.compact_blank
+    return if campos.blank?
+
+    Helic3::Casos::RegistrarDatos.new(ticket: @ticket, campos: campos, fuente: :humano).call
+  end
+
+  # MAN-01: validacion de borde para la radicacion manual. Sin conversacion no hay
+  # contacto de Chatwoot de donde sacar el cliente, asi que nombre y telefono son
+  # obligatorios (si no, el formato de garantia saldria sin cliente). Con conversacion
+  # siguen opcionales: el chat y su panel no cambian. factura_fecha invalida o futura
+  # se rechaza (un string invalido la columna date lo guardaria como nil en silencio).
+  # Se valida ANTES de abrir la transaccion: si falla, 422 y no se radica nada (CA2).
+  # Los errores van sobre :base y no sobre :cliente_nombre/:factura_fecha porque esos
+  # NO son atributos de Helic3::Ticket (viven en la ficha): al generar el mensaje,
+  # Rails leeria ticket.cliente_nombre y reventaria con NoMethodError -> 500. :base
+  # no lee ningun atributo y el mensaje nombra el campo igual (CA2).
+  def validar_radicacion_manual!
+    errores = Helic3::Ticket.new
+
+    if create_params[:conversation_id].blank?
+      datos = datos_cliente_params
+      errores.errors.add(:base, 'El nombre del cliente es obligatorio al radicar sin conversacion') if datos[:cliente_nombre].blank?
+      errores.errors.add(:base, 'El telefono del cliente es obligatorio al radicar sin conversacion') if datos[:cliente_telefono].blank?
+    end
+
+    validar_factura_fecha!(datos_cliente_params[:factura_fecha], errores)
+
+    raise ActiveRecord::RecordInvalid, errores if errores.errors.any?
+  end
+
+  # La fecha llega como AAAA-MM-DD (lo que manda un <input type="date">). Un valor
+  # no parseable o posterior a hoy es un error del cliente -> 422.
+  def validar_factura_fecha!(raw, errores)
+    return if raw.blank?
+
+    fecha = begin
+      Date.iso8601(raw)
+    rescue ArgumentError
+      nil
+    end
+
+    if fecha.nil?
+      errores.errors.add(:base, 'La fecha de compra no es una fecha valida (AAAA-MM-DD)')
+    elsif fecha > Date.current
+      errores.errors.add(:base, 'La fecha de compra no puede ser una fecha futura')
+    end
+  end
+
+  # MAN-01: el bloque `datos` del cliente y la compra que el panel escribe a mano.
+  # factura_numero NO va aqui (entra por numero_orden y lo guarda Radicar);
+  # detalle_tipificado_id tampoco (lo maneja registrar_detalle_al_crear).
+  def datos_cliente_params
+    @datos_cliente_params ||= params.require(:ticket).fetch(:datos, {}).permit(
+      :cedula, :ciudad, :direccion, :producto_nombre,
+      :cliente_nombre, :cliente_telefono, :cliente_email,
+      :producto_referencia, :factura_fecha
+    )
+  end
+
   # Datos de radicacion. NO incluye categoria_id: la categoria la deriva Radicar
   # del motivo, y recibirla abriria una segunda fuente de la misma verdad.
   def create_params
     params.require(:ticket).permit(:title, :description, :conversation_id,
                                    :tipo_id, :motivo_pqr_id, :detalle_tipificado_id,
-                                   :status, :assignee_id)
+                                   :status, :assignee_id, :numero_orden)
   end
 
   # Update solo toca lo operativo: estado y asignacion.

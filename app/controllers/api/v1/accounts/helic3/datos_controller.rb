@@ -29,7 +29,9 @@ class Api::V1::Accounts::Helic3::DatosController < Api::V1::Accounts::BaseContro
   # aqui: RecordNotFound (404), igual que con el resultado en resoluciones.
   def campos_de_cuenta
     permitidos = params.fetch(:datos, {}).permit(:cedula, :direccion, :ciudad, :factura_numero,
-                                                 :producto_nombre, :detalle_tipificado_id)
+                                                 :producto_nombre, :detalle_tipificado_id,
+                                                 :cliente_nombre, :cliente_telefono, :cliente_email,
+                                                 :producto_referencia, :factura_fecha)
     if permitidos[:detalle_tipificado_id].present?
       Helic3::Catalogo::DetalleTipificado.find_by!(account: Current.account,
                                                    id: permitidos[:detalle_tipificado_id])
