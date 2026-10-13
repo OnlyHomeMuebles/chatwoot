@@ -12,8 +12,19 @@ RSpec.describe Helic3::Catalogo::SeederService do
     expect(resumen).to eq(
       categorias: 6, tipos: 5, etapas_pqr: 4, motivos_pqr: 7, resultados: 7,
       motivos_garantia: 5, detalles_tipificados: 31, procesos_garantia: 7,
-      coberturas_ciudad: 10, parametros: 19
+      coberturas_ciudad: 10, parametros: 24
     )
+  end
+
+  # PRM: los mensajes del agente son largos (>255), asi que necesitan la columna
+  # `valor` como text (migracion 20261002110000). Este test lo prueba de punta a
+  # punta: si la columna siguiera siendo string, el seeder reventaria aqui.
+  it 'siembra los mensajes largos del agente (requiere valor como texto)' do
+    service.sembrar!
+
+    msg = Helic3::Catalogo::Parametro.find_by!(account: account, clave: 'mensaje_recoleccion')
+    expect(msg.valor.length).to be > 255
+    expect(msg.valor).to include('Recolección de producto')
   end
 
   it 'se ejecuta dos veces seguidas sin generar duplicados' do
