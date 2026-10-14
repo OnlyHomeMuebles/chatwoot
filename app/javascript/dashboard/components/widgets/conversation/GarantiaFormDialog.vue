@@ -63,11 +63,26 @@ const puedeConfirmar = computed(
     productos.value.every(p => p.producto_nombre)
 );
 
-const open = (elTicket, elResultadoId) => {
+// MAN-03: tercer argumento opcional para precargar producto/ciudad desde la ficha
+// del expediente (el detalle lo usa). ConversationTickets lo sigue llamando con
+// dos args, asi que prefill cae a {} y el comportamiento previo no cambia.
+const open = (elTicket, elResultadoId, prefill = {}) => {
   ticket.value = elTicket;
   resultadoId.value = elResultadoId;
-  ciudadId.value = '';
-  productos.value = [productoVacio()];
+  // La ficha guarda la ciudad como texto; el form usa el id del catalogo. Se
+  // traduce por nombre; si no hay cobertura con ese nombre, queda vacia y la elige
+  // el operador (nunca se envia un id inventado).
+  const ciudad = (catalogos.value.coberturas_ciudad || []).find(
+    c => c.nombre === prefill.ciudad_nombre
+  );
+  ciudadId.value = ciudad?.id || '';
+  productos.value = [
+    {
+      ...productoVacio(),
+      producto_nombre: prefill.producto_nombre || '',
+      producto_referencia: prefill.producto_referencia || '',
+    },
+  ];
   error.value = '';
   dialogRef.value.open();
 };
