@@ -10,7 +10,6 @@ import Icon from 'dashboard/components-next/icon/Icon.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
-import CreateTicketDialog from 'dashboard/components/widgets/conversation/CreateTicketDialog.vue';
 
 // Bandeja de PQR (BAN-01 + VIS-02). Usa su store propio (pqrInbox), NO el del panel
 // de conversacion. Los filtros, la paginacion y las metricas se resuelven en el
@@ -37,10 +36,13 @@ const filtros = reactive({
 });
 const pagina = ref(1);
 
-// «Nueva PQR» abre el mismo dialogo del panel de conversacion, sin
-// conversationId: Radicar funciona sin conversacion (VIS-02, revision de Jhan).
-const dialogoNuevoRef = ref(null);
-const abrirNuevaPqr = () => dialogoNuevoRef.value.open();
+// MAN-02: «Nueva PQR» navega a la pagina de radicacion manual (wizard de 2 pasos).
+// El diálogo del panel de conversacion no cambia (vive en ConversationTickets).
+const abrirNuevaPqr = () =>
+  router.push({
+    name: 'helic3_pqr_nueva',
+    params: { accountId: route.params.accountId },
+  });
 
 const cargar = async () => {
   const params = { page: pagina.value };
@@ -590,7 +592,5 @@ const relojPill = fila => {
         </div>
       </div>
     </div>
-
-    <CreateTicketDialog ref="dialogoNuevoRef" @created="cargar" />
   </div>
 </template>
