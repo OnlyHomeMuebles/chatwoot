@@ -37,6 +37,10 @@ defineProps({
     type: String,
     default: '',
   },
+  fullWidth: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const modelValue = defineModel({
@@ -46,7 +50,7 @@ const modelValue = defineModel({
 </script>
 
 <template>
-  <div class="w-fit relative">
+  <div class="relative" :class="fullWidth ? 'w-full' : 'w-fit'">
     <select
       v-model="modelValue"
       :disabled="disabled"
@@ -57,6 +61,7 @@ const modelValue = defineModel({
           !error && !disabled,
         'outline-n-red-9 focus:outline-n-red-9': error && !disabled,
         'outline-n-weak bg-n-slate-2 cursor-not-allowed opacity-60': disabled,
+        'w-full': fullWidth,
       }"
     >
       <option v-if="placeholder" value="" disabled>
