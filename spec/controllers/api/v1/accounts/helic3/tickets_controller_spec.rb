@@ -50,7 +50,8 @@ RSpec.describe 'Tickets API', type: :request do
     context 'when it is an authenticated user' do
       it 'creates a ticket with a sequential ticket number and sets the creator' do
         post "/api/v1/accounts/#{account.id}/helic3/tickets",
-             params: { ticket: { title: 'Printer on fire', description: 'Third floor' } },
+             params: { ticket: { title: 'Printer on fire', description: 'Third floor',
+                                datos: { cliente_nombre: 'Cliente', cliente_telefono: '3001234567' } } },
              headers: agent.create_new_auth_token,
              as: :json
 
@@ -61,7 +62,8 @@ RSpec.describe 'Tickets API', type: :request do
 
       it 'rejects a ticket without title' do
         post "/api/v1/accounts/#{account.id}/helic3/tickets",
-             params: { ticket: { description: 'no title' } },
+             params: { ticket: { description: 'no title',
+                                datos: { cliente_nombre: 'Cliente', cliente_telefono: '3001234567' } } },
              headers: agent.create_new_auth_token,
              as: :json
 
@@ -77,9 +79,12 @@ RSpec.describe 'Tickets API', type: :request do
     let(:motivo_garantia) { Helic3::Catalogo::MotivoPqr.find_by!(account: account, codigo: 'garantia_producto') }
     let(:motivo_info) { Helic3::Catalogo::MotivoPqr.find_by!(account: account, codigo: 'informacion_general') }
 
+    # MAN-01: sin conversacion el cliente es obligatorio; estos casos radican a mano,
+    # asi que llevan nombre y telefono por defecto (prueban clasificacion/reloj, no eso).
     def radicar(atributos)
       post "/api/v1/accounts/#{account.id}/helic3/tickets",
-           params: { ticket: { title: 'Caso' }.merge(atributos) },
+           params: { ticket: { title: 'Caso',
+                               datos: { cliente_nombre: 'Cliente', cliente_telefono: '3001234567' } }.merge(atributos) },
            headers: agent.create_new_auth_token, as: :json
     end
 
@@ -140,6 +145,125 @@ RSpec.describe 'Tickets API', type: :request do
     end
   end
 
+  # MAN-01: radicacion manual (sin conversacion) con la ficha del cliente y la compra.
+  describe 'POST create con ficha de cliente y compra (MAN-01)' do
+    before { Helic3::Catalogo::SeederService.new(account).sembrar! }
+
+    let(:motivo) { Helic3::Catalogo::MotivoPqr.find_by!(account: account, codigo: 'garantia_producto') }
+    let(:datos_cliente) do
+      { cliente_nombre: 'Ana Perez', cliente_telefono: '3001234567', cliente_email: 'ana@x.com',
+        cedula: '12345', ciudad: 'Armenia', direccion: 'Calle 1 # 2-3',
+        producto_nombre: 'Sofa Santorini', producto_referencia: 'SOF-1', factura_fecha: '2026-01-15' }
+    end
+
+    def radicar_manual(ticket_extra = {}, datos: datos_cliente, numero_orden: 'OH-DEMO-1')
+      post "/api/v1/accounts/#{account.id}/helic3/tickets",
+           params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id,
+                               numero_orden: numero_orden, datos: datos }.merge(ticket_extra) },
+           headers: agent.create_new_auth_token, as: :json
+    end
+
+    it 'CA1: radica sin conversacion con etapa nueva, vencimiento y la ficha completa (fuente humano)' do
+      radicar_manual
+
+      expect(response).to have_http_status(:success)
+      ticket = account.tickets.find(response.parsed_body['id'])
+      expect(ticket.etapa.codigo).to eq('nueva')
+      expect(ticket.plazo_respuesta_vence_at).to be_present
+
+      ficha = ticket.datos
+      expect(ficha.cliente_nombre).to eq('Ana Perez')
+      expect(ficha.cliente_telefono).to eq('3001234567')
+      expect(ficha.cliente_email).to eq('ana@x.com')
+      expect(ficha.producto_referencia).to eq('SOF-1')
+      expect(ficha.factura_fecha).to eq(Date.new(2026, 1, 15))
+      expect(ficha.factura_numero).to eq('OH-DEMO-1') # numero_orden -> factura_numero (Radicar)
+
+      %w[cliente_nombre cliente_telefono cliente_email cedula ciudad direccion
+         producto_nombre producto_referencia factura_numero factura_fecha].each do |campo|
+        expect(ficha.fuentes[campo]).to eq('humano')
+      end
+    end
+
+    it 'CA2: sin conversacion y sin cliente_nombre -> 422 y no crea nada' do
+      expect do
+        radicar_manual(datos: datos_cliente.except(:cliente_nombre))
+      end.not_to change(Helic3::Ticket, :count)
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it 'CA2: sin conversacion y sin cliente_telefono -> 422 y no crea nada' do
+      expect do
+        radicar_manual(datos: datos_cliente.except(:cliente_telefono))
+      end.not_to change(Helic3::Ticket, :count)
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it 'con conversacion el cliente es opcional (el chat no cambia)' do
+      conv = create(:conversation, account: account)
+
+      expect do
+        radicar_manual({ conversation_id: conv.display_id }, datos: {}, numero_orden: nil)
+      end.to change(Helic3::Ticket, :count).by(1)
+      expect(response).to have_http_status(:success)
+    end
+
+    it 'rechaza con 422 una factura_fecha futura' do
+      expect do
+        radicar_manual(datos: datos_cliente.merge(factura_fecha: (Date.current + 1).iso8601))
+      end.not_to change(Helic3::Ticket, :count)
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it 'rechaza con 422 una factura_fecha que no es una fecha' do
+      expect do
+        radicar_manual(datos: datos_cliente.merge(factura_fecha: 'no-es-fecha'))
+      end.not_to change(Helic3::Ticket, :count)
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it 'CA3: revierte la radicacion completa si falla la escritura de la ficha del cliente' do
+      allow_any_instance_of(Helic3::Casos::RegistrarDatos)
+        .to receive(:call).and_raise(ActiveRecord::RecordInvalid.new(Helic3::TicketDato.new))
+
+      expect do
+        radicar_manual(numero_orden: nil) # el unico RegistrarDatos que corre es el del cliente
+      end.not_to change(Helic3::Ticket, :count)
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it 'CA4: GET devuelve los campos nuevos en datos y PATCH datos los acepta' do
+      radicar_manual
+      ticket = account.tickets.find(response.parsed_body['id'])
+
+      get "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+          headers: agent.create_new_auth_token, as: :json
+      datos = response.parsed_body['datos']
+      expect(datos['cliente_nombre']['valor']).to eq('Ana Perez')
+      expect(datos['cliente_nombre']['fuente']).to eq('humano')
+      expect(datos['factura_fecha']['valor']).to eq('2026-01-15')
+
+      patch "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}/datos",
+            params: { datos: { cliente_telefono: '3999999999', direccion: 'Nueva dir' } },
+            headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(ticket.datos.reload.cliente_telefono).to eq('3999999999')
+    end
+
+    it 'PATCH datos tambien rechaza con 422 una factura_fecha futura (validacion en el modelo)' do
+      radicar_manual
+      ticket = account.tickets.find(response.parsed_body['id'])
+
+      patch "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}/datos",
+            params: { datos: { factura_fecha: (Date.current + 1).iso8601 } },
+            headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(ticket.datos.reload.factura_fecha).to eq(Date.new(2026, 1, 15))
+    end
+  end
+
   describe 'GET show de un expediente sin clasificar (API-02)' do
     let!(:ticket) { create(:ticket, account: account) }
 
@@ -187,7 +311,8 @@ RSpec.describe 'Tickets API', type: :request do
 
     it 'create aplica status y assignee despues de radicar, sin ignorarlos' do
       post "/api/v1/accounts/#{account.id}/helic3/tickets",
-           params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, status: 'pending', assignee_id: agent.id } },
+           params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, status: 'pending', assignee_id: agent.id,
+                               datos: { cliente_nombre: 'Cliente', cliente_telefono: '3001234567' } } },
            headers: agent.create_new_auth_token, as: :json
 
       body = response.parsed_body
@@ -203,7 +328,8 @@ RSpec.describe 'Tickets API', type: :request do
 
       expect do
         post "/api/v1/accounts/#{account.id}/helic3/tickets",
-             params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, assignee_id: ajeno.id } },
+             params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, assignee_id: ajeno.id,
+                                 datos: { cliente_nombre: 'Cliente', cliente_telefono: '3001234567' } } },
              headers: agent.create_new_auth_token, as: :json
       end.not_to change(Helic3::Ticket, :count)
 
@@ -213,7 +339,8 @@ RSpec.describe 'Tickets API', type: :request do
     it 'no radica si el status es invalido y responde 422, no 500 (rollback completo)' do
       expect do
         post "/api/v1/accounts/#{account.id}/helic3/tickets",
-             params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, status: 'inexistente' } },
+             params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, status: 'inexistente',
+                                 datos: { cliente_nombre: 'Cliente', cliente_telefono: '3001234567' } } },
              headers: agent.create_new_auth_token, as: :json
       end.not_to change(Helic3::Ticket, :count)
 
