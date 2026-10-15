@@ -52,6 +52,12 @@ const form = reactive({
   direccion: '',
 });
 
+// Cambio A: el wizard puede abrirse desde una conversacion (boton del chat); el
+// display_id llega por query. Entonces la PQR se asocia a esa conversacion y, con
+// conversacion, el cliente deja de ser obligatorio (el backend lo toma del contacto).
+const conversationDisplayId = route.query.conversation || null;
+const vieneDeConversacion = computed(() => !!conversationDisplayId);
+
 const opciones = (lista, label = 'nombre') =>
   (lista || []).map(x => ({ value: x.id, label: x[label] }));
 
@@ -103,6 +109,8 @@ const quitarAdjunto = id => {
   adjuntos.value = adjuntos.value.filter(a => a.id !== id);
 };
 
+// "Volver" va siempre a la bandeja de PQR (destino determinista; no depende del
+// historial del navegador, que con una URL directa o un refresh podria no existir).
 const volverABandeja = () =>
   router.push({
     name: 'tickets_index',
@@ -117,6 +125,9 @@ const validarPaso1 = () => {
   return '';
 };
 const validarPaso2 = () => {
+  // Con conversacion asociada, el cliente sale del contacto del chat: no se exige
+  // reescribirlo (coherente con validar_radicacion_manual! del backend).
+  if (vieneDeConversacion.value) return '';
   if (!form.cliente_nombre.trim()) return t('TICKETS.NUEVA.ERRORES.CLIENTE');
   if (!form.cliente_telefono.trim()) return t('TICKETS.NUEVA.ERRORES.TELEFONO');
   return '';
@@ -191,6 +202,9 @@ const crear = async () => {
         detalle_tipificado_id: form.detalle_tipificado_id,
         assignee_id: form.assignee_id,
         numero_orden: form.numero_orden || null,
+        // display_id de la conversacion si vino del chat (null = PQR manual suelta);
+        // el backend lo traduce a id de BD y asocia la PQR.
+        conversation_id: conversationDisplayId,
         datos: {
           cedula: form.cedula,
           cliente_nombre: form.cliente_nombre,
@@ -235,6 +249,7 @@ defineExpose({
   errorBackend,
   continuar,
   crear,
+  volverABandeja,
 });
 </script>
 
