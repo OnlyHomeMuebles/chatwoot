@@ -121,7 +121,7 @@
         "ORIGEN": "Origen",
         "MANUAL": "Registro manual",
         "CATEGORIA": "Categoría",
-        "ADJUNTOS": "{n} archivos"
+        "ADJUNTOS": "{n} archivo | {n} archivos"
       },
       "ERRORES": {
         "MOTIVO": "Selecciona un motivo para continuar.",

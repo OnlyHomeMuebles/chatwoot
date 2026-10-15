@@ -5,10 +5,17 @@ import PqrNuevaPage from '../PqrNuevaPage.vue';
 // MAN-02: el wizard expone su estado/acciones (defineExpose) para probar el flujo
 // sin depender del render de los primitivos (shallowMount los stubbea).
 const push = vi.fn();
-const dispatch = vi.fn(() => Promise.resolve());
 const alert = vi.fn();
 const crearApi = vi.fn();
 const subirApi = vi.fn();
+// crear() pasa por store.dispatch('tickets/create'); el mock delega en crearApi
+// (que los tests configuran) y devuelve el ticket como lo hace el store real
+// (response.data). Un rechazo de crearApi se propaga, igual que el store.
+const dispatch = vi.fn((action, payload) =>
+  action === 'tickets/create'
+    ? Promise.resolve(crearApi(payload)).then(r => r?.data)
+    : Promise.resolve()
+);
 
 const catalogosRef = ref({
   tipos: [{ id: 1, nombre: 'Petición' }],
@@ -142,8 +149,8 @@ describe('PqrNuevaPage.vue — crear (MAN-02)', () => {
     const wrapper = montar();
     llenarMinimo(wrapper.vm);
     wrapper.vm.adjuntos.push(
-      new File(['a'], 'foto.png'),
-      new File(['b'], 'factura.pdf')
+      { id: 1, file: new File(['a'], 'foto.png') },
+      { id: 2, file: new File(['b'], 'factura.pdf') }
     );
 
     await wrapper.vm.crear();

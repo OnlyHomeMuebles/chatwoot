@@ -29,7 +29,10 @@ const paso = ref(1);
 const errorBackend = ref(''); // mensaje 422 del backend
 const errorPaso = ref(''); // validacion del paso actual
 const guardando = ref(false);
-const adjuntos = ref([]); // File[] en memoria hasta crear
+const adjuntos = ref([]); // [{ id, file }] en memoria hasta crear (id -> :key estable)
+let adjuntoSeq = 0; // ids locales incrementales: el nombre+tamano NO es unico (un
+// mismo archivo se puede elegir dos veces) y colisionaria como :key
+const hoyISO = new Date().toISOString().slice(0, 10); // tope del selector de fecha
 
 const form = reactive({
   tipo_id: null,
@@ -88,10 +91,17 @@ onMounted(() => {
 });
 
 const onAdjuntos = event => {
-  adjuntos.value.push(...Array.from(event.target.files));
+  adjuntos.value.push(
+    ...Array.from(event.target.files).map(file => {
+      adjuntoSeq += 1;
+      return { id: adjuntoSeq, file };
+    })
+  );
   event.target.value = '';
 };
-const quitarAdjunto = indice => adjuntos.value.splice(indice, 1);
+const quitarAdjunto = id => {
+  adjuntos.value = adjuntos.value.filter(a => a.id !== id);
+};
 
 const volverABandeja = () =>
   router.push({
@@ -148,7 +158,7 @@ const subirUno = async (ticketId, archivo) => {
 // uno falla, se avisa y se sigue; la PQR ya existe y se navega igual al detalle.
 const subirAdjuntos = ticketId =>
   adjuntos.value.reduce(
-    (cadena, archivo) => cadena.then(() => subirUno(ticketId, archivo)),
+    (cadena, { file }) => cadena.then(() => subirUno(ticketId, file)),
     Promise.resolve()
   );
 
@@ -194,7 +204,9 @@ const crear = async () => {
         },
       },
     };
-    const { data: ticket } = await TicketsAPI.create(payload);
+    // Pasa por el store (no TicketsAPI directo) para que ADD_TICKET registre la PQR
+    // y se maneje isCreating; el store devuelve el ticket creado.
+    const ticket = await store.dispatch('tickets/create', payload);
     await subirAdjuntos(ticket.id);
     useAlert(t('TICKETS.NUEVA.CREADA', { consecutivo: ticket.display_id }));
     router.push({
@@ -296,14 +308,6 @@ defineExpose({
             </button>
           </nav>
 
-          <!-- Error 422 del backend -->
-          <div
-            v-if="errorBackend"
-            class="px-4 py-3 mb-4 text-sm border rounded-lg border-n-ruby-6 bg-n-ruby-3 text-n-ruby-11"
-          >
-            {{ errorBackend }}
-          </div>
-
           <!-- PASO 1: Datos del caso -->
           <section
             v-show="paso === 1"
@@ -400,18 +404,18 @@ defineExpose({
                   />
                 </label>
                 <div
-                  v-for="(archivo, indice) in adjuntos"
-                  :key="`${archivo.name}-${archivo.size}-${archivo.lastModified}`"
+                  v-for="a in adjuntos"
+                  :key="a.id"
                   class="flex items-center gap-3 px-3 py-2 text-xs rounded-lg bg-n-alpha-1"
                 >
                   <span class="flex-1 min-w-0 break-words">{{
-                    archivo.name
+                    a.file.name
                   }}</span>
                   <button
                     type="button"
                     class="flex text-n-slate-11 hover:text-n-ruby-11"
                     :aria-label="t('TICKETS.NUEVA.CASO.ADJUNTO_QUITAR')"
-                    @click="quitarAdjunto(indice)"
+                    @click="quitarAdjunto(a.id)"
                   >
                     <Icon icon="i-lucide-x" class="w-3.5 h-3.5" />
                   </button>
@@ -479,6 +483,7 @@ defineExpose({
                   <Input
                     v-model="form.factura_fecha"
                     type="date"
+                    :max="hoyISO"
                     :label="t('TICKETS.NUEVA.COMPRA.FECHA')"
                   />
                 </div>
@@ -520,12 +525,14 @@ defineExpose({
             </section>
           </div>
 
-          <!-- Error de validacion del paso -->
+          <!-- Errores cerca del boton de accion: el de validacion de paso y el 422
+               del backend. Antes el 422 estaba arriba (lejos del boton Crear) y el
+               operador no veia por que fallaba la radicacion. -->
           <div
-            v-if="errorPaso"
+            v-if="errorPaso || errorBackend"
             class="px-4 py-3 mt-4 text-sm border rounded-lg border-n-ruby-6 bg-n-ruby-3 text-n-ruby-11"
           >
-            {{ errorPaso }}
+            {{ errorPaso || errorBackend }}
           </div>
 
           <!-- Pie: navegacion -->
@@ -654,7 +661,11 @@ defineExpose({
                 </dt>
                 <dd class="mb-0 text-end text-n-slate-12">
                   {{
-                    t('TICKETS.NUEVA.RESUMEN.ADJUNTOS', { n: adjuntos.length })
+                    t(
+                      'TICKETS.NUEVA.RESUMEN.ADJUNTOS',
+                      { n: adjuntos.length },
+                      adjuntos.length
+                    )
                   }}
                 </dd>
               </div>
@@ -675,5 +686,11 @@ defineExpose({
 :deep(select),
 :deep(textarea) {
   background-color: rgb(var(--background-color));
+}
+/* Los Select de components-next traen el root con w-fit; en esta pagina deben
+   llenar la columna como los Input (full width), segun el mockup. */
+:deep(.w-fit.relative),
+:deep(.w-fit.relative select) {
+  width: 100%;
 }
 </style>

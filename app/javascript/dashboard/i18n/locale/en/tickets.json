@@ -121,7 +121,7 @@
         "ORIGEN": "Origin",
         "MANUAL": "Manual entry",
         "CATEGORIA": "Category",
-        "ADJUNTOS": "{n} files"
+        "ADJUNTOS": "{n} file | {n} files"
       },
       "ERRORES": {
         "MOTIVO": "Select a reason to continue.",
