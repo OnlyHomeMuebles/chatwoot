@@ -315,14 +315,11 @@ describe('PqrDetailPage.vue — resolver la PQR desde el detalle (MAN-03)', () =
     );
   });
 
-  it('oculta la tarjeta si ya hay resultado aplicado aunque no esté respondida', () => {
-    // un resultado que abre garantía pero no cierra la PQR deja respondida_at nil;
-    // la tarjeta igual debe esconderse para no permitir re-resolver.
+  it('oculta la tarjeta cuando la PQR ya abrió garantía (aunque no esté respondida)', () => {
     expedienteRef.value = {
       ...expedienteBase,
-      garantia: null,
       respondida_at: null,
-      resultado: { id: 20, nombre: 'Procede garantía' },
+      garantia: { numero_radicado: '1200' },
     };
     catalogosRef.value = { resultados };
 
@@ -331,6 +328,23 @@ describe('PqrDetailPage.vue — resolver la PQR desde el detalle (MAN-03)', () =
     expect(wrapper.find('[data-testid="bloque-resolver"]').exists()).toBe(
       false
     );
+  });
+
+  it('muestra la tarjeta con un resultado NO terminal (Trasladada) para poder cerrarla luego', () => {
+    // "Trasladada a otra área" no cierra la PQR ni abre garantía: la PQR sigue viva
+    // y, al ser manual (sin panel de chat), este selector es la única forma de darle
+    // el resultado final. Si se ocultara, la PQR se vencería sola.
+    expedienteRef.value = {
+      ...expedienteBase,
+      garantia: null,
+      respondida_at: null,
+      resultado: { id: 99, nombre: 'Trasladada a otra área' },
+    };
+    catalogosRef.value = { resultados };
+
+    const wrapper = montar();
+
+    expect(wrapper.find('[data-testid="bloque-resolver"]').exists()).toBe(true);
   });
 
   it('marca en el selector los resultados que requieren aprobación humana', () => {

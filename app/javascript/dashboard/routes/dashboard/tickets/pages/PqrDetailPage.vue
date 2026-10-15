@@ -235,12 +235,13 @@ const respondida = computed(() => !!expediente.value?.respondida_at);
 const propuestaPendiente = computed(
   () => !!expediente.value?.resultado_propuesto_id
 );
-// Un resultado que abre garantia pero NO cierra la PQR aplica el resultado sin
-// sellar respondida_at; por eso la tarjeta se oculta si YA hay resultado aplicado
-// (no solo si esta respondida), para no dejar re-resolver por accidente.
-const yaResuelta = computed(
-  () => respondida.value || !!expediente.value?.resultado
-);
+// Se oculta cuando la PQR ya quedo respondida o ya abrio garantia. NO cuando solo
+// hay un resultado aplicado: "Trasladada a otra area" (y cualquier resultado que no
+// cierra ni abre garantia) deja la PQR viva, y como la PQR manual no tiene panel de
+// chat, este selector es la UNICA forma de ponerle luego el resultado final; si se
+// ocultara, la PQR se venceria sola. Re-resolver no duplica nada: AbrirGarantia es
+// idempotente y Resolver solo registra las transiciones que de verdad ocurren.
+const yaResuelta = computed(() => respondida.value || !!garantia.value);
 
 const resultadoOptions = computed(() =>
   (catalogos.value.resultados || []).map(r => ({
@@ -844,7 +845,7 @@ const formatFecha = valor =>
               <Select
                 :key="`resolver-${resolverKey}`"
                 :options="resultadoOptions"
-                model-value=""
+                :model-value="expediente.resultado?.id ?? ''"
                 :placeholder="t('TICKETS.RESOLVER.PLACEHOLDER')"
                 @update:model-value="onResultadoElegido"
               />
