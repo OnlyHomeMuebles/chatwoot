@@ -3,6 +3,7 @@ import { frontendURL } from 'dashboard/helper/URLHelper.js';
 import TicketsPage from './pages/TicketsPage.vue';
 import PqrCatalogosPage from './pages/PqrCatalogosPage.vue';
 import PqrDetailPage from './pages/PqrDetailPage.vue';
+import PqrNuevaPage from './pages/PqrNuevaPage.vue';
 import PqrDecisionesPage from './pages/PqrDecisionesPage.vue';
 import AgentInboxPage from './pages/AgentInboxPage.vue';
 import IndicadoresPage from './pages/IndicadoresPage.vue';
@@ -36,6 +37,16 @@ const ticketsRoutes = {
         permissions: ['administrator', 'agent'],
       },
       component: PqrDecisionesPage,
+    },
+    {
+      // MAN-02: pagina de radicacion manual. Debe ir ANTES de la ruta con :id
+      // para que "nueva" no se capture como un id (igual que "decisiones").
+      path: frontendURL('accounts/:accountId/helic3/pqr/nueva'),
+      name: 'helic3_pqr_nueva',
+      meta: {
+        permissions: ['administrator', 'agent'],
+      },
+      component: PqrNuevaPage,
     },
     {
       // Detalle del expediente (DET-01), con URL compartible.

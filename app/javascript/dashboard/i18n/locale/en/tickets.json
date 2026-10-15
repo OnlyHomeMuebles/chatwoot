@@ -53,6 +53,84 @@
       "ERROR": "There was an error creating the ticket",
       "CATALOGS_ERROR": "The classification catalogs could not be loaded"
     },
+    "NUEVA": {
+      "TITLE": "New manual PQR",
+      "BADGE": "Agent entry",
+      "SUBTITLE": "File the request and prepare its handling in a single flow.",
+      "VOLVER": "Back to inbox",
+      "PASO1": "Case data",
+      "PASO2": "Customer and purchase",
+      "PASO_DE": "Step {n} of {total}",
+      "PASOS_ARIA": "Form steps",
+      "OBLIGATORIOS": "Required fields",
+      "CONTINUAR": "Continue",
+      "ANTERIOR": "Back",
+      "CREAR": "Create PQR",
+      "CREADA": "PQR #{consecutivo} created",
+      "ADJUNTO_FALLO": "Could not upload attachment {nombre}",
+      "CASO": {
+        "TITLE": "Case data",
+        "SUBTITLE": "Classify the request and assign who will handle it.",
+        "TIPO": "Type",
+        "TIPO_PH": "Select a type",
+        "MOTIVO": "Reason",
+        "MOTIVO_PH": "Select a reason",
+        "DETALLE": "Typified detail",
+        "DETALLE_PH": "Select a detail",
+        "DESCRIPCION": "Request description",
+        "DESCRIPCION_PH": "Describe what the customer requests and what happened with the product.",
+        "RESPONSABLE": "Assignee",
+        "RESPONSABLE_PH": "Unassigned",
+        "ADJUNTOS": "Attachments",
+        "ADJUNTOS_CTA": "Add photos or documents",
+        "ADJUNTOS_HINT": "Invoice, product evidence or customer request",
+        "ADJUNTO_QUITAR": "Remove attachment"
+      },
+      "CLIENTE": {
+        "TITLE": "Customer",
+        "SUBTITLE": "Enter the customer details.",
+        "CEDULA": "Customer ID",
+        "CEDULA_PH": "e.g. 1020304050",
+        "NOMBRE": "Customer",
+        "NOMBRE_PH": "Full name",
+        "TELEFONO": "Phone",
+        "TELEFONO_PH": "Contact number",
+        "CORREO": "Email",
+        "CORREO_PH": "email@example.com"
+      },
+      "COMPRA": {
+        "TITLE": "Purchase and product",
+        "FACTURA": "Invoice",
+        "FACTURA_PH": "Invoice number",
+        "FECHA": "Purchase date",
+        "PRODUCTO": "Product",
+        "PRODUCTO_PH": "Product name",
+        "REFERENCIA": "Reference",
+        "REFERENCIA_PH": "Product reference or code"
+      },
+      "DIRECCION": {
+        "TITLE": "Current address",
+        "CIUDAD": "Current city",
+        "CIUDAD_PH": "City where the product is",
+        "DIRECCION": "Current address",
+        "DIRECCION_PH": "Address, neighborhood and details"
+      },
+      "RESUMEN": {
+        "TITLE": "PQR summary",
+        "BORRADOR": "Draft",
+        "ORIGEN": "Origin",
+        "MANUAL": "Manual entry",
+        "CATEGORIA": "Category",
+        "ADJUNTOS": "{n} file | {n} files"
+      },
+      "ERRORES": {
+        "MOTIVO": "Select a reason to continue.",
+        "DESCRIPCION": "Write the request description.",
+        "CLIENTE": "The customer name is required.",
+        "TELEFONO": "The customer phone is required.",
+        "GENERAL": "The PQR could not be created. Check the data and try again."
+      }
+    },
     "CLOCK": {
       "NO_RADICADO": "No case number",
       "REMAINING": "{days} business days left",
