@@ -195,10 +195,17 @@ const conAviso = async accion => {
     await accion();
     useAlert(t('TICKETS.ADMIN.SAVED'));
   } catch (error) {
+    // El back responde el detalle en dos formas segun el caso: las validaciones
+    // del modelo (p.ej. un codigo mal formado, #127) viajan en data.message via
+    // render_record_invalid; "esta referenciado"/"tipo desconocido" van en
+    // data.error. Leemos ambos para que Karen vea POR QUE se rechazo, no un
+    // "Error" pelado.
     useAlert(
       error?.response?.status === 401
         ? t('TICKETS.ADMIN.FORBIDDEN')
-        : error?.response?.data?.error || t('TICKETS.ADMIN.ERROR')
+        : error?.response?.data?.message ||
+            error?.response?.data?.error ||
+            t('TICKETS.ADMIN.ERROR')
     );
   }
 };
