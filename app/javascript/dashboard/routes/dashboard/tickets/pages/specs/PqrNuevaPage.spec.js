@@ -29,6 +29,8 @@ const catalogosRef = ref({
   detalles_tipificados: [{ id: 100, nombre: 'Tela motosa' }],
 });
 const agentsRef = ref([{ id: 5, name: 'Agente Uno' }]);
+// route mutable: algunos tests abren el wizard desde una conversación (?conversation=)
+const routeState = { query: {} };
 
 vi.mock('dashboard/api/tickets', () => ({
   default: {
@@ -50,7 +52,7 @@ vi.mock('dashboard/composables', () => ({
 }));
 
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ params: { accountId: '1' } }),
+  useRoute: () => ({ params: { accountId: '1' }, query: routeState.query }),
   useRouter: () => ({ push }),
 }));
 
@@ -75,6 +77,7 @@ beforeEach(() => {
   alert.mockClear();
   crearApi.mockReset();
   subirApi.mockReset().mockResolvedValue();
+  routeState.query = {};
 });
 
 describe('PqrNuevaPage.vue — validación por paso (MAN-02)', () => {
@@ -185,5 +188,42 @@ describe('PqrNuevaPage.vue — crear (MAN-02)', () => {
     await flushPromises();
 
     expect(crearApi).toHaveBeenCalledTimes(1);
+  });
+
+  it('abierto desde una conversación: asocia la conversación y NO exige cliente (Cambio A)', async () => {
+    routeState.query = { conversation: '77' };
+    crearApi.mockResolvedValue({ data: { id: 42, display_id: 7 } });
+    const wrapper = montar();
+    // solo lo mínimo del paso 1, SIN datos de cliente
+    wrapper.vm.form.motivo_pqr_id = 10;
+    wrapper.vm.form.description = 'Llegó roto';
+
+    await wrapper.vm.crear();
+    await flushPromises();
+
+    expect(crearApi).toHaveBeenCalledTimes(1);
+    expect(crearApi.mock.calls[0][0].ticket.conversation_id).toBe('77');
+  });
+
+  it('sin conversación, el payload lleva conversation_id nulo', async () => {
+    crearApi.mockResolvedValue({ data: { id: 42, display_id: 7 } });
+    const wrapper = montar();
+    llenarMinimo(wrapper.vm);
+
+    await wrapper.vm.crear();
+    await flushPromises();
+
+    expect(crearApi.mock.calls[0][0].ticket.conversation_id).toBeNull();
+  });
+
+  it('"volver" navega a la bandeja de PQR (destino determinista)', () => {
+    const wrapper = montar();
+
+    wrapper.vm.volverABandeja();
+
+    expect(push).toHaveBeenCalledWith({
+      name: 'tickets_index',
+      params: { accountId: '1' },
+    });
   });
 });
