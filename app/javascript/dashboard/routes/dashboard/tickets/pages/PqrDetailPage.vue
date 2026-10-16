@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
@@ -13,6 +13,8 @@ import Helic3BudgetBar from 'dashboard/components-next/helic3/Helic3BudgetBar.vu
 import Helic3SourceBadge from 'dashboard/components-next/helic3/Helic3SourceBadge.vue';
 // FMT-04: modal para generar formatos desde la garantia del expediente.
 import GenerarFormatoModal from '../components/helic3/formatos/GenerarFormatoModal.vue';
+// MAN-03: mismo dialogo de garantia del panel del chat, reusado en el detalle.
+import GarantiaFormDialog from 'dashboard/components/widgets/conversation/GarantiaFormDialog.vue';
 
 // Detalle del expediente (DET-01 + VIS-03). Consume el show (GET helic3/tickets/:id)
 // que trae los dos relojes separados (PQR legal y garantia), la clasificacion, los
@@ -24,11 +26,14 @@ const props = defineProps({
 
 const store = useStore();
 const route = useRoute();
+const router = useRouter();
 const { t } = useI18n();
 
 const expediente = useMapGetter('pqrInbox/getCurrent');
 const uiFlags = useMapGetter('pqrInbox/getUIFlags');
 const agents = useMapGetter('agents/getAgents');
+// MAN-03: catalogo de resultados (para "Resolver PQR") y ciudades/motivos de garantia.
+const catalogos = useMapGetter('tickets/getCatalogos');
 const documentos = useMapGetter('pqrInbox/getDocumentos');
 const noEncontrado = ref(false);
 
@@ -61,6 +66,12 @@ const cargar = async () => {
 
 onMounted(() => {
   store.dispatch('agents/get');
+  // MAN-03: el detalle no cargaba catalogos; se necesitan para resolver y abrir
+  // garantia. Si fallan, se avisa (sin catalogos el selector queda vacio): mismo
+  // criterio que cargarDocumentos, en vez de degradar en silencio.
+  store
+    .dispatch('tickets/getCatalogos')
+    .catch(() => useAlert(t('TICKETS.RESOLVER.CATALOG_ERROR')));
   cargar();
 });
 watch(() => props.id, cargar);
@@ -68,6 +79,9 @@ watch(() => props.id, cargar);
 // refreshKey remonta los selectores para que vuelvan al valor real si el servidor
 // rechaza el cambio (estado, responsable y avance de proceso).
 const refreshKey = ref(0);
+// Key propia del selector de "Resolver PQR": al elegir/cancelar vuelve al placeholder
+// sin remontar los demas selectores de la pagina.
+const resolverKey = ref(0);
 
 const statusOptions = computed(() =>
   STATUSES.map(status => ({
@@ -212,6 +226,168 @@ const avanzarItem = async (item, procesoId) => {
   }
 };
 
+// === MAN-03: resolver la PQR desde el detalle + editar la ficha ===
+// Reutiliza tickets/resolver y GarantiaFormDialog (lo mismo que el panel del chat),
+// para que una PQR manual (sin conversacion) tambien se pueda resolver aqui.
+const garantiaDialogRef = ref(null);
+
+const respondida = computed(() => !!expediente.value?.respondida_at);
+const propuestaPendiente = computed(
+  () => !!expediente.value?.resultado_propuesto_id
+);
+// Se oculta cuando la PQR ya quedo respondida o ya abrio garantia. NO cuando solo
+// hay un resultado aplicado: "Trasladada a otra area" (y cualquier resultado que no
+// cierra ni abre garantia) deja la PQR viva, y como la PQR manual no tiene panel de
+// chat, este selector es la UNICA forma de ponerle luego el resultado final; si se
+// ocultara, la PQR se venceria sola. Re-resolver no duplica nada: AbrirGarantia es
+// idempotente y Resolver solo registra las transiciones que de verdad ocurren.
+const yaResuelta = computed(() => respondida.value || !!garantia.value);
+
+const resultadoOptions = computed(() =>
+  (catalogos.value.resultados || []).map(r => ({
+    value: r.id,
+    label: r.aprobacion_humana
+      ? `${r.nombre} ${t('TICKETS.RESOLUTION.NEEDS_APPROVAL')}`
+      : r.nombre,
+  }))
+);
+
+// Tras resolver/registrar hay que recargar el detalle: esas acciones viven en el
+// store tickets (mutan tickets.records), no en el expediente que lee pqrInbox.
+const refrescar = () => store.dispatch('pqrInbox/fetchOne', props.id);
+
+const resolver = async resultadoId => {
+  try {
+    await store.dispatch('tickets/resolver', { id: props.id, resultadoId });
+    await refrescar();
+    useAlert(t('TICKETS.RESOLUTION.SUCCESS'));
+  } catch (error) {
+    // El selector ya se reseteo en onResultadoElegido (quien siempre llama aqui),
+    // asi que no hace falta volver a incrementar resolverKey.
+    useAlert(errorMsg(error));
+  }
+};
+
+const onResultadoElegido = resultadoId => {
+  resolverKey.value += 1; // el selector vuelve al placeholder si el server rechaza o se cancela
+  if (!resultadoId) return;
+  const resultado = (catalogos.value.resultados || []).find(
+    r => r.id === resultadoId
+  );
+  if (resultado?.abre_garantia) {
+    const d = expediente.value?.datos || {};
+    garantiaDialogRef.value?.open(expediente.value, resultadoId, {
+      producto_nombre: d.producto_nombre?.valor || '',
+      producto_referencia: d.producto_referencia?.valor || '',
+      ciudad_nombre: d.ciudad?.valor || '',
+    });
+  } else {
+    resolver(resultadoId);
+  }
+};
+
+// El dialogo ya muestra el toast de exito al resolver; aqui solo recargamos.
+const onGarantiaResuelta = () => refrescar();
+
+const irADecisiones = () =>
+  router.push({
+    name: 'helic3_pqr_decisiones',
+    params: { accountId: route.params.accountId },
+  });
+
+// Ficha editable: el operador corrige la ficha; queda con fuente humano (la mas
+// alta) via tickets/registrarDatos, y se recarga el expediente. Un campo que se deja
+// vacio NO borra el anterior: el backend ignora los vacios (igual que el panel).
+const hoyISO = new Date().toISOString().slice(0, 10);
+const CAMPOS_FICHA = [
+  {
+    key: 'cliente_nombre',
+    label: 'TICKETS.DATA.FIELDS.CLIENTE_NOMBRE',
+    type: 'text',
+  },
+  {
+    key: 'cliente_telefono',
+    label: 'TICKETS.DATA.FIELDS.CLIENTE_TELEFONO',
+    type: 'text',
+  },
+  {
+    key: 'cliente_email',
+    label: 'TICKETS.DATA.FIELDS.CLIENTE_EMAIL',
+    type: 'email',
+  },
+  { key: 'cedula', label: 'TICKETS.DATA.FIELDS.CEDULA', type: 'text' },
+  { key: 'direccion', label: 'TICKETS.DATA.FIELDS.DIRECCION', type: 'text' },
+  { key: 'ciudad', label: 'TICKETS.DATA.FIELDS.CIUDAD', type: 'text' },
+  {
+    key: 'factura_numero',
+    label: 'TICKETS.DATA.FIELDS.FACTURA_NUMERO',
+    type: 'text',
+  },
+  {
+    key: 'factura_fecha',
+    label: 'TICKETS.DATA.FIELDS.FACTURA_FECHA',
+    type: 'date',
+  },
+  {
+    key: 'producto_nombre',
+    label: 'TICKETS.DATA.FIELDS.PRODUCTO_NOMBRE',
+    type: 'text',
+  },
+  {
+    key: 'producto_referencia',
+    label: 'TICKETS.DATA.FIELDS.PRODUCTO_REFERENCIA',
+    type: 'text',
+  },
+];
+// Etiquetas ya traducidas (reactivas al idioma), para que la plantilla no use una
+// clave i18n dinamica — mismo criterio que datosLista.
+const camposFichaEdit = computed(() =>
+  CAMPOS_FICHA.map(c => ({ ...c, label: t(c.label) }))
+);
+const editandoFicha = ref(false);
+const guardandoFicha = ref(false); // la accion vive en el store tickets, no en pqrInbox
+const fichaEdit = ref({});
+const fichaOriginal = ref({}); // snapshot al abrir, para mandar SOLO lo que cambió
+const abrirEdicionFicha = () => {
+  const d = expediente.value?.datos || {};
+  const snapshot = Object.fromEntries(
+    CAMPOS_FICHA.map(c => [c.key, d[c.key]?.valor || ''])
+  );
+  fichaEdit.value = { ...snapshot };
+  fichaOriginal.value = snapshot;
+  editandoFicha.value = true;
+};
+const guardarFicha = async () => {
+  // Solo los campos que el operador tocó (y quedaron con valor): registrarDatos
+  // re-sella como fuente "humano" (la mas alta) lo que reciba, asi que mandar la
+  // ficha entera congelaria como humano datos de IA/ERP que el operador ni miró y
+  // bloquearia su refresco. Un campo que se deja vacio no se manda (el backend lo
+  // ignoraria igual). Se recorta el valor (igual que el panel) para no persistir
+  // espacios sobrantes que luego romperian los cruces por cedula con el ERP.
+  const datos = Object.fromEntries(
+    CAMPOS_FICHA.map(c => c.key)
+      .map(k => [k, (fichaEdit.value[k] ?? '').trim()])
+      .filter(([k, v]) => v && v !== fichaOriginal.value[k])
+  );
+  if (!Object.keys(datos).length) {
+    editandoFicha.value = false; // no cambió nada: no molestamos al backend
+    return;
+  }
+  guardandoFicha.value = true;
+  try {
+    await store.dispatch('tickets/registrarDatos', { id: props.id, datos });
+    await refrescar();
+    editandoFicha.value = false;
+    useAlert(t('TICKETS.DATA.SAVED'));
+  } catch (error) {
+    // El 422 de validacion (p. ej. fecha de compra futura) trae el motivo real en
+    // data.message; se muestra en vez del generico.
+    useAlert(error?.response?.data?.message || errorMsg(error));
+  } finally {
+    guardandoFicha.value = false;
+  }
+};
+
 // La PQR de categoria Informacion no tiene plazo legal: no se pinta reloj, y no
 // genera radicado (queda fuera del conteo frente a la SIC).
 const tieneReloj = computed(
@@ -282,21 +458,40 @@ const clasificacion = computed(() => {
   ];
 });
 
+// Fecha SIN hora (columna :date, p. ej. "2026-01-15"): se ancla a medianoche LOCAL
+// para que new Date no la interprete en UTC y reste un dia en husos negativos (CO).
+const formatFechaSolo = iso =>
+  iso ? new Date(`${iso}T00:00:00`).toLocaleDateString() : null;
+
 // Datos del caso con procedencia (DAT-01): cada campo trae { valor, fuente }.
 // El badge lo pinta Helic3SourceBadge (VIS-04), extraido del panel para que el
 // panel, la bandeja y el expediente no lo copien cada uno por su lado.
 const datosLista = computed(() => {
   const d = expediente.value?.datos || {};
   const campos = [
+    { key: 'cliente_nombre', label: t('TICKETS.DATA.FIELDS.CLIENTE_NOMBRE') },
+    {
+      key: 'cliente_telefono',
+      label: t('TICKETS.DATA.FIELDS.CLIENTE_TELEFONO'),
+    },
+    { key: 'cliente_email', label: t('TICKETS.DATA.FIELDS.CLIENTE_EMAIL') },
     { key: 'cedula', label: t('TICKETS.DATA.FIELDS.CEDULA') },
     { key: 'direccion', label: t('TICKETS.DATA.FIELDS.DIRECCION') },
     { key: 'ciudad', label: t('TICKETS.DATA.FIELDS.CIUDAD') },
     { key: 'factura_numero', label: t('TICKETS.DATA.FIELDS.FACTURA_NUMERO') },
+    { key: 'factura_fecha', label: t('TICKETS.DATA.FIELDS.FACTURA_FECHA') },
     { key: 'producto_nombre', label: t('TICKETS.DATA.FIELDS.PRODUCTO_NOMBRE') },
+    {
+      key: 'producto_referencia',
+      label: t('TICKETS.DATA.FIELDS.PRODUCTO_REFERENCIA'),
+    },
   ];
   const filas = campos.map(c => ({
     label: c.label,
-    valor: d[c.key]?.valor ?? null,
+    valor:
+      c.key === 'factura_fecha'
+        ? formatFechaSolo(d[c.key]?.valor)
+        : (d[c.key]?.valor ?? null),
     // '' y no null: Helic3SourceBadge tipa fuente como String.
     fuente: d[c.key]?.fuente ?? '',
   }));
@@ -615,6 +810,48 @@ const formatFecha = valor =>
             </div>
           </section>
 
+          <!-- MAN-03: resolver la PQR desde el detalle (mismo endpoint/flujo que el
+               panel del chat). Oculto si ya tiene resultado aplicado o esta respondida.
+               Si el agente dejo una propuesta, se avisa y se enlaza a Decisiones en vez
+               de resolver en paralelo (la cola de aprobacion es la unica fuente de verdad). -->
+          <section
+            v-if="!yaResuelta"
+            class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
+            data-testid="bloque-resolver"
+          >
+            <h3
+              class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak"
+            >
+              {{ t('TICKETS.RESOLVER.TITLE') }}
+            </h3>
+            <template v-if="propuestaPendiente">
+              <p class="flex items-start gap-2 mb-0 text-sm text-n-amber-11">
+                <Icon icon="i-lucide-clock" class="mt-0.5 size-4 shrink-0" />
+                {{ t('TICKETS.RESOLVER.PROPOSAL_PENDING') }}
+              </p>
+              <Button
+                :label="t('TICKETS.RESOLVER.GO_TO_DECISIONS')"
+                icon="i-lucide-arrow-right"
+                sm
+                faded
+                class="self-start"
+                @click="irADecisiones"
+              />
+            </template>
+            <template v-else>
+              <p class="mb-0 text-xs text-n-slate-11">
+                {{ t('TICKETS.RESOLVER.HINT') }}
+              </p>
+              <Select
+                :key="`resolver-${resolverKey}`"
+                :options="resultadoOptions"
+                :model-value="expediente.resultado?.id ?? ''"
+                :placeholder="t('TICKETS.RESOLVER.PLACEHOLDER')"
+                @update:model-value="onResultadoElegido"
+              />
+            </template>
+          </section>
+
           <!-- Garantia (GAR-02/03): expediente operativo, reloj de 30 dias habiles -->
           <section
             v-if="garantia"
@@ -827,6 +1064,13 @@ const formatFecha = valor =>
             />
             {{ t('TICKETS.DETAIL.NO_WARRANTY') }}
           </section>
+
+          <!-- MAN-03: dialogo de garantia (el mismo del panel). Se abre cuando el
+               resultado elegido abre garantia; al confirmar, recarga el expediente. -->
+          <GarantiaFormDialog
+            ref="garantiaDialogRef"
+            @resolved="onGarantiaResuelta"
+          />
         </div>
 
         <!-- Columna derecha: siguiente accion, acciones, datos, actividad y documentos -->
@@ -878,12 +1122,26 @@ const formatFecha = valor =>
           <section
             class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
-            <h3
-              class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak"
+            <div
+              class="flex items-center justify-between gap-2 pb-3 -mx-4 px-4 border-b border-n-weak"
             >
-              {{ t('TICKETS.DATA.TITLE') }}
-            </h3>
-            <dl class="grid grid-cols-2 gap-x-4 gap-y-3">
+              <h3 class="mb-0 text-sm font-semibold text-n-slate-12">
+                {{ t('TICKETS.DATA.TITLE') }}
+              </h3>
+              <!-- MAN-03: editar la ficha a mano. El dato corregido queda con fuente
+                   "Manual" (la de mas peso), via tickets/registrarDatos. -->
+              <Button
+                v-if="!editandoFicha"
+                :label="t('TICKETS.DATA.EDIT')"
+                icon="i-lucide-pencil"
+                xs
+                faded
+                @click="abrirEdicionFicha"
+              />
+            </div>
+
+            <!-- Lectura -->
+            <dl v-if="!editandoFicha" class="grid grid-cols-2 gap-x-4 gap-y-3">
               <div
                 v-for="dato in datosLista"
                 :key="dato.label"
@@ -903,6 +1161,39 @@ const formatFecha = valor =>
                 </dd>
               </div>
             </dl>
+
+            <!-- Edicion (MAN-03): un campo vacio NO borra el anterior (el backend
+                 ignora los vacios). La fecha de factura no puede ser futura. -->
+            <form
+              v-else
+              class="flex flex-col gap-3"
+              @submit.prevent="guardarFicha"
+            >
+              <Input
+                v-for="campo in camposFichaEdit"
+                :key="campo.key"
+                v-model="fichaEdit[campo.key]"
+                :type="campo.type"
+                :label="campo.label"
+                :max="campo.type === 'date' ? hoyISO : ''"
+                size="sm"
+              />
+              <div class="flex justify-end gap-2">
+                <Button
+                  :label="t('TICKETS.DATA.CANCEL')"
+                  sm
+                  faded
+                  type="button"
+                  @click="editandoFicha = false"
+                />
+                <Button
+                  :label="t('TICKETS.DATA.SAVE')"
+                  sm
+                  type="submit"
+                  :is-loading="guardandoFicha"
+                />
+              </div>
+            </form>
           </section>
 
           <!-- Actividad: sellos reales (EVT-01, de esta entrega, la reemplaza) -->

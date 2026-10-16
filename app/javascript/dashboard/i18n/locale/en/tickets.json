@@ -459,6 +459,9 @@
       "TITLE": "Case data",
       "SAVED": "Data updated",
       "ERROR": "There was an error saving the data",
+      "EDIT": "Edit",
+      "SAVE": "Save",
+      "CANCEL": "Cancel",
       "SOURCE": {
         "IA": "AI",
         "ERP": "ERP",
@@ -466,13 +469,26 @@
         "HUMANO": "Manual"
       },
       "FIELDS": {
+        "CLIENTE_NOMBRE": "Customer",
+        "CLIENTE_TELEFONO": "Phone",
+        "CLIENTE_EMAIL": "Email",
         "CEDULA": "ID number",
         "DIRECCION": "Address",
         "CIUDAD": "City",
         "FACTURA_NUMERO": "Invoice",
+        "FACTURA_FECHA": "Purchase date",
         "PRODUCTO_NOMBRE": "Product",
+        "PRODUCTO_REFERENCIA": "Reference",
         "DETALLE": "Detail"
       }
+    },
+    "RESOLVER": {
+      "TITLE": "Resolve PQR",
+      "HINT": "Pick the result to close this PQR. If the result opens a warranty, product details will be requested.",
+      "PLACEHOLDER": "Pick a result…",
+      "PROPOSAL_PENDING": "The agent left a resolution proposal pending approval.",
+      "GO_TO_DECISIONS": "Go to Decisions",
+      "CATALOG_ERROR": "The results needed to resolve the PQR could not be loaded."
     },
     "DELETE": {
       "TITLE": "Delete ticket",

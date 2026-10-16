@@ -459,6 +459,9 @@
       "TITLE": "Datos del caso",
       "SAVED": "Dato actualizado",
       "ERROR": "Hubo un error al guardar el dato",
+      "EDIT": "Editar",
+      "SAVE": "Guardar",
+      "CANCEL": "Cancelar",
       "SOURCE": {
         "IA": "IA",
         "ERP": "ERP",
@@ -466,13 +469,26 @@
         "HUMANO": "Manual"
       },
       "FIELDS": {
+        "CLIENTE_NOMBRE": "Cliente",
+        "CLIENTE_TELEFONO": "Teléfono",
+        "CLIENTE_EMAIL": "Correo",
         "CEDULA": "Cédula",
         "DIRECCION": "Dirección",
         "CIUDAD": "Ciudad",
         "FACTURA_NUMERO": "Factura",
+        "FACTURA_FECHA": "Fecha de compra",
         "PRODUCTO_NOMBRE": "Producto",
+        "PRODUCTO_REFERENCIA": "Referencia",
         "DETALLE": "Detalle"
       }
+    },
+    "RESOLVER": {
+      "TITLE": "Resolver PQR",
+      "HINT": "Elige el resultado para cerrar esta PQR. Si el resultado abre garantía, se pedirán los datos del producto.",
+      "PLACEHOLDER": "Elegir resultado…",
+      "PROPOSAL_PENDING": "El agente dejó una propuesta de resolución pendiente de aprobación.",
+      "GO_TO_DECISIONS": "Ir a Decisiones",
+      "CATALOG_ERROR": "No se pudieron cargar los resultados para resolver la PQR."
     },
     "DELETE": {
       "TITLE": "Eliminar ticket",
