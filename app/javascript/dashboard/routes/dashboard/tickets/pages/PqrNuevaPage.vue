@@ -228,8 +228,14 @@ const crear = async () => {
       params: { accountId: route.params.accountId, id: ticket.id },
     });
   } catch (e) {
+    // El backend usa dos claves: las validaciones de Rails viajan en data.message,
+    // pero errores de negocio como la etapa inicial faltante (CAS-01) van en
+    // data.error. Se leen ambos para no caer al generico (mismo criterio que el
+    // admin de catalogos).
     errorBackend.value =
-      e?.response?.data?.message || t('TICKETS.NUEVA.ERRORES.GENERAL');
+      e?.response?.data?.message ||
+      e?.response?.data?.error ||
+      t('TICKETS.NUEVA.ERRORES.GENERAL');
   } finally {
     guardando.value = false;
   }
