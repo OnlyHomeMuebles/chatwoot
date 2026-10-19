@@ -227,9 +227,6 @@ const comoGrafica = filas => ({
 });
 
 const graficaMensual = computed(() => comoGrafica(datos.value?.mensual || []));
-const graficaTrimestral = computed(() =>
-  comoGrafica(datos.value?.trimestral || [])
-);
 
 // Ajuste visual (mockup v12, seccion "Centro de operacion"): por_ciudad suma
 // una comparacion visual de barras ademas de la tabla -- sin facturas (eso es
@@ -346,13 +343,61 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
           </div>
         </div>
 
-        <!-- Mensual y trimestral -->
-        <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <!-- Detalle mensual: tabla + gráfica (mockup v12, "Detalle mensual" / "Recuento vs. ratio") -->
+        <div class="grid grid-cols-1 gap-3 xl:grid-cols-[1.7fr_1fr]">
+          <div
+            class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 overflow-x-auto"
+          >
+            <p class="font-semibold text-n-slate-12">
+              {{ t('HELIC3_INDICADORES.GARANTIAS.MONTHLY') }}
+            </p>
+            <p class="mt-1 mb-3 text-xs text-n-slate-11">
+              {{ t('HELIC3_INDICADORES.GARANTIAS.MONTHLY_SUBTITLE') }}
+            </p>
+            <table class="w-full min-w-[28rem] text-sm">
+              <thead class="text-xs text-n-slate-11">
+                <tr>
+                  <th class="px-3 py-2 text-left font-medium">
+                    {{ t('HELIC3_INDICADORES.FILTERS.MONTH') }}
+                  </th>
+                  <th class="px-3 py-2 text-right font-medium">
+                    {{ t('HELIC3_INDICADORES.GARANTIAS.COUNT') }}
+                  </th>
+                  <th class="px-3 py-2 text-right font-medium">
+                    {{ t('HELIC3_INDICADORES.GARANTIAS.KPI_SOLVED') }}
+                  </th>
+                  <th class="px-3 py-2 text-right font-medium">
+                    {{ t('HELIC3_INDICADORES.GARANTIAS.KPI_IN_PROGRESS') }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="fila in datos.mensual"
+                  :key="fila.periodo"
+                  class="border-t border-n-weak"
+                >
+                  <td class="px-3 py-2 text-n-slate-11">{{ fila.periodo }}</td>
+                  <td
+                    class="px-3 py-2 text-right font-medium tabular-nums text-n-slate-12"
+                  >
+                    {{ fila.cantidad }}
+                  </td>
+                  <td class="px-3 py-2 text-right tabular-nums text-n-teal-11">
+                    {{ fila.solucionadas }}
+                  </td>
+                  <td class="px-3 py-2 text-right tabular-nums text-n-amber-11">
+                    {{ fila.en_proceso }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
           <div
             class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
           >
             <p class="font-semibold text-n-slate-12">
-              {{ t('HELIC3_INDICADORES.GARANTIAS.MONTHLY') }}
+              {{ t('HELIC3_INDICADORES.GARANTIAS.MONTHLY_CHART') }}
             </p>
             <p class="mt-1 mb-2 text-xs text-n-slate-11">
               {{ t('HELIC3_INDICADORES.GARANTIAS.MONTHLY_SUBTITLE') }}
@@ -361,25 +406,59 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
               v-if="datos.mensual.length"
               :data="graficaMensual"
               :height="ALTURA_GRAFICA"
-              :aria-label="t('HELIC3_INDICADORES.GARANTIAS.MONTHLY')"
+              :aria-label="t('HELIC3_INDICADORES.GARANTIAS.MONTHLY_CHART')"
             />
           </div>
-          <div
-            class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
-          >
-            <p class="font-semibold text-n-slate-12">
-              {{ t('HELIC3_INDICADORES.GARANTIAS.QUARTERLY') }}
-            </p>
-            <p class="mt-1 mb-2 text-xs text-n-slate-11">
-              {{ t('HELIC3_INDICADORES.GARANTIAS.QUARTERLY_SUBTITLE') }}
-            </p>
-            <BarChart
-              v-if="datos.trimestral.length"
-              :data="graficaTrimestral"
-              :height="ALTURA_GRAFICA"
-              :aria-label="t('HELIC3_INDICADORES.GARANTIAS.QUARTERLY')"
-            />
-          </div>
+        </div>
+
+        <!-- Detalle trimestral: tabla a todo el ancho (mockup v12) -->
+        <div
+          class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 overflow-x-auto"
+        >
+          <p class="font-semibold text-n-slate-12">
+            {{ t('HELIC3_INDICADORES.GARANTIAS.QUARTERLY') }}
+          </p>
+          <p class="mt-1 mb-3 text-xs text-n-slate-11">
+            {{ t('HELIC3_INDICADORES.GARANTIAS.QUARTERLY_SUBTITLE') }}
+          </p>
+          <table class="w-full min-w-[28rem] text-sm">
+            <thead class="text-xs text-n-slate-11">
+              <tr>
+                <th class="px-3 py-2 text-left font-medium">
+                  {{ t('HELIC3_INDICADORES.GARANTIAS.QUARTER_COLUMN') }}
+                </th>
+                <th class="px-3 py-2 text-right font-medium">
+                  {{ t('HELIC3_INDICADORES.GARANTIAS.COUNT') }}
+                </th>
+                <th class="px-3 py-2 text-right font-medium">
+                  {{ t('HELIC3_INDICADORES.GARANTIAS.KPI_SOLVED') }}
+                </th>
+                <th class="px-3 py-2 text-right font-medium">
+                  {{ t('HELIC3_INDICADORES.GARANTIAS.KPI_IN_PROGRESS') }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="fila in datos.trimestral"
+                :key="fila.periodo"
+                class="border-t border-n-weak"
+              >
+                <td class="px-3 py-2 text-n-slate-11">{{ fila.periodo }}</td>
+                <td
+                  class="px-3 py-2 text-right font-medium tabular-nums text-n-slate-12"
+                >
+                  {{ fila.cantidad }}
+                </td>
+                <td class="px-3 py-2 text-right tabular-nums text-n-teal-11">
+                  {{ fila.solucionadas }}
+                </td>
+                <td class="px-3 py-2 text-right tabular-nums text-n-amber-11">
+                  {{ fila.en_proceso }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         <!-- Por ciudad: tabla + comparativo de barras (mockup v12, "Centro de operacion") -->
