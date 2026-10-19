@@ -11,19 +11,23 @@ import { useAbortableRequest } from 'dashboard/composables/useAbortableRequest';
 // store, no dentro de un setup-store) cancela la peticion anterior apenas
 // arranca una nueva, asi solo la ultima puede escribir el estado.
 const garantiasRequest = useAbortableRequest();
+const pqrRequest = useAbortableRequest();
 
 export const useIndicadoresStore = defineStore('helic3Indicadores', {
   state: () => ({
     garantias: null,
+    pqr: null,
   }),
 
   getters: {
     getGarantias: state => state.garantias,
+    getPqr: state => state.pqr,
     // isPending ya solo refleja la peticion vigente (ver "Only the latest run
     // owns the shared state" en useAbortableRequest) -- una respuesta
     // cancelada no apaga el spinner de la que la reemplazo.
     getUIFlags: () => ({
       isFetchingGarantias: garantiasRequest.isPending.value,
+      isFetchingPqr: pqrRequest.isPending.value,
     }),
   },
 
@@ -35,6 +39,14 @@ export const useIndicadoresStore = defineStore('helic3Indicadores', {
         // debe escribir el estado, aunque el mock/navegador no respete el abort.
         if (signal.aborted) return;
         this.garantias = response.data;
+      });
+    },
+
+    async fetchPqr(filtros = {}) {
+      await pqrRequest.run(async signal => {
+        const response = await IndicadoresAPI.pqr(filtros, { signal });
+        if (signal.aborted) return;
+        this.pqr = response.data;
       });
     },
   },

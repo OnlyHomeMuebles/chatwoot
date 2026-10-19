@@ -3,10 +3,11 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 
-// IND-01: contenedor de la seccion "Indicadores" -- la barra de pestañas (una
-// URL compartible por pestaña, via router children) y el contenido de la
-// pestaña activa. Una pestaña aparece SOLO cuando su ticket se integra (hoy,
-// solo Garantías); nada de pestañas vacías ni avisos de "próximamente".
+// IND-01/IND-02: contenedor de la seccion "Indicadores" -- la barra de
+// pestañas (una URL compartible por pestaña, via router children) y el
+// contenido de la pestaña activa. Una pestaña aparece SOLO cuando su ticket
+// se integra (Garantías con IND-01, Derechos de Petición con IND-02);
+// nada de pestañas vacías ni avisos de "próximamente".
 const { t } = useI18n();
 const route = useRoute();
 
@@ -18,6 +19,10 @@ const TABS = computed(() => [
   {
     name: 'helic3_indicadores_garantias',
     label: t('HELIC3_INDICADORES.TABS.GARANTIAS'),
+  },
+  {
+    name: 'helic3_indicadores_pqr',
+    label: t('HELIC3_INDICADORES.TABS.PQR'),
   },
 ]);
 </script>

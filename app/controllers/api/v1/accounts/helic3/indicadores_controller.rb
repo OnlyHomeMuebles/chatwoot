@@ -10,6 +10,10 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
     @indicadores = Helic3::Indicadores::Garantias.call(account: Current.account, filtros: filtros_garantias)
   end
 
+  def pqr
+    @indicadores = Helic3::Indicadores::Pqr.call(account: Current.account, filtros: filtros_pqr)
+  end
+
   private
 
   def check_authorization
@@ -21,5 +25,11 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
 
   def filtros_garantias
     params.permit(*FILTROS_GARANTIAS).to_h.symbolize_keys
+  end
+
+  FILTROS_PQR = %i[anio mes tipo_id categoria_id motivo_pqr_id assignee_id].freeze
+
+  def filtros_pqr
+    params.permit(*FILTROS_PQR).to_h.symbolize_keys
   end
 end

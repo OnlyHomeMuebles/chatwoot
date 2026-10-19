@@ -2,7 +2,8 @@
   "HELIC3_INDICADORES": {
     "MENU": "Indicators",
     "TABS": {
-      "GARANTIAS": "Warranties"
+      "GARANTIAS": "Warranties",
+      "PQR": "Right of Petition"
     },
     "FILTERS": {
       "YEAR": "Year",
@@ -13,6 +14,8 @@
       "STAGE": "Stage",
       "PRODUCT": "Product",
       "PRODUCT_PLACEHOLDER": "Search by product name",
+      "TYPE": "Type",
+      "RESPONSIBLE": "Responsible",
       "CLEAR": "Clear filters",
       "ALL": "All"
     },
@@ -36,6 +39,41 @@
       "NO_MOTIVE": "No motive",
       "NO_DETAIL": "No detail",
       "NO_STAGE": "No stage"
+    },
+    "PQR": {
+      "KPI_FILED": "Filed",
+      "KPI_FILED_DESC": "Filed in the period",
+      "KPI_RESPONDED": "Responded",
+      "KPI_RESPONDED_DESC": "Already have a response",
+      "KPI_PENDING": "Pending",
+      "KPI_PENDING_DESC": "Not yet responded",
+      "KPI_RESPONSE_RATE": "% Responded",
+      "KPI_RESPONSE_RATE_DESC": "Responded / filed",
+      "KPI_ON_TIME": "On time",
+      "KPI_ON_TIME_DESC": "Responded on time",
+      "KPI_OVERDUE": "Overdue, no response",
+      "KPI_OVERDUE_DESC": "Legal deadline passed",
+      "KPI_COMPLIANCE": "% Compliance",
+      "KPI_COMPLIANCE_DESC": "On time / responded",
+      "MONTHLY": "Monthly detail",
+      "MONTHLY_SUBTITLE": "Cases filed by month",
+      "MONTHLY_CHART": "Monthly count",
+      "QUARTERLY": "Quarterly detail",
+      "QUARTERLY_SUBTITLE": "Cases filed by quarter",
+      "QUARTER_COLUMN": "Quarter",
+      "MOTIVE_QUARTER": "Motive by quarter",
+      "MOTIVE_QUARTER_SUBTITLE": "Number of cases by motive in each quarter",
+      "MOTIVE_COLUMN": "Motive",
+      "TOTAL_COLUMN": "Total",
+      "BY_TYPE": "By type",
+      "BY_CATEGORY": "By category",
+      "BY_RESULT": "By result",
+      "BY_RESPONSIBLE": "By responsible agent",
+      "NO_RESULT": "No result",
+      "NO_MOTIVE": "No motive",
+      "NO_TYPE": "No type",
+      "NO_CATEGORY": "No category",
+      "COUNT": "Cases"
     }
   }
 }

@@ -7,6 +7,7 @@ import PqrDecisionesPage from './pages/PqrDecisionesPage.vue';
 import AgentInboxPage from './pages/AgentInboxPage.vue';
 import IndicadoresPage from './pages/IndicadoresPage.vue';
 import GarantiasTab from './pages/indicadores/GarantiasTab.vue';
+import PqrTab from './pages/indicadores/PqrTab.vue';
 
 const ticketsRoutes = {
   routes: [
@@ -77,6 +78,14 @@ const ticketsRoutes = {
             permissions: ['administrator', 'agent'],
           },
           component: GarantiasTab,
+        },
+        {
+          path: 'pqr',
+          name: 'helic3_indicadores_pqr',
+          meta: {
+            permissions: ['administrator', 'agent'],
+          },
+          component: PqrTab,
         },
       ],
     },

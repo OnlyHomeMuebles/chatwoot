@@ -5,6 +5,7 @@ import { useIndicadoresStore } from '../indicadores';
 vi.mock('dashboard/api/helic3/indicadores', () => ({
   default: {
     garantias: vi.fn(),
+    pqr: vi.fn(),
   },
 }));
 
@@ -82,5 +83,36 @@ describe('helic3Indicadores store', () => {
     await peticionLenta;
 
     expect(store.getGarantias).toEqual({ kpis: { garantias: 9 } });
+  });
+
+  it('fetchPqr pasa los filtros al API y guarda la respuesta', async () => {
+    const payload = { kpis: { radicadas: 5, respondidas: 2, pendientes: 3 } };
+    IndicadoresAPI.pqr.mockResolvedValue({ data: payload });
+    const store = useIndicadoresStore();
+
+    await store.fetchPqr({ anio: 2026 });
+
+    expect(IndicadoresAPI.pqr).toHaveBeenCalledWith(
+      { anio: 2026 },
+      { signal: expect.any(AbortSignal) }
+    );
+    expect(store.getPqr).toEqual(payload);
+  });
+
+  it('isFetchingPqr es independiente de isFetchingGarantias', async () => {
+    let capturado;
+    IndicadoresAPI.pqr.mockImplementation(() => {
+      capturado = { ...store.getUIFlags }; // eslint-disable-line no-use-before-define
+      return Promise.resolve({ data: {} });
+    });
+    const store = useIndicadoresStore();
+
+    await store.fetchPqr();
+
+    expect(capturado).toEqual({
+      isFetchingGarantias: false,
+      isFetchingPqr: true,
+    });
+    expect(store.getUIFlags.isFetchingPqr).toBe(false);
   });
 });
