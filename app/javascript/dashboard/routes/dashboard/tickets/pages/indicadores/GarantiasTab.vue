@@ -9,6 +9,8 @@ import Button from 'dashboard/components-next/button/Button.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import BarChart from 'shared/components/charts/BarChart.vue';
 import { useIndicadoresStore } from 'dashboard/store/helic3/indicadores';
+import IndicadoresAPI from 'dashboard/api/helic3/indicadores';
+import { downloadBlobResponse } from 'dashboard/helper/downloadHelper';
 
 // IND-01: primera pestaña de Indicadores. Garantías que YA están en el CRM,
 // con filtros resueltos en el servidor (GET helic3/indicadores/garantias).
@@ -80,17 +82,39 @@ const procesoOptions = opcionesDe('procesos_garantia');
 
 const huboError = ref(false);
 
-const cargar = async () => {
+// mismos filtros para cargar la tabla en pantalla y para descargarla en CSV
+// (IND-05): el Excel siempre tiene que coincidir con lo que Karen esta viendo.
+const parametrosActuales = () => {
   const params = {};
   Object.entries(filtros).forEach(([clave, valor]) => {
     if (valor !== '') params[clave] = valor;
   });
+  return params;
+};
+
+const cargar = async () => {
   huboError.value = false;
   try {
-    await indicadoresStore.fetchGarantias(params);
+    await indicadoresStore.fetchGarantias(parametrosActuales());
   } catch (error) {
     huboError.value = true;
     useAlert(t('HELIC3_INDICADORES.ERROR'));
+  }
+};
+
+const descargando = reactive({});
+const descargarCsv = async seccion => {
+  descargando[seccion] = true;
+  try {
+    const response = await IndicadoresAPI.garantiasCsv(
+      seccion,
+      parametrosActuales()
+    );
+    downloadBlobResponse(response, `indicadores-garantias-${seccion}.csv`);
+  } catch (error) {
+    useAlert(t('HELIC3_INDICADORES.DOWNLOAD_ERROR'));
+  } finally {
+    descargando[seccion] = false;
   }
 };
 
@@ -351,9 +375,20 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
           <div
             class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
           >
-            <p class="mb-2 text-sm font-medium text-n-slate-12">
-              {{ t('HELIC3_INDICADORES.GARANTIAS.MONTHLY') }}
-            </p>
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-sm font-medium text-n-slate-12">
+                {{ t('HELIC3_INDICADORES.GARANTIAS.MONTHLY') }}
+              </p>
+              <Button
+                icon="i-lucide-download"
+                variant="ghost"
+                color="slate"
+                size="xs"
+                :is-loading="descargando.mensual"
+                :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+                @click="descargarCsv('mensual')"
+              />
+            </div>
             <BarChart
               v-if="datos.mensual.length"
               :data="graficaMensual"
@@ -364,9 +399,20 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
           <div
             class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
           >
-            <p class="mb-2 text-sm font-medium text-n-slate-12">
-              {{ t('HELIC3_INDICADORES.GARANTIAS.QUARTERLY') }}
-            </p>
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-sm font-medium text-n-slate-12">
+                {{ t('HELIC3_INDICADORES.GARANTIAS.QUARTERLY') }}
+              </p>
+              <Button
+                icon="i-lucide-download"
+                variant="ghost"
+                color="slate"
+                size="xs"
+                :is-loading="descargando.trimestral"
+                :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+                @click="descargarCsv('trimestral')"
+              />
+            </div>
             <BarChart
               v-if="datos.trimestral.length"
               :data="graficaTrimestral"
@@ -380,21 +426,50 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
         <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <table
             v-for="seccion in [
-              { titulo: 'BY_CITY', filas: datos.por_ciudad },
-              { titulo: 'BY_MOTIVE', filas: datos.por_motivo },
-              { titulo: 'BY_DETAIL', filas: datos.por_detalle },
-              { titulo: 'BY_STAGE', filas: datos.por_proceso },
-              { titulo: 'BY_PRODUCT', filas: datos.por_producto },
+              {
+                titulo: 'BY_CITY',
+                clave: 'por_ciudad',
+                filas: datos.por_ciudad,
+              },
+              {
+                titulo: 'BY_MOTIVE',
+                clave: 'por_motivo',
+                filas: datos.por_motivo,
+              },
+              {
+                titulo: 'BY_DETAIL',
+                clave: 'por_detalle',
+                filas: datos.por_detalle,
+              },
+              {
+                titulo: 'BY_STAGE',
+                clave: 'por_proceso',
+                filas: datos.por_proceso,
+              },
+              {
+                titulo: 'BY_PRODUCT',
+                clave: 'por_producto',
+                filas: datos.por_producto,
+              },
             ]"
             :key="seccion.titulo"
             class="w-full text-sm rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
           >
-            <caption
-              class="p-3 font-medium text-left caption-top text-n-slate-12"
-            >
-              {{
-                t(`HELIC3_INDICADORES.GARANTIAS.${seccion.titulo}`)
-              }}
+            <caption class="p-3 caption-top">
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-left text-n-slate-12">
+                  {{ t(`HELIC3_INDICADORES.GARANTIAS.${seccion.titulo}`) }}
+                </span>
+                <Button
+                  icon="i-lucide-download"
+                  variant="ghost"
+                  color="slate"
+                  size="xs"
+                  :is-loading="descargando[seccion.clave]"
+                  :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+                  @click="descargarCsv(seccion.clave)"
+                />
+              </div>
             </caption>
             <tbody>
               <tr

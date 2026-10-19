@@ -8,6 +8,8 @@ import Button from 'dashboard/components-next/button/Button.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import BarChart from 'shared/components/charts/BarChart.vue';
 import { useIndicadoresStore } from 'dashboard/store/helic3/indicadores';
+import IndicadoresAPI from 'dashboard/api/helic3/indicadores';
+import { downloadBlobResponse } from 'dashboard/helper/downloadHelper';
 
 // IND-02: segunda pestaña de Indicadores. Las PQR que YA estan en el CRM
 // (helic3_tickets), con el cumplimiento del plazo legal de 15 dias habiles
@@ -107,17 +109,36 @@ const selectFiltros = computed(() => [
 
 const huboError = ref(false);
 
-const cargar = async () => {
+// mismos filtros para cargar la tabla en pantalla y para descargarla en CSV
+// (IND-05): el Excel siempre tiene que coincidir con lo que Karen esta viendo.
+const parametrosActuales = () => {
   const params = {};
   Object.entries(filtros).forEach(([clave, valor]) => {
     if (valor !== '') params[clave] = valor;
   });
+  return params;
+};
+
+const cargar = async () => {
   huboError.value = false;
   try {
-    await indicadoresStore.fetchPqr(params);
+    await indicadoresStore.fetchPqr(parametrosActuales());
   } catch (error) {
     huboError.value = true;
     useAlert(t('HELIC3_INDICADORES.ERROR'));
+  }
+};
+
+const descargando = reactive({});
+const descargarCsv = async seccion => {
+  descargando[seccion] = true;
+  try {
+    const response = await IndicadoresAPI.pqrCsv(seccion, parametrosActuales());
+    downloadBlobResponse(response, `indicadores-pqr-${seccion}.csv`);
+  } catch (error) {
+    useAlert(t('HELIC3_INDICADORES.DOWNLOAD_ERROR'));
+  } finally {
+    descargando[seccion] = false;
   }
 };
 
@@ -311,12 +332,25 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
           <div
             class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 overflow-x-auto"
           >
-            <p class="font-semibold text-n-slate-12">
-              {{ t('HELIC3_INDICADORES.PQR.MONTHLY') }}
-            </p>
-            <p class="mt-1 mb-3 text-xs text-n-slate-11">
-              {{ t('HELIC3_INDICADORES.PQR.MONTHLY_SUBTITLE') }}
-            </p>
+            <div class="flex items-start justify-between">
+              <div>
+                <p class="font-semibold text-n-slate-12">
+                  {{ t('HELIC3_INDICADORES.PQR.MONTHLY') }}
+                </p>
+                <p class="mt-1 mb-3 text-xs text-n-slate-11">
+                  {{ t('HELIC3_INDICADORES.PQR.MONTHLY_SUBTITLE') }}
+                </p>
+              </div>
+              <Button
+                icon="i-lucide-download"
+                variant="ghost"
+                color="slate"
+                size="xs"
+                :is-loading="descargando.mensual"
+                :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+                @click="descargarCsv('mensual')"
+              />
+            </div>
             <table class="w-full min-w-[28rem] text-sm">
               <thead class="text-xs text-n-slate-11">
                 <tr>
@@ -378,12 +412,25 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
         <div
           class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 overflow-x-auto"
         >
-          <p class="font-semibold text-n-slate-12">
-            {{ t('HELIC3_INDICADORES.PQR.QUARTERLY') }}
-          </p>
-          <p class="mt-1 mb-3 text-xs text-n-slate-11">
-            {{ t('HELIC3_INDICADORES.PQR.QUARTERLY_SUBTITLE') }}
-          </p>
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="font-semibold text-n-slate-12">
+                {{ t('HELIC3_INDICADORES.PQR.QUARTERLY') }}
+              </p>
+              <p class="mt-1 mb-3 text-xs text-n-slate-11">
+                {{ t('HELIC3_INDICADORES.PQR.QUARTERLY_SUBTITLE') }}
+              </p>
+            </div>
+            <Button
+              icon="i-lucide-download"
+              variant="ghost"
+              color="slate"
+              size="xs"
+              :is-loading="descargando.trimestral"
+              :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+              @click="descargarCsv('trimestral')"
+            />
+          </div>
           <table class="w-full min-w-[28rem] text-sm">
             <thead class="text-xs text-n-slate-11">
               <tr>
@@ -428,12 +475,25 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
         <div
           class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 overflow-x-auto"
         >
-          <p class="font-semibold text-n-slate-12">
-            {{ t('HELIC3_INDICADORES.PQR.MOTIVE_QUARTER') }}
-          </p>
-          <p class="mt-1 mb-3 text-xs text-n-slate-11">
-            {{ t('HELIC3_INDICADORES.PQR.MOTIVE_QUARTER_SUBTITLE') }}
-          </p>
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="font-semibold text-n-slate-12">
+                {{ t('HELIC3_INDICADORES.PQR.MOTIVE_QUARTER') }}
+              </p>
+              <p class="mt-1 mb-3 text-xs text-n-slate-11">
+                {{ t('HELIC3_INDICADORES.PQR.MOTIVE_QUARTER_SUBTITLE') }}
+              </p>
+            </div>
+            <Button
+              icon="i-lucide-download"
+              variant="ghost"
+              color="slate"
+              size="xs"
+              :is-loading="descargando.motivo_por_trimestre"
+              :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+              @click="descargarCsv('motivo_por_trimestre')"
+            />
+          </div>
           <table class="w-full min-w-[32rem] text-sm">
             <thead class="text-xs text-n-slate-11">
               <tr>
@@ -487,20 +547,41 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
         <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <table
             v-for="seccion in [
-              { titulo: 'BY_TYPE', filas: datos.por_tipo },
-              { titulo: 'BY_CATEGORY', filas: datos.por_categoria },
-              { titulo: 'BY_RESULT', filas: datos.por_resultado },
-              { titulo: 'BY_RESPONSIBLE', filas: datos.por_responsable },
+              { titulo: 'BY_TYPE', clave: 'por_tipo', filas: datos.por_tipo },
+              {
+                titulo: 'BY_CATEGORY',
+                clave: 'por_categoria',
+                filas: datos.por_categoria,
+              },
+              {
+                titulo: 'BY_RESULT',
+                clave: 'por_resultado',
+                filas: datos.por_resultado,
+              },
+              {
+                titulo: 'BY_RESPONSIBLE',
+                clave: 'por_responsable',
+                filas: datos.por_responsable,
+              },
             ]"
             :key="seccion.titulo"
             class="w-full text-sm rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
           >
-            <caption
-              class="p-3 font-semibold text-left caption-top text-n-slate-12"
-            >
-              {{
-                t(`HELIC3_INDICADORES.PQR.${seccion.titulo}`)
-              }}
+            <caption class="p-3 caption-top">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-left text-n-slate-12">
+                  {{ t(`HELIC3_INDICADORES.PQR.${seccion.titulo}`) }}
+                </span>
+                <Button
+                  icon="i-lucide-download"
+                  variant="ghost"
+                  color="slate"
+                  size="xs"
+                  :is-loading="descargando[seccion.clave]"
+                  :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+                  @click="descargarCsv(seccion.clave)"
+                />
+              </div>
             </caption>
             <tbody>
               <tr
