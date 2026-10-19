@@ -231,6 +231,14 @@ const graficaTrimestral = computed(() =>
   comoGrafica(datos.value?.trimestral || [])
 );
 
+// Ajuste visual (mockup v12, seccion "Centro de operacion"): por_ciudad suma
+// una comparacion visual de barras ademas de la tabla -- sin facturas (eso es
+// IND-03), la barra compara CANTIDAD de garantias, no ratio.
+const maxPorCiudad = computed(() =>
+  Math.max(1, ...(datos.value?.por_ciudad || []).map(fila => fila.cantidad))
+);
+const anchoBarra = cantidad => (cantidad / maxPorCiudad.value) * 100;
+
 // N3 (revision de Jhan, PR #113): el backend ya no quema "Sin ciudad"/"Sin
 // motivo"/etc en español -- devuelve etiqueta: null para que el frontend
 // traduzca. por_producto no entra aqui: Jhan solo senalo ciudad/motivo/
@@ -265,7 +273,6 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
             v-model="filtros[filtro.clave]"
             :options="filtro.opciones"
             :aria-label="filtro.label"
-            full-width
           />
         </div>
       </div>
@@ -375,11 +382,69 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
           </div>
         </div>
 
-        <!-- Desgloses -->
+        <!-- Por ciudad: tabla + comparativo de barras (mockup v12, "Centro de operacion") -->
+        <div class="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr_1fr]">
+          <table
+            class="w-full text-sm rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
+          >
+            <caption
+              class="p-3 font-semibold text-left caption-top text-n-slate-12"
+            >
+              {{
+                t('HELIC3_INDICADORES.GARANTIAS.BY_CITY')
+              }}
+            </caption>
+            <tbody>
+              <tr
+                v-for="fila in datos.por_ciudad"
+                :key="fila.etiqueta"
+                class="border-t border-n-weak"
+              >
+                <td class="px-3 py-2 text-n-slate-11">
+                  {{ etiquetaDe('BY_CITY', fila.etiqueta) }}
+                </td>
+                <td
+                  class="px-3 py-2 font-medium text-right tabular-nums text-n-slate-12"
+                >
+                  {{ fila.cantidad }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div
+            class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
+          >
+            <p class="font-semibold text-n-slate-12">
+              {{ t('HELIC3_INDICADORES.GARANTIAS.BY_CITY_CHART') }}
+            </p>
+            <p class="mt-1 mb-3 text-xs text-n-slate-11">
+              {{ t('HELIC3_INDICADORES.GARANTIAS.BY_CITY_CHART_SUBTITLE') }}
+            </p>
+            <div class="space-y-3">
+              <div v-for="fila in datos.por_ciudad" :key="fila.etiqueta">
+                <div
+                  class="flex items-center justify-between gap-3 text-xs text-n-slate-11"
+                >
+                  <span class="truncate">
+                    {{ etiquetaDe('BY_CITY', fila.etiqueta) }}
+                  </span>
+                  <span class="tabular-nums shrink-0">{{ fila.cantidad }}</span>
+                </div>
+                <div class="mt-1.5 h-2 rounded-full bg-n-slate-4">
+                  <div
+                    class="h-2 rounded-full bg-n-blue-9"
+                    :style="{ width: `${anchoBarra(fila.cantidad)}%` }"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resto de desgloses -->
         <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <table
             v-for="seccion in [
-              { titulo: 'BY_CITY', filas: datos.por_ciudad },
               { titulo: 'BY_MOTIVE', filas: datos.por_motivo },
               { titulo: 'BY_DETAIL', filas: datos.por_detalle },
               { titulo: 'BY_STAGE', filas: datos.por_proceso },
@@ -417,3 +482,14 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
     </template>
   </div>
 </template>
+
+<style scoped>
+/* Revision de Jhan (PR #123): Select.vue es upstream puro, no se toca (la
+   unica excepcion del fork es config/routes.rb). El root de components-next/
+   select/Select.vue trae w-fit; en este panel de filtros debe llenar su
+   celda de la grilla. Mismo patron ya usado en PqrNuevaPage.vue (#124). */
+:deep(.w-fit.relative),
+:deep(.w-fit.relative select) {
+  width: 100%;
+}
+</style>

@@ -33,6 +33,8 @@
       "QUARTERLY": "Quarterly detail",
       "QUARTERLY_SUBTITLE": "Warranties opened by quarter",
       "BY_CITY": "By city",
+      "BY_CITY_CHART": "City comparison",
+      "BY_CITY_CHART_SUBTITLE": "Sorted highest to lowest",
       "BY_MOTIVE": "By motive",
       "BY_DETAIL": "By detail",
       "BY_STAGE": "By stage",

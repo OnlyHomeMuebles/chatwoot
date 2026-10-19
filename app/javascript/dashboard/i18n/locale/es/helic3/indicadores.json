@@ -33,6 +33,8 @@
       "QUARTERLY": "Detalle trimestral",
       "QUARTERLY_SUBTITLE": "Garantías abiertas por trimestre",
       "BY_CITY": "Por ciudad",
+      "BY_CITY_CHART": "Comparativo por ciudad",
+      "BY_CITY_CHART_SUBTITLE": "Ordenado de mayor a menor",
       "BY_MOTIVE": "Por motivo",
       "BY_DETAIL": "Por detalle",
       "BY_STAGE": "Por etapa",
