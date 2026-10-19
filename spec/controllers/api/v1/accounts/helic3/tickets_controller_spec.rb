@@ -168,7 +168,7 @@ RSpec.describe 'Tickets API', type: :request do
 
       expect(response).to have_http_status(:success)
       ticket = account.tickets.find(response.parsed_body['id'])
-      expect(ticket.etapa.codigo).to eq('nueva')
+      expect(ticket.etapa.codigo).to eq('nuevo')
       expect(ticket.plazo_respuesta_vence_at).to be_present
 
       ficha = ticket.datos

@@ -112,14 +112,14 @@ RSpec.describe 'Helic3 Bandeja de PQR (BAN-01)', type: :request do
   end
 
   it 'filtra por etapa' do
-    nueva = Helic3::Catalogo::EtapaPqr.find_by!(account: account, codigo: 'nueva')
-    otra = Helic3::Catalogo::EtapaPqr.where(account: account).where.not(codigo: 'nueva').first
-    en_nueva = radicar(motivo_pqr: motivo_garantia) # nace en etapa nueva
+    inicial = Helic3::Catalogo::EtapaPqr.find_by!(account: account, inicial: true)
+    otra = Helic3::Catalogo::EtapaPqr.where(account: account, inicial: false).first
+    en_inicial = radicar(motivo_pqr: motivo_garantia) # nace en la etapa inicial
     radicar(motivo_pqr: motivo_garantia).update!(etapa: otra)
 
-    get_pqr(etapa_id: nueva.id)
+    get_pqr(etapa_id: inicial.id)
 
-    expect(response.parsed_body['payload'].map { |f| f['id'] }).to eq([en_nueva.id])
+    expect(response.parsed_body['payload'].map { |f| f['id'] }).to eq([en_inicial.id])
   end
 
   it 'expone dias_habiles_restantes por fila y los umbrales en el meta (para el color)' do

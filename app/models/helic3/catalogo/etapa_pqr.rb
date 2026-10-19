@@ -25,4 +25,17 @@ class Helic3::Catalogo::EtapaPqr < ApplicationRecord
   self.table_name = 'helic3_catalogo_etapas_pqr'
 
   include Helic3::Catalogo::Comun
+
+  # Una sola etapa inicial por cuenta (coherente con el indice unico parcial
+  # idx_h3_etapa_inicial_unica). Al marcar una etapa como inicial, desmarca la que
+  # lo estaba, para que el admin pueda re-apuntar la etapa inicial sin chocar con
+  # el indice (que si no daria 500). update_all: sin callbacks, no reentra aqui; la
+  # migracion usa update_columns y no dispara esto (maneja su propia coherencia).
+  before_save :desmarcar_otras_iniciales, if: -> { inicial? && will_save_change_to_inicial? }
+
+  private
+
+  def desmarcar_otras_iniciales
+    self.class.where(account_id: account_id, inicial: true).where.not(id: id).update_all(inicial: false)
+  end
 end

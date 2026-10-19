@@ -6,11 +6,14 @@
 #   Respondida   -> Solucionado  (conserva detiene_reloj)
 #   Cerrada      -> se funde en Solucionado (re-apunta sus tickets y se elimina)
 #
-# Renombra IN SITU (conserva el etapa_id de los tickets viejos). Si el codigo
-# destino ya existe en la cuenta (cuenta mixta), en vez de renombrar FUNDE:
-# re-apunta los tickets de la vieja a la superviviente y elimina la vieja, para no
-# chocar con el indice unico (account_id, codigo). Idempotente: una cuenta que ya
-# tiene las 3 nuevas no se toca.
+# Renombra IN SITU (conserva el etapa_id de los tickets viejos). 'Cerrada' es la
+# unica que no se renombra: se FUNDE en Solucionado (re-apunta sus tickets y se
+# elimina). Asume el estado real de produccion: cuentas con las 4 etapas viejas y
+# SIN las nuevas, por lo que el renombrado nunca colisiona con un codigo destino ya
+# existente. Idempotente: una cuenta que ya tiene las 3 nuevas (sin viejas) no se
+# toca. Si por un error de datos coexistieran viejas y nuevas, el renombrado
+# abortaria por el indice unico (account_id, codigo): es un estado que no debe
+# existir y se resuelve a mano, no en silencio.
 #
 # Invariantes que deja garantizados por cuenta: exactamente UNA etapa inicial
 # (Nuevo) y exactamente UNA que detiene el reloj (Solucionado).
