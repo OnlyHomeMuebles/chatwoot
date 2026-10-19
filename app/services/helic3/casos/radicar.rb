@@ -89,10 +89,12 @@ class Helic3::Casos::Radicar
     @motivo_pqr&.categoria
   end
 
-  # find_by! a proposito: si la cuenta no tiene la etapa "nueva" es que
-  # no esta sembrada, y eso debe verse en el momento, no silenciarse
+  # La etapa inicial se identifica por el flag `inicial`, NO por el texto del
+  # codigo: asi Karen puede renombrar la etapa inicial desde el admin sin romper
+  # la radicacion. find_by! a proposito: si la cuenta no tiene una etapa inicial
+  # activa es que no esta sembrada, y eso debe verse en el momento, no silenciarse.
   def etapa_inicial
-    Helic3::Catalogo::EtapaPqr.activos.find_by!(account: @account, codigo: 'nueva')
+    Helic3::Catalogo::EtapaPqr.activos.find_by!(account: @account, inicial: true)
   end
 
   def radicada_at
