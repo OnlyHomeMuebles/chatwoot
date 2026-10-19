@@ -190,8 +190,8 @@
       "TABS": {
         "ALL": "Todas",
         "UNANSWERED": "Sin responder",
-        "IN_REVIEW": "En análisis",
-        "ANSWERED": "Respondidas"
+        "IN_REVIEW": "En gestión",
+        "ANSWERED": "Solucionadas"
       },
       "NEW": "Nueva PQR",
       "EXPORT": "Exportar",
