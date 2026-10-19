@@ -12,22 +12,26 @@ import { useAbortableRequest } from 'dashboard/composables/useAbortableRequest';
 // arranca una nueva, asi solo la ultima puede escribir el estado.
 const garantiasRequest = useAbortableRequest();
 const pqrRequest = useAbortableRequest();
+const devolucionesRequest = useAbortableRequest();
 
 export const useIndicadoresStore = defineStore('helic3Indicadores', {
   state: () => ({
     garantias: null,
     pqr: null,
+    devoluciones: null,
   }),
 
   getters: {
     getGarantias: state => state.garantias,
     getPqr: state => state.pqr,
+    getDevoluciones: state => state.devoluciones,
     // isPending ya solo refleja la peticion vigente (ver "Only the latest run
     // owns the shared state" en useAbortableRequest) -- una respuesta
     // cancelada no apaga el spinner de la que la reemplazo.
     getUIFlags: () => ({
       isFetchingGarantias: garantiasRequest.isPending.value,
       isFetchingPqr: pqrRequest.isPending.value,
+      isFetchingDevoluciones: devolucionesRequest.isPending.value,
     }),
   },
 
@@ -47,6 +51,14 @@ export const useIndicadoresStore = defineStore('helic3Indicadores', {
         const response = await IndicadoresAPI.pqr(filtros, { signal });
         if (signal.aborted) return;
         this.pqr = response.data;
+      });
+    },
+
+    async fetchDevoluciones(filtros = {}) {
+      await devolucionesRequest.run(async signal => {
+        const response = await IndicadoresAPI.devoluciones(filtros, { signal });
+        if (signal.aborted) return;
+        this.devoluciones = response.data;
       });
     },
   },

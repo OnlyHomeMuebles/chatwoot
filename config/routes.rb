@@ -378,6 +378,7 @@ Rails.application.routes.draw do
             # calculado con las tablas propias del modulo. Una ruta por pestana.
             get 'indicadores/garantias', to: 'indicadores#garantias'
             get 'indicadores/pqr', to: 'indicadores#pqr'
+            get 'indicadores/devoluciones', to: 'indicadores#devoluciones'
             # Descarga a Excel (IND-05): la misma tabla, con los mismos filtros,
             # en CSV. Accion propia (no format: :csv sobre la de arriba) para no
             # mezclar la respuesta jbuilder con el armado de filas del CSV.
@@ -385,6 +386,7 @@ Rails.application.routes.draw do
             # el (.:format) implicito de la ruta de arriba y nunca llega aqui.
             get 'indicadores/garantias/csv', to: 'indicadores#garantias_csv'
             get 'indicadores/pqr/csv', to: 'indicadores#pqr_csv'
+            get 'indicadores/devoluciones/csv', to: 'indicadores#devoluciones_csv'
             # Administracion de catalogos y parametros (ADM-01): lectura para
             # agentes, escritura solo administradores. El :tipo elige el catalogo.
             namespace :admin do

@@ -3,7 +3,8 @@
     "MENU": "Indicadores",
     "TABS": {
       "GARANTIAS": "Garantías",
-      "PQR": "Derechos de Petición"
+      "PQR": "Derechos de Petición",
+      "DEVOLUCIONES": "Devoluciones"
     },
     "FILTERS": {
       "YEAR": "Año",
@@ -26,12 +27,22 @@
     "DOWNLOAD_ERROR": "No se pudo descargar el archivo",
     "GARANTIAS": {
       "KPI_TOTAL": "Garantías",
+      "KPI_TOTAL_DESC": "Radicadas en el período",
       "KPI_SOLVED": "Solucionadas",
+      "KPI_SOLVED_DESC": "Casos cerrados",
       "KPI_IN_PROGRESS": "En proceso",
+      "KPI_IN_PROGRESS_DESC": "Nuevas y en gestión",
       "KPI_PRODUCTS": "Productos",
+      "KPI_PRODUCTS_DESC": "Productos en las garantías del período",
       "MONTHLY": "Detalle mensual",
+      "MONTHLY_SUBTITLE": "Garantías radicadas por mes",
+      "MONTHLY_CHART": "Recuento por mes",
       "QUARTERLY": "Detalle trimestral",
+      "QUARTERLY_SUBTITLE": "Consolidado del período seleccionado",
+      "QUARTER_COLUMN": "Trimestre",
       "BY_CITY": "Por ciudad",
+      "BY_CITY_CHART": "Comparativo por ciudad",
+      "BY_CITY_CHART_SUBTITLE": "Ordenado de mayor a menor",
       "BY_MOTIVE": "Por motivo",
       "BY_DETAIL": "Por detalle",
       "BY_STAGE": "Por etapa",
@@ -76,6 +87,34 @@
       "NO_TYPE": "Sin tipo",
       "NO_CATEGORY": "Sin categoría",
       "COUNT": "PQR"
+    },
+    "DEVOLUCIONES": {
+      "KPI_TOTAL": "Devoluciones",
+      "KPI_TOTAL_DESC": "Radicadas en el período",
+      "KPI_SOLVED": "Solucionadas",
+      "KPI_SOLVED_DESC": "Casos cerrados",
+      "KPI_IN_PROGRESS": "En proceso",
+      "KPI_IN_PROGRESS_DESC": "Nuevas y en gestión",
+      "KPI_PRODUCTS": "Productos",
+      "KPI_PRODUCTS_DESC": "Productos en las devoluciones del período",
+      "MONTHLY": "Detalle mensual",
+      "MONTHLY_SUBTITLE": "Devoluciones radicadas por mes",
+      "MONTHLY_CHART": "Recuento por mes",
+      "QUARTERLY": "Detalle trimestral",
+      "QUARTERLY_SUBTITLE": "Consolidado del período seleccionado",
+      "QUARTER_COLUMN": "Trimestre",
+      "BY_CITY": "Por ciudad",
+      "BY_CITY_CHART": "Comparativo por ciudad",
+      "BY_CITY_CHART_SUBTITLE": "Ordenado de mayor a menor",
+      "BY_MOTIVE": "Por motivo",
+      "BY_DETAIL": "Por detalle",
+      "BY_STAGE": "Por etapa",
+      "BY_PRODUCT": "Por producto (top 20)",
+      "COUNT": "Devoluciones",
+      "NO_CITY": "Sin ciudad",
+      "NO_MOTIVE": "Sin motivo",
+      "NO_DETAIL": "Sin detalle",
+      "NO_STAGE": "Sin etapa"
     }
   }
 }

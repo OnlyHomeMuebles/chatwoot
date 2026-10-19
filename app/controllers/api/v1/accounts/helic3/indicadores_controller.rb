@@ -14,6 +14,10 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
     @indicadores = Helic3::Indicadores::Pqr.call(account: Current.account, filtros: filtros_pqr)
   end
 
+  def devoluciones
+    @indicadores = Helic3::Indicadores::Devoluciones.call(account: Current.account, filtros: filtros_devoluciones)
+  end
+
   # IND-05: la misma tabla que se esta viendo en pantalla, con los mismos
   # filtros, descargada en CSV. Nunca se calcula nada que la tabla no muestre
   # ya -- esto solo reempaqueta la respuesta de los servicios existentes.
@@ -36,6 +40,15 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
     enviar_csv("indicadores-pqr-#{params[:seccion]}", *filas_pqr(datos, params[:seccion]))
   end
 
+  SECCIONES_DEVOLUCIONES = %w[mensual trimestral por_ciudad por_motivo por_detalle por_proceso por_producto].freeze
+
+  def devoluciones_csv
+    return render_seccion_invalida unless SECCIONES_DEVOLUCIONES.include?(params[:seccion])
+
+    datos = Helic3::Indicadores::Devoluciones.call(account: Current.account, filtros: filtros_devoluciones)
+    enviar_csv("indicadores-devoluciones-#{params[:seccion]}", *filas_devoluciones(datos, params[:seccion]))
+  end
+
   private
 
   def check_authorization
@@ -53,6 +66,13 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
 
   def filtros_pqr
     params.permit(*FILTROS_PQR).to_h.symbolize_keys
+  end
+
+  FILTROS_DEVOLUCIONES = %i[anio mes cobertura_ciudad_id motivo_devolucion_id detalle_tipificado_id proceso_id
+                            producto].freeze
+
+  def filtros_devoluciones
+    params.permit(*FILTROS_DEVOLUCIONES).to_h.symbolize_keys
   end
 
   def render_seccion_invalida
@@ -75,11 +95,22 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
   }.freeze
 
   def filas_garantias(datos, seccion)
+    filas_radicado_periodo(datos, seccion, 'Garantías')
+  end
+
+  def filas_devoluciones(datos, seccion)
+    filas_radicado_periodo(datos, seccion, 'Devoluciones')
+  end
+
+  # mensual/trimestral de Garantias y Devoluciones tienen la misma forma
+  # (periodo, cantidad, solucionadas, en_proceso) -- solo cambia el nombre de
+  # la columna de cantidad.
+  def filas_radicado_periodo(datos, seccion, etiqueta_cantidad)
     case seccion
     when 'mensual', 'trimestral'
       periodo_encabezado = seccion == 'mensual' ? 'Mes' : 'Trimestre'
-      filas = datos[seccion.to_sym].map { |f| [f[:periodo], f[:cantidad]] }
-      [[periodo_encabezado, 'Garantías'], filas]
+      filas = datos[seccion.to_sym].map { |f| [f[:periodo], f[:cantidad], f[:solucionadas], f[:en_proceso]] }
+      [[periodo_encabezado, etiqueta_cantidad, 'Solucionadas', 'En proceso'], filas]
     else
       filas_etiqueta_cantidad(datos[seccion.to_sym], seccion)
     end

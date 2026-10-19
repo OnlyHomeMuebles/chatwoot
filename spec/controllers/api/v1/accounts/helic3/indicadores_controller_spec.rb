@@ -158,8 +158,8 @@ RSpec.describe 'Helic3 Indicadores (IND-01)', type: :request do
       expect(response.body.b).to start_with("\xEF\xBB\xBF".b)
       cuerpo = response.body.delete_prefix("\xEF\xBB\xBF")
       filas = CSV.parse(cuerpo, col_sep: ';')
-      expect(filas.first).to eq(%w[Mes Garantías])
-      expect(filas.second).to eq(%w[2026-01 1])
+      expect(filas.first).to eq(['Mes', 'Garantías', 'Solucionadas', 'En proceso'])
+      expect(filas.second).to eq(%w[2026-01 1 1 0])
     end
 
     it 'pasa los filtros de la query al servicio' do
@@ -213,6 +213,70 @@ RSpec.describe 'Helic3 Indicadores (IND-01)', type: :request do
       filas = CSV.parse(response.body.delete_prefix("\xEF\xBB\xBF"), col_sep: ';')
       expect(filas.first).to eq(%w[Motivo T1 T2 T3 T4 Total])
       expect(filas.second).to eq(%w[Calidad 1 0 0 0 1])
+    end
+  end
+
+  describe 'GET devoluciones (IND-06)' do
+    def get_devoluciones(query = {})
+      get "/api/v1/accounts/#{account.id}/helic3/indicadores/devoluciones", params: query,
+                                                                            headers: agent.create_new_auth_token,
+                                                                            as: :json
+    end
+
+    it 'exige autenticacion' do
+      get "/api/v1/accounts/#{account.id}/helic3/indicadores/devoluciones"
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'devuelve las ocho secciones de la respuesta' do
+      Helic3::Devolucion.create!(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 1, 1))
+
+      get_devoluciones
+
+      expect(response).to have_http_status(:success)
+      body = response.parsed_body
+      expect(body.keys).to match_array(%w[kpis mensual trimestral por_ciudad por_motivo por_detalle por_proceso
+                                          por_producto])
+      expect(body['kpis']).to eq('devoluciones' => 1, 'solucionadas' => 0, 'en_proceso' => 1, 'productos' => 0)
+    end
+
+    it 'no expone las devoluciones de otra cuenta' do
+      otra_cuenta = create(:account)
+      otro_ticket = create(:ticket, account: otra_cuenta)
+      Helic3::Devolucion.create!(account: otra_cuenta, ticket: otro_ticket, abierta_at: Time.zone.local(2026, 1, 1))
+
+      get_devoluciones
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['kpis']['devoluciones']).to eq(0)
+    end
+  end
+
+  describe 'GET devoluciones.csv (IND-06)' do
+    def get_devoluciones_csv(seccion, query = {})
+      get "/api/v1/accounts/#{account.id}/helic3/indicadores/devoluciones/csv",
+          params: query.merge(seccion: seccion), headers: agent.create_new_auth_token
+    end
+
+    it 'rechaza una seccion desconocida o faltante' do
+      get_devoluciones_csv('no-existe')
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it 'descarga el detalle mensual con BOM, separador ; y la columna "Devoluciones"' do
+      Helic3::Devolucion.create!(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 1, 10, 12, 0),
+                                 cerrada_at: Time.zone.local(2026, 1, 20, 12, 0))
+
+      get_devoluciones_csv('mensual')
+
+      expect(response).to have_http_status(:success)
+      expect(response.headers['Content-Type']).to eq('text/csv')
+      expect(response.body.b).to start_with("\xEF\xBB\xBF".b)
+      filas = CSV.parse(response.body.delete_prefix("\xEF\xBB\xBF"), col_sep: ';')
+      expect(filas.first).to eq(['Mes', 'Devoluciones', 'Solucionadas', 'En proceso'])
+      expect(filas.second).to eq(%w[2026-01 1 1 0])
     end
   end
 end

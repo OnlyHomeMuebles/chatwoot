@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
+ActiveRecord::Schema[7.2].define(version: 2026_10_19_190001) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -886,8 +886,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
     t.datetime "waiting_since"
     t.text "cached_label_list"
     t.bigint "assignee_agent_bot_id"
-    t.string "ai_assignee_type"
     t.datetime "status_changed_at"
+    t.string "ai_assignee_type"
     t.index ["account_id", "display_id"], name: "index_conversations_on_account_id_and_display_id", unique: true
     t.index ["account_id", "id"], name: "index_conversations_on_id_and_account_id"
     t.index ["account_id", "inbox_id", "status", "assignee_id"], name: "conv_acid_inbid_stat_asgnid_idx"
@@ -1199,6 +1199,30 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
     t.index ["account_id"], name: "idx_h3cat_etapas_pqr_account"
   end
 
+  create_table "helic3_catalogo_formatos", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "nombre", null: false
+    t.string "codigo", null: false
+    t.integer "posicion", default: 0, null: false
+    t.boolean "activo", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "codigo"], name: "idx_h3cat_formatos_account_codigo", unique: true
+    t.index ["account_id"], name: "idx_h3cat_formatos_account"
+  end
+
+  create_table "helic3_catalogo_motivos_devolucion", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "nombre", null: false
+    t.string "codigo", null: false
+    t.integer "posicion", default: 0, null: false
+    t.boolean "activo", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "codigo"], name: "idx_h3cat_motivos_devolucion_account_codigo", unique: true
+    t.index ["account_id"], name: "idx_h3cat_motivos_devolucion_account"
+  end
+
   create_table "helic3_catalogo_motivos_garantia", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "nombre", null: false
@@ -1281,6 +1305,41 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
     t.datetime "updated_at", null: false
     t.index ["account_id", "codigo"], name: "idx_h3cat_tipos_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_tipos_account"
+  end
+
+  create_table "helic3_devolucion_items", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "devolucion_id", null: false
+    t.string "producto_nombre", null: false
+    t.string "producto_referencia"
+    t.bigint "motivo_devolucion_id"
+    t.bigint "detalle_tipificado_id"
+    t.bigint "proceso_id"
+    t.datetime "resuelto_at"
+    t.string "decision"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "idx_h3_ditems_account"
+    t.index ["detalle_tipificado_id"], name: "idx_h3_ditems_detalle"
+    t.index ["devolucion_id"], name: "idx_h3_ditems_devolucion"
+    t.index ["motivo_devolucion_id"], name: "idx_h3_ditems_motivo"
+    t.index ["proceso_id"], name: "idx_h3_ditems_proceso"
+  end
+
+  create_table "helic3_devoluciones", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "ticket_id", null: false
+    t.integer "display_id", null: false
+    t.datetime "abierta_at", null: false
+    t.datetime "cerrada_at"
+    t.integer "presupuesto_dias_habiles"
+    t.bigint "cobertura_ciudad_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "display_id"], name: "idx_h3_devoluciones_account_dpid", unique: true
+    t.index ["account_id"], name: "idx_h3_devoluciones_account"
+    t.index ["cobertura_ciudad_id"], name: "idx_h3_devoluciones_cobertura"
+    t.index ["ticket_id"], name: "idx_h3_devoluciones_ticket"
   end
 
   create_table "helic3_documentos", force: :cascade do |t|
@@ -1370,7 +1429,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_helic3_knowledge_chunks_on_account_id"
     t.index ["document_id"], name: "index_helic3_knowledge_chunks_on_document_id"
-    t.index ["embedding"], name: "idx_helic3_knowledge_chunks_on_embedding", opclass: :vector_cosine_ops, using: :ivfflat
+    t.index ["embedding"], name: "idx_helic3_kn_chunks_on_embedding", opclass: :vector_cosine_ops, using: :ivfflat
   end
 
   create_table "helic3_knowledge_documents", force: :cascade do |t|
@@ -1385,70 +1444,26 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
     t.datetime "last_ingested_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["account_id", "external_link"], name: "idx_h3_knowledge_documents_account_external_link", unique: true
+    t.index ["account_id", "external_link"], name: "idx_helic3_kn_docs_on_account_external_link", unique: true
     t.index ["status"], name: "index_helic3_knowledge_documents_on_status"
   end
 
-  create_table "helic3_knowledge_faq_suggestions", force: :cascade do |t|
+  create_table "helic3_plantillas_formato", force: :cascade do |t|
     t.bigint "account_id", null: false
-    t.bigint "conversation_id"
-    t.bigint "document_id"
-    t.string "question", null: false
-    t.text "answer", null: false
-    t.integer "status", default: 0, null: false
-    t.string "fingerprint", null: false
-    t.jsonb "metadata", default: {}
+    t.bigint "formato_id", null: false
+    t.integer "version", null: false
+    t.string "estado", default: "borrador", null: false
+    t.jsonb "marcadores", default: [], null: false
+    t.bigint "subido_por_id"
+    t.string "subido_por_nombre"
+    t.datetime "activada_at"
+    t.bigint "activada_por_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["account_id", "fingerprint"], name: "idx_h3_knowledge_faq_suggestions_account_fingerprint", unique: true
-    t.index ["account_id", "status"], name: "index_helic3_knowledge_faq_suggestions_on_account_id_and_status"
-    t.index ["account_id"], name: "index_helic3_knowledge_faq_suggestions_on_account_id"
-    t.index ["conversation_id"], name: "index_helic3_knowledge_faq_suggestions_on_conversation_id"
-  end
-
-  create_table "helic3_pqrs_centros_operacion", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.string "nombre", null: false
-    t.boolean "prioritario", default: false, null: false
-    t.integer "sla_dias"
-    t.boolean "cobertura_tecnica", default: false, null: false
-    t.boolean "activo", default: true, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["account_id", "nombre"], name: "index_helic3_pqrs_centros_operacion_on_account_id_and_nombre", unique: true
-    t.index ["account_id"], name: "index_helic3_pqrs_centros_operacion_on_account_id"
-  end
-
-  create_table "helic3_pqrs_detalles", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.bigint "motivo_id", null: false
-    t.string "nombre", null: false
-    t.boolean "activo", default: true, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["account_id", "motivo_id", "nombre"], name: "idx_h3_pqrs_detalles_account_motivo_nombre", unique: true
-    t.index ["account_id"], name: "index_helic3_pqrs_detalles_on_account_id"
-    t.index ["motivo_id"], name: "index_helic3_pqrs_detalles_on_motivo_id"
-  end
-
-  create_table "helic3_pqrs_motivos", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.string "nombre", null: false
-    t.boolean "activo", default: true, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["account_id", "nombre"], name: "index_helic3_pqrs_motivos_on_account_id_and_nombre", unique: true
-    t.index ["account_id"], name: "index_helic3_pqrs_motivos_on_account_id"
-  end
-
-  create_table "helic3_pqrs_procesos", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.string "nombre", null: false
-    t.boolean "activo", default: true, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["account_id", "nombre"], name: "index_helic3_pqrs_procesos_on_account_id_and_nombre", unique: true
-    t.index ["account_id"], name: "index_helic3_pqrs_procesos_on_account_id"
+    t.index ["account_id"], name: "idx_h3_plantilla_formato_account"
+    t.index ["formato_id", "version"], name: "idx_h3_plantilla_formato_version", unique: true
+    t.index ["formato_id"], name: "idx_h3_plantilla_activa_unica", unique: true, where: "((estado)::text = 'activa'::text)"
+    t.index ["formato_id"], name: "idx_h3_plantilla_formato_formato"
   end
 
   create_table "helic3_ticket_datos", force: :cascade do |t|
@@ -1480,11 +1495,6 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
     t.datetime "resolved_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "pqrs_tipo"
-    t.string "pqrs_categoria"
-    t.string "pqrs_prioridad"
-    t.jsonb "pqrs_metadata", default: {}
-    t.string "pqrs_numero_orden"
     t.bigint "categoria_id"
     t.bigint "tipo_id"
     t.bigint "motivo_pqr_id"
@@ -1494,6 +1504,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
     t.datetime "respondida_at"
     t.datetime "cerrada_at"
     t.datetime "plazo_respuesta_vence_at"
+    t.string "pqrs_tipo"
+    t.string "pqrs_categoria"
+    t.string "pqrs_prioridad"
+    t.jsonb "pqrs_metadata", default: {}
+    t.string "pqrs_numero_orden"
     t.index ["account_id", "display_id"], name: "index_helic3_tickets_on_account_id_and_display_id", unique: true
     t.index ["account_id", "pqrs_tipo"], name: "index_helic3_tickets_on_account_id_and_pqrs_tipo"
     t.index ["account_id", "status"], name: "index_helic3_tickets_on_account_id_and_status"
@@ -2011,24 +2026,34 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
   add_foreign_key "helic3_agentes_bandejas", "helic3_agentes", column: "agente_id", on_delete: :cascade
   add_foreign_key "helic3_agentes_bandejas", "inboxes", on_delete: :cascade
   add_foreign_key "helic3_catalogo_detalles_tipificados", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
+  add_foreign_key "helic3_catalogo_formatos", "accounts"
   add_foreign_key "helic3_catalogo_motivos_pqr", "helic3_catalogo_categorias", column: "categoria_id"
+  add_foreign_key "helic3_devolucion_items", "helic3_catalogo_detalles_tipificados", column: "detalle_tipificado_id"
+  add_foreign_key "helic3_devolucion_items", "helic3_catalogo_motivos_devolucion", column: "motivo_devolucion_id"
+  add_foreign_key "helic3_devolucion_items", "helic3_catalogo_procesos_garantia", column: "proceso_id"
+  add_foreign_key "helic3_devolucion_items", "helic3_devoluciones", column: "devolucion_id"
+  add_foreign_key "helic3_devoluciones", "helic3_catalogo_coberturas_ciudad", column: "cobertura_ciudad_id"
+  add_foreign_key "helic3_devoluciones", "helic3_tickets", column: "ticket_id"
   add_foreign_key "helic3_documentos", "accounts"
   add_foreign_key "helic3_documentos", "attachments", on_delete: :nullify
   add_foreign_key "helic3_documentos", "helic3_garantias", column: "garantia_id"
   add_foreign_key "helic3_documentos", "helic3_tickets", column: "ticket_id"
   add_foreign_key "helic3_documentos", "messages", on_delete: :nullify
-  add_foreign_key "helic3_documentos", "users", column: "remitente_user_id", on_delete: :nullify
+  add_foreign_key "helic3_documentos", "users", column: "remitente_user_id"
   add_foreign_key "helic3_eventos", "accounts"
   add_foreign_key "helic3_eventos", "helic3_garantias", column: "garantia_id"
   add_foreign_key "helic3_eventos", "helic3_tickets", column: "ticket_id"
-  add_foreign_key "helic3_eventos", "users", column: "actor_id", on_delete: :nullify
+  add_foreign_key "helic3_eventos", "users", column: "actor_id"
   add_foreign_key "helic3_garantia_items", "helic3_catalogo_detalles_tipificados", column: "detalle_tipificado_id"
   add_foreign_key "helic3_garantia_items", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
   add_foreign_key "helic3_garantia_items", "helic3_catalogo_procesos_garantia", column: "proceso_id"
   add_foreign_key "helic3_garantia_items", "helic3_garantias", column: "garantia_id"
   add_foreign_key "helic3_garantias", "helic3_catalogo_coberturas_ciudad", column: "cobertura_ciudad_id"
   add_foreign_key "helic3_garantias", "helic3_tickets", column: "ticket_id"
-  add_foreign_key "helic3_pqrs_detalles", "helic3_pqrs_motivos", column: "motivo_id"
+  add_foreign_key "helic3_plantillas_formato", "accounts"
+  add_foreign_key "helic3_plantillas_formato", "helic3_catalogo_formatos", column: "formato_id"
+  add_foreign_key "helic3_plantillas_formato", "users", column: "activada_por_id", on_delete: :nullify
+  add_foreign_key "helic3_plantillas_formato", "users", column: "subido_por_id", on_delete: :nullify
   add_foreign_key "helic3_ticket_datos", "accounts"
   add_foreign_key "helic3_ticket_datos", "helic3_catalogo_detalles_tipificados", column: "detalle_tipificado_id"
   add_foreign_key "helic3_ticket_datos", "helic3_tickets", column: "ticket_id"
@@ -2039,6 +2064,22 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_120001) do
   add_foreign_key "helic3_tickets", "helic3_catalogo_tipos", column: "tipo_id"
   add_foreign_key "inboxes", "portals"
   add_foreign_key "user_sessions", "users"
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute(<<-SQL)
+CREATE OR REPLACE FUNCTION public.helic3_devoluciones_before_insert_row_tr()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    EXECUTE format('CREATE SEQUENCE IF NOT EXISTS helic3_devolucion_dpid_seq_%s START WITH %s', NEW.account_id, COALESCE((SELECT valor::integer FROM helic3_catalogo_parametros WHERE account_id = NEW.account_id AND clave = 'radicado_devolucion_inicio'), 1)); NEW.display_id := nextval('helic3_devolucion_dpid_seq_' || NEW.account_id);
+    RETURN NEW;
+END;
+$function$
+  SQL
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER helic3_devoluciones_before_insert_row_tr BEFORE INSERT ON \"helic3_devoluciones\" FOR EACH ROW EXECUTE FUNCTION helic3_devoluciones_before_insert_row_tr()")
+
   # no candidate create_trigger statement could be found, creating an adapter-specific one
   execute(<<-SQL)
 CREATE OR REPLACE FUNCTION public.helic3_garantias_before_insert_row_tr()

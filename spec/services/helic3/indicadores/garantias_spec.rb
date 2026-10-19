@@ -71,15 +71,17 @@ RSpec.describe Helic3::Indicadores::Garantias do
       expect(kpis).to eq(garantias: 3, solucionadas: 1, en_proceso: 2, productos: 4)
     end
 
-    it 'mensual: enero con 2 radicados, marzo con 1' do
+    it 'mensual: enero con 2 radicados (1 solucionada), marzo con 1 (en proceso)' do
       mensual = llamar[:mensual].index_by { |fila| fila[:periodo] }
 
-      expect(mensual['2026-01'][:cantidad]).to eq(2)
-      expect(mensual['2026-03'][:cantidad]).to eq(1)
+      expect(mensual['2026-01']).to eq(periodo: '2026-01', cantidad: 2, solucionadas: 1, en_proceso: 1)
+      expect(mensual['2026-03']).to eq(periodo: '2026-03', cantidad: 1, solucionadas: 0, en_proceso: 1)
     end
 
-    it 'trimestral: las tres caen en T1-2026 (una sola fila)' do
-      expect(llamar[:trimestral]).to contain_exactly({ periodo: '2026-T1', cantidad: 3 })
+    it 'trimestral: las tres caen en T1-2026 (una sola fila, 1 solucionada de 3)' do
+      expect(llamar[:trimestral]).to contain_exactly(
+        { periodo: '2026-T1', cantidad: 3, solucionadas: 1, en_proceso: 2 }
+      )
     end
 
     # N3 (revision de Jhan, PR #113): sin catalogo asociado, etiqueta es nil (no un

@@ -167,6 +167,33 @@ const sinDatos = computed(
   () => !!datos.value && datos.value.kpis.garantias === 0
 );
 
+const kpiCards = computed(() => [
+  {
+    label: t('HELIC3_INDICADORES.GARANTIAS.KPI_TOTAL'),
+    valor: datos.value?.kpis.garantias,
+    descripcion: t('HELIC3_INDICADORES.GARANTIAS.KPI_TOTAL_DESC'),
+    color: 'text-n-slate-12',
+  },
+  {
+    label: t('HELIC3_INDICADORES.GARANTIAS.KPI_SOLVED'),
+    valor: datos.value?.kpis.solucionadas,
+    descripcion: t('HELIC3_INDICADORES.GARANTIAS.KPI_SOLVED_DESC'),
+    color: 'text-n-teal-11',
+  },
+  {
+    label: t('HELIC3_INDICADORES.GARANTIAS.KPI_IN_PROGRESS'),
+    valor: datos.value?.kpis.en_proceso,
+    descripcion: t('HELIC3_INDICADORES.GARANTIAS.KPI_IN_PROGRESS_DESC'),
+    color: 'text-n-amber-11',
+  },
+  {
+    label: t('HELIC3_INDICADORES.GARANTIAS.KPI_PRODUCTS'),
+    valor: datos.value?.kpis.productos,
+    descripcion: t('HELIC3_INDICADORES.GARANTIAS.KPI_PRODUCTS_DESC'),
+    color: 'text-n-slate-12',
+  },
+]);
+
 // shared/components/charts/BarChart.vue (@chatwoot/viz): categories + series[].data
 // como arreglo de numeros en el mismo orden (patron de superadmin_pages/views/
 // dashboard/Index.vue, mas simple que el de ReportContainer, que es para metricas
@@ -184,9 +211,6 @@ const comoGrafica = filas => ({
 });
 
 const graficaMensual = computed(() => comoGrafica(datos.value?.mensual || []));
-const graficaTrimestral = computed(() =>
-  comoGrafica(datos.value?.trimestral || [])
-);
 
 // N3 (revision de Jhan, PR #113): el backend ya no quema "Sin ciudad"/"Sin
 // motivo"/etc en español -- devuelve etiqueta: null para que el frontend
@@ -203,6 +227,19 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
   const clave = ETIQUETA_SIN_DATO[seccionTitulo];
   return clave ? t(`HELIC3_INDICADORES.GARANTIAS.${clave}`) : etiqueta;
 };
+
+// "Comparativo por ciudad" del mockup: mismo dato de por_ciudad, como barras
+// rankeadas en vez de tabla. Sin ratio (eso necesita facturas, IND-03).
+const porCiudadConNombre = computed(() =>
+  (datos.value?.por_ciudad || []).map(fila => ({
+    ...fila,
+    nombre: etiquetaDe('BY_CITY', fila.etiqueta),
+  }))
+);
+const maxPorCiudad = computed(() =>
+  Math.max(1, ...porCiudadConNombre.value.map(fila => fila.cantidad))
+);
+const anchoBarra = cantidad => `${(cantidad / maxPorCiudad.value) * 100}%`;
 </script>
 
 <template>
@@ -327,58 +364,41 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
 
       <template v-else>
         <!-- Tarjetas -->
-        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div
+          class="grid grid-cols-2 divide-x divide-y divide-n-weak rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 md:grid-cols-4 md:divide-y-0 overflow-hidden"
+        >
           <div
-            class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
+            v-for="tarjeta in kpiCards"
+            :key="tarjeta.label"
+            class="p-4 min-w-0"
           >
-            <p class="text-sm text-n-slate-11">
-              {{ t('HELIC3_INDICADORES.GARANTIAS.KPI_TOTAL') }}
+            <p class="text-sm text-n-slate-11">{{ tarjeta.label }}</p>
+            <p
+              class="mt-2 text-2xl font-semibold tabular-nums"
+              :class="tarjeta.color"
+            >
+              {{ tarjeta.valor }}
             </p>
-            <p class="text-2xl font-semibold text-n-slate-12">
-              {{ datos.kpis.garantias }}
-            </p>
-          </div>
-          <div
-            class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
-          >
-            <p class="text-sm text-n-slate-11">
-              {{ t('HELIC3_INDICADORES.GARANTIAS.KPI_SOLVED') }}
-            </p>
-            <p class="text-2xl font-semibold text-n-teal-11">
-              {{ datos.kpis.solucionadas }}
-            </p>
-          </div>
-          <div
-            class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
-          >
-            <p class="text-sm text-n-slate-11">
-              {{ t('HELIC3_INDICADORES.GARANTIAS.KPI_IN_PROGRESS') }}
-            </p>
-            <p class="text-2xl font-semibold text-n-amber-11">
-              {{ datos.kpis.en_proceso }}
-            </p>
-          </div>
-          <div
-            class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
-          >
-            <p class="text-sm text-n-slate-11">
-              {{ t('HELIC3_INDICADORES.GARANTIAS.KPI_PRODUCTS') }}
-            </p>
-            <p class="text-2xl font-semibold text-n-slate-12">
-              {{ datos.kpis.productos }}
+            <p class="mt-1 text-xs text-n-slate-11">
+              {{ tarjeta.descripcion }}
             </p>
           </div>
         </div>
 
-        <!-- Mensual y trimestral -->
-        <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <!-- Detalle mensual: tabla + grafica -->
+        <div class="grid grid-cols-1 gap-3 xl:grid-cols-[1.7fr_1fr]">
           <div
-            class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
+            class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 overflow-x-auto"
           >
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-sm font-medium text-n-slate-12">
-                {{ t('HELIC3_INDICADORES.GARANTIAS.MONTHLY') }}
-              </p>
+            <div class="flex items-start justify-between">
+              <div>
+                <p class="font-semibold text-n-slate-12">
+                  {{ t('HELIC3_INDICADORES.GARANTIAS.MONTHLY') }}
+                </p>
+                <p class="mt-1 mb-3 text-xs text-n-slate-11">
+                  {{ t('HELIC3_INDICADORES.GARANTIAS.MONTHLY_SUBTITLE') }}
+                </p>
+              </div>
               <Button
                 icon="i-lucide-download"
                 variant="ghost"
@@ -389,48 +409,198 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
                 @click="descargarCsv('mensual')"
               />
             </div>
-            <BarChart
-              v-if="datos.mensual.length"
-              :data="graficaMensual"
-              :height="ALTURA_GRAFICA"
-              :aria-label="t('HELIC3_INDICADORES.GARANTIAS.MONTHLY')"
-            />
+            <table class="w-full min-w-[28rem] text-sm">
+              <thead class="text-xs text-n-slate-11">
+                <tr>
+                  <th class="px-3 py-2 text-left font-medium">
+                    {{ t('HELIC3_INDICADORES.FILTERS.MONTH') }}
+                  </th>
+                  <th class="px-3 py-2 text-right font-medium">
+                    {{ t('HELIC3_INDICADORES.GARANTIAS.COUNT') }}
+                  </th>
+                  <th class="px-3 py-2 text-right font-medium">
+                    {{ t('HELIC3_INDICADORES.GARANTIAS.KPI_SOLVED') }}
+                  </th>
+                  <th class="px-3 py-2 text-right font-medium">
+                    {{ t('HELIC3_INDICADORES.GARANTIAS.KPI_IN_PROGRESS') }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="fila in datos.mensual"
+                  :key="fila.periodo"
+                  class="border-t border-n-weak"
+                >
+                  <td class="px-3 py-2 text-n-slate-11">{{ fila.periodo }}</td>
+                  <td
+                    class="px-3 py-2 text-right font-medium tabular-nums text-n-slate-12"
+                  >
+                    {{ fila.cantidad }}
+                  </td>
+                  <td class="px-3 py-2 text-right tabular-nums text-n-teal-11">
+                    {{ fila.solucionadas }}
+                  </td>
+                  <td class="px-3 py-2 text-right tabular-nums text-n-amber-11">
+                    {{ fila.en_proceso }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
           <div
             class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
           >
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-sm font-medium text-n-slate-12">
-                {{ t('HELIC3_INDICADORES.GARANTIAS.QUARTERLY') }}
-              </p>
-              <Button
-                icon="i-lucide-download"
-                variant="ghost"
-                color="slate"
-                size="xs"
-                :is-loading="descargando.trimestral"
-                :title="t('HELIC3_INDICADORES.DOWNLOAD')"
-                @click="descargarCsv('trimestral')"
-              />
-            </div>
+            <p class="font-semibold text-n-slate-12">
+              {{ t('HELIC3_INDICADORES.GARANTIAS.MONTHLY_CHART') }}
+            </p>
+            <p class="mt-1 mb-2 text-xs text-n-slate-11">
+              {{ t('HELIC3_INDICADORES.GARANTIAS.MONTHLY_SUBTITLE') }}
+            </p>
             <BarChart
-              v-if="datos.trimestral.length"
-              :data="graficaTrimestral"
+              v-if="datos.mensual.length"
+              :data="graficaMensual"
               :height="ALTURA_GRAFICA"
-              :aria-label="t('HELIC3_INDICADORES.GARANTIAS.QUARTERLY')"
+              :aria-label="t('HELIC3_INDICADORES.GARANTIAS.MONTHLY_CHART')"
             />
           </div>
         </div>
 
-        <!-- Desgloses -->
+        <!-- Detalle trimestral -->
+        <div
+          class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 overflow-x-auto"
+        >
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="font-semibold text-n-slate-12">
+                {{ t('HELIC3_INDICADORES.GARANTIAS.QUARTERLY') }}
+              </p>
+              <p class="mt-1 mb-3 text-xs text-n-slate-11">
+                {{ t('HELIC3_INDICADORES.GARANTIAS.QUARTERLY_SUBTITLE') }}
+              </p>
+            </div>
+            <Button
+              icon="i-lucide-download"
+              variant="ghost"
+              color="slate"
+              size="xs"
+              :is-loading="descargando.trimestral"
+              :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+              @click="descargarCsv('trimestral')"
+            />
+          </div>
+          <table class="w-full min-w-[28rem] text-sm">
+            <thead class="text-xs text-n-slate-11">
+              <tr>
+                <th class="px-3 py-2 text-left font-medium">
+                  {{ t('HELIC3_INDICADORES.GARANTIAS.QUARTER_COLUMN') }}
+                </th>
+                <th class="px-3 py-2 text-right font-medium">
+                  {{ t('HELIC3_INDICADORES.GARANTIAS.COUNT') }}
+                </th>
+                <th class="px-3 py-2 text-right font-medium">
+                  {{ t('HELIC3_INDICADORES.GARANTIAS.KPI_SOLVED') }}
+                </th>
+                <th class="px-3 py-2 text-right font-medium">
+                  {{ t('HELIC3_INDICADORES.GARANTIAS.KPI_IN_PROGRESS') }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="fila in datos.trimestral"
+                :key="fila.periodo"
+                class="border-t border-n-weak"
+              >
+                <td class="px-3 py-2 text-n-slate-11">{{ fila.periodo }}</td>
+                <td
+                  class="px-3 py-2 text-right font-medium tabular-nums text-n-slate-12"
+                >
+                  {{ fila.cantidad }}
+                </td>
+                <td class="px-3 py-2 text-right tabular-nums text-n-teal-11">
+                  {{ fila.solucionadas }}
+                </td>
+                <td class="px-3 py-2 text-right tabular-nums text-n-amber-11">
+                  {{ fila.en_proceso }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Por ciudad: tabla + comparativo -->
+        <div class="grid grid-cols-1 gap-3 xl:grid-cols-[1.4fr_1fr]">
+          <table
+            class="w-full text-sm rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
+          >
+            <caption class="p-3 caption-top">
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-left text-n-slate-12">
+                  {{ t('HELIC3_INDICADORES.GARANTIAS.BY_CITY') }}
+                </span>
+                <Button
+                  icon="i-lucide-download"
+                  variant="ghost"
+                  color="slate"
+                  size="xs"
+                  :is-loading="descargando.por_ciudad"
+                  :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+                  @click="descargarCsv('por_ciudad')"
+                />
+              </div>
+            </caption>
+            <tbody>
+              <tr
+                v-for="fila in datos.por_ciudad"
+                :key="fila.etiqueta"
+                class="border-t border-n-weak"
+              >
+                <td class="px-3 py-2 text-n-slate-11">
+                  {{ etiquetaDe('BY_CITY', fila.etiqueta) }}
+                </td>
+                <td class="px-3 py-2 font-medium text-right text-n-slate-12">
+                  {{ fila.cantidad }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div
+            class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
+          >
+            <p class="font-semibold text-n-slate-12">
+              {{ t('HELIC3_INDICADORES.GARANTIAS.BY_CITY_CHART') }}
+            </p>
+            <p class="mt-1 mb-3 text-xs text-n-slate-11">
+              {{ t('HELIC3_INDICADORES.GARANTIAS.BY_CITY_CHART_SUBTITLE') }}
+            </p>
+            <ul class="space-y-2">
+              <li
+                v-for="fila in porCiudadConNombre"
+                :key="fila.nombre"
+                class="text-sm"
+              >
+                <div class="flex items-baseline justify-between mb-1">
+                  <span class="text-n-slate-11">{{ fila.nombre }}</span>
+                  <span class="font-medium tabular-nums text-n-slate-12">
+                    {{ fila.cantidad }}
+                  </span>
+                </div>
+                <div class="h-1.5 rounded-full bg-n-slate-4 overflow-hidden">
+                  <div
+                    class="h-full rounded-full bg-n-blue-9"
+                    :style="{ width: anchoBarra(fila.cantidad) }"
+                  />
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Otros desgloses -->
         <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <table
             v-for="seccion in [
-              {
-                titulo: 'BY_CITY',
-                clave: 'por_ciudad',
-                filas: datos.por_ciudad,
-              },
               {
                 titulo: 'BY_MOTIVE',
                 clave: 'por_motivo',

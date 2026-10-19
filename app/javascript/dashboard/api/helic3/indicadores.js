@@ -16,6 +16,10 @@ class IndicadoresAPI extends ApiClient {
     return axios.get(`${this.url}/pqr`, { params, signal });
   }
 
+  devoluciones(params, { signal } = {}) {
+    return axios.get(`${this.url}/devoluciones`, { params, signal });
+  }
+
   // IND-05: misma tabla, mismos filtros, en CSV. responseType: 'blob' para que
   // axios no intente parsear el cuerpo como JSON.
   garantiasCsv(seccion, params = {}) {
@@ -27,6 +31,13 @@ class IndicadoresAPI extends ApiClient {
 
   pqrCsv(seccion, params = {}) {
     return axios.get(`${this.url}/pqr/csv`, {
+      params: { ...params, seccion },
+      responseType: 'blob',
+    });
+  }
+
+  devolucionesCsv(seccion, params = {}) {
+    return axios.get(`${this.url}/devoluciones/csv`, {
       params: { ...params, seccion },
       responseType: 'blob',
     });

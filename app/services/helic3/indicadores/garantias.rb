@@ -70,12 +70,22 @@ class Helic3::Indicadores::Garantias
   # cuya fecha truncada caiga despues de este mes, sin importar el anio filtrado.
   # La fecha agrupada llega sin zona (DATE_TRUNC sobre FECHA_LOCAL ya la resto),
   # asi que el limite tambien se calcula en hora de Bogota, no en UTC.
-  def agrupar_por_fecha(expresion_sql)
+  #
+  # Dos COUNT agrupados (total + solucionadas) en vez de un COUNT por fila: el
+  # numero de consultas no crece con el numero de periodos, mismo criterio que
+  # el resto del archivo.
+  def agrupar_por_fecha(expresion_sql, &)
     limite = Time.current.in_time_zone(Helic3::CalendarioHabil::ZONA).to_date.end_of_month
-    garantias_filtradas.group(Arel.sql(expresion_sql)).count
-                       .filter_map { |fecha, cantidad| { clave: yield(fecha), cantidad: cantidad } if fecha.to_date <= limite }
-                       .sort_by { |fila| fila[:clave] }
-                       .map { |fila| { periodo: fila[:clave], cantidad: fila[:cantidad] } }
+    totales = garantias_filtradas.group(Arel.sql(expresion_sql)).count
+    solucionadas = garantias_filtradas.where.not(cerrada_at: nil).group(Arel.sql(expresion_sql)).count
+    totales.filter_map { |fecha, cantidad| fila_de_periodo(fecha, cantidad, solucionadas[fecha] || 0, limite, &) }
+           .sort_by { |fila| fila[:periodo] }
+  end
+
+  def fila_de_periodo(fecha, cantidad, solucionadas, limite)
+    return nil if fecha.to_date > limite
+
+    { periodo: yield(fecha), cantidad: cantidad, solucionadas: solucionadas, en_proceso: cantidad - solucionadas }
   end
 
   def por_ciudad

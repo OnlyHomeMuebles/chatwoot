@@ -6,6 +6,7 @@ vi.mock('dashboard/api/helic3/indicadores', () => ({
   default: {
     garantias: vi.fn(),
     pqr: vi.fn(),
+    devoluciones: vi.fn(),
   },
 }));
 
@@ -112,7 +113,24 @@ describe('helic3Indicadores store', () => {
     expect(capturado).toEqual({
       isFetchingGarantias: false,
       isFetchingPqr: true,
+      isFetchingDevoluciones: false,
     });
     expect(store.getUIFlags.isFetchingPqr).toBe(false);
+  });
+
+  it('fetchDevoluciones pasa los filtros al API y guarda la respuesta', async () => {
+    const payload = {
+      kpis: { devoluciones: 4, solucionadas: 1, en_proceso: 3, productos: 5 },
+    };
+    IndicadoresAPI.devoluciones.mockResolvedValue({ data: payload });
+    const store = useIndicadoresStore();
+
+    await store.fetchDevoluciones({ anio: 2026 });
+
+    expect(IndicadoresAPI.devoluciones).toHaveBeenCalledWith(
+      { anio: 2026 },
+      { signal: expect.any(AbortSignal) }
+    );
+    expect(store.getDevoluciones).toEqual(payload);
   });
 });
