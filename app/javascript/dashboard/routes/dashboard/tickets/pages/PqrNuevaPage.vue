@@ -4,7 +4,7 @@
 // (MAN-01) en un solo POST y luego subiendo los adjuntos. La garantia NO es un
 // paso de la creacion: nace al resolver (MAN-03). Estructura tomada del mockup
 // v12; estilo con components-next + tokens n-* (como el resto de PQR).
-import { computed, reactive, ref, onMounted } from 'vue';
+import { computed, reactive, ref, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
@@ -40,6 +40,7 @@ const form = reactive({
   detalle_tipificado_id: null,
   description: '',
   assignee_id: null,
+  etapa_id: null,
   cedula: '',
   cliente_nombre: '',
   cliente_telefono: '',
@@ -68,6 +69,27 @@ const detalleOptions = computed(() =>
 );
 const responsableOptions = computed(() =>
   (agents.value || []).map(a => ({ value: a.id, label: a.name }))
+);
+
+// Etapa al radicar: solo las operativas (no detienen el reloj). Solucionado no se
+// ofrece aqui, es un acto de resolucion (RES-01). El backend aplica la misma regla.
+const etapaOptions = computed(() =>
+  (catalogos.value.etapas_pqr || [])
+    .filter(e => !e.detiene_reloj)
+    .map(e => ({ value: e.id, label: e.nombre }))
+);
+
+// Preselecciona la etapa inicial (Nuevo) cuando llega el catalogo, si el operador aun
+// no eligio otra: el wizard arranca en Nuevo, como nace toda PQR, pero puede subirla a
+// En gestion si ya la va a trabajar.
+watch(
+  () => catalogos.value.etapas_pqr,
+  etapas => {
+    if (form.etapa_id) return;
+    const inicial = (etapas || []).find(e => e.codigo === 'nuevo');
+    if (inicial) form.etapa_id = inicial.id;
+  },
+  { immediate: true }
 );
 
 const buscarNombre = (lista, id) =>
@@ -201,6 +223,7 @@ const crear = async () => {
         motivo_pqr_id: form.motivo_pqr_id,
         detalle_tipificado_id: form.detalle_tipificado_id,
         assignee_id: form.assignee_id,
+        etapa_id: form.etapa_id,
         numero_orden: form.numero_orden || null,
         // display_id de la conversacion si vino del chat (null = PQR manual suelta);
         // el backend lo traduce a id de BD y asocia la PQR.
@@ -395,6 +418,16 @@ defineExpose({
                   v-model="form.assignee_id"
                   :options="responsableOptions"
                   :placeholder="t('TICKETS.NUEVA.CASO.RESPONSABLE_PH')"
+                />
+              </div>
+              <div class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-n-slate-12">
+                  {{ t('TICKETS.NUEVA.CASO.ETAPA') }}
+                </span>
+                <Select
+                  v-model="form.etapa_id"
+                  :options="etapaOptions"
+                  :placeholder="t('TICKETS.NUEVA.CASO.ETAPA_PH')"
                 />
               </div>
               <div class="flex flex-col gap-2">

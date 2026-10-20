@@ -81,6 +81,8 @@
         "DESCRIPCION_PH": "Describe qué solicita el cliente y qué ocurrió con el producto.",
         "RESPONSABLE": "Responsable",
         "RESPONSABLE_PH": "Sin asignar",
+        "ETAPA": "Etapa",
+        "ETAPA_PH": "Selecciona una etapa",
         "ADJUNTOS": "Adjuntos",
         "ADJUNTOS_CTA": "Agregar fotos o documentos",
         "ADJUNTOS_HINT": "Factura, evidencia del producto o solicitud del cliente",

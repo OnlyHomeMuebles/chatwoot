@@ -320,6 +320,31 @@ RSpec.describe 'Tickets API', type: :request do
       expect(body['assignee']['id']).to eq(agent.id)
     end
 
+    it 'create aplica la etapa operativa elegida (En gestion) al radicar' do
+      en_gestion = Helic3::Catalogo::EtapaPqr.find_by!(account: account, codigo: 'en_gestion')
+
+      post "/api/v1/accounts/#{account.id}/helic3/tickets",
+           params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, etapa_id: en_gestion.id,
+                               datos: { cliente_nombre: 'Cliente', cliente_telefono: '3001234567' } } },
+           headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['etapa']['codigo']).to eq('en_gestion')
+    end
+
+    it 'create rechaza 422 y no radica si la etapa elegida detiene el reloj (Solucionado): RES-01' do
+      solucionado = Helic3::Catalogo::EtapaPqr.find_by!(account: account, codigo: 'solucionado')
+
+      expect do
+        post "/api/v1/accounts/#{account.id}/helic3/tickets",
+             params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, etapa_id: solucionado.id,
+                                 datos: { cliente_nombre: 'Cliente', cliente_telefono: '3001234567' } } },
+             headers: agent.create_new_auth_token, as: :json
+      end.not_to change(Helic3::Ticket, :count)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
     # Atomicidad (review de Jhan): los operativos corren dentro de la misma
     # transaccion que la radicacion. Si fallan, no puede quedar un expediente
     # radicado (con numero y reloj legal) huerfano.
@@ -407,6 +432,55 @@ RSpec.describe 'Tickets API', type: :request do
           headers: agent.create_new_auth_token, as: :json
 
       expect(response.parsed_body['conversation_display_id']).to be_nil
+    end
+  end
+
+  # El menu "Estado" del panel Acciones del detalle pasa a gobernar la ETAPA de la
+  # PQR (Nuevo/En gestion), no el status de Chatwoot. Mover entre etapas operativas
+  # es seguro; la etapa final (Solucionado) detiene el reloj legal y por RES-01 solo
+  # se alcanza al resolver, nunca por este update.
+  describe 'PATCH cambia la etapa operativa desde el panel Acciones' do
+    before { Helic3::Catalogo::SeederService.new(account).sembrar! }
+
+    let(:motivo) { Helic3::Catalogo::MotivoPqr.find_by!(account: account, codigo: 'garantia_producto') }
+    let(:en_gestion) { Helic3::Catalogo::EtapaPqr.find_by!(account: account, codigo: 'en_gestion') }
+    let(:solucionado) { Helic3::Catalogo::EtapaPqr.find_by!(account: account, codigo: 'solucionado') }
+    let(:ticket) do
+      Helic3::Casos::Radicar.new(account: account, titulo: 'Caso', motivo_pqr: motivo, creator: agent, origen: :humano).call
+    end
+
+    it 'permite mover a una etapa que no detiene el reloj (En gestion)' do
+      patch "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+            params: { ticket: { etapa_id: en_gestion.id } },
+            headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(ticket.reload.etapa.codigo).to eq('en_gestion')
+      expect(ticket.reloj_detenido?).to be(false)
+    end
+
+    it 'rechaza con 422 mover a la etapa final que detiene el reloj (Solucionado): RES-01' do
+      patch "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+            params: { ticket: { etapa_id: solucionado.id } },
+            headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(ticket.reload.etapa.codigo).to eq('nuevo')
+      expect(ticket.respondida_at).to be_nil
+      expect(ticket.reloj_detenido?).to be(false)
+    end
+
+    it 'rechaza con 422 una etapa de otra cuenta (no fuga multi-tenant)' do
+      otra = create(:account)
+      Helic3::Catalogo::SeederService.new(otra).sembrar!
+      etapa_ajena = Helic3::Catalogo::EtapaPqr.find_by!(account: otra, codigo: 'en_gestion')
+
+      patch "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+            params: { ticket: { etapa_id: etapa_ajena.id } },
+            headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(ticket.reload.etapa.codigo).to eq('nuevo')
     end
   end
 

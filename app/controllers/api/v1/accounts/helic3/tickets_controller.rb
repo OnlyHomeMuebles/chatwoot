@@ -50,6 +50,7 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
   end
 
   def update
+    validar_cambio_de_etapa!
     @ticket.update!(update_params)
   end
 
@@ -123,14 +124,41 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
     modelo.find_by!(account: Current.account, id: id)
   end
 
-  # status/assignee_id no son parte de la firma de Radicar; se aplican dentro de la
-  # transaccion del create, sin silenciar lo que el panel pida al crear (ni tocar
-  # el servicio). Corre bajo la transaccion: si algo falla, se revierte todo.
+  # El menu del panel Acciones cambia la etapa operativa (Nuevo/En gestion).
+  def validar_cambio_de_etapa!
+    validar_etapa_operativa!(update_params[:etapa_id])
+  end
+
+  # Regla compartida por update (menu del detalle) y create (wizard): la etapa solo
+  # puede ser una operativa, que no detiene el reloj (Nuevo/En gestion). La etapa final
+  # (Solucionado) NO se marca por aqui: eso es resolver (RES-01). Una etapa inexistente,
+  # inactiva o de otra cuenta tampoco pasa (seguridad multi-tenant). Se valida antes del
+  # update! para no tocar nada si se rechaza; mismo patron de 422 que validar_radicacion_manual!.
+  def validar_etapa_operativa!(etapa_id)
+    return if etapa_id.blank?
+
+    etapa = Helic3::Catalogo::EtapaPqr.activos.find_by(account: Current.account, id: etapa_id)
+    errores = Helic3::Ticket.new
+    if etapa.nil?
+      errores.errors.add(:base, 'La etapa indicada no existe o esta inactiva')
+    elsif etapa.detiene_reloj?
+      errores.errors.add(:base, 'La etapa final (Solucionado) solo se marca al resolver la PQR')
+    end
+    raise ActiveRecord::RecordInvalid, errores if errores.errors.any?
+  end
+
+  # status/assignee_id/etapa_id no son parte de la firma de Radicar; se aplican dentro
+  # de la transaccion del create, sin silenciar lo que el panel pida al crear (ni tocar
+  # el servicio). La etapa deja al agente radicar directo en "En gestion" si ya la va a
+  # trabajar; Radicar siempre nace en Nuevo y esto la mueve despues (misma regla que el
+  # menu del detalle: solo etapas que no detienen el reloj). Corre bajo la transaccion:
+  # si algo falla, se revierte todo.
   def aplicar_operativos_al_crear
-    operativos = create_params.slice(:status, :assignee_id).compact_blank
+    operativos = create_params.slice(:status, :assignee_id, :etapa_id).compact_blank
     return if operativos.blank?
 
     validar_status!(operativos[:status])
+    validar_etapa_operativa!(operativos[:etapa_id])
     @ticket.update!(operativos)
   end
 
@@ -225,18 +253,22 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
   def create_params
     params.require(:ticket).permit(:title, :description, :conversation_id,
                                    :tipo_id, :motivo_pqr_id, :detalle_tipificado_id,
-                                   :status, :assignee_id, :numero_orden)
+                                   :status, :assignee_id, :etapa_id, :numero_orden)
   end
 
-  # Update solo toca lo operativo: estado y asignacion.
-  # resultado_id y etapa_id NO se permiten aqui a proposito (RES-01): resolver es
-  # un acto de dominio que sella respondida_at y detiene el reloj legal, y eso solo
-  # ocurre por POST /resolucion (Helic3::Casos::Resolver). Si se pudiera escribir
-  # resultado_id por un update, el reloj se detendria sin que nadie haya respondido:
-  # dos puertas a la misma verdad terminan contandola distinto.
+  # Update toca lo operativo: estado de Chatwoot, asignacion y la ETAPA de la PQR.
+  # La etapa es el menu del panel Acciones del detalle, y se permite SOLO hacia
+  # etapas que no detienen el reloj (Nuevo/En gestion). La etapa final (detiene_reloj)
+  # queda fuera: validar_cambio_de_etapa! la rechaza con 422.
+  #
+  # resultado_id NO se permite aqui a proposito (RES-01): resolver es un acto de
+  # dominio que sella respondida_at y detiene el reloj legal, y eso solo ocurre por
+  # POST /resolucion (Helic3::Casos::Resolver). Si se pudiera detener el reloj por un
+  # update, dos puertas a la misma verdad terminarian contandola distinto; por eso
+  # tampoco se admite por aqui la etapa que lo detiene.
   # Corregir la clasificacion ya radicada (tipo/motivo/categoria) tambien queda
   # fuera: cambiaria la categoria y el plazo sin re-derivarlos (decision de negocio).
   def update_params
-    params.require(:ticket).permit(:status, :assignee_id)
+    params.require(:ticket).permit(:status, :assignee_id, :etapa_id)
   end
 end

@@ -42,8 +42,6 @@ const noEncontrado = ref(false);
 const generarModalRef = ref(null);
 const abrirGenerarFormato = () => generarModalRef.value?.open();
 
-const STATUSES = ['open', 'pending', 'resolved', 'closed'];
-
 // Archivo documental (EVI-02/EVI-03): se carga aparte de fetchOne para que un
 // error puntual aqui no tumbe el resto del expediente ya cargado.
 const cargarDocumentos = async () => {
@@ -83,10 +81,15 @@ const refreshKey = ref(0);
 // sin remontar los demas selectores de la pagina.
 const resolverKey = ref(0);
 
-const statusOptions = computed(() =>
-  STATUSES.map(status => ({
-    value: status,
-    label: t(`TICKETS.STATUS.${status.toUpperCase()}`),
+// El menu "Estado" del panel Acciones gobierna la ETAPA de la PQR (no el status de
+// Chatwoot). Solo son editables las etapas que no detienen el reloj; la final
+// (Solucionado, detiene_reloj) se muestra deshabilitada y solo se alcanza al
+// resolver (RES-01). El backend lo exige igual, esto es la cara visible de esa regla.
+const etapaOptions = computed(() =>
+  (catalogos.value?.etapas_pqr || []).map(etapa => ({
+    value: etapa.id,
+    label: etapa.nombre,
+    disabled: etapa.detiene_reloj,
   }))
 );
 
@@ -100,11 +103,11 @@ const errorMsg = error =>
     ? t('TICKETS.UPDATE.FORBIDDEN')
     : t('TICKETS.UPDATE.ERROR');
 
-const cambiarEstado = async status => {
+const cambiarEtapa = async etapaId => {
   try {
     await store.dispatch('pqrInbox/actualizar', {
       id: props.id,
-      data: { status },
+      data: { etapa_id: etapaId },
     });
     useAlert(t('TICKETS.UPDATE.SUCCESS'));
   } catch (error) {
@@ -1098,11 +1101,16 @@ const formatFecha = valor =>
               <span class="text-xs text-n-slate-11">{{
                 t('TICKETS.TABLE.STATUS')
               }}</span>
+              <!-- Caso resuelto (reloj detenido): la etapa queda en solo lectura. No
+                   se reabre desde aqui para no dejar la etapa operativa con el reloj
+                   ya detenido (incoherente). Reabrir, si Jhan lo aprueba, iria por
+                   otra accion explicita. -->
               <Select
-                :key="`status-${refreshKey}`"
-                :options="statusOptions"
-                :model-value="expediente.status"
-                @update:model-value="cambiarEstado"
+                :key="`etapa-${refreshKey}`"
+                :options="etapaOptions"
+                :model-value="expediente.etapa ? expediente.etapa.id : ''"
+                :disabled="expediente.reloj_detenido"
+                @update:model-value="cambiarEtapa"
               />
             </div>
             <div class="flex flex-col gap-1">

@@ -81,6 +81,8 @@
         "DESCRIPCION_PH": "Describe what the customer requests and what happened with the product.",
         "RESPONSABLE": "Assignee",
         "RESPONSABLE_PH": "Unassigned",
+        "ETAPA": "Stage",
+        "ETAPA_PH": "Select a stage",
         "ADJUNTOS": "Attachments",
         "ADJUNTOS_CTA": "Add photos or documents",
         "ADJUNTOS_HINT": "Invoice, product evidence or customer request",
