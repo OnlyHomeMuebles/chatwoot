@@ -22,6 +22,8 @@
     "EMPTY": "Sin datos para este filtro",
     "ERROR": "No se pudieron cargar los indicadores",
     "RETRY": "Reintentar",
+    "DOWNLOAD": "Descargar Excel",
+    "DOWNLOAD_ERROR": "No se pudo descargar el archivo",
     "GARANTIAS": {
       "KPI_TOTAL": "Garantías",
       "KPI_TOTAL_DESC": "Radicadas en el período",
