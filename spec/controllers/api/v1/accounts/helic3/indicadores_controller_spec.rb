@@ -126,4 +126,95 @@ RSpec.describe 'Helic3 Indicadores (IND-01)', type: :request do
       expect(response.parsed_body['kpis']['radicadas']).to eq(0)
     end
   end
+
+  describe 'GET garantias/csv (IND-05)' do
+    def get_garantias_csv(seccion, query = {})
+      get "/api/v1/accounts/#{account.id}/helic3/indicadores/garantias/csv", params: query.merge(seccion: seccion),
+                                                                             headers: agent.create_new_auth_token
+    end
+
+    it 'exige autenticacion' do
+      get "/api/v1/accounts/#{account.id}/helic3/indicadores/garantias/csv", params: { seccion: 'mensual' }
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'rechaza una seccion desconocida o faltante' do
+      get_garantias_csv('no-existe')
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it 'descarga el detalle mensual con BOM, separador ; y los mismos numeros que el JSON' do
+      ciudad = Helic3::Catalogo::CoberturaCiudad.create!(account: account, nombre: 'Manizales', codigo: 'manizales')
+      Helic3::Garantia.create!(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 1, 10, 12, 0),
+                               cerrada_at: Time.zone.local(2026, 1, 20, 12, 0), cobertura_ciudad: ciudad)
+
+      get_garantias_csv('mensual')
+
+      expect(response).to have_http_status(:success)
+      expect(response.headers['Content-Type']).to eq('text/csv')
+      expect(response.headers['Content-Disposition']).to include('indicadores-garantias-mensual')
+      expect(response.body.b).to start_with("\xEF\xBB\xBF".b)
+      cuerpo = response.body.delete_prefix("\xEF\xBB\xBF")
+      filas = CSV.parse(cuerpo, col_sep: ';')
+      expect(filas.first).to eq(['Mes', 'Garantías', 'Solucionadas', 'En proceso'])
+      expect(filas.second).to eq(%w[2026-01 1 1 0])
+    end
+
+    it 'pasa los filtros de la query al servicio' do
+      ciudad = Helic3::Catalogo::CoberturaCiudad.create!(account: account, nombre: 'Manizales', codigo: 'manizales')
+      otra_ciudad = Helic3::Catalogo::CoberturaCiudad.create!(account: account, nombre: 'Pereira', codigo: 'pereira')
+      Helic3::Garantia.create!(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 1, 1, 12, 0),
+                               cobertura_ciudad: ciudad)
+      Helic3::Garantia.create!(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 1, 1, 12, 0),
+                               cobertura_ciudad: otra_ciudad)
+
+      get_garantias_csv('por_ciudad', cobertura_ciudad_id: ciudad.id)
+
+      filas = CSV.parse(response.body.delete_prefix("\xEF\xBB\xBF"), col_sep: ';')
+      expect(filas).to contain_exactly(%w[Etiqueta Cantidad], %w[Manizales 1])
+    end
+
+    # Las etiquetas nil del JSON (N3, PR #113) se traducen a texto fijo en el
+    # CSV: no hay capa de i18n al abrir un archivo en Excel.
+    it 'traduce una etiqueta nil a texto fijo, igual al que ya se ve en pantalla' do
+      Helic3::Garantia.create!(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 1, 1, 12, 0))
+
+      get_garantias_csv('por_ciudad')
+
+      filas = CSV.parse(response.body.delete_prefix("\xEF\xBB\xBF"), col_sep: ';')
+      expect(filas).to include(['Sin ciudad', '1'])
+    end
+  end
+
+  describe 'GET pqr/csv (IND-05)' do
+    let(:categoria) { Helic3::Catalogo::Categoria.create!(account: account, nombre: 'PQR', codigo: 'pqr') }
+    let(:motivo) do
+      Helic3::Catalogo::MotivoPqr.create!(account: account, nombre: 'Calidad', codigo: 'calidad', categoria: categoria)
+    end
+
+    def get_pqr_csv(seccion, query = {})
+      get "/api/v1/accounts/#{account.id}/helic3/indicadores/pqr/csv", params: query.merge(seccion: seccion),
+                                                                       headers: agent.create_new_auth_token
+    end
+
+    it 'rechaza una seccion desconocida o faltante' do
+      get_pqr_csv('no-existe')
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it 'descarga motivo_por_trimestre con las columnas T1-T4 y total' do
+      Helic3::Ticket.create!(account: account, title: 'Caso', categoria: categoria, motivo_pqr: motivo,
+                             radicada_at: Time.zone.local(2026, 1, 1, 12, 0))
+
+      get_pqr_csv('motivo_por_trimestre')
+
+      expect(response.headers['Content-Type']).to eq('text/csv')
+      filas = CSV.parse(response.body.delete_prefix("\xEF\xBB\xBF"), col_sep: ';')
+      expect(filas.first).to eq(%w[Motivo T1 T2 T3 T4 Total])
+      expect(filas.second).to eq(%w[Calidad 1 0 0 0 1])
+    end
+  end
 end
