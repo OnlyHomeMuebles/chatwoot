@@ -53,8 +53,30 @@ RSpec.describe Helic3::Casos::Radicar do
         calendario = Helic3::CalendarioHabil.new
         expect(ticket.radicada_at).to be_present
         expect(calendario.dias_habiles_entre(Date.new(2026, 10, 9),
-                                             ticket.plazo_respuesta_vence_at.to_date)).to eq(15)
-        expect(calendario.es_habil?(ticket.plazo_respuesta_vence_at.to_date)).to be(true)
+                                             ticket.plazo_respuesta_vence_at.in_time_zone('America/Bogota').to_date)).to eq(15)
+        expect(calendario.es_habil?(ticket.plazo_respuesta_vence_at.in_time_zone('America/Bogota').to_date)).to be(true)
+      end
+    end
+
+    # GIT-01 (bloqueante de zona horaria, revision de Jhan): un Date asignado
+    # directo a una columna datetime se casteaba a medianoche UTC, que son las
+    # 7pm de Bogota DEL DIA ANTERIOR -- el plazo vencia casi un dia habil
+    # antes de lo real, y una respuesta la manana del dia de vencimiento
+    # (hora Bogota) se leia como "vencida" sin serlo.
+    it 'el vencimiento queda anclado al final del dia habil en Bogota, no a medianoche UTC' do
+      travel_to Time.find_zone!('America/Bogota').local(2026, 10, 9, 16, 0) do
+        ticket = radicar(tipo: reclamo, motivo_pqr: motivo_garantia)
+
+        vence_utc = ticket.plazo_respuesta_vence_at.utc
+        vence_bogota_date = ticket.plazo_respuesta_vence_at.in_time_zone('America/Bogota').to_date
+
+        # si estuviera a medianoche UTC del dia de vencimiento, una respuesta
+        # radicada esa misma manana en Bogota (ej. 9am) ya apareceria vencida;
+        # con el reloj bien anclado, esa respuesta SI queda dentro de plazo.
+        respuesta_manana_del_vencimiento = Time.find_zone!('America/Bogota')
+                                               .local(vence_bogota_date.year, vence_bogota_date.month,
+                                                      vence_bogota_date.day, 9, 0)
+        expect(respuesta_manana_del_vencimiento.utc).to be <= vence_utc
       end
     end
 
@@ -66,7 +88,7 @@ RSpec.describe Helic3::Casos::Radicar do
       travel_to Time.find_zone!('America/Bogota').local(2026, 12, 24, 10, 0) do
         ticket = radicar(tipo: tipo_un_dia)
 
-        expect(ticket.plazo_respuesta_vence_at.to_date).to eq(Date.new(2026, 12, 28))
+        expect(ticket.plazo_respuesta_vence_at.in_time_zone('America/Bogota').to_date).to eq(Date.new(2026, 12, 28))
       end
     end
 
@@ -75,7 +97,7 @@ RSpec.describe Helic3::Casos::Radicar do
 
       calendario = Helic3::CalendarioHabil.new
       radicada = ticket.radicada_at.in_time_zone('America/Bogota').to_date
-      expect(calendario.dias_habiles_entre(radicada, ticket.plazo_respuesta_vence_at.to_date)).to eq(5)
+      expect(calendario.dias_habiles_entre(radicada, ticket.plazo_respuesta_vence_at.in_time_zone('America/Bogota').to_date)).to eq(5)
     end
 
     it 'sin plazo en motivo ni tipo, cae al parametro de cuenta' do
@@ -85,7 +107,7 @@ RSpec.describe Helic3::Casos::Radicar do
 
       calendario = Helic3::CalendarioHabil.new
       radicada = ticket.radicada_at.in_time_zone('America/Bogota').to_date
-      expect(calendario.dias_habiles_entre(radicada, ticket.plazo_respuesta_vence_at.to_date)).to eq(10)
+      expect(calendario.dias_habiles_entre(radicada, ticket.plazo_respuesta_vence_at.in_time_zone('America/Bogota').to_date)).to eq(10)
     end
 
     it 'si falta el parametro y ningun catalogo trae plazo, el error nombra la clave' do

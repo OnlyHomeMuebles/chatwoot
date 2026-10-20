@@ -101,12 +101,23 @@ class Helic3::Casos::Radicar
 
   # Informacion (genera_radicado false) no lleva reloj: vence en nulo.
   # El expediente se crea igual, para conservar el historial.
+  #
+  # GIT-01 (bloqueante de zona horaria, revision de Jhan): sumar_dias_habiles
+  # devuelve un Date. Asignar un Date directo a una columna datetime lo castea
+  # a medianoche en Time.zone (UTC, por defecto en esta app) -- medianoche UTC
+  # del dia de vencimiento es las 7pm de BOGOTA DEL DIA ANTERIOR, asi que el
+  # plazo quedaba venciendo casi un dia habil antes de lo real (y toda
+  # respuesta del dia de vencimiento, antes de esa hora, se leia como vencida).
+  # Se ancla explicitamente al final del dia habil en hora de Bogota.
   def vencimiento
     return nil unless genera_radicado?
 
     calendario = Helic3::CalendarioHabil.new
     fecha_radicacion = radicada_at.in_time_zone(Helic3::CalendarioHabil::ZONA).to_date
-    calendario.sumar_dias_habiles(fecha_radicacion, plazo_dias_habiles)
+    fecha_vencimiento = calendario.sumar_dias_habiles(fecha_radicacion, plazo_dias_habiles)
+    ActiveSupport::TimeZone[Helic3::CalendarioHabil::ZONA]
+      .local(fecha_vencimiento.year, fecha_vencimiento.month, fecha_vencimiento.day)
+      .end_of_day
   end
 
   def genera_radicado?
