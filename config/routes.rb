@@ -384,6 +384,7 @@ Rails.application.routes.draw do
             # calculado con las tablas propias del modulo. Una ruta por pestana.
             get 'indicadores/garantias', to: 'indicadores#garantias'
             get 'indicadores/pqr', to: 'indicadores#pqr'
+            get 'indicadores/todas', to: 'indicadores#todas'
             # Descarga a Excel (IND-05): la misma tabla, con los mismos filtros,
             # en CSV. Accion propia (no format: :csv sobre la de arriba) para no
             # mezclar la respuesta jbuilder con el armado de filas del CSV.
