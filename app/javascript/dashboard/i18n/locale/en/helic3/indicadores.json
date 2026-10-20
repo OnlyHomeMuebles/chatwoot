@@ -8,10 +8,10 @@
     "FILTERS": {
       "YEAR": "Year",
       "MONTH": "Month",
-      "CITY": "City",
+      "OPERATION_CENTER": "Operation center",
       "MOTIVE": "Motive",
       "DETAIL": "Detail",
-      "STAGE": "Stage",
+      "STAGE": "Case stage",
       "PRODUCT": "Product",
       "PRODUCT_PLACEHOLDER": "Search by product name",
       "TYPE": "Type",

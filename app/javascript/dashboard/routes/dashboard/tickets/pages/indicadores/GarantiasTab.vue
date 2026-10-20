@@ -83,8 +83,9 @@ const procesoOptions = opcionesDe('procesos_garantia');
 // Panel de filtros (ajuste visual pedido sobre el mockup v12): una etiqueta
 // fija por campo en vez de que el select muestre su nombre solo cuando esta
 // vacio. Un solo array en vez de seis bloques <Select> casi identicos en el
-// template.
-const selectFiltros = computed(() => [
+// template. Mismo agrupamiento del mockup v12: año/mes/ciudad/motivo/etapa en
+// una fila, detalle tipificado junto al producto en la segunda.
+const selectFiltrosPrincipales = computed(() => [
   {
     clave: 'anio',
     label: t('HELIC3_INDICADORES.FILTERS.YEAR'),
@@ -97,7 +98,7 @@ const selectFiltros = computed(() => [
   },
   {
     clave: 'cobertura_ciudad_id',
-    label: t('HELIC3_INDICADORES.FILTERS.CITY'),
+    label: t('HELIC3_INDICADORES.FILTERS.OPERATION_CENTER'),
     opciones: ciudadOptions.value,
   },
   {
@@ -106,16 +107,17 @@ const selectFiltros = computed(() => [
     opciones: motivoOptions.value,
   },
   {
-    clave: 'detalle_tipificado_id',
-    label: t('HELIC3_INDICADORES.FILTERS.DETAIL'),
-    opciones: detalleOptions.value,
-  },
-  {
     clave: 'proceso_id',
     label: t('HELIC3_INDICADORES.FILTERS.STAGE'),
     opciones: procesoOptions.value,
   },
 ]);
+
+const detalleFiltro = computed(() => ({
+  clave: 'detalle_tipificado_id',
+  label: t('HELIC3_INDICADORES.FILTERS.DETAIL'),
+  opciones: detalleOptions.value,
+}));
 
 const huboError = ref(false);
 
@@ -279,11 +281,11 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
 
 <template>
   <div class="flex flex-col gap-6">
-    <!-- Filtros -->
+    <!-- Filtros (mismo agrupamiento del mockup v12) -->
     <div class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1">
-      <div class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
         <div
-          v-for="filtro in selectFiltros"
+          v-for="filtro in selectFiltrosPrincipales"
           :key="filtro.clave"
           class="min-w-0 space-y-1.5"
         >
@@ -297,7 +299,7 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
           />
         </div>
       </div>
-      <div class="grid gap-3 mt-3 md:grid-cols-[1fr_auto] md:items-end">
+      <div class="grid gap-3 mt-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
         <div class="min-w-0 space-y-1.5">
           <label class="block text-xs font-medium text-n-slate-11">
             {{ t('HELIC3_INDICADORES.FILTERS.PRODUCT') }}
@@ -305,6 +307,16 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
           <Input
             v-model="filtros.producto"
             :placeholder="t('HELIC3_INDICADORES.FILTERS.PRODUCT_PLACEHOLDER')"
+          />
+        </div>
+        <div class="min-w-0 space-y-1.5">
+          <label class="block text-xs font-medium text-n-slate-11">
+            {{ detalleFiltro.label }}
+          </label>
+          <Select
+            v-model="filtros[detalleFiltro.clave]"
+            :options="detalleFiltro.opciones"
+            :aria-label="detalleFiltro.label"
           />
         </div>
         <Button
