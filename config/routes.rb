@@ -380,9 +380,10 @@ Rails.application.routes.draw do
             # Contadores livianos del rail (VIS-05): solo dos numeros con COUNT, sin
             # traer registros ni pisar el estado de la bandeja.
             get 'pqr/contadores', to: 'pqr#contadores'
-            # Indicadores (IND-01): lo que hoy se consulta en el Dash CX externo,
+            # Indicadores (IND-01/IND-02): lo que hoy se consulta en el Dash CX externo,
             # calculado con las tablas propias del modulo. Una ruta por pestana.
             get 'indicadores/garantias', to: 'indicadores#garantias'
+            get 'indicadores/pqr', to: 'indicadores#pqr'
             # Administracion de catalogos y parametros (ADM-01): lectura para
             # agentes, escritura solo administradores. El :tipo elige el catalogo.
             namespace :admin do

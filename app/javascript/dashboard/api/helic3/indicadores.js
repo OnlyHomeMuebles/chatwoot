@@ -1,8 +1,8 @@
 /* global axios */
 import ApiClient from '../ApiClient';
 
-// IND-01: cliente de la seccion "Indicadores" (lo que hoy se consulta en el
-// Dash CX externo). Una pestaña, un metodo -- IND-02 suma `pqr(params)`.
+// IND-01/IND-02: cliente de la seccion "Indicadores" (lo que hoy se consulta
+// en el Dash CX externo). Un metodo por pestaña.
 class IndicadoresAPI extends ApiClient {
   constructor() {
     super('helic3/indicadores', { accountScoped: true });
@@ -10,6 +10,10 @@ class IndicadoresAPI extends ApiClient {
 
   garantias(params, { signal } = {}) {
     return axios.get(`${this.url}/garantias`, { params, signal });
+  }
+
+  pqr(params, { signal } = {}) {
+    return axios.get(`${this.url}/pqr`, { params, signal });
   }
 }
 

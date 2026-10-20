@@ -2,7 +2,8 @@
   "HELIC3_INDICADORES": {
     "MENU": "Indicadores",
     "TABS": {
-      "GARANTIAS": "Garantías"
+      "GARANTIAS": "Garantías",
+      "PQR": "Derechos de Petición"
     },
     "FILTERS": {
       "YEAR": "Año",
@@ -13,6 +14,8 @@
       "STAGE": "Etapa",
       "PRODUCT": "Producto",
       "PRODUCT_PLACEHOLDER": "Buscar por nombre de producto",
+      "TYPE": "Tipo",
+      "RESPONSIBLE": "Responsable",
       "CLEAR": "Limpiar filtros",
       "ALL": "Todos"
     },
@@ -46,6 +49,41 @@
       "NO_MOTIVE": "Sin motivo",
       "NO_DETAIL": "Sin detalle",
       "NO_STAGE": "Sin etapa"
+    },
+    "PQR": {
+      "KPI_FILED": "Radicadas",
+      "KPI_FILED_DESC": "PQR radicadas en el período",
+      "KPI_RESPONDED": "Respondidas",
+      "KPI_RESPONDED_DESC": "Ya tienen respuesta",
+      "KPI_PENDING": "Pendientes",
+      "KPI_PENDING_DESC": "Sin responder",
+      "KPI_RESPONSE_RATE": "% Respondidas",
+      "KPI_RESPONSE_RATE_DESC": "Respondidas / radicadas",
+      "KPI_ON_TIME": "Dentro de plazo",
+      "KPI_ON_TIME_DESC": "Respondidas a tiempo",
+      "KPI_OVERDUE": "Vencidas sin responder",
+      "KPI_OVERDUE_DESC": "Plazo legal vencido",
+      "KPI_COMPLIANCE": "% Cumplimiento",
+      "KPI_COMPLIANCE_DESC": "Dentro de plazo / respondidas",
+      "MONTHLY": "Detalle mensual",
+      "MONTHLY_SUBTITLE": "PQR radicadas por mes",
+      "MONTHLY_CHART": "Recuento por mes",
+      "QUARTERLY": "Detalle trimestral",
+      "QUARTERLY_SUBTITLE": "PQR radicadas por trimestre",
+      "QUARTER_COLUMN": "Trimestre",
+      "MOTIVE_QUARTER": "Motivo por trimestre",
+      "MOTIVE_QUARTER_SUBTITLE": "Cantidad de PQR por motivo en cada trimestre",
+      "MOTIVE_COLUMN": "Motivo",
+      "TOTAL_COLUMN": "Total",
+      "BY_TYPE": "Por tipo",
+      "BY_CATEGORY": "Por categoría",
+      "BY_RESULT": "Por resultado",
+      "BY_RESPONSIBLE": "Por responsable",
+      "NO_RESULT": "Sin resultado",
+      "NO_MOTIVE": "Sin motivo",
+      "NO_TYPE": "Sin tipo",
+      "NO_CATEGORY": "Sin categoría",
+      "COUNT": "PQR"
     }
   }
 }
