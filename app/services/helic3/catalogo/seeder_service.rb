@@ -12,6 +12,10 @@
 # confirmacion seria resolver por cuenta propia.
 #
 # Lo que sigue sin confirmar esta en app/models/helic3/catalogo/PENDIENTES.md.
+#
+# rubocop:disable Metrics/ClassLength -- la longitud la dominan las constantes de
+# datos validados con Only Home (catalogos y mensajes del agente), que viven junto
+# al seeder a proposito; partirlas en otra clase solo por el conteo no aporta claridad.
 class Helic3::Catalogo::SeederService
   # codigos explicitos (no derivados del nombre): los motivos de PQR los
   # referencian, y un ajuste de redaccion del nombre no debe romper la semilla
@@ -159,8 +163,66 @@ class Helic3::Catalogo::SeederService
       valor: '[PROVISIONAL — validar con Luisa] Para atender tu caso vamos a tratar tus datos ' \
              'personales conforme a nuestra Política de Tratamiento de Datos. ¿Nos autorizas a continuar?',
       unidad: 'texto' },
-    { clave: 'enlace_politica_datos', valor: 'https://www.onlyhome.co/politica-de-datos', unidad: 'texto' }
+    { clave: 'enlace_politica_datos', valor: 'https://www.onlyhome.co/politica-de-datos', unidad: 'texto' },
+    # PRM: mensajes del agente por caso (personalizacion de Karen). Textos editables
+    # desde el panel de Parametros. El nombre del asesor es VARIABLE (lo inyecta el
+    # runtime): va como marcador «nombre». Los plazos de los textos (visita 12-15,
+    # cambio 15) son los de Karen; difieren del catalogo de procesos (8 y 20) y se
+    # conciliaran con Karen (son editables desde el panel; ver PENDIENTES.md).
+    #
+    # FASE 1 (solo almacenamiento): hoy NINGUN runtime los lee. Se siembran como
+    # parametros editables para tenerlos listos; cablear el envio (que agente, en
+    # que disparador) es un ticket aparte.
+    { clave: 'mensaje_solicitud_datos',
+      valor: 'Mucho gusto, mi nombre es «nombre» y seré tu asesor(a) para gestionar tu solicitud de ' \
+             'garantía. Para iniciar el proceso, por favor envíanos: nombre completo, número de cédula, ' \
+             'dirección completa y ciudad, número de contacto alterno, y una breve descripción del ' \
+             'inconveniente. Adicionalmente, es requerido enviar: factura de compra y fotografías donde ' \
+             'se evidencie claramente el inconveniente. Quedo atenta para ayudarte. 💙',
+      unidad: 'texto' },
+    { clave: 'mensaje_visita_tecnica',
+      valor: 'Tu PQR N° ( ) ha sido aprobada para *Visita Técnica*. 🩵 Nuestro técnico especializado ' \
+             'realizará la visita en un plazo de 12 a 15 días hábiles. Un día antes se comunicará para ' \
+             'confirmar la cita, por lo que te pedimos estar pendiente de la llamada. En caso de no ' \
+             'lograr contacto, la visita deberá ser reprogramada. ¡Estaremos atentos al proceso! 💙',
+      unidad: 'texto' },
+    { clave: 'mensaje_recoleccion',
+      valor: 'Tu PQR N° ( ) ha sido aprobada para *Recolección de producto*. 🩵 La recolección se ' \
+             'programará dentro de los próximos 15 días hábiles para su verificación en fábrica. Nos ' \
+             'comunicaremos un día antes para confirmar; la llamada será desde un número terminado en ' \
+             '83. El producto debe estar limpio al momento de la recolección. Solo se recogen los ' \
+             'productos reportados en este momento. Feliz día 💙',
+      unidad: 'texto' },
+    { clave: 'mensaje_cambio_producto',
+      valor: 'Tu PQR N° ( ) ha sido aprobada para *Cambio de Producto*. 🩵 El proceso de cambio se ' \
+             'gestionará dentro de los próximos 15 días hábiles, teniendo en cuenta los tiempos de ' \
+             'producción (fabricamos bajo pedido). Nos comunicaremos para coordinar los detalles del ' \
+             'cambio; la llamada será desde un número terminado en 83. ¡Gracias por tu paciencia! 🩵',
+      unidad: 'texto' },
+    { clave: 'correo_retracto', valor: 'servicioalcliente@onlyhome.co', unidad: 'texto' }
   ].freeze
+
+  # FMT-02: los 4 formatos de Karen como catalogo. El codigo es explicito (no derivado
+  # del nombre) porque lo referencian las plantillas y la logica. Karen puede renombrar
+  # o desactivar desde el admin; la semilla solo CREA (no pisa ediciones).
+  FORMATOS = [
+    { nombre: 'No. 2 · Cumplimiento — entrega de mercancía reparada', codigo: 'cumplimiento_mercancia_reparada' },
+    { nombre: 'No. 3 · Visita de técnico',                            codigo: 'visita_tecnica' },
+    { nombre: 'No. 5 · Recolección de productos',                     codigo: 'recoleccion_productos' },
+    { nombre: 'No. 8 · Cumplimiento — cambio o devolución',           codigo: 'cumplimiento_cambio_devolucion' }
+  ].freeze
+
+  # FMT-04 (parte D): formato sugerido por proceso (codigo_proceso => codigo_formato).
+  # Solo se precarga donde este vacio. 'entrega_producto' -> No. 2 NO se precarga: el
+  # ticket lo marcaba "a confirmar con Karen" (N1 revision Jhan), asi que se deja sin
+  # sugerencia hasta que ella lo confirme y lo asigne desde el admin de catalogos.
+  # Reparacion en fabrica y garantia negada no sugieren formato.
+  SUGERENCIA_FORMATO = {
+    'visita_tecnica' => 'visita_tecnica',
+    'recoleccion' => 'recoleccion_productos',
+    'cambio_producto' => 'cumplimiento_cambio_devolucion',
+    'devolucion_dinero' => 'cumplimiento_cambio_devolucion'
+  }.freeze
 
   def initialize(account)
     @account = account
@@ -175,6 +237,8 @@ class Helic3::Catalogo::SeederService
     sembrar_con_atributos(Helic3::Catalogo::MotivoGarantia, MOTIVOS_GARANTIA)
     sembrar_simple(Helic3::Catalogo::DetalleTipificado, DETALLES_TIPIFICADOS)
     sembrar_con_atributos(Helic3::Catalogo::ProcesoGarantia, PROCESOS_GARANTIA)
+    sembrar_con_atributos(Helic3::Catalogo::Formato, FORMATOS)
+    sembrar_sugerencia_formato
     sembrar_coberturas
     sembrar_parametros
     resumen
@@ -183,12 +247,16 @@ class Helic3::Catalogo::SeederService
   private
 
   def sembrar_simple(modelo, nombres)
+    return unless tabla_lista?(modelo)
+
     nombres.each_with_index do |nombre, indice|
       sembrar_fila(modelo, codigo_de(nombre), nombre: nombre, posicion: indice)
     end
   end
 
   def sembrar_con_atributos(modelo, filas)
+    return unless tabla_lista?(modelo)
+
     filas.each_with_index do |fila, indice|
       atributos = fila.except(:codigo).merge(posicion: indice)
       sembrar_fila(modelo, fila[:codigo], atributos)
@@ -196,6 +264,8 @@ class Helic3::Catalogo::SeederService
   end
 
   def sembrar_motivos_pqr
+    return unless tabla_lista?(Helic3::Catalogo::MotivoPqr)
+
     MOTIVOS_PQR.each_with_index do |fila, indice|
       categoria = Helic3::Catalogo::Categoria.find_by!(account: @account, codigo: fila[:categoria])
       atributos = fila.except(:codigo, :categoria).merge(posicion: indice, categoria: categoria)
@@ -203,7 +273,27 @@ class Helic3::Catalogo::SeederService
     end
   end
 
+  # FMT-04 (parte D): precarga formato_sugerido en cada proceso SOLO si esta vacio,
+  # para no pisar lo que Karen haya configurado desde el admin de catalogos.
+  def sembrar_sugerencia_formato
+    # guardas (B1 revision Jhan): si SIE-01 corre el seeder antes de que exista la
+    # tabla de formatos o la columna formato_sugerido_id, salir sin tocar nada en vez
+    # de reventar (NoMethodError/UndefinedTable) y tumbar el arranque.
+    return unless Helic3::Catalogo::Formato.table_exists?
+    return unless Helic3::Catalogo::ProcesoGarantia.column_names.include?('formato_sugerido_id')
+
+    SUGERENCIA_FORMATO.each do |codigo_proceso, codigo_formato|
+      proceso = Helic3::Catalogo::ProcesoGarantia.find_by(account: @account, codigo: codigo_proceso)
+      next if proceso.nil? || proceso.formato_sugerido_id.present?
+
+      formato = Helic3::Catalogo::Formato.find_by(account: @account, codigo: codigo_formato)
+      proceso.update!(formato_sugerido: formato) if formato
+    end
+  end
+
   def sembrar_coberturas
+    return unless tabla_lista?(Helic3::Catalogo::CoberturaCiudad)
+
     CIUDADES.each_with_index do |ciudad, indice|
       con_tecnico = CIUDADES_CON_TECNICO.include?(ciudad)
       sembrar_fila(Helic3::Catalogo::CoberturaCiudad, codigo_de(ciudad),
@@ -213,11 +303,25 @@ class Helic3::Catalogo::SeederService
   end
 
   def sembrar_parametros
+    return unless tabla_lista?(Helic3::Catalogo::Parametro)
+
     PARAMETROS.each do |fila|
       next if Helic3::Catalogo::Parametro.exists?(account: @account, clave: fila[:clave])
 
       Helic3::Catalogo::Parametro.create!(fila.merge(account: @account))
     end
+  end
+
+  # SIE-01: si la tabla de un catalogo todavia no existe (p. ej. un ambiente
+  # atrasado que corre la siembra por migracion ANTES de la migracion que crea
+  # esa tabla), se omite ese catalogo con una linea de log y se sigue con el
+  # resto, en vez de reventar la migracion y tumbar el arranque (start.sh corre
+  # con set -e). En operacion normal las tablas existen y esto es un no-op.
+  def tabla_lista?(modelo)
+    return true if modelo.table_exists?
+
+    Rails.logger.warn("[Helic3][semilla] la tabla #{modelo.table_name} aun no existe; se omite ese catalogo")
+    false
   end
 
   # la semilla solo CREA: si la fila ya existe, no la toca (criterio 7 de
@@ -243,7 +347,12 @@ class Helic3::Catalogo::SeederService
       detalles_tipificados: Helic3::Catalogo::DetalleTipificado.where(account: @account).count,
       procesos_garantia: Helic3::Catalogo::ProcesoGarantia.where(account: @account).count,
       coberturas_ciudad: Helic3::Catalogo::CoberturaCiudad.where(account: @account).count,
-      parametros: Helic3::Catalogo::Parametro.where(account: @account).count
+      parametros: Helic3::Catalogo::Parametro.where(account: @account).count,
+      # formatos es la tabla mas nueva: si SIE-01 corre el seeder en una migracion
+      # anterior a la de esta tabla, contar aqui daria PG::UndefinedTable y tumbaria
+      # el arranque (start.sh con set -e). Se devuelve 0 cuando aun no existe.
+      formatos: Helic3::Catalogo::Formato.table_exists? ? Helic3::Catalogo::Formato.where(account: @account).count : 0
     }
   end
 end
+# rubocop:enable Metrics/ClassLength

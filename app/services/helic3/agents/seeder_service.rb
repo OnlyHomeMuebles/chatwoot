@@ -66,6 +66,7 @@ class Helic3::Agents::SeederService
   def sembrar!
     AGENTES.each do |defn|
       next if Helic3::Agente.exists?(account: @account, codigo: defn[:codigo])
+      next unless puede_sembrar_agente?(defn)
 
       Helic3::Agente.create!(
         account: @account,
@@ -83,6 +84,23 @@ class Helic3::Agents::SeederService
   end
 
   private
+
+  # SIE-01: un agente de sistema (el triage) es unico por cuenta (lo valida el
+  # modelo Helic3::Agente). Si la cuenta YA tiene uno con OTRO codigo, crear
+  # 'agente_triage' reventaria el create! y, al correr esto desde la migracion
+  # de siembra, tumbaria el arranque (start.sh con set -e). Se omite con una
+  # advertencia y la siembra sigue con los demas agentes. Un agente de sistema
+  # con el MISMO codigo ya lo filtra el `exists?` de arriba.
+  def puede_sembrar_agente?(defn)
+    return true unless defn[:es_sistema]
+    return true unless Helic3::Agente.exists?(account: @account, es_sistema: true)
+
+    Rails.logger.warn(
+      "[Helic3][semilla] la cuenta #{@account.id} ya tiene un agente de sistema con otro codigo; " \
+      "no se siembra #{defn[:codigo]}"
+    )
+    false
+  end
 
   # Paridad (crit 1 de H3A-08): hoy el bot corre en los inbox donde esta conectado
   # el Agent Bot de Helic3. Para que el runner filtrado por bandeja se comporte

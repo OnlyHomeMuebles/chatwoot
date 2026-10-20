@@ -348,6 +348,12 @@ Rails.application.routes.draw do
               resource :resolucion, only: [:create], controller: 'resoluciones'
               resource :datos, only: [:update], controller: 'datos'
               resources :documentos, only: [:index, :create], controller: 'documentos'
+              # FMT-04: generar formatos desde el expediente. index = formatos con
+              # plantilla activa + items con su sugerido y marcadores vacios;
+              # vista_previa = PDF sin guardar; create = genera y deja el documento.
+              resources :formatos, only: [:index, :create], controller: 'formatos' do
+                post :vista_previa, on: :collection
+              end
             end
             resources :garantias, only: [] do
               resources :items, only: [:update], controller: 'garantia_items'
@@ -386,6 +392,16 @@ Rails.application.routes.draw do
               patch  'catalogos/:tipo/:id', to: 'catalogos#update'
               delete 'catalogos/:tipo/:id', to: 'catalogos#destroy'
               resources :parametros, only: [:index, :update]
+
+              # FMT-02: formatos (lectura abierta a agentes) y plantillas versionadas
+              # (escritura solo administradores). marcadores va antes de cualquier :id.
+              get    'formatos',                        to: 'formatos#index'
+              get    'formatos/marcadores',             to: 'formatos#marcadores'
+              post   'formatos/:formato_id/plantillas', to: 'plantillas#create'
+              get    'plantillas/:id/vista_previa',     to: 'plantillas#vista_previa'
+              get    'plantillas/:id/original',         to: 'plantillas#original'
+              post   'plantillas/:id/activar',          to: 'plantillas#activar'
+              delete 'plantillas/:id',                  to: 'plantillas#destroy'
             end
           end
 
