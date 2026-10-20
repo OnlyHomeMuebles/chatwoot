@@ -83,6 +83,14 @@
         "RESPONSABLE_PH": "Sin asignar",
         "ETAPA": "Etapa",
         "ETAPA_PH": "Selecciona una etapa",
+        "EDITAR_ETAPAS": "Editar etapas",
+        "ETAPA_DESCRIPCION": {
+          "NUEVO": "Creado por un agente; pendiente de revisión.",
+          "EN_GESTION": "La solicitud está siendo atendida.",
+          "SOLUCIONADO": "La solicitud ya fue resuelta.",
+          "DEFAULT": "Etapa actual de la solicitud."
+        },
+        "ETAPA_RESUMEN": "{etapa} · {descripcion}",
         "ADJUNTOS": "Adjuntos",
         "ADJUNTOS_CTA": "Agregar fotos o documentos",
         "ADJUNTOS_HINT": "Factura, evidencia del producto o solicitud del cliente",

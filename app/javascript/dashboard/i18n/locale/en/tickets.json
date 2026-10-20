@@ -83,6 +83,14 @@
         "RESPONSABLE_PH": "Unassigned",
         "ETAPA": "Stage",
         "ETAPA_PH": "Select a stage",
+        "EDITAR_ETAPAS": "Edit stages",
+        "ETAPA_DESCRIPCION": {
+          "NUEVO": "Created by an agent; pending review.",
+          "EN_GESTION": "The request is being handled.",
+          "SOLUCIONADO": "The request has been resolved.",
+          "DEFAULT": "Current request stage."
+        },
+        "ETAPA_RESUMEN": "{etapa} · {descripcion}",
         "ADJUNTOS": "Attachments",
         "ADJUNTOS_CTA": "Add photos or documents",
         "ADJUNTOS_HINT": "Invoice, product evidence or customer request",
