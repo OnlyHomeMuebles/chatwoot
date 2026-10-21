@@ -106,7 +106,7 @@
         "TELEFONO": "Phone",
         "TELEFONO_PH": "Contact number",
         "CORREO": "Email",
-        "CORREO_PH": "email@example.com"
+        "CORREO_PH": "email{'@'}example.com"
       },
       "COMPRA": {
         "TITLE": "Purchase and product",
