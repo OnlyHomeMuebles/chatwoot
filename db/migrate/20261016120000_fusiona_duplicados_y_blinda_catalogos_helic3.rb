@@ -108,7 +108,7 @@ class FusionaDuplicadosYBlindaCatalogosHelic3 < ActiveRecord::Migration[7.2]
   # unico del referenciante (p. ej. dos plantillas del mismo formato con igual
   # version), se revierte SOLO este grupo y se reporta, sin abortar la migracion.
   def sanear_grupo(tabla, filas)
-    superviviente = elegir_superviviente(filas)
+    superviviente = elegir_superviviente(tabla, filas)
     codigo_limpio = slug(superviviente.codigo)
     return reportar_sin_slug(tabla, superviviente) if codigo_limpio.empty?
 
@@ -132,8 +132,22 @@ class FusionaDuplicadosYBlindaCatalogosHelic3 < ActiveRecord::Migration[7.2]
         "UPDATE #{ref_tabla} SET #{columna} = #{superviviente.id} WHERE #{columna} = #{dup.id}"
       )
     end
+    reapuntar_propuestas(dup, superviviente) if tabla == 'helic3_catalogo_resultados'
     say "FUSIONADO #{tabla} id=#{dup.id} ('#{dup.codigo}') -> id=#{superviviente.id} ('#{superviviente.codigo}')"
     dup.delete
+  end
+
+  # resultado_propuesto_id vive en pqrs_metadata (JSONB), no es una FK: no lo alcanza
+  # el re-apunte de REFERENCIAS. Si no se mueve, la propuesta pendiente en la cola de
+  # decisiones (PqrController#propuestas_por_id la busca por ese id) queda huerfana al
+  # borrar el resultado duplicado. El historial en helic3_eventos.payload['resultado_id']
+  # tambien apunta a estos ids, pero ahi es solo registro: re-apuntarlo es opcional.
+  def reapuntar_propuestas(dup, superviviente)
+    execute(<<~SQL)
+      UPDATE helic3_tickets
+         SET pqrs_metadata = jsonb_set(pqrs_metadata, '{resultado_propuesto_id}', to_jsonb(#{superviviente.id}))
+       WHERE (pqrs_metadata->>'resultado_propuesto_id')::bigint = #{dup.id}
+    SQL
   end
 
   # Un codigo que queda vacio al normalizar (p. ej. '...') no es un slug valido y
@@ -144,10 +158,22 @@ class FusionaDuplicadosYBlindaCatalogosHelic3 < ActiveRecord::Migration[7.2]
     false
   end
 
-  # Gana la fila que YA tiene el codigo limpio (la que la 1a respeto); si ninguna,
-  # la de menor id. Determinista: mismo resultado en test y en produccion.
-  def elegir_superviviente(filas)
-    filas.min_by { |fila| [fila.codigo == slug(fila.codigo) ? 0 : 1, fila.id] }
+  # Gana la fila con MAS referencias reales: la que el negocio usa (normalmente la
+  # original de Karen, con su nombre, posicion y reglas), no la de la semilla SIE-01
+  # (codigo limpio pero sin uso), que es la que elegia el criterio anterior y borraba
+  # la configuracion de Karen en silencio. Si empatan, la de menor id (la mas antigua).
+  # Determinista: mismo resultado en test y en produccion. El codigo sucio del
+  # superviviente se normaliza despues, dentro de sanear_grupo.
+  def elegir_superviviente(tabla, filas)
+    filas.max_by { |fila| [contar_referencias(tabla, fila.id), -fila.id] }
+  end
+
+  # Cuantas filas apuntan a esta del catalogo, sumando todas sus FKs entrantes. Se
+  # cuenta antes de fusionar, con las referencias aun en su lugar.
+  def contar_referencias(tabla, id)
+    (REFERENCIAS[tabla] || []).sum do |ref_tabla, columna|
+      connection.select_value("SELECT COUNT(*) FROM #{ref_tabla} WHERE #{columna} = #{id}").to_i
+    end
   end
 
   def slug(codigo)

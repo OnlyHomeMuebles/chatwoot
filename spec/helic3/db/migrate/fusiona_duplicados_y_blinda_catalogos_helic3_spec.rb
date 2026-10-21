@@ -36,28 +36,51 @@ RSpec.describe FusionaDuplicadosYBlindaCatalogosHelic3 do
   end
 
   describe 'fusion de duplicados' do
-    it 're-apunta la referencia a la superviviente y borra la fila sucia' do
-      limpia = Helic3::Catalogo::Categoria.create!(account: account, nombre: 'Garantía', codigo: 'garantia')
-      sucia = Helic3::Catalogo::Categoria.create!(account: account, nombre: 'Garantía vieja', codigo: 'garantia_vieja')
-      motivo = Helic3::Catalogo::MotivoPqr.create!(account: account, nombre: 'Falla', codigo: 'falla', categoria: sucia)
-      ensuciar(sucia, ' garantia') # al limpiar colapsa con 'garantia'
+    # Bloqueante 2 (revision Jhan): gana la fila MAS referenciada (la original de
+    # Karen, con su config y sus datos), no la de la semilla SIE-01 (codigo limpio
+    # pero vacia). Y las referencias de las absorbidas se re-apuntan a ella.
+    it 'elige como superviviente la fila con mas referencias y le re-apunta las demas' do
+      karen = Helic3::Catalogo::Categoria.create!(account: account, nombre: 'Garantía Karen', codigo: 'garantia_karen')
+      semilla = Helic3::Catalogo::Categoria.create!(account: account, nombre: 'Garantía', codigo: 'garantia')
+      Helic3::Catalogo::MotivoPqr.create!(account: account, nombre: 'M1', codigo: 'm1', categoria: karen)
+      Helic3::Catalogo::MotivoPqr.create!(account: account, nombre: 'M2', codigo: 'm2', categoria: karen)
+      motivo_semilla = Helic3::Catalogo::MotivoPqr.create!(account: account, nombre: 'M3', codigo: 'm3', categoria: semilla)
+      ensuciar(karen, 'garantia ') # colapsa con 'garantia', pero es la mas usada
 
       correr(:up)
 
-      expect(motivo.reload.categoria_id).to eq(limpia.id)
-      expect(Helic3::Catalogo::Categoria.exists?(sucia.id)).to be(false)
-      expect(limpia.reload.codigo).to eq('garantia')
+      expect(Helic3::Catalogo::Categoria.exists?(karen.id)).to be(true)
+      expect(Helic3::Catalogo::Categoria.exists?(semilla.id)).to be(false)
+      expect(motivo_semilla.reload.categoria_id).to eq(karen.id) # la ref de la absorbida se re-apunta
+      expect(karen.reload.codigo).to eq('garantia')
+      expect(karen.nombre).to eq('Garantía Karen') # conserva la config de Karen
     end
 
-    it 'conserva la fila con el codigo ya limpio, aunque se haya creado despues' do
-      sucia = Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nueva vieja', codigo: 'nueva_vieja')
-      limpia = Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nueva', codigo: 'nueva')
-      ensuciar(sucia, 'nueva ') # creada antes (id menor) pero sucia: NO debe ganar
+    it 'si ninguna fila tiene referencias, conserva la de menor id (la original)' do
+      primera = Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nueva original', codigo: 'nueva_original')
+      segunda = Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nueva', codigo: 'nueva')
+      ensuciar(primera, 'nueva ') # colapsa con 'nueva'; menor id gana aunque este sucia
 
       correr(:up)
 
-      expect(Helic3::Catalogo::EtapaPqr.exists?(limpia.id)).to be(true)
-      expect(Helic3::Catalogo::EtapaPqr.exists?(sucia.id)).to be(false)
+      expect(Helic3::Catalogo::EtapaPqr.exists?(primera.id)).to be(true)
+      expect(Helic3::Catalogo::EtapaPqr.exists?(segunda.id)).to be(false)
+      expect(primera.reload.codigo).to eq('nueva')
+    end
+
+    # Bloqueante 1 (revision Jhan): resultado_propuesto_id vive en pqrs_metadata
+    # (JSONB), no es una FK, asi que el re-apunte de REFERENCIAS no lo alcanza. Si no
+    # se mueve, la propuesta pendiente en la cola de decisiones queda huerfana.
+    it 're-apunta resultado_propuesto_id de las propuestas pendientes al fusionar resultados' do
+      superviviente = Helic3::Catalogo::Resultado.create!(account: account, nombre: 'Cerrar', codigo: 'cerrar')
+      dup = Helic3::Catalogo::Resultado.create!(account: account, nombre: 'Cerrar dup', codigo: 'cerrar_dup')
+      ticket = create(:ticket, account: account, pqrs_metadata: { 'resultado_propuesto_id' => dup.id })
+      ensuciar(dup, 'cerrar ') # colapsa con 'cerrar'
+
+      correr(:up)
+
+      expect(Helic3::Catalogo::Resultado.exists?(dup.id)).to be(false)
+      expect(ticket.reload.pqrs_metadata['resultado_propuesto_id']).to eq(superviviente.id)
     end
   end
 
