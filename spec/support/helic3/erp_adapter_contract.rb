@@ -15,6 +15,9 @@ RSpec.shared_examples 'un adaptador de ERP' do
     customer = adapter.find_customer(cedula: known_cedula)
     expect(customer).to be_a(Helic3::Erp::Customer)
     expect(customer.cedula).to eq(known_cedula)
+    # ERP-10: el contrato ahora incluye ciudad y dirección (Karen usa la ciudad para
+    # decidir si la garantía va a visita técnica).
+    expect(customer).to respond_to(:ciudad, :direccion)
   end
 
   it 'invoices devuelve una lista de facturas del cliente' do
