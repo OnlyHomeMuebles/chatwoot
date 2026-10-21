@@ -19,10 +19,13 @@ class Api::V1::Accounts::Helic3::ErpClientesController < Api::V1::Accounts::Base
     else
       render json: { encontrado: false }
     end
-  rescue Helic3::Erp::NoDisponible
-    render json: { error: 'erp_no_disponible' }, status: :service_unavailable
   rescue Helic3::Erp::ConfiguracionInvalida
     erp_desactivado
+  rescue Helic3::Erp::NoDisponible, StandardError => e
+    # el ERP nunca debe dejar al agente sin poder seguir: cualquier fallo de la consulta
+    # se reporta como no disponible (503), nunca como un 500 inesperado.
+    Rails.logger.warn("[ERP-08] consulta de cliente fallo: #{e.class.name}") unless e.is_a?(Helic3::Erp::NoDisponible)
+    render json: { error: 'erp_no_disponible' }, status: :service_unavailable
   end
 
   private

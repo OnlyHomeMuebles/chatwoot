@@ -78,4 +78,26 @@ RSpec.describe 'ERP clientes API', type: :request do
       expect(response.parsed_body['erp_habilitado']).to be(true)
     end
   end
+
+  describe 'POST create con consultado_erp (end-to-end)' do
+    before { Helic3::Catalogo::SeederService.new(account).sembrar! }
+
+    let(:motivo) { Helic3::Catalogo::MotivoPqr.find_by!(account: account, codigo: 'garantia_producto') }
+
+    it 'CA3: radica con consultado_erp y marca erp lo de Siesa, humano lo que el agente corrigio' do
+      with_modified_env HELIC3_ERP_MODO: 'simulado' do
+        post "/api/v1/accounts/#{account.id}/helic3/tickets",
+             params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, consultado_erp: true,
+                                 datos: { cedula: '1032456789', cliente_nombre: 'Ana Ruiz',
+                                          cliente_telefono: '3001112233', direccion: 'Correccion 1' } } },
+             headers: agent.create_new_auth_token, as: :json
+      end
+
+      expect(response).to have_http_status(:success)
+      ficha = Helic3::Ticket.find(response.parsed_body['id']).datos
+      expect(ficha.fuentes['cliente_nombre']).to eq('erp')
+      expect(ficha.fuentes['direccion']).to eq('humano')
+      expect(ficha.direccion).to eq('Correccion 1')
+    end
+  end
 end
