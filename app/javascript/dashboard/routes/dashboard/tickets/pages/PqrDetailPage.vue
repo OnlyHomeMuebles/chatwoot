@@ -1099,7 +1099,7 @@ const formatFecha = valor =>
             </h3>
             <div class="flex flex-col gap-1">
               <span class="text-xs text-n-slate-11">{{
-                t('TICKETS.TABLE.STATUS')
+                t('TICKETS.DETAIL.STAGE')
               }}</span>
               <!-- Caso resuelto (reloj detenido): la etapa queda en solo lectura. No
                    se reabre desde aqui para no dejar la etapa operativa con el reloj

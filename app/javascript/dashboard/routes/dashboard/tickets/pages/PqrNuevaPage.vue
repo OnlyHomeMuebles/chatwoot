@@ -96,15 +96,17 @@ const descripcionEtapa = computed(() => {
   }
 });
 
-// Preselecciona la etapa inicial (Nuevo) cuando llega el catalogo, si el operador aun
-// no eligio otra: el wizard arranca en Nuevo, como nace toda PQR, pero puede subirla a
-// En gestion si ya la va a trabajar.
+// Arranca en la primera etapa operativa que NO es la inicial ("En gestion"): al radicar
+// a mano el agente ya la va a trabajar (revision Jhan). Se identifica por los flags
+// (inicial / detiene_reloj), no por el texto del codigo, para que Karen pueda renombrar
+// las etapas sin romper esto. Si no hubiera una no-inicial, cae en la inicial.
 watch(
   () => catalogos.value.etapas_pqr,
   etapas => {
     if (form.etapa_id) return;
-    const inicial = (etapas || []).find(e => e.codigo === 'nuevo');
-    if (inicial) form.etapa_id = inicial.id;
+    const operativas = (etapas || []).filter(e => !e.detiene_reloj);
+    const defecto = operativas.find(e => !e.inicial) || operativas.find(e => e.inicial);
+    if (defecto) form.etapa_id = defecto.id;
   },
   { immediate: true }
 );

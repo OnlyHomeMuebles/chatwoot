@@ -10,7 +10,7 @@ json.motivos_pqr @motivos_pqr do |motivo|
 end
 
 json.etapas_pqr @etapas_pqr do |etapa|
-  json.call(etapa, :id, :codigo, :nombre, :detiene_reloj, :visible_cliente)
+  json.call(etapa, :id, :codigo, :nombre, :detiene_reloj, :visible_cliente, :inicial)
 end
 
 json.resultados @resultados do |resultado|

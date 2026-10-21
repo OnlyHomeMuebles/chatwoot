@@ -142,10 +142,10 @@ RSpec.describe Helic3::Casos::Radicar do
       expect(de_persona.pqrs_metadata).not_to have_key('numero_orden')
     end
 
-    it 'si la cuenta no tiene etapa inicial activa, revienta en vez de silenciarse' do
+    it 'si la cuenta no tiene etapa inicial activa, revienta con un error que nombra la causa' do
       etapa_inicial.update!(activo: false)
 
-      expect { radicar(tipo: reclamo) }.to raise_error(ActiveRecord::RecordNotFound)
+      expect { radicar(tipo: reclamo) }.to raise_error(Helic3::Casos::Radicar::EtapaInicialFaltante)
     end
 
     it 'encuentra la etapa inicial por el flag, no por el texto del codigo' do

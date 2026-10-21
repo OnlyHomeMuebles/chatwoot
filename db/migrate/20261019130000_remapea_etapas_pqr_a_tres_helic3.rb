@@ -38,7 +38,8 @@ class RemapeaEtapasPqrATresHelic3 < ActiveRecord::Migration[7.2]
     modelo.reset_column_information
     # por cuenta: el indice unico es (account_id, codigo), asi que se remapea
     # cuenta por cuenta. Solo las cuentas que todavia tienen alguna etapa vieja.
-    cuentas = modelo.where(codigo: RENOMBRES.keys + FUSIONES.keys).distinct.pluck(:account_id)
+    cuentas = modelo.where('btrim(lower(codigo)) IN (?)', RENOMBRES.keys + FUSIONES.keys)
+                    .distinct.pluck(:account_id)
     cuentas.each { |cuenta_id| remapear_cuenta(cuenta_id) }
   end
 
@@ -55,16 +56,24 @@ class RemapeaEtapasPqrATresHelic3 < ActiveRecord::Migration[7.2]
   def remapear_cuenta(cuenta_id)
     modelo = Helic3::Catalogo::EtapaPqr
     RENOMBRES.each do |codigo_viejo, atributos|
-      modelo.find_by(account_id: cuenta_id, codigo: codigo_viejo)&.update_columns(atributos)
+      etapa_por_codigo(modelo, cuenta_id, codigo_viejo)&.update_columns(atributos)
     end
     FUSIONES.each do |codigo_viejo, codigo_destino|
-      vieja = modelo.find_by(account_id: cuenta_id, codigo: codigo_viejo)
-      destino = modelo.find_by(account_id: cuenta_id, codigo: codigo_destino)
+      vieja = etapa_por_codigo(modelo, cuenta_id, codigo_viejo)
+      destino = etapa_por_codigo(modelo, cuenta_id, codigo_destino)
       next unless vieja && destino
 
       execute("UPDATE helic3_tickets SET etapa_id = #{destino.id} WHERE etapa_id = #{vieja.id}")
       say "FUNDE #{codigo_viejo} -> #{codigo_destino} (cuenta #{cuenta_id})"
       vieja.delete
     end
+  end
+
+  # Busca por el codigo NORMALIZADO (btrim + lower): en produccion los codigos viejos
+  # pueden traer espacios o mayusculas (asi entro el 'nueva ' que rompio la radicacion),
+  # y el remapeo no debe depender de que ya esten limpios. Compara contra la clave ya
+  # normalizada de RENOMBRES/FUSIONES.
+  def etapa_por_codigo(modelo, cuenta_id, codigo)
+    modelo.where(account_id: cuenta_id).where('btrim(lower(codigo)) = ?', codigo).first
   end
 end

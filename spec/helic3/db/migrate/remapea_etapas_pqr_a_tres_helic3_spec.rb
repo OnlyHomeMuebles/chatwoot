@@ -13,6 +13,21 @@ RSpec.describe RemapeaEtapasPqrATresHelic3 do
     migration.suppress_messages { migration.public_send(direccion) }
   end
 
+  # Escribe un codigo sucio saltandose el modelo (y su normalizes), como entro en
+  # produccion por Excel/consola (asi se colo el 'nueva ' que rompio la radicacion).
+  def ensuciar(fila, codigo)
+    conexion = ActiveRecord::Base.connection
+    conexion.execute("UPDATE #{fila.class.table_name} SET codigo = #{conexion.quote(codigo)} WHERE id = #{fila.id}")
+  end
+
+  # Si el schema de test ya trae el CHECK de codigo (lo instala la migracion de #127),
+  # hay que quitarlo para montar el codigo sucio que simula el estado real de produccion.
+  before do
+    ActiveRecord::Base.connection.remove_check_constraint(
+      'helic3_catalogo_etapas_pqr', name: 'helic3_catalogo_etapas_pqr_codigo_slug', if_exists: true
+    )
+  end
+
   # las 4 etapas tal como estaban sembradas en produccion antes del cambio
   def sembrar_viejas
     {
@@ -40,6 +55,19 @@ RSpec.describe RemapeaEtapasPqrATresHelic3 do
 
       expect(Helic3::Catalogo::EtapaPqr.where(account: account, inicial: true).pluck(:codigo)).to eq(['nuevo'])
       expect(Helic3::Catalogo::EtapaPqr.where(account: account, detiene_reloj: true).pluck(:codigo)).to eq(['solucionado'])
+    end
+  end
+
+  describe 'tolera codigos viejos sucios (revision Jhan)' do
+    it 'remapea aunque el codigo tenga espacios o mayusculas (btrim + lower)' do
+      v = sembrar_viejas
+      ensuciar(v[:nueva], 'Nueva ')        # mayuscula + espacio final
+      ensuciar(v[:analisis], ' en_analisis') # espacio inicial
+
+      correr(:up)
+
+      codigos = Helic3::Catalogo::EtapaPqr.where(account: account).order(:posicion).pluck(:codigo)
+      expect(codigos).to eq(%w[nuevo en_gestion solucionado])
     end
   end
 

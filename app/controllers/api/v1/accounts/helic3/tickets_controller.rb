@@ -47,11 +47,22 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
       registrar_detalle_al_crear
       registrar_datos_cliente_al_crear
     end
+  rescue Helic3::Casos::Radicar::EtapaInicialFaltante => e
+    # misma familia que ParametroFaltante (riesgo 1 de #127): la cuenta no esta bien
+    # sembrada. Se responde 422 con la causa nombrada, no el 404/500 enganoso. La
+    # excepcion sale de la transaccion, asi que ya hubo rollback cuando se rescata.
+    render json: { error: e.message }, status: :unprocessable_entity
   end
 
   def update
     validar_cambio_de_etapa!
-    @ticket.update!(update_params)
+    etapa_previa = @ticket.etapa_id
+    # update + evento en la MISMA transaccion: si falla el registro de la bitacora, no
+    # queda la etapa cambiada sin su evento (mismo criterio de atomicidad que create).
+    Helic3::Ticket.transaction do
+      @ticket.update!(update_params)
+      registrar_cambio_de_etapa(etapa_previa)
+    end
   end
 
   def destroy
@@ -124,9 +135,33 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
     modelo.find_by!(account: Current.account, id: id)
   end
 
-  # El menu del panel Acciones cambia la etapa operativa (Nuevo/En gestion).
+  # El menu del panel Acciones cambia la etapa operativa (Nuevo/En gestion). Un caso ya
+  # resuelto (reloj detenido) NO se reabre por aqui: dejaria la etapa operativa con el
+  # reloj ya parado (incoherente) y evadiria el flujo de resolucion que sella respondida_at
+  # (RES-01). Responde 422, no reabre en silencio.
   def validar_cambio_de_etapa!
-    validar_etapa_operativa!(update_params[:etapa_id])
+    etapa_id = update_params[:etapa_id]
+    return if etapa_id.blank?
+
+    if @ticket.reloj_detenido?
+      errores = Helic3::Ticket.new
+      errores.errors.add(:base, 'El caso ya esta resuelto; su etapa no se cambia desde el panel')
+      raise ActiveRecord::RecordInvalid, errores
+    end
+
+    validar_etapa_operativa!(etapa_id)
+  end
+
+  # Deja una entrada en la bitacora (EVT-01) cuando el operador mueve la etapa desde el
+  # panel: queda registro de quien paso la PQR a En gestion y cuando (sustento ante la
+  # SIC). Solo si la etapa cambio de verdad; cambiar status/assignee no genera evento.
+  def registrar_cambio_de_etapa(etapa_previa)
+    return if @ticket.etapa_id == etapa_previa
+
+    Helic3::Evento.registrar!(
+      ticket: @ticket, tipo: 'etapa_cambiada', origen: 'humano', actor: Current.user,
+      payload: { 'etapa_id' => @ticket.etapa_id, 'etapa_anterior_id' => etapa_previa }
+    )
   end
 
   # Regla compartida por update (menu del detalle) y create (wizard): la etapa solo

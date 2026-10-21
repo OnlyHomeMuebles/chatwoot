@@ -482,6 +482,41 @@ RSpec.describe 'Tickets API', type: :request do
       expect(response).to have_http_status(:unprocessable_entity)
       expect(ticket.reload.etapa.codigo).to eq('nuevo')
     end
+
+    it 'rechaza con 422 reabrir un caso ya resuelto (reloj detenido): no se cambia la etapa por el panel' do
+      ticket.update_columns(respondida_at: Time.current) # caso resuelto: el reloj esta detenido
+
+      patch "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+            params: { ticket: { etapa_id: en_gestion.id } },
+            headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(ticket.reload.etapa.codigo).to eq('nuevo') # no se reabrio
+    end
+
+    it 'deja un evento etapa_cambiada en la bitacora al mover la etapa (quien y cuando)' do
+      expect do
+        patch "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+              params: { ticket: { etapa_id: en_gestion.id } },
+              headers: agent.create_new_auth_token, as: :json
+      end.to change { Helic3::Evento.where(ticket: ticket, tipo: 'etapa_cambiada').count }.by(1)
+
+      expect(response).to have_http_status(:success)
+      evento = Helic3::Evento.find_by(ticket: ticket, tipo: 'etapa_cambiada')
+      expect(evento.actor).to eq(agent)
+      expect(evento.payload['etapa_id']).to eq(en_gestion.id)
+    end
+
+    it 'create responde 422 (no 500) si la cuenta no tiene una etapa inicial activa' do
+      Helic3::Catalogo::EtapaPqr.where(account: account).update_all(inicial: false)
+
+      post "/api/v1/accounts/#{account.id}/helic3/tickets",
+           params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id,
+                               datos: { cliente_nombre: 'Cliente', cliente_telefono: '3001234567' } } },
+           headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
   end
 
   describe 'POST /api/v1/accounts/{account.id}/helic3/tickets/{id}/assign' do
