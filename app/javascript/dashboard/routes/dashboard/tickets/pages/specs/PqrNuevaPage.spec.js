@@ -8,6 +8,7 @@ const push = vi.fn();
 const alert = vi.fn();
 const crearApi = vi.fn();
 const subirApi = vi.fn();
+const consultarErpApi = vi.fn();
 // crear() pasa por store.dispatch('tickets/create'); el mock delega en crearApi
 // (que los tests configuran) y devuelve el ticket como lo hace el store real
 // (response.data). Un rechazo de crearApi se propaga, igual que el store.
@@ -36,6 +37,7 @@ vi.mock('dashboard/api/tickets', () => ({
   default: {
     create: (...args) => crearApi(...args),
     subirDocumento: (...args) => subirApi(...args),
+    consultarErpCliente: (...args) => consultarErpApi(...args),
   },
 }));
 
@@ -77,6 +79,8 @@ beforeEach(() => {
   alert.mockClear();
   crearApi.mockReset();
   subirApi.mockReset().mockResolvedValue();
+  consultarErpApi.mockReset();
+  delete catalogosRef.value.erp_habilitado;
   routeState.query = {};
 });
 
@@ -182,7 +186,9 @@ describe('PqrNuevaPage.vue — crear (MAN-02)', () => {
   // viajan en data.error. El wizard debe mostrar ambos, no caer al generico.
   it('muestra el error del backend cuando viene en data.error (etapa inicial faltante)', async () => {
     crearApi.mockRejectedValue({
-      response: { data: { error: "falta la etapa inicial 'nueva' en la cuenta 1" } },
+      response: {
+        data: { error: "falta la etapa inicial 'nueva' en la cuenta 1" },
+      },
     });
     const wrapper = montar();
     llenarMinimo(wrapper.vm);
@@ -190,7 +196,9 @@ describe('PqrNuevaPage.vue — crear (MAN-02)', () => {
     await wrapper.vm.crear();
     await flushPromises();
 
-    expect(wrapper.vm.errorBackend).toBe("falta la etapa inicial 'nueva' en la cuenta 1");
+    expect(wrapper.vm.errorBackend).toBe(
+      "falta la etapa inicial 'nueva' en la cuenta 1"
+    );
     expect(push).not.toHaveBeenCalled();
   });
 
@@ -242,5 +250,68 @@ describe('PqrNuevaPage.vue — crear (MAN-02)', () => {
       name: 'tickets_index',
       params: { accountId: '1' },
     });
+  });
+});
+
+describe('PqrNuevaPage.vue — ERP (ERP-11)', () => {
+  it('CA3: sin erp_habilitado el boton Consultar Siesa no esta disponible', () => {
+    expect(montar().vm.erpHabilitado).toBe(false);
+  });
+
+  it('erpHabilitado es true cuando el catalogo lo trae encendido', () => {
+    catalogosRef.value = { ...catalogosRef.value, erp_habilitado: true };
+    expect(montar().vm.erpHabilitado).toBe(true);
+  });
+
+  it('CA1: consultar llena y marca los campos; al crear envia consultado_erp en true', async () => {
+    catalogosRef.value = { ...catalogosRef.value, erp_habilitado: true };
+    consultarErpApi.mockResolvedValue({
+      data: {
+        encontrado: true,
+        cliente: {
+          cedula: '1032456789',
+          nombre: 'Ana Ruiz',
+          telefono: '3001112233',
+          email: 'ana@correo.com',
+          ciudad: 'Armenia',
+          direccion: 'Cra 14',
+        },
+      },
+    });
+    crearApi.mockResolvedValue({ data: { id: 42, display_id: 7 } });
+    const vm = montar().vm;
+    vm.form.motivo_pqr_id = 10;
+    vm.form.description = 'El sofá llegó roto';
+    vm.form.cedula = '1032456789';
+
+    await vm.erp.consultar();
+
+    expect(vm.form.cliente_nombre).toBe('Ana Ruiz');
+    expect(vm.form.ciudad).toBe('Armenia');
+    expect(vm.erp.tieneBadge('cliente_nombre')).toBe(true);
+
+    await vm.crear();
+    await flushPromises();
+    expect(crearApi.mock.calls[0][0].ticket.consultado_erp).toBe(true);
+  });
+
+  it('CA4: con el ERP caido avisa y NO bloquea el crear (consultado_erp false)', async () => {
+    catalogosRef.value = { ...catalogosRef.value, erp_habilitado: true };
+    consultarErpApi.mockRejectedValue({ response: { status: 503 } });
+    crearApi.mockResolvedValue({ data: { id: 43, display_id: 8 } });
+    const vm = montar().vm;
+    vm.form.motivo_pqr_id = 10;
+    vm.form.description = 'El sofá llegó roto';
+    vm.form.cedula = '1032456789';
+    vm.form.cliente_nombre = 'A mano';
+    vm.form.cliente_telefono = '3001234567';
+
+    await vm.erp.consultar();
+    expect(vm.erp.estado.value).toBe('no_disponible');
+
+    await vm.crear();
+    await flushPromises();
+    expect(crearApi).toHaveBeenCalled();
+    expect(crearApi.mock.calls[0][0].ticket.consultado_erp).toBe(false);
   });
 });

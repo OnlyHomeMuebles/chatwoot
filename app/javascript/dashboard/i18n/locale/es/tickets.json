@@ -96,7 +96,13 @@
         "TELEFONO": "Teléfono",
         "TELEFONO_PH": "Número de contacto",
         "CORREO": "Correo electrónico",
-        "CORREO_PH": "correo@ejemplo.com"
+        "CORREO_PH": "correo{'@'}ejemplo.com",
+        "CONSULTAR_SIESA": "Consultar Siesa",
+        "BADGE_SIESA": "Siesa",
+        "ERP_ENCONTRADO": "Cliente encontrado en Siesa",
+        "ERP_NO_ENCONTRADO": "No está en Siesa: llena los datos a mano",
+        "ERP_NO_DISPONIBLE": "Siesa no responde ahora; puedes seguir a mano",
+        "ERP_CEDULA_INVALIDA": "Revisa la cédula"
       },
       "COMPRA": {
         "TITLE": "Compra y producto",

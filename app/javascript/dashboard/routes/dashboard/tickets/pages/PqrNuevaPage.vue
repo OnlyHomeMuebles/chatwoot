@@ -15,6 +15,9 @@ import Input from 'dashboard/components-next/input/Input.vue';
 import TextArea from 'dashboard/components-next/textarea/TextArea.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
+// ERP-11: consulta del cliente por cedula contra el ERP (ERP-08) para autocompletar.
+import { useErpCliente } from '../composables/helic3/useErpCliente';
+import ErpBadge from '../components/helic3/ErpBadge.vue';
 
 const store = useStore();
 const router = useRouter();
@@ -57,6 +60,24 @@ const form = reactive({
 // conversacion, el cliente deja de ser obligatorio (el backend lo toma del contacto).
 const conversationDisplayId = route.query.conversation || null;
 const vieneDeConversacion = computed(() => !!conversationDisplayId);
+
+// ERP-11: el boton "Consultar Siesa" aparece solo si el ERP esta encendido (ERP-04).
+const erp = useErpCliente(form);
+const erpHabilitado = computed(() => Boolean(catalogos.value.erp_habilitado));
+
+// Aviso segun el resultado de la consulta; ningun estado bloquea "Crear PQR".
+const AVISOS_ERP = {
+  encontrado: 'TICKETS.NUEVA.CLIENTE.ERP_ENCONTRADO',
+  no_encontrado: 'TICKETS.NUEVA.CLIENTE.ERP_NO_ENCONTRADO',
+  no_disponible: 'TICKETS.NUEVA.CLIENTE.ERP_NO_DISPONIBLE',
+  cedula_invalida: 'TICKETS.NUEVA.CLIENTE.ERP_CEDULA_INVALIDA',
+};
+const avisoErp = computed(() =>
+  AVISOS_ERP[erp.estado.value] ? t(AVISOS_ERP[erp.estado.value]) : ''
+);
+const avisoErpClase = computed(() =>
+  erp.estado.value === 'encontrado' ? 'text-n-teal-11' : 'text-n-amber-11'
+);
 
 const opciones = (lista, label = 'nombre') =>
   (lista || []).map(x => ({ value: x.id, label: x[label] }));
@@ -205,6 +226,9 @@ const crear = async () => {
         // display_id de la conversacion si vino del chat (null = PQR manual suelta);
         // el backend lo traduce a id de BD y asocia la PQR.
         conversation_id: conversationDisplayId,
+        // ERP-08/11: el backend reconsulta y marca procedencia (erp vs humano) solo si la
+        // ultima consulta exitosa fue con la cedula que esta en el campo.
+        consultado_erp: erp.consultadoErp(),
         datos: {
           cedula: form.cedula,
           cliente_nombre: form.cliente_nombre,
@@ -256,6 +280,9 @@ defineExpose({
   continuar,
   crear,
   volverABandeja,
+  erp,
+  erpHabilitado,
+  avisoErp,
 });
 </script>
 
@@ -459,30 +486,65 @@ defineExpose({
                 </p>
               </div>
               <div class="flex flex-col gap-5 px-5 py-5">
-                <Input
-                  v-model="form.cedula"
-                  :label="t('TICKETS.NUEVA.CLIENTE.CEDULA')"
-                  :placeholder="t('TICKETS.NUEVA.CLIENTE.CEDULA_PH')"
-                />
-                <div class="grid gap-5 sm:grid-cols-2">
-                  <Input
-                    v-model="form.cliente_nombre"
-                    :label="`${t('TICKETS.NUEVA.CLIENTE.NOMBRE')} *`"
-                    :placeholder="t('TICKETS.NUEVA.CLIENTE.NOMBRE_PH')"
-                  />
-                  <Input
-                    v-model="form.cliente_telefono"
-                    type="tel"
-                    :label="`${t('TICKETS.NUEVA.CLIENTE.TELEFONO')} *`"
-                    :placeholder="t('TICKETS.NUEVA.CLIENTE.TELEFONO_PH')"
-                  />
+                <!-- Cedula + boton "Consultar Siesa" (solo si el ERP esta encendido). -->
+                <div class="flex flex-col gap-1">
+                  <span class="mb-0.5 text-heading-3 text-n-slate-12">
+                    {{ t('TICKETS.NUEVA.CLIENTE.CEDULA') }}
+                  </span>
+                  <div class="flex items-start gap-2">
+                    <Input
+                      v-model="form.cedula"
+                      class="flex-1"
+                      :placeholder="t('TICKETS.NUEVA.CLIENTE.CEDULA_PH')"
+                      @update:model-value="erp.alCambiarCedula()"
+                      @keyup.enter="erp.consultar()"
+                    />
+                    <Button
+                      v-if="erpHabilitado"
+                      type="button"
+                      :label="t('TICKETS.NUEVA.CLIENTE.CONSULTAR_SIESA')"
+                      icon="i-lucide-search"
+                      :is-loading="erp.isPending.value"
+                      :disabled="!form.cedula"
+                      faded
+                      @click="erp.consultar()"
+                    />
+                  </div>
+                  <span v-if="avisoErp" class="text-xs" :class="avisoErpClase">
+                    {{ avisoErp }}
+                  </span>
                 </div>
-                <Input
-                  v-model="form.cliente_email"
-                  type="email"
-                  :label="t('TICKETS.NUEVA.CLIENTE.CORREO')"
-                  :placeholder="t('TICKETS.NUEVA.CLIENTE.CORREO_PH')"
-                />
+                <div class="grid gap-5 sm:grid-cols-2">
+                  <div class="flex flex-col gap-1">
+                    <Input
+                      v-model="form.cliente_nombre"
+                      :label="`${t('TICKETS.NUEVA.CLIENTE.NOMBRE')} *`"
+                      :placeholder="t('TICKETS.NUEVA.CLIENTE.NOMBRE_PH')"
+                      @update:model-value="erp.alEditar('cliente_nombre')"
+                    />
+                    <ErpBadge v-if="erp.tieneBadge('cliente_nombre')" />
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <Input
+                      v-model="form.cliente_telefono"
+                      type="tel"
+                      :label="`${t('TICKETS.NUEVA.CLIENTE.TELEFONO')} *`"
+                      :placeholder="t('TICKETS.NUEVA.CLIENTE.TELEFONO_PH')"
+                      @update:model-value="erp.alEditar('cliente_telefono')"
+                    />
+                    <ErpBadge v-if="erp.tieneBadge('cliente_telefono')" />
+                  </div>
+                </div>
+                <div class="flex flex-col gap-1">
+                  <Input
+                    v-model="form.cliente_email"
+                    type="email"
+                    :label="t('TICKETS.NUEVA.CLIENTE.CORREO')"
+                    :placeholder="t('TICKETS.NUEVA.CLIENTE.CORREO_PH')"
+                    @update:model-value="erp.alEditar('cliente_email')"
+                  />
+                  <ErpBadge v-if="erp.tieneBadge('cliente_email')" />
+                </div>
               </div>
             </section>
 
@@ -532,16 +594,24 @@ defineExpose({
                 </h2>
               </div>
               <div class="flex flex-col gap-5 px-5 py-5">
-                <Input
-                  v-model="form.ciudad"
-                  :label="t('TICKETS.NUEVA.DIRECCION.CIUDAD')"
-                  :placeholder="t('TICKETS.NUEVA.DIRECCION.CIUDAD_PH')"
-                />
-                <Input
-                  v-model="form.direccion"
-                  :label="t('TICKETS.NUEVA.DIRECCION.DIRECCION')"
-                  :placeholder="t('TICKETS.NUEVA.DIRECCION.DIRECCION_PH')"
-                />
+                <div class="flex flex-col gap-1">
+                  <Input
+                    v-model="form.ciudad"
+                    :label="t('TICKETS.NUEVA.DIRECCION.CIUDAD')"
+                    :placeholder="t('TICKETS.NUEVA.DIRECCION.CIUDAD_PH')"
+                    @update:model-value="erp.alEditar('ciudad')"
+                  />
+                  <ErpBadge v-if="erp.tieneBadge('ciudad')" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <Input
+                    v-model="form.direccion"
+                    :label="t('TICKETS.NUEVA.DIRECCION.DIRECCION')"
+                    :placeholder="t('TICKETS.NUEVA.DIRECCION.DIRECCION_PH')"
+                    @update:model-value="erp.alEditar('direccion')"
+                  />
+                  <ErpBadge v-if="erp.tieneBadge('direccion')" />
+                </div>
               </div>
             </section>
           </div>

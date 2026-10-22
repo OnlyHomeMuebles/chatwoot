@@ -96,7 +96,13 @@
         "TELEFONO": "Phone",
         "TELEFONO_PH": "Contact number",
         "CORREO": "Email",
-        "CORREO_PH": "email@example.com"
+        "CORREO_PH": "email{'@'}example.com",
+        "CONSULTAR_SIESA": "Query Siesa",
+        "BADGE_SIESA": "Siesa",
+        "ERP_ENCONTRADO": "Customer found in Siesa",
+        "ERP_NO_ENCONTRADO": "Not in Siesa: fill in the data manually",
+        "ERP_NO_DISPONIBLE": "Siesa is not responding now; you can continue manually",
+        "ERP_CEDULA_INVALIDA": "Check the ID number"
       },
       "COMPRA": {
         "TITLE": "Purchase and product",
