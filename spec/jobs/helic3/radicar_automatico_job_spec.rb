@@ -24,7 +24,7 @@ RSpec.describe Helic3::RadicarAutomaticoJob do
   before do
     # la etapa "nueva" es requisito de Casos::Radicar; se crea aqui (no como let!) porque
     # el test no la referencia directamente, solo la necesita presente.
-    Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nueva', codigo: 'nueva')
+    Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nuevo', codigo: 'nuevo', inicial: true)
     allow(Helic3::ChatwootClient).to receive(:new).and_return(client)
     allow(client).to receive(:create_message)
   end

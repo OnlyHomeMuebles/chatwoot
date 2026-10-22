@@ -10,7 +10,7 @@ RSpec.describe Helic3::Catalogo::SeederService do
     resumen = service.sembrar!
 
     expect(resumen).to eq(
-      categorias: 6, tipos: 5, etapas_pqr: 4, motivos_pqr: 7, resultados: 7,
+      categorias: 6, tipos: 5, etapas_pqr: 3, motivos_pqr: 7, resultados: 7,
       motivos_garantia: 5, detalles_tipificados: 31, procesos_garantia: 7,
       coberturas_ciudad: 10, parametros: 24, formatos: 4
     )
@@ -113,11 +113,25 @@ RSpec.describe Helic3::Catalogo::SeederService do
     expect(requiere_admin).to all(be(true))
   end
 
-  it 'deja a Respondida como la unica etapa que detiene el reloj legal' do
+  it 'siembra las 3 etapas del mockup: nuevo, en_gestion, solucionado' do
+    service.sembrar!
+
+    codigos = Helic3::Catalogo::EtapaPqr.where(account: account).order(:posicion).pluck(:codigo)
+    expect(codigos).to eq(%w[nuevo en_gestion solucionado])
+  end
+
+  it 'deja a Solucionado como la unica etapa que detiene el reloj legal' do
     service.sembrar!
 
     detienen = Helic3::Catalogo::EtapaPqr.where(account: account, detiene_reloj: true).pluck(:codigo)
-    expect(detienen).to eq(['respondida'])
+    expect(detienen).to eq(['solucionado'])
+  end
+
+  it 'marca a Nuevo como la unica etapa inicial (con la que nace una PQR)' do
+    service.sembrar!
+
+    iniciales = Helic3::Catalogo::EtapaPqr.where(account: account, inicial: true).pluck(:codigo)
+    expect(iniciales).to eq(['nuevo'])
   end
 
   it 'asigna el plazo legal de 15 dias a peticion, queja y reclamo' do

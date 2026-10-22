@@ -28,7 +28,7 @@ RSpec.describe 'Helic3 contrato de conversation_id entre el agente y la API', ty
 
   before do
     garantia
-    Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nueva', codigo: 'nueva')
+    Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nuevo', codigo: 'nuevo', inicial: true)
     Helic3::Catalogo::Tipo.create!(account: account, nombre: 'Reclamo', codigo: 'reclamo', plazo_dias_habiles: 15)
     Helic3::Catalogo::MotivoPqr.create!(account: account, nombre: 'Garantía de producto',
                                         codigo: 'garantia_producto', categoria: garantia)

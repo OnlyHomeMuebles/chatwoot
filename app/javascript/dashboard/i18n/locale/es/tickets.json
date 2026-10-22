@@ -81,6 +81,16 @@
         "DESCRIPCION_PH": "Describe qué solicita el cliente y qué ocurrió con el producto.",
         "RESPONSABLE": "Responsable",
         "RESPONSABLE_PH": "Sin asignar",
+        "ETAPA": "Etapa",
+        "ETAPA_PH": "Selecciona una etapa",
+        "EDITAR_ETAPAS": "Editar etapas",
+        "ETAPA_DESCRIPCION": {
+          "NUEVO": "Creado por un agente; pendiente de revisión.",
+          "EN_GESTION": "La solicitud está siendo atendida.",
+          "SOLUCIONADO": "La solicitud ya fue resuelta.",
+          "DEFAULT": "Etapa actual de la solicitud."
+        },
+        "ETAPA_RESUMEN": "{etapa} · {descripcion}",
         "ADJUNTOS": "Adjuntos",
         "ADJUNTOS_CTA": "Agregar fotos o documentos",
         "ADJUNTOS_HINT": "Factura, evidencia del producto o solicitud del cliente",
@@ -96,7 +106,7 @@
         "TELEFONO": "Teléfono",
         "TELEFONO_PH": "Número de contacto",
         "CORREO": "Correo electrónico",
-        "CORREO_PH": "correo@ejemplo.com"
+        "CORREO_PH": "correo{'@'}ejemplo.com" 
       },
       "COMPRA": {
         "TITLE": "Compra y producto",
@@ -190,8 +200,8 @@
       "TABS": {
         "ALL": "Todas",
         "UNANSWERED": "Sin responder",
-        "IN_REVIEW": "En análisis",
-        "ANSWERED": "Respondidas"
+        "IN_REVIEW": "En gestión",
+        "ANSWERED": "Solucionadas"
       },
       "NEW": "Nueva PQR",
       "EXPORT": "Exportar",

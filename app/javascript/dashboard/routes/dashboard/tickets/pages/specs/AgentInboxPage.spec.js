@@ -36,7 +36,7 @@ const filaConConversacion = {
   tipo: { nombre: 'Reclamo' },
   motivo_pqr: { nombre: 'Garantía de producto' },
   categoria: { nombre: 'Garantía' },
-  etapa: { codigo: 'nueva', nombre: 'Nueva' },
+  etapa: { codigo: 'nuevo', nombre: 'Nuevo' },
   garantia: null,
 };
 

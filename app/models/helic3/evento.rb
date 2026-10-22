@@ -40,7 +40,7 @@ class Helic3::Evento < ApplicationRecord
   # catalogo que Karen edite, por eso viven en codigo.
   TIPOS = %w[radicada clasificada resultado_propuesto resultado_aplicado
              garantia_abierta proceso_avanzado respondida evidencia_adjuntada
-             formato_generado].freeze
+             formato_generado etapa_cambiada].freeze
   ORIGENES = %w[humano agente].freeze
 
   belongs_to :account

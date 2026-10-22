@@ -4,7 +4,7 @@
 // (MAN-01) en un solo POST y luego subiendo los adjuntos. La garantia NO es un
 // paso de la creacion: nace al resolver (MAN-03). Estructura tomada del mockup
 // v12; estilo con components-next + tokens n-* (como el resto de PQR).
-import { computed, reactive, ref, onMounted } from 'vue';
+import { computed, reactive, ref, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
@@ -40,6 +40,7 @@ const form = reactive({
   detalle_tipificado_id: null,
   description: '',
   assignee_id: null,
+  etapa_id: null,
   cedula: '',
   cliente_nombre: '',
   cliente_telefono: '',
@@ -68,6 +69,46 @@ const detalleOptions = computed(() =>
 );
 const responsableOptions = computed(() =>
   (agents.value || []).map(a => ({ value: a.id, label: a.name }))
+);
+
+// Etapa al radicar: solo las operativas (no detienen el reloj). Solucionado no se
+// ofrece aqui, es un acto de resolucion (RES-01). El backend aplica la misma regla.
+const etapaOptions = computed(() =>
+  (catalogos.value.etapas_pqr || [])
+    .filter(e => !e.detiene_reloj)
+    .map(e => ({ value: e.id, label: e.nombre }))
+);
+
+const etapaSeleccionada = computed(() =>
+  (catalogos.value.etapas_pqr || []).find(etapa => etapa.id === form.etapa_id)
+);
+
+const descripcionEtapa = computed(() => {
+  switch (etapaSeleccionada.value?.codigo) {
+    case 'nuevo':
+      return t('TICKETS.NUEVA.CASO.ETAPA_DESCRIPCION.NUEVO');
+    case 'en_gestion':
+      return t('TICKETS.NUEVA.CASO.ETAPA_DESCRIPCION.EN_GESTION');
+    case 'solucionado':
+      return t('TICKETS.NUEVA.CASO.ETAPA_DESCRIPCION.SOLUCIONADO');
+    default:
+      return t('TICKETS.NUEVA.CASO.ETAPA_DESCRIPCION.DEFAULT');
+  }
+});
+
+// Arranca en la primera etapa operativa que NO es la inicial ("En gestion"): al radicar
+// a mano el agente ya la va a trabajar (revision Jhan). Se identifica por los flags
+// (inicial / detiene_reloj), no por el texto del codigo, para que Karen pueda renombrar
+// las etapas sin romper esto. Si no hubiera una no-inicial, cae en la inicial.
+watch(
+  () => catalogos.value.etapas_pqr,
+  etapas => {
+    if (form.etapa_id) return;
+    const operativas = (etapas || []).filter(e => !e.detiene_reloj);
+    const defecto = operativas.find(e => !e.inicial) || operativas.find(e => e.inicial);
+    if (defecto) form.etapa_id = defecto.id;
+  },
+  { immediate: true }
 );
 
 const buscarNombre = (lista, id) =>
@@ -114,6 +155,12 @@ const quitarAdjunto = id => {
 const volverABandeja = () =>
   router.push({
     name: 'tickets_index',
+    params: { accountId: route.params.accountId },
+  });
+
+const editarEtapas = () =>
+  router.push({
+    name: 'helic3_catalogos_admin',
     params: { accountId: route.params.accountId },
   });
 
@@ -201,6 +248,7 @@ const crear = async () => {
         motivo_pqr_id: form.motivo_pqr_id,
         detalle_tipificado_id: form.detalle_tipificado_id,
         assignee_id: form.assignee_id,
+        etapa_id: form.etapa_id,
         numero_orden: form.numero_orden || null,
         // display_id de la conversacion si vino del chat (null = PQR manual suelta);
         // el backend lo traduce a id de BD y asocia la PQR.
@@ -352,8 +400,42 @@ defineExpose({
                     v-model="form.tipo_id"
                     :options="tipoOptions"
                     :placeholder="t('TICKETS.NUEVA.CASO.TIPO_PH')"
+                    class="w-full [&_select]:w-full"
                   />
                 </div>
+                <div class="flex flex-col gap-1">
+                  <span class="text-sm font-medium text-n-slate-12">
+                    {{ t('TICKETS.NUEVA.CASO.ETAPA') }}
+                  </span>
+                  <Select
+                    v-model="form.etapa_id"
+                    :options="etapaOptions"
+                    :placeholder="t('TICKETS.NUEVA.CASO.ETAPA_PH')"
+                    class="w-full [&_select]:w-full"
+                  />
+                </div>
+              </div>
+              <div
+                v-if="etapaSeleccionada"
+                class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm rounded-lg bg-n-teal-3 text-n-teal-11"
+              >
+                <span>
+                  {{
+                    t('TICKETS.NUEVA.CASO.ETAPA_RESUMEN', {
+                      etapa: etapaSeleccionada.nombre,
+                      descripcion: descripcionEtapa,
+                    })
+                  }}
+                </span>
+                <Button
+                  link
+                  color="teal"
+                  size="sm"
+                  :label="t('TICKETS.NUEVA.CASO.EDITAR_ETAPAS')"
+                  @click="editarEtapas"
+                />
+              </div>
+              <div class="grid gap-5 sm:grid-cols-2">
                 <div class="flex flex-col gap-1">
                   <span class="text-sm font-medium text-n-slate-12">
                     {{ t('TICKETS.NUEVA.CASO.MOTIVO') }}
@@ -363,6 +445,7 @@ defineExpose({
                     v-model="form.motivo_pqr_id"
                     :options="motivoOptions"
                     :placeholder="t('TICKETS.NUEVA.CASO.MOTIVO_PH')"
+                    class="w-full [&_select]:w-full"
                   />
                   <span
                     v-if="categoriaDerivada"
@@ -375,24 +458,18 @@ defineExpose({
                     }}
                   </span>
                 </div>
+                <div class="flex flex-col gap-1">
+                  <span class="text-sm font-medium text-n-slate-12">
+                    {{ t('TICKETS.NUEVA.CASO.DETALLE') }}
+                  </span>
+                  <Select
+                    v-model="form.detalle_tipificado_id"
+                    :options="detalleOptions"
+                    :placeholder="t('TICKETS.NUEVA.CASO.DETALLE_PH')"
+                    class="w-full [&_select]:w-full"
+                  />
+                </div>
               </div>
-              <div class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-n-slate-12">
-                  {{ t('TICKETS.NUEVA.CASO.DETALLE') }}
-                </span>
-                <Select
-                  v-model="form.detalle_tipificado_id"
-                  :options="detalleOptions"
-                  :placeholder="t('TICKETS.NUEVA.CASO.DETALLE_PH')"
-                />
-              </div>
-              <TextArea
-                v-model="form.description"
-                :label="t('TICKETS.NUEVA.CASO.DESCRIPCION')"
-                :placeholder="t('TICKETS.NUEVA.CASO.DESCRIPCION_PH')"
-                :max-length="2000"
-                auto-height
-              />
               <div class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-n-slate-12">
                   {{ t('TICKETS.NUEVA.CASO.RESPONSABLE') }}
@@ -401,6 +478,7 @@ defineExpose({
                   v-model="form.assignee_id"
                   :options="responsableOptions"
                   :placeholder="t('TICKETS.NUEVA.CASO.RESPONSABLE_PH')"
+                  class="w-full [&_select]:w-full"
                 />
               </div>
               <div class="flex flex-col gap-2">
@@ -442,6 +520,13 @@ defineExpose({
                   </button>
                 </div>
               </div>
+              <TextArea
+                v-model="form.description"
+                :label="t('TICKETS.NUEVA.CASO.DESCRIPCION')"
+                :placeholder="t('TICKETS.NUEVA.CASO.DESCRIPCION_PH')"
+                :max-length="2000"
+                auto-height
+              />
             </div>
           </section>
 
