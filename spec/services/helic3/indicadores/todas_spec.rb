@@ -58,6 +58,23 @@ RSpec.describe Helic3::Indicadores::Todas do
     expect(kpis[:en_proceso]).to eq(0)
   end
 
+  # Bug real encontrado en datos semilla (ticket demo con 20 garantias
+  # colgando del mismo ticket_id): ticket_id en helic3_garantias no tiene un
+  # indice UNIQUE a nivel de base de datos, asi que un left_joins multiplica
+  # las filas de ese ticket y puede inflar "en_proceso" por encima del total
+  # de casos (hasta dar "solucionadas" negativo). EXISTS nunca multiplica filas.
+  it 'un ticket con mas de una garantia no infla "en_proceso" por encima del total' do
+    ticket_duplicado = crear_pqr(radicada_at: Time.zone.local(2026, 1, 1, 12, 0))
+    5.times { |i| Helic3::Garantia.create!(account: account, ticket: ticket_duplicado, abierta_at: Time.zone.local(2026, 1, 1 + i, 12, 0)) }
+    crear_pqr(radicada_at: Time.zone.local(2026, 1, 2, 12, 0), respondida_at: Time.zone.local(2026, 1, 3, 12, 0))
+
+    kpis = llamar[:kpis]
+
+    expect(kpis[:total_casos]).to eq(2)
+    expect(kpis[:en_proceso]).to eq(1)
+    expect(kpis[:solucionadas]).to eq(1)
+  end
+
   it 'mensual: el total es el de pqr -- la garantia es desglose, no se vuelve a sumar' do
     # radicada en enero; la garantia (y su resolucion) se abre recien en febrero
     ticket_enero = crear_pqr(radicada_at: Time.zone.local(2026, 1, 12, 12, 0), respondida_at: Time.zone.local(2026, 2, 3, 12, 0))

@@ -71,12 +71,19 @@ class Helic3::Indicadores::Todas
   # En proceso = la PQR todavia no se respondio, O su garantia (si abrio una)
   # todavia no cierra. Solucionado es lo que no cae aqui: respondida Y sin
   # garantia abierta.
+  #
+  # EXISTS en vez de left_joins: "ticket" belongs_to garantia es has_one, pero
+  # ticket_id en helic3_garantias no tiene un indice UNIQUE que lo garantice a
+  # nivel de base de datos. Un ticket con mas de una garantia (visto en datos
+  # semilla de demo) multiplicaria las filas con un JOIN e inflaria el conteo
+  # por encima del total de casos -- EXISTS nunca multiplica filas, sin
+  # importar cuantas garantias cuelguen de un mismo ticket.
   def casos_en_proceso
-    casos.left_joins(:garantia)
-         .where(
-           'helic3_tickets.respondida_at IS NULL OR ' \
-           '(helic3_garantias.id IS NOT NULL AND helic3_garantias.cerrada_at IS NULL)'
-         )
+    casos.where(
+      'helic3_tickets.respondida_at IS NULL OR EXISTS (' \
+      'SELECT 1 FROM helic3_garantias ' \
+      'WHERE helic3_garantias.ticket_id = helic3_tickets.id AND helic3_garantias.cerrada_at IS NULL)'
+    )
   end
 
   def casos
