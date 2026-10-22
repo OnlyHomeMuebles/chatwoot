@@ -19,6 +19,8 @@ del API con el proveedor (Siesa).
 | `nombre` | texto | Nombre completo |
 | `email` | texto | Correo (opcional) |
 | `telefono` | texto | Teléfono (opcional) |
+| `ciudad` | texto | Ciudad del cliente (opcional); decide si la garantía va a visita técnica |
+| `direccion` | texto | Dirección del cliente (opcional); a donde se visita o se recoge |
 
 ### 2. Facturas del cliente — `invoices(cedula:)`
 - **Entrada:** `cedula` (texto)
@@ -51,7 +53,7 @@ del API con el proveedor (Siesa).
 ## Resumen para negociar con el proveedor
 
 El API de Siesa debe permitir, como mínimo:
-1. **Buscar un cliente por cédula** y devolver: cédula, nombre, email, teléfono.
+1. **Buscar un cliente por cédula** y devolver: cédula, nombre, email, teléfono, ciudad, dirección.
 2. **Listar las facturas de un cliente** con: número, fecha, total, saldo, estado.
 3. **Consultar una factura** por número, con su detalle de líneas (descripción, cantidad, valor).
 4. **Obtener el estado de cuenta** (saldo total, número de pendientes, si está al día).
