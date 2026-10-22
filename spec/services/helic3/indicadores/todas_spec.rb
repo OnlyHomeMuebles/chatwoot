@@ -9,6 +9,9 @@ RSpec.describe Helic3::Indicadores::Todas do
   let(:categoria) { Helic3::Catalogo::Categoria.create!(account: account, nombre: 'PQR', codigo: 'pqr') }
   let(:tipo) { Helic3::Catalogo::Tipo.create!(account: account, nombre: 'Reclamo', codigo: 'reclamo') }
 
+  # garantia "suelta": cuelga de un ticket generico sin radicar, nunca cuenta
+  # como PQR. Solo sirve para probar el desglose de "garantias" en aislamiento;
+  # para probar el conteo de casos hay que usar crear_pqr_con_garantia.
   def crear_garantia(abierta_at:, cerrada_at: nil)
     Helic3::Garantia.create!(account: account, ticket: ticket, abierta_at: abierta_at, cerrada_at: cerrada_at)
   end
@@ -18,40 +21,63 @@ RSpec.describe Helic3::Indicadores::Todas do
                            radicada_at: radicada_at, respondida_at: respondida_at)
   end
 
+  # el caso real (revision de Jhan, PR #134): la garantia SIEMPRE cuelga de la
+  # PQR que la abrio (Helic3::Casos::AbrirGarantia, llamado desde Resolver),
+  # nunca de un ticket aparte.
+  def crear_pqr_con_garantia(radicada_at:, respondida_at: nil, garantia_cerrada_at: nil)
+    ticket_pqr = crear_pqr(radicada_at: radicada_at, respondida_at: respondida_at)
+    Helic3::Garantia.create!(account: account, ticket: ticket_pqr, abierta_at: radicada_at, cerrada_at: garantia_cerrada_at)
+    ticket_pqr
+  end
+
   def llamar(filtros: {})
     described_class.call(account: account, filtros: filtros)
   end
 
-  it 'suma los kpis de garantias y pqr, sin mezclar sus tablas' do
-    crear_garantia(abierta_at: Time.zone.local(2026, 1, 10), cerrada_at: Time.zone.local(2026, 1, 20))
-    crear_garantia(abierta_at: Time.zone.local(2026, 1, 15))
-    crear_pqr(radicada_at: Time.zone.local(2026, 1, 5), respondida_at: Time.zone.local(2026, 1, 8))
-    crear_pqr(radicada_at: Time.zone.local(2026, 1, 6))
+  it 'cuenta por expediente: una garantia no duplica el caso de su propia PQR (revision de Jhan, PR #134)' do
+    crear_pqr(radicada_at: Time.zone.local(2026, 1, 5, 12, 0), respondida_at: Time.zone.local(2026, 1, 8, 12, 0)) # solucionado, sin garantia
+    crear_pqr(radicada_at: Time.zone.local(2026, 1, 6, 12, 0)) # en proceso, sin garantia
+    crear_pqr_con_garantia(radicada_at: Time.zone.local(2026, 1, 7, 12, 0), respondida_at: Time.zone.local(2026, 1, 9, 12, 0),
+                           garantia_cerrada_at: Time.zone.local(2026, 1, 20, 12, 0)) # solucionado: respondida y garantia ya cerrada
+    crear_pqr_con_garantia(radicada_at: Time.zone.local(2026, 1, 8, 12, 0),
+                           respondida_at: Time.zone.local(2026, 1, 10, 12, 0)) # en proceso: respondida pero garantia sigue abierta
 
     kpis = llamar[:kpis]
 
-    expect(kpis).to eq(total_casos: 4, garantias: 2, pqr: 2, solucionadas: 2, en_proceso: 2)
+    expect(kpis).to eq(total_casos: 4, garantias: 2, pqr: 4, solucionadas: 2, en_proceso: 2)
   end
 
-  it 'mensual: une por periodo, cada fuente en su propia columna y el total sumado' do
-    crear_garantia(abierta_at: Time.zone.local(2026, 1, 10, 12, 0))
-    crear_garantia(abierta_at: Time.zone.local(2026, 2, 1, 12, 0))
-    crear_pqr(radicada_at: Time.zone.local(2026, 1, 12, 12, 0))
+  it 'una garantia que cuelga de una PQR radicada y resuelta no duplica el total (debe ser 1)' do
+    crear_pqr_con_garantia(radicada_at: Time.zone.local(2026, 1, 5, 12, 0), respondida_at: Time.zone.local(2026, 1, 8, 12, 0),
+                           garantia_cerrada_at: Time.zone.local(2026, 1, 15, 12, 0))
+
+    kpis = llamar[:kpis]
+
+    expect(kpis[:total_casos]).to eq(1)
+    expect(kpis[:solucionadas]).to eq(1)
+    expect(kpis[:en_proceso]).to eq(0)
+  end
+
+  it 'mensual: el total es el de pqr -- la garantia es desglose, no se vuelve a sumar' do
+    # radicada en enero; la garantia (y su resolucion) se abre recien en febrero
+    ticket_enero = crear_pqr(radicada_at: Time.zone.local(2026, 1, 12, 12, 0), respondida_at: Time.zone.local(2026, 2, 3, 12, 0))
+    Helic3::Garantia.create!(account: account, ticket: ticket_enero, abierta_at: Time.zone.local(2026, 2, 3, 12, 0))
+    crear_pqr(radicada_at: Time.zone.local(2026, 1, 20, 12, 0))
 
     mensual = llamar[:mensual].index_by { |fila| fila[:periodo] }
 
-    expect(mensual['2026-01']).to eq(periodo: '2026-01', garantias: 1, pqr: 1, total: 2)
-    expect(mensual['2026-02']).to eq(periodo: '2026-02', garantias: 1, pqr: 0, total: 1)
+    expect(mensual['2026-01']).to eq(periodo: '2026-01', garantias: 0, pqr: 2, total: 2)
+    expect(mensual['2026-02']).to eq(periodo: '2026-02', garantias: 1, pqr: 0, total: 0)
   end
 
   it 'filtra por anio y mes, el unico filtro compartido entre los dos expedientes' do
-    crear_garantia(abierta_at: Time.zone.local(2025, 1, 1, 12, 0))
-    crear_garantia(abierta_at: Time.zone.local(2026, 5, 1, 12, 0))
-    crear_pqr(radicada_at: Time.zone.local(2026, 5, 1, 12, 0))
+    crear_pqr(radicada_at: Time.zone.local(2025, 1, 1, 12, 0))
+    crear_pqr_con_garantia(radicada_at: Time.zone.local(2026, 5, 1, 12, 0), respondida_at: Time.zone.local(2026, 5, 3, 12, 0),
+                           garantia_cerrada_at: Time.zone.local(2026, 5, 10, 12, 0))
 
     kpis = llamar(filtros: { anio: 2026, mes: 5 })[:kpis]
 
-    expect(kpis).to eq(total_casos: 2, garantias: 1, pqr: 1, solucionadas: 0, en_proceso: 2)
+    expect(kpis).to eq(total_casos: 1, garantias: 1, pqr: 1, solucionadas: 1, en_proceso: 0)
   end
 
   # N1 (mismo criterio de Garantias/Pqr): un filtro de ciudad/motivo/tipo no
