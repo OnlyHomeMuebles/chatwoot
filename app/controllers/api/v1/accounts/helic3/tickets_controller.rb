@@ -161,6 +161,12 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
   # transaccion del create: si falla, se revierte todo (ni ticket, ni ficha, ni
   # evento radicada). RegistrarDatos ignora los vacios y los campos que no conoce.
   def registrar_datos_cliente_al_crear
+    # ERP-08: si el agente consulto el ERP, el backend RECONSULTA y marca la procedencia
+    # (erp lo que trajo Siesa, humano lo que el agente cambio). No confia en el frontend.
+    if ActiveModel::Type::Boolean.new.cast(create_params[:consultado_erp])
+      return Helic3::Casos::RegistrarClienteErp.new(ticket: @ticket, datos: datos_cliente_params).call
+    end
+
     campos = datos_cliente_params.to_h.symbolize_keys.compact_blank
     return if campos.blank?
 
@@ -225,7 +231,7 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
   def create_params
     params.require(:ticket).permit(:title, :description, :conversation_id,
                                    :tipo_id, :motivo_pqr_id, :detalle_tipificado_id,
-                                   :status, :assignee_id, :numero_orden)
+                                   :status, :assignee_id, :numero_orden, :consultado_erp)
   end
 
   # Update solo toca lo operativo: estado y asignacion.

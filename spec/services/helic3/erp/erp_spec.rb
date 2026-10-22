@@ -33,4 +33,67 @@ RSpec.describe Helic3::Erp do
       expect(described_class.normalizar_cedula(nil)).to be_nil
     end
   end
+
+  # ERP-04: el interruptor del modulo. HELIC3_ERP_MODO decide si se habla con el
+  # simulado, con Siesa o con nadie. Por defecto DESACTIVADO.
+  describe '.modo y .habilitado?' do
+    it 'CA1: sin la variable, el modo es desactivado y habilitado? es false' do
+      with_modified_env HELIC3_ERP_MODO: nil do
+        expect(described_class.modo).to eq('desactivado')
+        expect(described_class.habilitado?).to be(false)
+      end
+    end
+
+    it 'habilitado? es true en simulado y en siesa' do
+      with_modified_env HELIC3_ERP_MODO: 'simulado' do
+        expect(described_class.habilitado?).to be(true)
+      end
+      with_modified_env HELIC3_ERP_MODO: 'siesa' do
+        expect(described_class.habilitado?).to be(true)
+      end
+    end
+  end
+
+  describe '.adapter' do
+    it 'CA2: en modo simulado devuelve un SimulatedAdapter' do
+      with_modified_env HELIC3_ERP_MODO: 'simulado' do
+        expect(described_class.adapter).to be_a(Helic3::Erp::SimulatedAdapter)
+      end
+    end
+
+    it 'en desactivado no entrega adaptador: levanta NoDisponible' do
+      with_modified_env HELIC3_ERP_MODO: 'desactivado' do
+        # Se compara por class.name (no por la constante): AGENTS.md lo exige para evitar
+        # flakes en los shards de CI con recarga de codigo.
+        expect { described_class.adapter }.to raise_error { |e| expect(e.class.name).to eq('Helic3::Erp::NoDisponible') }
+      end
+    end
+
+    it 'con un modo desconocido levanta ConfiguracionInvalida con mensaje claro' do
+      with_modified_env HELIC3_ERP_MODO: 'otracosa' do
+        expect { described_class.adapter }.to raise_error do |e|
+          expect(e.class.name).to eq('Helic3::Erp::ConfiguracionInvalida')
+          expect(e.message).to include('otracosa')
+        end
+      end
+    end
+
+    it 'CA3: en siesa sin SIESA_HUB_CONNI_TOKEN, nombra la variable y no imprime secretos' do
+      with_modified_env HELIC3_ERP_MODO: 'siesa',
+                        SIESA_HUB_BASE_URL: 'https://qa.siesahub.com',
+                        SIESA_HUB_CLIENT_ID: 'cid-secreto', SIESA_HUB_CONNI_KEY: 'key-secreta',
+                        SIESA_HUB_CONNI_TOKEN: nil,
+                        SIESA_HUB_ID_COMPANIA: '1', SIESA_HUB_CONSULTA_CLIENTES: 'clientes' do
+        expect { described_class.adapter }.to raise_error do |e|
+          expect(e.class.name).to eq('Helic3::Erp::ConfiguracionInvalida')
+          expect(e.message).to include('SIESA_HUB_CONNI_TOKEN')
+          expect(e.message).not_to include('cid-secreto', 'key-secreta')
+        end
+      end
+    end
+
+    it 'CA2 (siesa con todo configurado): devuelve un SiesaHubAdapter' do
+      skip 'SiesaHubAdapter llega en ERP-05'
+    end
+  end
 end
