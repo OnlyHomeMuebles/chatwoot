@@ -142,10 +142,12 @@ RSpec.describe Helic3::Casos::Radicar do
       expect(de_persona.pqrs_metadata).not_to have_key('numero_orden')
     end
 
-    it 'si la cuenta no tiene la etapa "nueva", revienta en vez de silenciarse' do
+    it 'si falta la etapa inicial, el error la nombra y nombra la cuenta (no un 404 silencioso)' do
       etapa_nueva.update!(activo: false)
 
-      expect { radicar(tipo: reclamo) }.to raise_error(ActiveRecord::RecordNotFound)
+      expect { radicar(tipo: reclamo) }
+        .to raise_error(Helic3::Casos::Radicar::EtapaInicialFaltante,
+                        /etapa inicial 'nueva'.*cuenta #{account.id}/)
     end
   end
 

@@ -67,6 +67,21 @@ RSpec.describe 'Tickets API', type: :request do
 
         expect(response).to have_http_status(:unprocessable_entity)
       end
+
+      # Riesgo 1 de la revision de #127: si alguien desactiva la etapa 'nueva'
+      # desde el admin de catalogos, radicar reventaba con un 404 enganoso.
+      # Ahora responde 422 nombrando la causa, para que se vea y se arregle.
+      it 'responde 422 con un mensaje claro si falta la etapa inicial (no un 404 silencioso)' do
+        Helic3::Catalogo::EtapaPqr.find_by!(account: account, codigo: 'nueva').update!(activo: false)
+
+        post "/api/v1/accounts/#{account.id}/helic3/tickets",
+             params: { ticket: { title: 'Sin etapa inicial' } },
+             headers: agent.create_new_auth_token,
+             as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response.parsed_body['error']).to match(/etapa inicial 'nueva'/)
+      end
     end
   end
 

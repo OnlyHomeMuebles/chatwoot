@@ -12,6 +12,13 @@ class Helic3::Casos::Radicar
   # un valor por defecto silencioso
   class ParametroFaltante < StandardError; end
 
+  # misma familia que ParametroFaltante: la cuenta no esta bien sembrada.
+  # Antes el find_by! de la etapa inicial soltaba un RecordNotFound crudo que
+  # el controlador traducia a un 404 "Resource could not be found" — enganoso,
+  # porque sugiere una ruta inexistente cuando el problema es un catalogo sin
+  # sembrar (o la etapa 'nueva' desactivada). Este error nombra la causa.
+  class EtapaInicialFaltante < StandardError; end
+
   PLAZO_RESPALDO = 'plazo_respuesta_pqr'.freeze
 
   # La firma es un contrato publicado en la especificacion de la entrega
@@ -89,10 +96,17 @@ class Helic3::Casos::Radicar
     @motivo_pqr&.categoria
   end
 
-  # find_by! a proposito: si la cuenta no tiene la etapa "nueva" es que
-  # no esta sembrada, y eso debe verse en el momento, no silenciarse
+  # la etapa inicial debe existir y estar activa: si no, la cuenta no esta
+  # sembrada y eso debe verse en el momento, no silenciarse. Convertimos el
+  # RecordNotFound crudo del find_by! en un error que NOMBRA la causa (riesgo 1
+  # de la revision de #127): asi no vuelve el 404 enganoso si alguien desactiva
+  # la etapa 'nueva' desde el admin de catalogos.
   def etapa_inicial
     Helic3::Catalogo::EtapaPqr.activos.find_by!(account: @account, codigo: 'nueva')
+  rescue ActiveRecord::RecordNotFound
+    raise EtapaInicialFaltante,
+          "falta la etapa inicial 'nueva' activa en la cuenta #{@account.id}: " \
+          'siembra los catalogos o revisa que no este desactivada'
   end
 
   def radicada_at
