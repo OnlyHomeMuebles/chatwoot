@@ -7,7 +7,9 @@ import { useRoute } from 'vue-router';
 // pestañas (una URL compartible por pestaña, via router children) y el
 // contenido de la pestaña activa. Una pestaña aparece SOLO cuando su ticket
 // se integra (Garantías con IND-01, Derechos de Petición con IND-02);
-// nada de pestañas vacías ni avisos de "próximamente".
+// nada de pestañas vacías ni avisos de "próximamente". "Todas las PQR" no es
+// un ticket aparte: es un resumen que combina lo que ya calculan las otras
+// dos pestañas, por eso entra junto a ellas.
 const { t } = useI18n();
 const route = useRoute();
 
@@ -24,26 +26,32 @@ const TABS = computed(() => [
     name: 'helic3_indicadores_pqr',
     label: t('HELIC3_INDICADORES.TABS.PQR'),
   },
+  {
+    name: 'helic3_indicadores_todas',
+    label: t('HELIC3_INDICADORES.TABS.TODAS'),
+  },
 ]);
 </script>
 
 <template>
   <div class="flex flex-col h-full overflow-hidden">
-    <div class="flex gap-1 p-0.5 m-6 rounded-lg bg-n-alpha-1 w-fit shrink-0">
+    <!-- Mismo estilo de pestañas con línea inferior del mockup/Dash CX -->
+    <nav class="flex gap-4 flex-wrap mx-6 mt-6 border-b border-n-weak shrink-0">
       <router-link
         v-for="tab in TABS"
         :key="tab.name"
         :to="{ name: tab.name }"
-        class="px-3 py-1 text-sm font-medium rounded-md"
+        :aria-current="route.name === tab.name ? 'page' : undefined"
+        class="px-1 py-3 text-sm border-b-2"
         :class="
           route.name === tab.name
-            ? 'bg-n-solid-1 text-n-slate-12 shadow-sm'
-            : 'text-n-slate-11 hover:text-n-slate-12'
+            ? 'border-n-brand text-n-brand font-medium'
+            : 'border-transparent text-n-slate-11 hover:text-n-slate-12'
         "
       >
         {{ tab.label }}
       </router-link>
-    </div>
+    </nav>
     <div class="flex-1 p-6 overflow-auto">
       <router-view />
     </div>

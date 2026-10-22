@@ -8,6 +8,7 @@ import AgentInboxPage from './pages/AgentInboxPage.vue';
 import IndicadoresPage from './pages/IndicadoresPage.vue';
 import GarantiasTab from './pages/indicadores/GarantiasTab.vue';
 import PqrTab from './pages/indicadores/PqrTab.vue';
+import TodasTab from './pages/indicadores/TodasTab.vue';
 
 const ticketsRoutes = {
   routes: [
@@ -86,6 +87,14 @@ const ticketsRoutes = {
             permissions: ['administrator', 'agent'],
           },
           component: PqrTab,
+        },
+        {
+          path: 'todas',
+          name: 'helic3_indicadores_todas',
+          meta: {
+            permissions: ['administrator', 'agent'],
+          },
+          component: TodasTab,
         },
       ],
     },

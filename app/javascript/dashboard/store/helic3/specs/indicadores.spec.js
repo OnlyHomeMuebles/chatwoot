@@ -6,6 +6,7 @@ vi.mock('dashboard/api/helic3/indicadores', () => ({
   default: {
     garantias: vi.fn(),
     pqr: vi.fn(),
+    todas: vi.fn(),
   },
 }));
 
@@ -112,7 +113,22 @@ describe('helic3Indicadores store', () => {
     expect(capturado).toEqual({
       isFetchingGarantias: false,
       isFetchingPqr: true,
+      isFetchingTodas: false,
     });
     expect(store.getUIFlags.isFetchingPqr).toBe(false);
+  });
+
+  it('fetchTodas pasa los filtros al API y guarda la respuesta', async () => {
+    const payload = { kpis: { total_casos: 5, garantias: 3, pqr: 2 } };
+    IndicadoresAPI.todas.mockResolvedValue({ data: payload });
+    const store = useIndicadoresStore();
+
+    await store.fetchTodas({ anio: 2026 });
+
+    expect(IndicadoresAPI.todas).toHaveBeenCalledWith(
+      { anio: 2026 },
+      { signal: expect.any(AbortSignal) }
+    );
+    expect(store.getTodas).toEqual(payload);
   });
 });

@@ -16,6 +16,10 @@ class IndicadoresAPI extends ApiClient {
     return axios.get(`${this.url}/pqr`, { params, signal });
   }
 
+  todas(params, { signal } = {}) {
+    return axios.get(`${this.url}/todas`, { params, signal });
+  }
+
   // IND-05: misma tabla, mismos filtros, en CSV. responseType: 'blob' para que
   // axios no intente parsear el cuerpo como JSON.
   garantiasCsv(seccion, params = {}) {

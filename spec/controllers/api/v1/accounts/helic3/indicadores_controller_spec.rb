@@ -217,4 +217,51 @@ RSpec.describe 'Helic3 Indicadores (IND-01)', type: :request do
       expect(filas.second).to eq(%w[Calidad 1 0 0 0 1])
     end
   end
+
+  describe 'GET todas' do
+    let(:categoria) { Helic3::Catalogo::Categoria.create!(account: account, nombre: 'PQR', codigo: 'pqr') }
+    let(:tipo) { Helic3::Catalogo::Tipo.create!(account: account, nombre: 'Reclamo', codigo: 'reclamo') }
+
+    def get_todas(query = {})
+      get "/api/v1/accounts/#{account.id}/helic3/indicadores/todas", params: query,
+                                                                     headers: agent.create_new_auth_token, as: :json
+    end
+
+    it 'exige autenticacion' do
+      get "/api/v1/accounts/#{account.id}/helic3/indicadores/todas"
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'devuelve garantias y pqr combinados' do
+      Helic3::Ticket.create!(account: account, title: 'Caso', categoria: categoria, tipo: tipo,
+                             radicada_at: Time.zone.local(2026, 1, 1, 12, 0))
+
+      get_todas
+
+      expect(response).to have_http_status(:success)
+      body = response.parsed_body
+      expect(body.keys).to match_array(%w[kpis mensual trimestral])
+      expect(body['kpis']).to eq('total_casos' => 1, 'garantias' => 0, 'pqr' => 1, 'solucionadas' => 0,
+                                 'en_proceso' => 1)
+    end
+
+    # Revision de Jhan (PR #134): toda garantia cuelga de la PQR que la abrio
+    # (Helic3::Casos::AbrirGarantia), nunca de un ticket aparte -- sumar
+    # "garantias" + "pqr" como universos distintos contaba el mismo caso dos
+    # veces.
+    it 'no duplica un caso que ya tiene garantia: una PQR con su propia garantia cuenta 1 vez' do
+      pqr_con_garantia = Helic3::Ticket.create!(account: account, title: 'Caso', categoria: categoria, tipo: tipo,
+                                                radicada_at: Time.zone.local(2026, 1, 1, 12, 0),
+                                                respondida_at: Time.zone.local(2026, 1, 3, 12, 0))
+      Helic3::Garantia.create!(account: account, ticket: pqr_con_garantia, abierta_at: Time.zone.local(2026, 1, 1, 12, 0),
+                               cerrada_at: Time.zone.local(2026, 1, 10, 12, 0))
+
+      get_todas
+
+      body = response.parsed_body
+      expect(body['kpis']).to eq('total_casos' => 1, 'garantias' => 1, 'pqr' => 1, 'solucionadas' => 1,
+                                 'en_proceso' => 0)
+    end
+  end
 end

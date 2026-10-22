@@ -3,7 +3,8 @@
     "MENU": "Indicadores",
     "TABS": {
       "GARANTIAS": "Garantías",
-      "PQR": "Derechos de Petición"
+      "PQR": "Derechos de Petición",
+      "TODAS": "Todas las PQR"
     },
     "FILTERS": {
       "YEAR": "Año",
@@ -86,6 +87,21 @@
       "NO_TYPE": "Sin tipo",
       "NO_CATEGORY": "Sin categoría",
       "COUNT": "PQR"
+    },
+    "TODAS": {
+      "SUBTITLE": "Resumen de Garantías y Derechos de Petición juntos. Cada uno sigue su propio expediente y su propio plazo; toda garantía nace de una PQR, así que aquí no se cuenta el mismo caso dos veces.",
+      "KPI_TOTAL": "Casos totales",
+      "KPI_TOTAL_DESC": "Derechos de Petición radicados (toda garantía nace de uno)",
+      "KPI_GARANTIAS_DESC": "Radicadas en el período",
+      "KPI_PQR_DESC": "Radicadas en el período",
+      "KPI_SOLVED": "Solucionados",
+      "KPI_SOLVED_DESC": "Respondidos y sin garantía abierta",
+      "KPI_IN_PROGRESS": "En proceso",
+      "KPI_IN_PROGRESS_DESC": "Sin responder o con garantía en curso",
+      "MONTHLY": "Detalle mensual",
+      "MONTHLY_CHART": "Recuento por mes",
+      "QUARTERLY": "Detalle trimestral",
+      "TOTAL_COLUMN": "Total"
     }
   }
 }

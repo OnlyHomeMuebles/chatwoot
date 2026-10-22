@@ -14,6 +14,12 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
     @indicadores = Helic3::Indicadores::Pqr.call(account: Current.account, filtros: filtros_pqr)
   end
 
+  # Resumen "Todas las PQR" (mockup v12): Garantias + Derechos de Peticion
+  # juntos, solo anio/mes como filtro compartido.
+  def todas
+    @indicadores = Helic3::Indicadores::Todas.call(account: Current.account, filtros: filtros_todas)
+  end
+
   # IND-05: la misma tabla que se esta viendo en pantalla, con los mismos
   # filtros, descargada en CSV. Nunca se calcula nada que la tabla no muestre
   # ya -- esto solo reempaqueta la respuesta de los servicios existentes.
@@ -53,6 +59,12 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
 
   def filtros_pqr
     params.permit(*FILTROS_PQR).to_h.symbolize_keys
+  end
+
+  FILTROS_TODAS = %i[anio mes].freeze
+
+  def filtros_todas
+    params.permit(*FILTROS_TODAS).to_h.symbolize_keys
   end
 
   def render_seccion_invalida
