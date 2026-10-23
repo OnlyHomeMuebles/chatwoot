@@ -112,6 +112,23 @@ RSpec.describe Helic3::Cargas::ImportarFacturas do
     expect(BigDecimal(valor)).to eq(BigDecimal('123456.78'))
   end
 
+  # Tercera revision de Jhan: con insert_all/upsert_all en lote, un valor que
+  # no cabe en decimal(14,2) ya no revienta solo esa fila -- revienta el lote
+  # completo. Se valida el rango antes del lote; la fila se omite (queda en
+  # errores) y el resto del archivo se procesa igual.
+  it 'omite una fila con un valor fuera de rango de decimal(14,2), sin tumbar el resto del archivo' do
+    carga = importar(<<~CSV)
+      Nro documento,Desc. C.O.,Fecha,Valor subtotal
+      FV-017,Cali,2026-09-11,9999999999999999
+      FV-018,Cali,2026-09-11,100000
+    CSV
+
+    expect(carga.estado).to eq('completado')
+    expect(carga.filas_insertadas).to eq(1)
+    expect(carga.filas_omitidas).to eq(1)
+    expect(Helic3::FacturaVenta.pluck(:numero_documento)).to eq(['FV-018'])
+  end
+
   # Revision de Jhan: Date.parse con un anio de 2 digitos es ambiguo y peligroso
   # -- Date.parse('05/09/26') da 2005-09-26, no 2026-09-05, sin reventar. Se
   # exige un anio de 4 digitos; sin eso la fila se omite en vez de adivinar mal.
@@ -186,6 +203,18 @@ RSpec.describe Helic3::Cargas::ImportarFacturas do
 
       expect(carga.filas_actualizadas).to eq(1)
       expect(Helic3::FacturaVenta.sole.valor_subtotal).to eq(200_000)
+    end
+
+    # Tercera revision de Jhan: "sobrescribir" reemplaza los VALORES de la
+    # factura, no su carga de origen. Sin esto, la carga que la inserto por
+    # primera vez se quedaba sin ninguna factura (se podia borrar del
+    # historial aunque dijera "N insertadas").
+    it '"sobrescribir" no le cambia el carga_id a una factura que ya pertenecia a otra carga' do
+      carga_original = importar(csv_inicial, modo: 'sobrescribir')
+
+      importar(csv_repetido, modo: 'sobrescribir')
+
+      expect(Helic3::FacturaVenta.sole.carga_id).to eq(carga_original.id)
     end
 
     it '"anexar": el mismo numero de documento se omite, no duplica ni actualiza' do

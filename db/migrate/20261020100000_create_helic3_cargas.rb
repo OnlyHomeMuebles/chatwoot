@@ -22,6 +22,6 @@ class CreateHelic3Cargas < ActiveRecord::Migration[7.2]
 
     add_index :helic3_cargas, :account_id, name: 'idx_h3_cargas_account'
     add_index :helic3_cargas, %i[account_id tipo], name: 'idx_h3_cargas_account_tipo'
-    add_foreign_key :helic3_cargas, :users, column: :usuario_id
+    add_foreign_key :helic3_cargas, :users, column: :usuario_id, on_delete: :nullify
   end
 end

@@ -139,6 +139,19 @@ RSpec.describe 'Helic3 Cargas (IND-03, parcial)', type: :request do
       expect(Helic3::Carga.exists?(carga.id)).to be false
     end
 
+    # Tercera revision de Jhan: si se borra mientras el job de importacion
+    # sigue corriendo, el insert_all/upsert_all que esta en curso reventaria
+    # por la FK de carga_id apenas intente guardar la primera fila.
+    it 'no deja borrar una carga mientras todavia esta "procesando"' do
+      carga = Helic3::Carga.create!(account: account, tipo: 'facturas', nombre_archivo: 'a.csv', modo: 'anexar',
+                                    estado: 'procesando')
+
+      delete_carga(admin, carga.id)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(Helic3::Carga.exists?(carga.id)).to be true
+    end
+
     it 'responde 404 si la carga no existe' do
       delete_carga(admin, -1)
 

@@ -193,13 +193,33 @@ class Helic3::Cargas::ImportarFacturas
   # que esto solo inserta genuinamente nuevas. "sobrescribir": upsert_all hace
   # ON CONFLICT DO UPDATE, cubriendo en un solo lote tanto las filas nuevas
   # como las que reemplazan un numero de documento existente.
+  # Tercera revision de Jhan: "sobrescribir" debe reemplazar los VALORES de una
+  # factura existente, no su carga de origen. Sin update_only, el upsert
+  # tambien reescribia carga_id -- la carga que la inserto por primera vez
+  # quedaba sin ninguna factura (y se podia borrar del historial aunque
+  # dijera "N insertadas"). Con update_only, un conflicto solo actualiza los
+  # datos del negocio; carga_id/account_id/numero_documento quedan como
+  # estaban en el insert original.
+  COLUMNAS_ACTUALIZABLES = %i[centro_operacion fecha valor_subtotal].freeze
+
+  # rubocop:disable Rails/SkipsModelValidations -- deliberado (pedido por Juan,
+  # revisado por Jhan): cada fila ya paso por clasificar_fila, que replica las
+  # tres validaciones del modelo (presence de numero_documento/fecha,
+  # numericality de valor_subtotal) antes de llegar aqui. insert_all/
+  # upsert_all cambian las ~33.000 consultas individuales del archivo real por
+  # dos en total.
   def guardar_en_lote!(atributos_lista)
     return if atributos_lista.empty?
 
-    metodo = modo == 'sobrescribir' ? :upsert_all : :insert_all
-    Helic3::FacturaVenta.public_send(metodo, atributos_lista, unique_by: :idx_h3_facturas_account_numero,
-                                                              record_timestamps: true)
+    if modo == 'sobrescribir'
+      Helic3::FacturaVenta.upsert_all(atributos_lista, unique_by: :idx_h3_facturas_account_numero,
+                                                       record_timestamps: true, update_only: COLUMNAS_ACTUALIZABLES)
+    else
+      Helic3::FacturaVenta.insert_all(atributos_lista, unique_by: :idx_h3_facturas_account_numero,
+                                                       record_timestamps: true)
+    end
   end
+  # rubocop:enable Rails/SkipsModelValidations
 
   # Revision de Jhan: Date.parse con un anio de 2 digitos es peligrosamente
   # ambiguo -- Date.parse('05/09/26') da 2005-09-26, no 2026-09-05, sin
@@ -223,13 +243,24 @@ class Helic3::Cargas::ImportarFacturas
   #
   # BigDecimal, no Float (revision de Jhan): es plata, no se guarda con
   # imprecision de punto flotante binario.
+  #
+  # Tercera revision de Jhan: con insert_all/upsert_all en lote, un valor que
+  # no cabe en decimal(14,2) ya no revienta solo esa fila -- revienta el lote
+  # completo (todo el archivo). Se valida el rango aqui mismo, antes de que
+  # llegue al lote: una fila fuera de rango se omite (queda en errores) en vez
+  # de tumbar las demas.
+  VALOR_MAXIMO = BigDecimal('999999999999.99')
+
   def parsear_valor(valor)
     texto = valor.to_s.strip
     return nil if texto.blank?
 
     sin_miles = texto.delete('.')
     normalizado = sin_miles.include?(',') ? sin_miles.tr(',', '.') : sin_miles
-    BigDecimal(normalizado)
+    numero = BigDecimal(normalizado)
+    return nil if numero.abs > VALOR_MAXIMO
+
+    numero
   rescue ArgumentError, TypeError
     nil
   end

@@ -2074,7 +2074,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_20_100100) do
   add_foreign_key "helic3_agentes", "users", column: "creado_por_id", on_delete: :nullify
   add_foreign_key "helic3_agentes_bandejas", "helic3_agentes", column: "agente_id", on_delete: :cascade
   add_foreign_key "helic3_agentes_bandejas", "inboxes", on_delete: :cascade
-  add_foreign_key "helic3_cargas", "users", column: "usuario_id"
+  add_foreign_key "helic3_cargas", "users", column: "usuario_id", on_delete: :nullify
   add_foreign_key "helic3_catalogo_detalles_tipificados", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
   add_foreign_key "helic3_catalogo_formatos", "accounts"
   add_foreign_key "helic3_catalogo_motivos_pqr", "helic3_catalogo_categorias", column: "categoria_id"

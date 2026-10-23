@@ -29,6 +29,7 @@ class Api::V1::Accounts::Helic3::CargasController < Api::V1::Accounts::BaseContr
   def destroy
     carga = Helic3::Carga.find_by(account: Current.account, id: params[:id])
     return render_carga_no_encontrada if carga.nil?
+    return render_carga_procesando if carga.estado == 'procesando'
     return render_carga_con_facturas unless carga.destroy
 
     head :no_content
@@ -60,6 +61,10 @@ class Api::V1::Accounts::Helic3::CargasController < Api::V1::Accounts::BaseContr
 
   def render_carga_no_encontrada
     render json: { error: 'carga no encontrada' }, status: :not_found
+  end
+
+  def render_carga_procesando
+    render json: { error: 'la carga todavia se esta procesando, espera a que termine' }, status: :unprocessable_entity
   end
 
   def render_carga_con_facturas
