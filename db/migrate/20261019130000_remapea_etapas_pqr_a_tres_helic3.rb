@@ -41,6 +41,12 @@ class RemapeaEtapasPqrATresHelic3 < ActiveRecord::Migration[7.2]
     cuentas = modelo.where('btrim(lower(codigo)) IN (?)', RENOMBRES.keys + FUSIONES.keys)
                     .distinct.pluck(:account_id)
     cuentas.each { |cuenta_id| remapear_cuenta(cuenta_id) }
+    # Blindaje (revision de Jhan en PR #141): el renombrado de arriba solo deja la
+    # etapa inicial cuando la cuenta tenia 'nueva' intacta. Una cuenta que ya venia
+    # con 'nuevo' (sin 'nueva') NO la toca el bloque anterior y quedaria sin ninguna
+    # etapa inicial -> el 422 de radicacion sobreviviria al deploy. Por eso se cierran
+    # las invariantes en TODAS las cuentas con etapas, no solo en las que tenian viejas.
+    modelo.distinct.pluck(:account_id).each { |cuenta_id| garantizar_invariantes(cuenta_id) }
   end
 
   def down
@@ -75,5 +81,46 @@ class RemapeaEtapasPqrATresHelic3 < ActiveRecord::Migration[7.2]
   # normalizada de RENOMBRES/FUSIONES.
   def etapa_por_codigo(modelo, cuenta_id, codigo)
     modelo.where(account_id: cuenta_id).where('btrim(lower(codigo)) = ?', codigo).first
+  end
+
+  # Invariantes que esta migracion PROMETE por cuenta: exactamente UNA etapa inicial
+  # activa y exactamente UNA que detiene el reloj. El renombrado solo las garantiza
+  # cuando la cuenta tenia las 4 viejas intactas; esto las asegura tambien cuando los
+  # datos venian raros (ya migrados, etapas inactivas, o la bandera duplicada).
+  def garantizar_invariantes(cuenta_id)
+    asegurar_una(cuenta_id, :inicial, :asc)        # inicial = la primera (menor posicion)
+    asegurar_una(cuenta_id, :detiene_reloj, :desc) # final   = la ultima (mayor posicion)
+  end
+
+  # Deja EXACTAMENTE una etapa activa con la bandera dada:
+  # - si hay varias, conserva una (segun `orden` de posicion) y apaga el resto;
+  # - si no hay ninguna, promueve una candidata: para `inicial`, la primera activa
+  #   que NO detiene el reloj; para `detiene_reloj`, la ultima activa;
+  # - si no hay ninguna etapa activa elegible, aborta nombrando la cuenta (no en silencio).
+  def asegurar_una(cuenta_id, bandera, orden)
+    modelo = Helic3::Catalogo::EtapaPqr
+    cuenta = modelo.where(account_id: cuenta_id)
+    activas = cuenta.where(activo: true)
+    activas_marcadas = activas.where(bandera => true).order(posicion: orden).to_a
+
+    # ya esta bien: exactamente UNA activa con la bandera y ninguna inactiva la lleva.
+    # Lo segundo importa por el indice unico parcial de `inicial` (una sola fila con
+    # inicial=true por cuenta): si la unica marcada quedo inactiva, hay que moverla.
+    return if activas_marcadas.size == 1 && cuenta.where(:activo => false, bandera => true).none?
+
+    # normalizar: apagar la bandera en TODAS (resuelve duplicados, el indice unico y las
+    # inactivas que la llevaban) y encender UNA activa elegible. Para `inicial`, la primera
+    # activa que no detiene el reloj; para `detiene_reloj`, la ultima activa.
+    cuenta.where(bandera => true).update_all(bandera => false)
+    candidata = if bandera == :inicial
+                  activas.where(detiene_reloj: false).order(posicion: :asc).first
+                else
+                  activas.order(posicion: :desc).first
+                end
+    unless candidata
+      raise "la cuenta #{cuenta_id} no tiene ninguna etapa activa para marcar #{bandera}: " \
+            'siembra los catalogos antes de migrar'
+    end
+    candidata.update_columns(bandera => true)
   end
 end

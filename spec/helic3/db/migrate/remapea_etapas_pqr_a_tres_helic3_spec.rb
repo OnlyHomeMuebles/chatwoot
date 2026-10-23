@@ -93,6 +93,32 @@ RSpec.describe RemapeaEtapasPqrATresHelic3 do
     end
   end
 
+  describe 'blindaje de invariantes (revision Jhan PR #141)' do
+    it 'marca una inicial activa aunque la cuenta ya venga con codigos nuevos sin ninguna inicial' do
+      # estado raro: codigos ya migrados (nuevo/en_gestion/solucionado) pero SIN inicial
+      # marcada; el renombrado no toca esta cuenta, el blindaje debe cerrarla igual.
+      Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nuevo', codigo: 'nuevo', posicion: 0, inicial: false)
+      Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'En gestión', codigo: 'en_gestion', posicion: 1)
+      Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Solucionado', codigo: 'solucionado', detiene_reloj: true, posicion: 2)
+
+      correr(:up)
+
+      expect(Helic3::Catalogo::EtapaPqr.where(account: account, inicial: true, activo: true).pluck(:codigo)).to eq(['nuevo'])
+    end
+
+    it 'si la etapa inicial renombrada queda inactiva, promueve otra etapa activa a inicial' do
+      v = sembrar_viejas
+      v[:nueva].update!(activo: false) # 'nueva' inactiva -> se renombra a 'nuevo' inactiva
+
+      correr(:up)
+
+      # queda EXACTAMENTE una inicial (indice unico) y esta activa, no la 'nuevo' inactiva
+      iniciales = Helic3::Catalogo::EtapaPqr.where(account: account, inicial: true)
+      expect(iniciales.count).to eq(1)
+      expect(iniciales.first).to be_activo
+    end
+  end
+
   it 'el down es irreversible' do
     expect { correr(:down) }.to raise_error(ActiveRecord::IrreversibleMigration)
   end
