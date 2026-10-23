@@ -45,6 +45,32 @@ RSpec.describe Helic3::Cargas::ImportarFacturas do
     expect(Helic3::FacturaVenta.sole.valor_subtotal).to eq(500_000)
   end
 
+  # Bug real (verificado subiendo un archivo real por la pantalla): un upload
+  # multipart llega en BINARY (ASCII-8BIT), no en UTF-8 como un string de Ruby
+  # comun. Compararlo contra el literal UTF-8 del BOM revienta con
+  # "incompatible character encodings" apenas el CSV trae una tilde o enie.
+  it 'no revienta con tildes/enies aunque el archivo llegue en BINARY (como un upload real)' do
+    contenido = "Nro documento;Desc. C.O.;Fecha;Valor subtotal\nFV-008;Bogotá;2026-09-04;100000\n"
+                .dup.force_encoding('BINARY')
+    carga = importar(contenido)
+
+    expect(carga.filas_insertadas).to eq(1)
+    expect(Helic3::FacturaVenta.sole.centro_operacion).to eq('Bogotá')
+  end
+
+  # Bug real: una factura redonda sin centavos llega como "1.200.000" (el punto
+  # SIEMPRE es separador de miles en el formato colombiano, incluso sin coma
+  # decimal) -- Float('1.200.000') revienta por tener mas de un punto.
+  it 'parsea un valor redondo con puntos de miles y sin coma decimal' do
+    carga = importar(<<~CSV)
+      Nro documento;Desc. C.O.;Fecha;Valor subtotal
+      FV-009;Cali;2026-09-05;1.200.000
+    CSV
+
+    expect(carga.filas_insertadas).to eq(1)
+    expect(Helic3::FacturaVenta.sole.valor_subtotal).to eq(1_200_000)
+  end
+
   it 'rechaza el archivo completo si falta una columna requerida, nombrandola' do
     expect do
       importar(<<~CSV)

@@ -42,9 +42,13 @@ class Helic3::Cargas::ImportarFacturas
 
   attr_reader :account, :archivo, :modo, :usuario, :nombre_archivo
 
+  # archivo.read en un upload multipart llega en BINARY (ASCII-8BIT); comparar
+  # eso contra el literal UTF-8 del BOM revienta con "incompatible character
+  # encodings" apenas el CSV trae una tilde o eñe (Siesa siempre exporta en
+  # UTF-8). Se reetiqueta explicitamente antes de tocar el contenido.
   def leer_contenido
     contenido = archivo.respond_to?(:read) ? archivo.read : archivo.to_s
-    contenido.delete_prefix("\xEF\xBB\xBF")
+    contenido.force_encoding('UTF-8').delete_prefix("\xEF\xBB\xBF")
   end
 
   def primer_encabezado(contenido)
@@ -124,14 +128,17 @@ class Helic3::Cargas::ImportarFacturas
     nil
   end
 
-  # Formato colombiano: punto de miles, coma decimal ("1.234.567,89"). Si no
-  # trae coma decimal, se asume que ya viene en formato simple ("1234567.89"
-  # o "1234567").
+  # Formato colombiano: el punto SIEMPRE es separador de miles, nunca decimal
+  # (una factura redonda sin centavos llega como "1.200.000", no "1200000.00").
+  # Se descarta primero, y solo si queda una coma esa es la decimal ("1.234.567,89"
+  # -> "1234567,89" -> "1234567.89"). Sin coma, el numero ya es el valor final
+  # ("1.200.000" -> "1200000", "500000" -> "500000").
   def parsear_valor(valor)
     texto = valor.to_s.strip
     return nil if texto.blank?
 
-    normalizado = texto.include?(',') ? texto.delete('.').tr(',', '.') : texto
+    sin_miles = texto.delete('.')
+    normalizado = sin_miles.include?(',') ? sin_miles.tr(',', '.') : sin_miles
     Float(normalizado)
   rescue ArgumentError, TypeError
     nil
