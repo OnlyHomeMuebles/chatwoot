@@ -118,12 +118,16 @@ class Helic3::Cargas::ImportarFacturas
   end
 
   # Un solo UPDATE al final (no uno por fila): los contadores se acumulan en
-  # memoria mientras se procesa el CSV completo. precargar_existentes trae en
-  # UNA consulta las facturas que ya existen -- antes se hacia un find_by por
-  # fila (hasta 33.000 consultas en el archivo real, revision de Jhan).
-  # header_converters normaliza cada encabezado real al nombre canonico (ver
-  # CANONICOS_POR_NORMALIZADO): el resto del codigo siempre lee
-  # fila['Nro documento'], sin importar como vino escrito en el archivo.
+  # memoria mientras se procesa el CSV completo. header_converters normaliza
+  # cada encabezado real al nombre canonico (ver CANONICOS_POR_NORMALIZADO):
+  # el resto del codigo siempre lee fila['Nro documento'], sin importar como
+  # vino escrito en el archivo.
+  #
+  # Segunda revision de Jhan (no bloqueante, pedido explicito de Juan): un
+  # find_by + create!/update! por fila eran hasta 33.000 SELECT + 33.000
+  # INSERT/UPDATE en el archivo real. Ahora se arma un solo lote en memoria y
+  # se guarda con insert_all/upsert_all -- dos consultas en total (la precarga
+  # de existentes y el lote), sin importar cuantas filas traiga el archivo.
   def procesar_filas!(contenido)
     sep = columna_separadora(contenido)
     filas = CSV.parse(contenido, headers: true, col_sep: sep,
@@ -131,58 +135,70 @@ class Helic3::Cargas::ImportarFacturas
     existentes = precargar_existentes(filas)
     contadores = Hash.new(0)
     errores = []
+    # Hash, no Array: si el mismo numero de documento se repite DENTRO del
+    # archivo, el lote solo puede llevar una fila por llave unica -- Postgres
+    # revienta un upsert que intente afectar la misma fila dos veces en la
+    # misma sentencia. Queda la ULTIMA ocurrencia, igual que si se guardaran
+    # una por una en orden (la ultima pisa a la anterior).
+    por_guardar = {}
 
     filas.each.with_index(2) do |fila, numero_fila|
       contadores[:filas_leidas] += 1
-      resultado = procesar_fila(fila, existentes)
-      if resultado.is_a?(String)
-        errores << { 'fila' => numero_fila, 'error' => resultado }
-        contadores[:filas_omitidas] += 1
-      else
-        contadores[resultado] += 1
+      clasificar_fila(fila, existentes, contadores, por_guardar) do |mensaje_error|
+        errores << { 'fila' => numero_fila, 'error' => mensaje_error }
       end
     end
 
+    guardar_en_lote!(por_guardar.values)
     carga.update!(contadores.merge(errores: errores))
   end
 
   def precargar_existentes(filas)
     numeros = filas.map { |fila| fila['Nro documento'].to_s.strip }.reject(&:blank?).uniq
-    Helic3::FacturaVenta.where(account: account, numero_documento: numeros).index_by(&:numero_documento)
+    Helic3::FacturaVenta.where(account: account, numero_documento: numeros).pluck(:numero_documento).to_set
   end
 
-  # Devuelve :filas_insertadas/:filas_actualizadas/:filas_omitidas, o el
-  # mensaje de error como String cuando la fila no se pudo guardar.
-  def procesar_fila(fila, existentes)
+  # Decide que hacer con una fila sin tocar la base: la deja lista en
+  # por_guardar (si aplica) y actualiza los contadores. existentes se
+  # actualiza con cada fila nueva (no solo con lo que ya habia en la base):
+  # asi un numero de documento repetido DENTRO del mismo archivo tambien se
+  # reconoce como ya visto.
+  def clasificar_fila(fila, existentes, contadores, por_guardar)
     numero_documento = fila['Nro documento'].to_s.strip
     fecha = parsear_fecha(fila['Fecha'])
     valor = parsear_valor(fila['Valor subtotal'])
 
-    return 'fecha o valor ilegible, o falta el numero de documento' if numero_documento.blank? || fecha.nil? || valor.nil?
+    if numero_documento.blank? || fecha.nil? || valor.nil?
+      yield('fecha o valor ilegible, o falta el numero de documento')
+      contadores[:filas_omitidas] += 1
+      return
+    end
 
-    guardar_factura(numero_documento, fila['Desc. C.O.'], fecha, valor, existentes)
-  rescue StandardError => e
-    e.message
+    ya_existia = existentes.include?(numero_documento)
+    if ya_existia && modo == 'anexar'
+      contadores[:filas_omitidas] += 1
+      return
+    end
+
+    contadores[ya_existia ? :filas_actualizadas : :filas_insertadas] += 1
+    existentes << numero_documento
+    por_guardar[numero_documento] = {
+      account_id: account.id, carga_id: carga.id, numero_documento: numero_documento,
+      centro_operacion: fila['Desc. C.O.'], fecha: fecha, valor_subtotal: valor
+    }
   end
 
-  # existentes se actualiza con cada fila nueva (no solo con lo que ya habia
-  # en la base): asi un numero de documento repetido DENTRO del mismo archivo
-  # tambien se reconoce como ya visto, sin otra consulta.
-  def guardar_factura(numero_documento, centro_operacion, fecha, valor, existentes)
-    existente = existentes[numero_documento]
+  # "anexar": insert_all con unique_by hace ON CONFLICT DO NOTHING -- las
+  # filas que ya se filtraron como "ya existia" arriba nunca llegan aqui, asi
+  # que esto solo inserta genuinamente nuevas. "sobrescribir": upsert_all hace
+  # ON CONFLICT DO UPDATE, cubriendo en un solo lote tanto las filas nuevas
+  # como las que reemplazan un numero de documento existente.
+  def guardar_en_lote!(atributos_lista)
+    return if atributos_lista.empty?
 
-    if existente
-      return :filas_omitidas if modo == 'anexar'
-
-      existente.update!(centro_operacion: centro_operacion, fecha: fecha, valor_subtotal: valor, carga: carga)
-      :filas_actualizadas
-    else
-      existentes[numero_documento] = Helic3::FacturaVenta.create!(
-        account: account, carga: carga, numero_documento: numero_documento,
-        centro_operacion: centro_operacion, fecha: fecha, valor_subtotal: valor
-      )
-      :filas_insertadas
-    end
+    metodo = modo == 'sobrescribir' ? :upsert_all : :insert_all
+    Helic3::FacturaVenta.public_send(metodo, atributos_lista, unique_by: :idx_h3_facturas_account_numero,
+                                                              record_timestamps: true)
   end
 
   # Revision de Jhan: Date.parse con un anio de 2 digitos es peligrosamente
