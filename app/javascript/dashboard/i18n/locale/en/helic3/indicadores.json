@@ -135,6 +135,10 @@
       "VIEW_ERRORS": "View {cantidad} error(s)",
       "ERROR_ROW": "Row {fila}",
       "ERROR_GENERAL": "General error",
+      "COL_ACTIONS": "Actions",
+      "DELETE": "Delete",
+      "DELETE_CONFIRM": "Confirm?",
+      "DELETE_ERROR": "Could not delete the upload",
       "STATUS_PROCESANDO": "Processing",
       "STATUS_COMPLETADO": "Completed",
       "STATUS_FALLIDO": "Failed"

@@ -393,8 +393,9 @@ Rails.application.routes.draw do
             get 'indicadores/garantias/csv', to: 'indicadores#garantias_csv'
             get 'indicadores/pqr/csv', to: 'indicadores#pqr_csv'
             # Carga de Datos (IND-03, parcial): solo administradores.
-            get  'cargas', to: 'cargas#index'
-            post 'cargas', to: 'cargas#create'
+            get    'cargas',     to: 'cargas#index'
+            post   'cargas',     to: 'cargas#create'
+            delete 'cargas/:id', to: 'cargas#destroy'
             # Administracion de catalogos y parametros (ADM-01): lectura para
             # agentes, escritura solo administradores. El :tipo elige el catalogo.
             namespace :admin do

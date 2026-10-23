@@ -135,6 +135,10 @@
       "VIEW_ERRORS": "Ver {cantidad} error(es)",
       "ERROR_ROW": "Fila {fila}",
       "ERROR_GENERAL": "Error general",
+      "COL_ACTIONS": "Acciones",
+      "DELETE": "Borrar",
+      "DELETE_CONFIRM": "¿Confirmar?",
+      "DELETE_ERROR": "No se pudo borrar la carga",
       "STATUS_PROCESANDO": "Procesando",
       "STATUS_COMPLETADO": "Completado",
       "STATUS_FALLIDO": "Fallido"

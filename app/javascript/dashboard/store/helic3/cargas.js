@@ -39,5 +39,14 @@ export const useCargasStore = defineStore('helic3Cargas', {
         this.isSubiendo = false;
       }
     },
+
+    // El backend rechaza (422) borrar una carga que ya tiene facturas
+    // insertadas -- son datos reales, no se van solo porque se limpie el
+    // historial. El error se deja pasar tal cual para que la pantalla lo
+    // muestre.
+    async eliminarCarga(id) {
+      await CargasAPI.delete(id);
+      this.cargas = this.cargas.filter(carga => carga.id !== id);
+    },
   },
 });

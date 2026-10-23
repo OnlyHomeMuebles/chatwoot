@@ -6,6 +6,7 @@ vi.mock('dashboard/api/helic3/cargas', () => ({
   default: {
     get: vi.fn(),
     subir: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -62,5 +63,28 @@ describe('helic3Cargas store', () => {
       })
     ).rejects.toThrow('422');
     expect(store.getUIFlags.isSubiendo).toBe(false);
+  });
+
+  it('eliminarCarga la quita de la lista tras borrarla en el API', async () => {
+    const aBorrar = { id: 1, tipo: 'facturas' };
+    const otra = { id: 2, tipo: 'facturas' };
+    CargasAPI.delete.mockResolvedValue({});
+    const store = useCargasStore();
+    store.cargas = [aBorrar, otra];
+
+    await store.eliminarCarga(1);
+
+    expect(CargasAPI.delete).toHaveBeenCalledWith(1);
+    expect(store.getCargas).toEqual([otra]);
+  });
+
+  it('eliminarCarga no quita nada de la lista si el API rechaza (422: ya tiene facturas)', async () => {
+    const carga = { id: 1, tipo: 'facturas' };
+    CargasAPI.delete.mockRejectedValue(new Error('422'));
+    const store = useCargasStore();
+    store.cargas = [carga];
+
+    await expect(store.eliminarCarga(1)).rejects.toThrow('422');
+    expect(store.getCargas).toEqual([carga]);
   });
 });

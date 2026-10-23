@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
+import ConfirmButton from 'dashboard/components-next/button/ConfirmButton.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import { useCargasStore } from 'dashboard/store/helic3/cargas';
 
@@ -136,6 +137,26 @@ const alternarErrores = cargaId => {
   }
   expandidas.value = copia;
 };
+
+// El backend rechaza (422) borrar una carga que ya tiene facturas
+// insertadas -- son datos reales, no se van solo porque se limpie el
+// historial. ConfirmButton ya pide la confirmacion (dos clics); aqui solo
+// se maneja el estado de carga y el error que puede volver del backend.
+const borrando = ref(new Set());
+const borrarCarga = async carga => {
+  borrando.value = new Set(borrando.value).add(carga.id);
+  try {
+    await cargasStore.eliminarCarga(carga.id);
+  } catch (error) {
+    const mensaje =
+      error.response?.data?.error || t('HELIC3_INDICADORES.CARGA.DELETE_ERROR');
+    useAlert(mensaje);
+  } finally {
+    const copia = new Set(borrando.value);
+    copia.delete(carga.id);
+    borrando.value = copia;
+  }
+};
 </script>
 
 <template>
@@ -247,6 +268,9 @@ const alternarErrores = cargaId => {
             <th class="px-4 py-2 text-right font-medium">
               {{ t('HELIC3_INDICADORES.CARGA.COL_ERRORS') }}
             </th>
+            <th class="px-4 py-2 text-right font-medium">
+              {{ t('HELIC3_INDICADORES.CARGA.COL_ACTIONS') }}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -294,12 +318,24 @@ const alternarErrores = cargaId => {
                 </button>
                 <span v-else class="text-xs text-n-slate-10">—</span>
               </td>
+              <td class="px-4 py-2 text-right">
+                <ConfirmButton
+                  :label="t('HELIC3_INDICADORES.CARGA.DELETE')"
+                  :confirm-label="t('HELIC3_INDICADORES.CARGA.DELETE_CONFIRM')"
+                  variant="ghost"
+                  color="slate"
+                  confirm-color="ruby"
+                  size="xs"
+                  :is-loading="borrando.has(carga.id)"
+                  @click="borrarCarga(carga)"
+                />
+              </td>
             </tr>
             <tr
               v-if="expandidas.has(carga.id) && carga.errores?.length"
               class="border-t border-n-weak bg-n-alpha-1"
             >
-              <td colspan="8" class="px-4 py-3">
+              <td colspan="9" class="px-4 py-3">
                 <ul class="space-y-1 text-xs text-n-slate-11">
                   <li v-for="(error, index) in carga.errores" :key="index">
                     <span v-if="error.fila" class="font-medium text-n-slate-12">

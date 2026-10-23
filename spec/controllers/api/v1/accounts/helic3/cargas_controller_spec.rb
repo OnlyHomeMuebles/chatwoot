@@ -113,4 +113,63 @@ RSpec.describe 'Helic3 Cargas (IND-03, parcial)', type: :request do
       expect(ids).to eq([nueva.id, vieja.id])
     end
   end
+
+  describe 'DELETE cargas/:id' do
+    def delete_carga(usuario, id)
+      delete "/api/v1/accounts/#{account.id}/helic3/cargas/#{id}", headers: usuario.create_new_auth_token
+    end
+
+    it 'un agente no puede borrar' do
+      carga = Helic3::Carga.create!(account: account, tipo: 'facturas', nombre_archivo: 'a.csv', modo: 'anexar',
+                                    estado: 'fallido')
+
+      delete_carga(agente, carga.id)
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(Helic3::Carga.exists?(carga.id)).to be true
+    end
+
+    it 'un administrador borra una carga vacia (sin facturas insertadas)' do
+      carga = Helic3::Carga.create!(account: account, tipo: 'facturas', nombre_archivo: 'a.csv', modo: 'anexar',
+                                    estado: 'fallido')
+
+      delete_carga(admin, carga.id)
+
+      expect(response).to have_http_status(:no_content)
+      expect(Helic3::Carga.exists?(carga.id)).to be false
+    end
+
+    it 'responde 404 si la carga no existe' do
+      delete_carga(admin, -1)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'no deja borrar otra cuenta' do
+      otra_cuenta = create(:account)
+      carga = Helic3::Carga.create!(account: otra_cuenta, tipo: 'facturas', nombre_archivo: 'a.csv', modo: 'anexar',
+                                    estado: 'fallido')
+
+      delete_carga(admin, carga.id)
+
+      expect(response).to have_http_status(:not_found)
+      expect(Helic3::Carga.exists?(carga.id)).to be true
+    end
+
+    # Las facturas insertadas son datos reales del negocio: no se van solo
+    # porque se limpie el historial de "quien subio que" (dependent:
+    # restrict_with_error en el modelo).
+    it 'no borra una carga que ya tiene facturas insertadas' do
+      carga = Helic3::Carga.create!(account: account, tipo: 'facturas', nombre_archivo: 'a.csv', modo: 'anexar',
+                                    estado: 'completado', filas_insertadas: 1)
+      Helic3::FacturaVenta.create!(account: account, carga: carga, numero_documento: 'FV-001',
+                                   fecha: Date.current, valor_subtotal: 100_000)
+
+      delete_carga(admin, carga.id)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(Helic3::Carga.exists?(carga.id)).to be true
+      expect(Helic3::FacturaVenta.exists?(numero_documento: 'FV-001')).to be true
+    end
+  end
 end

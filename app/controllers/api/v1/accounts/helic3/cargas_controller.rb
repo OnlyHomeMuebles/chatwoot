@@ -21,6 +21,19 @@ class Api::V1::Accounts::Helic3::CargasController < Api::V1::Accounts::BaseContr
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
+  # Borra el registro del historial de la carga. Las facturas que ya haya
+  # insertado NO se borran con ella (dependent: :restrict_with_error en el
+  # modelo) -- son datos reales del negocio, no se van solo porque se limpie
+  # el historial de "quien subio que". Por eso esto solo libera cargas vacias
+  # (0 insertadas/actualizadas: un intento fallido, de prueba, o rechazado).
+  def destroy
+    carga = Helic3::Carga.find_by(account: Current.account, id: params[:id])
+    return render_carga_no_encontrada if carga.nil?
+    return render_carga_con_facturas unless carga.destroy
+
+    head :no_content
+  end
+
   private
 
   def crear_carga_y_encolar
@@ -43,5 +56,14 @@ class Api::V1::Accounts::Helic3::CargasController < Api::V1::Accounts::BaseContr
 
   def render_modo_invalido
     render json: { error: 'modo invalido o faltante' }, status: :unprocessable_entity
+  end
+
+  def render_carga_no_encontrada
+    render json: { error: 'carga no encontrada' }, status: :not_found
+  end
+
+  def render_carga_con_facturas
+    render json: { error: 'esta carga ya tiene facturas insertadas; no se puede borrar del historial' },
+           status: :unprocessable_entity
   end
 end
