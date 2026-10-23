@@ -10,7 +10,6 @@ import Icon from 'dashboard/components-next/icon/Icon.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
-import CreateTicketDialog from 'dashboard/components/widgets/conversation/CreateTicketDialog.vue';
 
 // Bandeja de PQR (BAN-01 + VIS-02). Usa su store propio (pqrInbox), NO el del panel
 // de conversacion. Los filtros, la paginacion y las metricas se resuelven en el
@@ -37,10 +36,13 @@ const filtros = reactive({
 });
 const pagina = ref(1);
 
-// «Nueva PQR» abre el mismo dialogo del panel de conversacion, sin
-// conversationId: Radicar funciona sin conversacion (VIS-02, revision de Jhan).
-const dialogoNuevoRef = ref(null);
-const abrirNuevaPqr = () => dialogoNuevoRef.value.open();
+// MAN-02: «Nueva PQR» navega a la pagina de radicacion manual (wizard de 2 pasos).
+// El diálogo del panel de conversacion no cambia (vive en ConversationTickets).
+const abrirNuevaPqr = () =>
+  router.push({
+    name: 'helic3_pqr_nueva',
+    params: { accountId: route.params.accountId },
+  });
 
 const cargar = async () => {
   const params = { page: pagina.value };
@@ -156,9 +158,9 @@ const etapaIdPorCodigo = codigo =>
 const aplicarTab = key => {
   tabActivo.value = key;
   filtros.sin_responder = key === 'unanswered';
-  if (key === 'in_review') filtros.etapa_id = etapaIdPorCodigo('en_analisis');
+  if (key === 'in_review') filtros.etapa_id = etapaIdPorCodigo('en_gestion');
   else if (key === 'answered')
-    filtros.etapa_id = etapaIdPorCodigo('respondida');
+    filtros.etapa_id = etapaIdPorCodigo('solucionado');
   else filtros.etapa_id = '';
 };
 
@@ -245,11 +247,12 @@ const metricasCards = computed(() => {
   ];
 });
 
-// Etapa como chip: Respondida verde, Cerrada neutro, el resto azul.
+// Etapa como chip (colores del mockup v12): Nuevo azul, En gestión ámbar,
+// Solucionado verde. El default (Nuevo y cualquier otro) queda azul.
 const etapaTagClass = codigo =>
   ({
-    respondida: 'bg-n-teal-3 text-n-teal-11',
-    cerrada: 'bg-n-slate-3 text-n-slate-11',
+    en_gestion: 'bg-n-amber-3 text-n-amber-11',
+    solucionado: 'bg-n-teal-3 text-n-teal-11',
   })[codigo] || 'bg-n-blue-3 text-n-blue-11';
 
 // Plazo como chip con punto de semaforo: respondida dentro del plazo, vencida,
@@ -590,7 +593,5 @@ const relojPill = fila => {
         </div>
       </div>
     </div>
-
-    <CreateTicketDialog ref="dialogoNuevoRef" @created="cargar" />
   </div>
 </template>

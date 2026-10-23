@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_10_16_120000) do
+ActiveRecord::Schema[7.2].define(version: 2026_10_19_130000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1198,7 +1198,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_16_120000) do
     t.boolean "visible_cliente", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "inicial", default: false, null: false
     t.index ["account_id", "codigo"], name: "idx_h3cat_etapas_pqr_account_codigo", unique: true
+    t.index ["account_id"], name: "idx_h3_etapa_inicial_unica", unique: true, where: "inicial"
     t.index ["account_id"], name: "idx_h3cat_etapas_pqr_account"
     t.check_constraint "codigo::text ~ '^[a-z0-9_]+$'::text", name: "helic3_catalogo_etapas_pqr_codigo_slug"
   end
@@ -1505,6 +1507,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_16_120000) do
     t.jsonb "fuentes", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "cliente_nombre"
+    t.string "cliente_telefono"
+    t.string "cliente_email"
+    t.string "producto_referencia"
+    t.date "factura_fecha"
     t.index ["account_id"], name: "idx_h3_ticket_datos_account"
     t.index ["detalle_tipificado_id"], name: "idx_h3_ticket_datos_detalle"
     t.index ["ticket_id"], name: "idx_h3_ticket_datos_ticket", unique: true

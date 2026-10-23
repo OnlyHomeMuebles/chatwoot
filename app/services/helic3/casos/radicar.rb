@@ -12,11 +12,12 @@ class Helic3::Casos::Radicar
   # un valor por defecto silencioso
   class ParametroFaltante < StandardError; end
 
-  # misma familia que ParametroFaltante: la cuenta no esta bien sembrada.
-  # Antes el find_by! de la etapa inicial soltaba un RecordNotFound crudo que
-  # el controlador traducia a un 404 "Resource could not be found" — enganoso,
-  # porque sugiere una ruta inexistente cuando el problema es un catalogo sin
-  # sembrar (o la etapa 'nueva' desactivada). Este error nombra la causa.
+  # misma familia que ParametroFaltante: la cuenta no esta bien sembrada. Antes el
+  # find_by! de la etapa inicial soltaba un RecordNotFound crudo que el controlador
+  # traducia a un 404 "Resource could not be found" — enganoso, porque sugiere una
+  # ruta inexistente cuando el problema es un catalogo sin sembrar (o sin ninguna
+  # etapa marcada como inicial). Este error nombra la causa. (Unifica el riesgo 1 de
+  # #127 con la identificacion por flag `inicial` de este PR.)
   class EtapaInicialFaltante < StandardError; end
 
   PLAZO_RESPALDO = 'plazo_respuesta_pqr'.freeze
@@ -96,17 +97,16 @@ class Helic3::Casos::Radicar
     @motivo_pqr&.categoria
   end
 
-  # la etapa inicial debe existir y estar activa: si no, la cuenta no esta
-  # sembrada y eso debe verse en el momento, no silenciarse. Convertimos el
-  # RecordNotFound crudo del find_by! en un error que NOMBRA la causa (riesgo 1
-  # de la revision de #127): asi no vuelve el 404 enganoso si alguien desactiva
-  # la etapa 'nueva' desde el admin de catalogos.
+  # La etapa inicial se identifica por el flag `inicial`, NO por el texto del
+  # codigo: asi Karen puede renombrar la etapa inicial desde el admin sin romper
+  # la radicacion. find_by! a proposito: si la cuenta no tiene una etapa inicial
+  # activa es que no esta sembrada, y eso debe verse en el momento, no silenciarse.
   def etapa_inicial
-    Helic3::Catalogo::EtapaPqr.activos.find_by!(account: @account, codigo: 'nueva')
+    Helic3::Catalogo::EtapaPqr.activos.find_by!(account: @account, inicial: true)
   rescue ActiveRecord::RecordNotFound
     raise EtapaInicialFaltante,
-          "falta la etapa inicial 'nueva' activa en la cuenta #{@account.id}: " \
-          'siembra los catalogos o revisa que no este desactivada'
+          "falta una etapa inicial activa en la cuenta #{@account.id}: " \
+          'siembra los catalogos o marca una etapa como inicial'
   end
 
   def radicada_at

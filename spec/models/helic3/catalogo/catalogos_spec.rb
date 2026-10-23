@@ -100,6 +100,17 @@ RSpec.describe 'Helic3::Catalogo' do
     end
   end
 
+  describe Helic3::Catalogo::EtapaPqr do
+    it 'mantiene una sola etapa inicial por cuenta: marcar otra desmarca la anterior' do
+      account = create(:account)
+      primera = described_class.create!(account: account, nombre: 'Nuevo', codigo: 'nuevo', inicial: true)
+      segunda = described_class.create!(account: account, nombre: 'Recibido', codigo: 'recibido', inicial: true)
+
+      expect(segunda.reload.inicial).to be(true)
+      expect(primera.reload.inicial).to be(false)
+    end
+  end
+
   describe Helic3::Catalogo::DetalleTipificado do
     it_behaves_like 'un catalogo de clasificacion' do
       let(:descrito) { described_class }

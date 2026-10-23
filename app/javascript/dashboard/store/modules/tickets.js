@@ -57,13 +57,16 @@ export const actions = {
     const response = await TicketsAPI.catalogos();
     commit(types.SET_TICKET_CATALOGOS, response.data);
   },
+  // Devuelve el ticket creado (para navegar al detalle) y NO envuelve el error:
+  // se propaga el axios original para que el llamador lea response.data.message del
+  // 422 (mismo criterio que update). El throw new Error(error) anterior perdia ese
+  // mensaje y no retornaba nada.
   create: async ({ commit }, ticketObj) => {
     commit(types.SET_TICKET_UI_FLAG, { isCreating: true });
     try {
       const response = await TicketsAPI.create(ticketObj);
       commit(types.ADD_TICKET, response.data);
-    } catch (error) {
-      throw new Error(error);
+      return response.data;
     } finally {
       commit(types.SET_TICKET_UI_FLAG, { isCreating: false });
     }

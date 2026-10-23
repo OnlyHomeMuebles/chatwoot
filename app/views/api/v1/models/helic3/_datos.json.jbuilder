@@ -3,7 +3,8 @@
 # sin una segunda consulta. `resource` es el Helic3::TicketDato o nil.
 fuentes = resource&.fuentes || {}
 
-%i[cedula direccion ciudad factura_numero producto_nombre].each do |campo|
+%i[cedula direccion ciudad factura_numero producto_nombre
+   cliente_nombre cliente_telefono cliente_email producto_referencia factura_fecha].each do |campo|
   valor = resource&.public_send(campo)
   if valor.present?
     json.set! campo do
