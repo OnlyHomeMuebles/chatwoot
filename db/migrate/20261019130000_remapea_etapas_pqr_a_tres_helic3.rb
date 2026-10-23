@@ -60,19 +60,43 @@ class RemapeaEtapasPqrATresHelic3 < ActiveRecord::Migration[7.2]
   # las fusiones. Fusiones DESPUES (cerrada -> solucionado): re-apunta los tickets
   # y elimina la etapa vieja.
   def remapear_cuenta(cuenta_id)
-    modelo = Helic3::Catalogo::EtapaPqr
-    RENOMBRES.each do |codigo_viejo, atributos|
-      etapa_por_codigo(modelo, cuenta_id, codigo_viejo)&.update_columns(atributos)
-    end
-    FUSIONES.each do |codigo_viejo, codigo_destino|
-      vieja = etapa_por_codigo(modelo, cuenta_id, codigo_viejo)
-      destino = etapa_por_codigo(modelo, cuenta_id, codigo_destino)
-      next unless vieja && destino
+    RENOMBRES.each { |codigo_viejo, atributos| renombrar_o_fundir(cuenta_id, codigo_viejo, atributos) }
+    FUSIONES.each { |codigo_viejo, codigo_destino| fundir_por_codigo(cuenta_id, codigo_viejo, codigo_destino) }
+  end
 
-      execute("UPDATE helic3_tickets SET etapa_id = #{destino.id} WHERE etapa_id = #{vieja.id}")
-      say "FUNDE #{codigo_viejo} -> #{codigo_destino} (cuenta #{cuenta_id})"
-      vieja.delete
+  # Renombra la etapa vieja a sus atributos nuevos. Pero si el codigo destino YA existe en
+  # la cuenta (coexisten 'nueva' y 'nuevo', p.ej. alguien creo 'nuevo' desde el admin),
+  # renombrar chocaria con el indice unico (account_id, codigo) y tumbaria el deploy con
+  # RecordNotUnique: en ese caso se FUNDE en el destino (revision de Jhan). Las banderas
+  # las cierra garantizar_invariantes despues.
+  def renombrar_o_fundir(cuenta_id, codigo_viejo, atributos)
+    modelo = Helic3::Catalogo::EtapaPqr
+    vieja = etapa_por_codigo(modelo, cuenta_id, codigo_viejo)
+    return unless vieja
+
+    destino = etapa_por_codigo(modelo, cuenta_id, atributos[:codigo])
+    if destino && destino.id != vieja.id
+      fundir(vieja, destino, cuenta_id)
+    else
+      vieja.update_columns(atributos)
     end
+  end
+
+  def fundir_por_codigo(cuenta_id, codigo_viejo, codigo_destino)
+    modelo = Helic3::Catalogo::EtapaPqr
+    vieja = etapa_por_codigo(modelo, cuenta_id, codigo_viejo)
+    destino = etapa_por_codigo(modelo, cuenta_id, codigo_destino)
+    return unless vieja && destino
+
+    fundir(vieja, destino, cuenta_id)
+  end
+
+  # Re-apunta los tickets de la etapa vieja al destino y borra la vieja. Seguro porque
+  # helic3_tickets es la unica tabla con FK hacia helic3_catalogo_etapas_pqr.
+  def fundir(vieja, destino, cuenta_id)
+    execute("UPDATE helic3_tickets SET etapa_id = #{destino.id} WHERE etapa_id = #{vieja.id}")
+    say "FUNDE #{vieja.codigo} -> #{destino.codigo} (cuenta #{cuenta_id})"
+    vieja.delete
   end
 
   # Busca por el codigo NORMALIZADO (btrim + lower): en produccion los codigos viejos

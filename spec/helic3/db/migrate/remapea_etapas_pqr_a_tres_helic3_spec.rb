@@ -117,6 +117,21 @@ RSpec.describe RemapeaEtapasPqrATresHelic3 do
       expect(iniciales.count).to eq(1)
       expect(iniciales.first).to be_activo
     end
+
+    it 'funde nueva en nuevo si ambas coexisten, sin tumbar la migracion (revision Jhan)' do
+      # alguien creo 'nuevo' desde el admin y dejo la 'nueva' vieja: coexisten y el
+      # renombrado chocaria con el indice unico. La migracion debe fundir, no reventar.
+      nueva = Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nueva', codigo: 'nueva', posicion: 0)
+      Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nuevo', codigo: 'nuevo', posicion: 1)
+      Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Solucionado', codigo: 'solucionado', detiene_reloj: true, posicion: 2)
+      ticket = create(:ticket, account: account, etapa: nueva)
+
+      expect { correr(:up) }.not_to raise_error
+
+      expect(Helic3::Catalogo::EtapaPqr.find_by(account: account, codigo: 'nueva')).to be_nil
+      expect(ticket.reload.etapa.codigo).to eq('nuevo')
+      expect(Helic3::Catalogo::EtapaPqr.where(account: account, inicial: true, activo: true).count).to eq(1)
+    end
   end
 
   it 'el down es irreversible' do
