@@ -18,6 +18,24 @@ class Helic3::Cargas::ImportarFacturas
 
   ColumnasFaltantes = Class.new(StandardError)
 
+  def self.normalizar_encabezado(texto)
+    texto.to_s.strip.unicode_normalize(:nfd).gsub(/[̀-ͯ]/, '').downcase
+  end
+
+  # Segunda revision de Jhan: antes esto solo se usaba para VALIDAR que las
+  # columnas estuvieran (verificar_encabezados!), pero procesar_fila seguia
+  # leyendo con la grafia exacta (fila['Nro documento']). Un archivo con
+  # "NRO DOCUMENTO" pasaba la validacion y despues cada fila leia nil --
+  # la carga terminaba "completado" con 0 insertadas, en silencio. Ahora el
+  # mismo mapeo normalizado->canonico se usa para VALIDAR y para LEER (como
+  # header_converter de CSV.parse), asi los dos caminos nunca pueden
+  # desincronizarse.
+  CANONICOS_POR_NORMALIZADO = COLUMNAS_REQUERIDAS.index_by { |columna| normalizar_encabezado(columna) }.freeze
+
+  def self.convertir_encabezado(encabezado)
+    CANONICOS_POR_NORMALIZADO.fetch(normalizar_encabezado(encabezado), encabezado)
+  end
+
   # Chequeo rapido y sincronico, ANTES de crear la Carga o encolar el job: el
   # usuario quiere saber ya si el archivo no sirve, no esperar a que arranque
   # el job para enterarse. Solo lee el encabezado (primera linea).
@@ -33,15 +51,11 @@ class Helic3::Cargas::ImportarFacturas
   # ';'/','. Se compara normalizado (sin tildes, minusculas) en vez de exigir
   # una grafia exacta.
   def self.verificar_encabezados!(contenido)
-    encabezados = primer_encabezado(contenido).map { |columna| normalizar_encabezado(columna) }
-    faltantes = COLUMNAS_REQUERIDAS.reject { |columna| encabezados.include?(normalizar_encabezado(columna)) }
+    encabezados_convertidos = primer_encabezado(contenido).map { |columna| convertir_encabezado(columna) }
+    faltantes = COLUMNAS_REQUERIDAS - encabezados_convertidos
     return if faltantes.empty?
 
     raise ColumnasFaltantes, "faltan las columnas: #{faltantes.join(', ')}"
-  end
-
-  def self.normalizar_encabezado(texto)
-    texto.to_s.strip.unicode_normalize(:nfd).gsub(/[̀-ͯ]/, '').downcase
   end
 
   def self.primer_encabezado(contenido)
@@ -71,8 +85,12 @@ class Helic3::Cargas::ImportarFacturas
     procesar_filas!(contenido)
     carga.update!(estado: 'completado')
     carga
-  rescue StandardError
-    carga.update!(estado: 'fallido')
+  rescue StandardError => e
+    # Segunda revision de Jhan: si revienta antes de terminar (archivo
+    # corrupto, error de infraestructura), el mensaje quedaba solo en el log
+    # -- el admin veia "fallido" sin saber por que. Se guarda en errores,
+    # igual que un error de fila, para que se vea en el historial.
+    carga.update!(estado: 'fallido', errores: carga.errores + [{ 'fila' => nil, 'error' => e.message }])
     raise
   end
 
@@ -84,13 +102,15 @@ class Helic3::Cargas::ImportarFacturas
     carga.modo
   end
 
-  # archivo.download (ActiveStorage) llega en BINARY (ASCII-8BIT), igual que
-  # antes llegaba el upload multipart; comparar eso contra el literal UTF-8
-  # del BOM revienta con "incompatible character encodings" apenas el CSV
-  # trae una tilde o eñe (Siesa siempre exporta en UTF-8). Se reetiqueta
-  # explicitamente antes de tocar el contenido.
+  # archivo.download (ActiveStorage) llega en BINARY (ASCII-8BIT). Siesa
+  # exporta en UTF-8, pero si alguien abre el CSV en Excel y lo re-guarda
+  # (Karen, revision de Jhan) suele quedar en Windows-1252 -- se detecta por
+  # validez de encoding en vez de asumir siempre UTF-8.
   def leer_contenido
-    carga.archivo.download.force_encoding('UTF-8').delete_prefix("\xEF\xBB\xBF")
+    crudo = carga.archivo.download
+    utf8 = crudo.dup.force_encoding('UTF-8')
+    contenido = utf8.valid_encoding? ? utf8 : crudo.force_encoding('Windows-1252').encode('UTF-8')
+    contenido.delete_prefix("\xEF\xBB\xBF")
   end
 
   def columna_separadora(contenido)
@@ -101,9 +121,13 @@ class Helic3::Cargas::ImportarFacturas
   # memoria mientras se procesa el CSV completo. precargar_existentes trae en
   # UNA consulta las facturas que ya existen -- antes se hacia un find_by por
   # fila (hasta 33.000 consultas en el archivo real, revision de Jhan).
+  # header_converters normaliza cada encabezado real al nombre canonico (ver
+  # CANONICOS_POR_NORMALIZADO): el resto del codigo siempre lee
+  # fila['Nro documento'], sin importar como vino escrito en el archivo.
   def procesar_filas!(contenido)
     sep = columna_separadora(contenido)
-    filas = CSV.parse(contenido, headers: true, col_sep: sep)
+    filas = CSV.parse(contenido, headers: true, col_sep: sep,
+                                 header_converters: ->(encabezado) { self.class.convertir_encabezado(encabezado) })
     existentes = precargar_existentes(filas)
     contadores = Hash.new(0)
     errores = []
@@ -161,8 +185,16 @@ class Helic3::Cargas::ImportarFacturas
     end
   end
 
+  # Revision de Jhan: Date.parse con un anio de 2 digitos es peligrosamente
+  # ambiguo -- Date.parse('05/09/26') da 2005-09-26, no 2026-09-05, sin
+  # reventar. Mientras no se confirme el formato exacto del archivo real
+  # (CA1), se exige un anio de 4 digitos explicito en el texto; sin eso se
+  # omite la fila (queda en errores) en vez de adivinar mal en silencio.
   def parsear_fecha(valor)
-    Date.parse(valor.to_s)
+    texto = valor.to_s
+    return nil unless texto.match?(/\d{4}/)
+
+    Date.parse(texto)
   rescue ArgumentError, TypeError
     nil
   end
@@ -172,13 +204,16 @@ class Helic3::Cargas::ImportarFacturas
   # Se descarta primero, y solo si queda una coma esa es la decimal ("1.234.567,89"
   # -> "1234567,89" -> "1234567.89"). Sin coma, el numero ya es el valor final
   # ("1.200.000" -> "1200000", "500000" -> "500000").
+  #
+  # BigDecimal, no Float (revision de Jhan): es plata, no se guarda con
+  # imprecision de punto flotante binario.
   def parsear_valor(valor)
     texto = valor.to_s.strip
     return nil if texto.blank?
 
     sin_miles = texto.delete('.')
     normalizado = sin_miles.include?(',') ? sin_miles.tr(',', '.') : sin_miles
-    Float(normalizado)
+    BigDecimal(normalizado)
   rescue ArgumentError, TypeError
     nil
   end

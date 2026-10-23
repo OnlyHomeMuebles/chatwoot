@@ -54,6 +54,26 @@ RSpec.describe Helic3::Cargas::ImportarFacturas do
     expect(carga.filas_insertadas).to eq(1)
   end
 
+  # Bug real encontrado por Jhan en la segunda revision: verificar_encabezados!
+  # normalizaba para VALIDAR, pero procesar_fila seguia leyendo con la grafia
+  # exacta (fila['Nro documento']) -- un archivo con "NRO DOCUMENTO" pasaba la
+  # validacion y despues cada fila leia nil, terminando "completado" con 0
+  # insertadas, en silencio. Prueba de punta a punta, no solo de
+  # verificar_columnas!: con encabezados en mayusculas, sin tildes y con
+  # espacios, las filas deben insertarse de verdad.
+  it 'inserta de verdad cuando el encabezado real viene en mayusculas, sin tildes y con espacios' do
+    carga = importar(<<~CSV)
+      NRO DOCUMENTO,DESC. C.O. ,fecha,Valor Subtotal
+      FV-012,Bogotá,2026-09-07,100000
+    CSV
+
+    expect(carga.estado).to eq('completado')
+    expect(carga.filas_insertadas).to eq(1)
+    expect(carga.filas_omitidas).to eq(0)
+    factura = Helic3::FacturaVenta.sole
+    expect(factura).to have_attributes(numero_documento: 'FV-012', centro_operacion: 'Bogotá')
+  end
+
   # Bug real (verificado subiendo un archivo real por la pantalla): ActiveStorage
   # descarga el archivo en BINARY (ASCII-8BIT), no en UTF-8 como un string de Ruby
   # comun. Compararlo contra el literal UTF-8 del BOM revienta con
@@ -78,6 +98,59 @@ RSpec.describe Helic3::Cargas::ImportarFacturas do
 
     expect(carga.filas_insertadas).to eq(1)
     expect(Helic3::FacturaVenta.sole.valor_subtotal).to eq(1_200_000)
+  end
+
+  # Revision de Jhan: plata se guarda en BigDecimal, no Float -- Float
+  # introduce imprecision de punto flotante binario en valores decimales.
+  it 'guarda el valor en BigDecimal, no en Float (plata)' do
+    importar(<<~CSV)
+      Nro documento;Desc. C.O.;Fecha;Valor subtotal
+      FV-013;Cali;2026-09-08;123.456,78
+    CSV
+
+    valor = Helic3::FacturaVenta.sole.read_attribute_before_type_cast(:valor_subtotal)
+    expect(BigDecimal(valor)).to eq(BigDecimal('123456.78'))
+  end
+
+  # Revision de Jhan: Date.parse con un anio de 2 digitos es ambiguo y peligroso
+  # -- Date.parse('05/09/26') da 2005-09-26, no 2026-09-05, sin reventar. Se
+  # exige un anio de 4 digitos; sin eso la fila se omite en vez de adivinar mal.
+  it 'omite una fecha con anio de 2 digitos en vez de adivinar mal en silencio' do
+    carga = importar(<<~CSV)
+      Nro documento,Desc. C.O.,Fecha,Valor subtotal
+      FV-014,Cali,05/09/26,100000
+    CSV
+
+    expect(carga.filas_insertadas).to eq(0)
+    expect(carga.filas_omitidas).to eq(1)
+    expect(Helic3::FacturaVenta.count).to eq(0)
+  end
+
+  # Revision de Jhan: si Karen abre el CSV en Excel y lo re-guarda, suele
+  # quedar en Windows-1252 en vez de UTF-8.
+  it 'lee un archivo en Windows-1252 (Excel re-guardado) sin reventar' do
+    contenido = "Nro documento;Desc. C.O.;Fecha;Valor subtotal\nFV-015;Bogotá;2026-09-09;100000\n"
+                .encode('Windows-1252')
+    carga = importar(contenido)
+
+    expect(carga.filas_insertadas).to eq(1)
+    expect(Helic3::FacturaVenta.sole.centro_operacion).to eq('Bogotá')
+  end
+
+  # Revision de Jhan: si algo revienta por fuera del manejo por fila (archivo
+  # corrupto, error de infraestructura), antes el mensaje solo quedaba en el
+  # log -- el admin veia "fallido" sin saber por que.
+  it 'guarda el mensaje del error general en "errores" cuando el procesamiento revienta por completo' do
+    carga = crear_carga
+    carga.archivo.attach(io: StringIO.new(%(Nro documento,Desc. C.O.,Fecha,Valor subtotal\n"FV-016,Cali,2026-09-10,100000\n)),
+                         filename: 'facturas.csv', content_type: 'text/csv')
+
+    expect { described_class.call(carga: carga) }.to raise_error(CSV::MalformedCSVError)
+
+    carga.reload
+    expect(carga.estado).to eq('fallido')
+    expect(carga.errores.first['fila']).to be_nil
+    expect(carga.errores.first['error']).to be_present
   end
 
   it 'rechaza el archivo completo si falta una columna requerida, nombrandola' do

@@ -302,12 +302,15 @@ const alternarErrores = cargaId => {
               <td colspan="8" class="px-4 py-3">
                 <ul class="space-y-1 text-xs text-n-slate-11">
                   <li v-for="(error, index) in carga.errores" :key="index">
-                    <span class="font-medium text-n-slate-12">
+                    <span v-if="error.fila" class="font-medium text-n-slate-12">
                       {{
                         t('HELIC3_INDICADORES.CARGA.ERROR_ROW', {
                           fila: error.fila,
                         })
                       }}:
+                    </span>
+                    <span v-else class="font-medium text-n-slate-12">
+                      {{ t('HELIC3_INDICADORES.CARGA.ERROR_GENERAL') }}:
                     </span>
                     {{ error.error }}
                   </li>

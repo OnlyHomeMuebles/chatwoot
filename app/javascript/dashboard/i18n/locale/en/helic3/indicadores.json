@@ -134,6 +134,7 @@
       "COL_ERRORS": "Errors",
       "VIEW_ERRORS": "View {cantidad} error(s)",
       "ERROR_ROW": "Row {fila}",
+      "ERROR_GENERAL": "General error",
       "STATUS_PROCESANDO": "Processing",
       "STATUS_COMPLETADO": "Completed",
       "STATUS_FALLIDO": "Failed"
