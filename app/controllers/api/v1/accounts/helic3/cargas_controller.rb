@@ -12,11 +12,10 @@ class Api::V1::Accounts::Helic3::CargasController < Api::V1::Accounts::BaseContr
   def create
     return render_tipo_no_soportado unless params[:tipo] == 'facturas'
     return render_archivo_faltante if params[:archivo].blank?
+    return render_modo_invalido unless Helic3::Carga::MODOS.include?(params[:modo])
 
-    @carga = Helic3::Cargas::ImportarFacturas.call(
-      account: Current.account, archivo: params[:archivo], modo: params[:modo],
-      usuario: Current.user, nombre_archivo: params[:archivo].original_filename
-    )
+    Helic3::Cargas::ImportarFacturas.verificar_columnas!(params[:archivo])
+    @carga = crear_carga_y_encolar
     render :show
   rescue Helic3::Cargas::ImportarFacturas::ColumnasFaltantes => e
     render json: { error: e.message }, status: :unprocessable_entity
@@ -24,11 +23,25 @@ class Api::V1::Accounts::Helic3::CargasController < Api::V1::Accounts::BaseContr
 
   private
 
+  def crear_carga_y_encolar
+    carga = Helic3::Carga.create!(
+      account: Current.account, tipo: 'facturas', modo: params[:modo], usuario: Current.user,
+      nombre_archivo: params[:archivo].original_filename, estado: 'procesando'
+    )
+    carga.archivo.attach(params[:archivo])
+    Helic3::ImportarFacturasJob.perform_later(carga_id: carga.id)
+    carga
+  end
+
   def render_tipo_no_soportado
     render json: { error: 'tipo de carga no soportado todavia' }, status: :unprocessable_entity
   end
 
   def render_archivo_faltante
     render json: { error: 'falta el archivo' }, status: :unprocessable_entity
+  end
+
+  def render_modo_invalido
+    render json: { error: 'modo invalido o faltante' }, status: :unprocessable_entity
   end
 end

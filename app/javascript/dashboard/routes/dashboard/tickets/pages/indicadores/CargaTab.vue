@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import Select from 'dashboard/components-next/select/Select.vue';
@@ -83,6 +83,45 @@ const subir = async () => {
 };
 
 onMounted(() => cargasStore.fetchCargas());
+
+// IND-03 (parcial), revision de Jhan (PR #140): el archivo se procesa en un
+// job por fuera de la peticion -- la carga queda "procesando" en la respuesta
+// inmediata. Mientras haya alguna asi en el historial, se refresca sola cada
+// pocos segundos; apenas ninguna sigue "procesando" el polling se detiene.
+const hayCargaProcesando = computed(() =>
+  cargas.value.some(carga => carga.estado === 'procesando')
+);
+const POLL_MS = 4000;
+let intervalo = null;
+const detenerPolling = () => {
+  if (!intervalo) return;
+  clearInterval(intervalo);
+  intervalo = null;
+};
+const iniciarPollingSiHaceFalta = () => {
+  if (intervalo || !hayCargaProcesando.value) return;
+  intervalo = setInterval(() => cargasStore.fetchCargas(), POLL_MS);
+};
+watch(hayCargaProcesando, activo => {
+  if (activo) iniciarPollingSiHaceFalta();
+  else detenerPolling();
+});
+onMounted(iniciarPollingSiHaceFalta);
+onBeforeUnmount(detenerPolling);
+
+// Errores por fila (CA4): colapsados por defecto, el admin los despliega solo
+// si le interesa revisar que fallo. Un Set de ids en vez de un campo en cada
+// carga -- la lista la sigue dictando el store, esto es puro estado de UI.
+const expandidas = ref(new Set());
+const alternarErrores = cargaId => {
+  const copia = new Set(expandidas.value);
+  if (copia.has(cargaId)) {
+    copia.delete(cargaId);
+  } else {
+    copia.add(cargaId);
+  }
+  expandidas.value = copia;
+};
 </script>
 
 <template>
@@ -191,42 +230,77 @@ onMounted(() => cargasStore.fetchCargas());
             <th class="px-4 py-2 text-right font-medium">
               {{ t('HELIC3_INDICADORES.CARGA.COL_SKIPPED') }}
             </th>
+            <th class="px-4 py-2 text-right font-medium">
+              {{ t('HELIC3_INDICADORES.CARGA.COL_ERRORS') }}
+            </th>
           </tr>
         </thead>
         <tbody>
-          <tr
-            v-for="carga in cargas"
-            :key="carga.id"
-            class="border-t border-n-weak"
-          >
-            <td class="px-4 py-2 text-n-slate-11">
-              {{ carga.nombre_archivo }}
-            </td>
-            <td class="px-4 py-2 text-n-slate-11">
-              {{
-                t(`HELIC3_INDICADORES.CARGA.MODE_${carga.modo.toUpperCase()}`)
-              }}
-            </td>
-            <td class="px-4 py-2 text-n-slate-11">
-              {{
-                t(
-                  `HELIC3_INDICADORES.CARGA.STATUS_${carga.estado.toUpperCase()}`
-                )
-              }}
-            </td>
-            <td class="px-4 py-2 text-right tabular-nums text-n-slate-11">
-              {{ carga.filas_leidas }}
-            </td>
-            <td class="px-4 py-2 text-right tabular-nums text-n-teal-11">
-              {{ carga.filas_insertadas }}
-            </td>
-            <td class="px-4 py-2 text-right tabular-nums text-n-slate-11">
-              {{ carga.filas_actualizadas }}
-            </td>
-            <td class="px-4 py-2 text-right tabular-nums text-n-amber-11">
-              {{ carga.filas_omitidas }}
-            </td>
-          </tr>
+          <template v-for="carga in cargas" :key="carga.id">
+            <tr class="border-t border-n-weak">
+              <td class="px-4 py-2 text-n-slate-11">
+                {{ carga.nombre_archivo }}
+              </td>
+              <td class="px-4 py-2 text-n-slate-11">
+                {{
+                  t(`HELIC3_INDICADORES.CARGA.MODE_${carga.modo.toUpperCase()}`)
+                }}
+              </td>
+              <td class="px-4 py-2 text-n-slate-11">
+                {{
+                  t(
+                    `HELIC3_INDICADORES.CARGA.STATUS_${carga.estado.toUpperCase()}`
+                  )
+                }}
+              </td>
+              <td class="px-4 py-2 text-right tabular-nums text-n-slate-11">
+                {{ carga.filas_leidas }}
+              </td>
+              <td class="px-4 py-2 text-right tabular-nums text-n-teal-11">
+                {{ carga.filas_insertadas }}
+              </td>
+              <td class="px-4 py-2 text-right tabular-nums text-n-slate-11">
+                {{ carga.filas_actualizadas }}
+              </td>
+              <td class="px-4 py-2 text-right tabular-nums text-n-amber-11">
+                {{ carga.filas_omitidas }}
+              </td>
+              <td class="px-4 py-2 text-right">
+                <button
+                  v-if="carga.errores?.length"
+                  type="button"
+                  class="text-xs underline text-n-ruby-11"
+                  @click="alternarErrores(carga.id)"
+                >
+                  {{
+                    t('HELIC3_INDICADORES.CARGA.VIEW_ERRORS', {
+                      cantidad: carga.errores.length,
+                    })
+                  }}
+                </button>
+                <span v-else class="text-xs text-n-slate-10">—</span>
+              </td>
+            </tr>
+            <tr
+              v-if="expandidas.has(carga.id) && carga.errores?.length"
+              class="border-t border-n-weak bg-n-alpha-1"
+            >
+              <td colspan="8" class="px-4 py-3">
+                <ul class="space-y-1 text-xs text-n-slate-11">
+                  <li v-for="(error, index) in carga.errores" :key="index">
+                    <span class="font-medium text-n-slate-12">
+                      {{
+                        t('HELIC3_INDICADORES.CARGA.ERROR_ROW', {
+                          fila: error.fila,
+                        })
+                      }}:
+                    </span>
+                    {{ error.error }}
+                  </li>
+                </ul>
+              </td>
+            </tr>
+          </template>
         </tbody>
       </table>
     </div>

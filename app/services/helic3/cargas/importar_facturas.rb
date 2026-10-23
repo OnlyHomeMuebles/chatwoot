@@ -7,79 +7,110 @@
 # Columnas requeridas, exactas como las exporta Siesa (confirmadas en el
 # Dash CX, seccion "Referencia" del documento de tickets): Nro documento,
 # Desc. C.O., Fecha, Valor subtotal.
+#
+# Revision de Jhan (PR #140): un archivo real trae ~33.000 filas; procesarlo
+# dentro de la peticion (con un find_by por fila) no aguanta. El controlador
+# crea la Carga y adjunta el archivo (ActiveStorage, sobrevive la peticion),
+# y un job llama a .call -- aqui solo queda la logica de procesamiento sobre
+# una Carga ya existente.
 class Helic3::Cargas::ImportarFacturas
   COLUMNAS_REQUERIDAS = ['Nro documento', 'Desc. C.O.', 'Fecha', 'Valor subtotal'].freeze
 
   ColumnasFaltantes = Class.new(StandardError)
 
-  def self.call(account:, archivo:, modo:, usuario: nil, nombre_archivo: nil)
-    new(account: account, archivo: archivo, modo: modo, usuario: usuario, nombre_archivo: nombre_archivo).call
+  # Chequeo rapido y sincronico, ANTES de crear la Carga o encolar el job: el
+  # usuario quiere saber ya si el archivo no sirve, no esperar a que arranque
+  # el job para enterarse. Solo lee el encabezado (primera linea).
+  def self.verificar_columnas!(archivo)
+    primera_linea = archivo.read.force_encoding('UTF-8').delete_prefix("\xEF\xBB\xBF")
+    verificar_encabezados!(primera_linea)
+  ensure
+    archivo.rewind
   end
 
-  def initialize(account:, archivo:, modo:, usuario: nil, nombre_archivo: nil)
-    @account = account
-    @archivo = archivo
-    @modo = modo
-    @usuario = usuario
-    @nombre_archivo = nombre_archivo || archivo.try(:original_filename) || 'archivo.csv'
-  end
-
-  def call
-    contenido = leer_contenido
-    encabezados = primer_encabezado(contenido)
-    verificar_columnas!(encabezados)
-
-    carga = Helic3::Carga.create!(
-      account: account, tipo: 'facturas', nombre_archivo: nombre_archivo, modo: modo, usuario: usuario,
-      estado: 'procesando'
-    )
-    procesar_filas!(carga, contenido)
-    carga.update!(estado: 'completado')
-    carga
-  end
-
-  private
-
-  attr_reader :account, :archivo, :modo, :usuario, :nombre_archivo
-
-  # archivo.read en un upload multipart llega en BINARY (ASCII-8BIT); comparar
-  # eso contra el literal UTF-8 del BOM revienta con "incompatible character
-  # encodings" apenas el CSV trae una tilde o eñe (Siesa siempre exporta en
-  # UTF-8). Se reetiqueta explicitamente antes de tocar el contenido.
-  def leer_contenido
-    contenido = archivo.respond_to?(:read) ? archivo.read : archivo.to_s
-    contenido.force_encoding('UTF-8').delete_prefix("\xEF\xBB\xBF")
-  end
-
-  def primer_encabezado(contenido)
-    CSV.parse_line(contenido.each_line.first.to_s, col_sep: columna_separadora(contenido)) || []
-  end
-
-  # Siesa puede exportar con ',' o ';' segun la configuracion regional de
-  # quien lo genera; se detecta por la primera linea en vez de asumir una.
-  def columna_separadora(contenido)
-    primera_linea = contenido.each_line.first.to_s
-    primera_linea.count(';') > primera_linea.count(',') ? ';' : ','
-  end
-
-  def verificar_columnas!(encabezados)
-    normalizados = encabezados.map { |columna| columna.to_s.strip }
-    faltantes = COLUMNAS_REQUERIDAS - normalizados
+  # Revision de Jhan: Siesa no siempre manda el encabezado identico -- a veces
+  # sin tildes, con mayusculas distintas, o separado por tabulador en vez de
+  # ';'/','. Se compara normalizado (sin tildes, minusculas) en vez de exigir
+  # una grafia exacta.
+  def self.verificar_encabezados!(contenido)
+    encabezados = primer_encabezado(contenido).map { |columna| normalizar_encabezado(columna) }
+    faltantes = COLUMNAS_REQUERIDAS.reject { |columna| encabezados.include?(normalizar_encabezado(columna)) }
     return if faltantes.empty?
 
     raise ColumnasFaltantes, "faltan las columnas: #{faltantes.join(', ')}"
   end
 
+  def self.normalizar_encabezado(texto)
+    texto.to_s.strip.unicode_normalize(:nfd).gsub(/[̀-ͯ]/, '').downcase
+  end
+
+  def self.primer_encabezado(contenido)
+    CSV.parse_line(contenido.each_line.first.to_s, col_sep: columna_separadora(contenido)) || []
+  end
+
+  # Siesa puede exportar con ',', ';' o tabulador segun quien lo genere; se
+  # detecta por la primera linea en vez de asumir uno.
+  def self.columna_separadora(contenido)
+    primera_linea = contenido.each_line.first.to_s
+    conteos = { "\t" => primera_linea.count("\t"), ';' => primera_linea.count(';'), ',' => primera_linea.count(',') }
+    conteos.max_by { |_separador, cantidad| cantidad }.first
+  end
+
+  def self.call(carga:)
+    new(carga: carga).call
+  end
+
+  def initialize(carga:)
+    @carga = carga
+    @account = carga.account
+  end
+
+  def call
+    contenido = leer_contenido
+    self.class.verificar_encabezados!(contenido)
+    procesar_filas!(contenido)
+    carga.update!(estado: 'completado')
+    carga
+  rescue StandardError
+    carga.update!(estado: 'fallido')
+    raise
+  end
+
+  private
+
+  attr_reader :carga, :account
+
+  def modo
+    carga.modo
+  end
+
+  # archivo.download (ActiveStorage) llega en BINARY (ASCII-8BIT), igual que
+  # antes llegaba el upload multipart; comparar eso contra el literal UTF-8
+  # del BOM revienta con "incompatible character encodings" apenas el CSV
+  # trae una tilde o eñe (Siesa siempre exporta en UTF-8). Se reetiqueta
+  # explicitamente antes de tocar el contenido.
+  def leer_contenido
+    carga.archivo.download.force_encoding('UTF-8').delete_prefix("\xEF\xBB\xBF")
+  end
+
+  def columna_separadora(contenido)
+    self.class.columna_separadora(contenido)
+  end
+
   # Un solo UPDATE al final (no uno por fila): los contadores se acumulan en
-  # memoria mientras se procesa el CSV completo.
-  def procesar_filas!(carga, contenido)
+  # memoria mientras se procesa el CSV completo. precargar_existentes trae en
+  # UNA consulta las facturas que ya existen -- antes se hacia un find_by por
+  # fila (hasta 33.000 consultas en el archivo real, revision de Jhan).
+  def procesar_filas!(contenido)
     sep = columna_separadora(contenido)
+    filas = CSV.parse(contenido, headers: true, col_sep: sep)
+    existentes = precargar_existentes(filas)
     contadores = Hash.new(0)
     errores = []
 
-    CSV.parse(contenido, headers: true, col_sep: sep).each.with_index(2) do |fila, numero_fila|
+    filas.each.with_index(2) do |fila, numero_fila|
       contadores[:filas_leidas] += 1
-      resultado = procesar_fila(carga, fila)
+      resultado = procesar_fila(fila, existentes)
       if resultado.is_a?(String)
         errores << { 'fila' => numero_fila, 'error' => resultado }
         contadores[:filas_omitidas] += 1
@@ -91,22 +122,30 @@ class Helic3::Cargas::ImportarFacturas
     carga.update!(contadores.merge(errores: errores))
   end
 
+  def precargar_existentes(filas)
+    numeros = filas.map { |fila| fila['Nro documento'].to_s.strip }.reject(&:blank?).uniq
+    Helic3::FacturaVenta.where(account: account, numero_documento: numeros).index_by(&:numero_documento)
+  end
+
   # Devuelve :filas_insertadas/:filas_actualizadas/:filas_omitidas, o el
   # mensaje de error como String cuando la fila no se pudo guardar.
-  def procesar_fila(carga, fila)
+  def procesar_fila(fila, existentes)
     numero_documento = fila['Nro documento'].to_s.strip
     fecha = parsear_fecha(fila['Fecha'])
     valor = parsear_valor(fila['Valor subtotal'])
 
     return 'fecha o valor ilegible, o falta el numero de documento' if numero_documento.blank? || fecha.nil? || valor.nil?
 
-    guardar_factura(carga, numero_documento, fila['Desc. C.O.'], fecha, valor)
+    guardar_factura(numero_documento, fila['Desc. C.O.'], fecha, valor, existentes)
   rescue StandardError => e
     e.message
   end
 
-  def guardar_factura(carga, numero_documento, centro_operacion, fecha, valor)
-    existente = Helic3::FacturaVenta.find_by(account: account, numero_documento: numero_documento)
+  # existentes se actualiza con cada fila nueva (no solo con lo que ya habia
+  # en la base): asi un numero de documento repetido DENTRO del mismo archivo
+  # tambien se reconoce como ya visto, sin otra consulta.
+  def guardar_factura(numero_documento, centro_operacion, fecha, valor, existentes)
+    existente = existentes[numero_documento]
 
     if existente
       return :filas_omitidas if modo == 'anexar'
@@ -114,7 +153,7 @@ class Helic3::Cargas::ImportarFacturas
       existente.update!(centro_operacion: centro_operacion, fecha: fecha, valor_subtotal: valor, carga: carga)
       :filas_actualizadas
     else
-      Helic3::FacturaVenta.create!(
+      existentes[numero_documento] = Helic3::FacturaVenta.create!(
         account: account, carga: carga, numero_documento: numero_documento,
         centro_operacion: centro_operacion, fecha: fecha, valor_subtotal: valor
       )

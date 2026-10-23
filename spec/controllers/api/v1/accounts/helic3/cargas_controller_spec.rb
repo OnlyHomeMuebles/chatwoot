@@ -28,14 +28,32 @@ RSpec.describe 'Helic3 Cargas (IND-03, parcial)', type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
-    it 'un administrador carga facturas y recibe el resultado' do
+    # Revision de Jhan (PR #140): el archivo real trae ~33.000 filas, demasiado
+    # para procesarse dentro de la peticion. La respuesta llega de inmediato
+    # con la carga en "procesando"; el job la completa por fuera.
+    it 'un administrador sube el archivo y recibe la carga de inmediato, en estado "procesando"' do
       contenido = "Nro documento,Desc. C.O.,Fecha,Valor subtotal\nFV-001,Armenia,2026-09-01,100000\n"
 
-      post_carga(admin, tipo: 'facturas', modo: 'anexar', archivo: archivo_csv(contenido))
+      expect do
+        post_carga(admin, tipo: 'facturas', modo: 'anexar', archivo: archivo_csv(contenido))
+      end.to have_enqueued_job(Helic3::ImportarFacturasJob)
 
       expect(response).to have_http_status(:success)
-      body = response.parsed_body
-      expect(body).to include('tipo' => 'facturas', 'estado' => 'completado', 'filas_insertadas' => 1)
+      expect(response.parsed_body).to include('tipo' => 'facturas', 'estado' => 'procesando', 'filas_insertadas' => 0)
+    end
+
+    it 'el job procesa el archivo en background y deja la carga completada' do
+      contenido = "Nro documento,Desc. C.O.,Fecha,Valor subtotal\nFV-001,Armenia,2026-09-01,100000\n"
+      admin # evaluar el factory (dispara su propio job de avatar) ANTES de perform_enqueued_jobs,
+      # para que ese bloque solo ejecute el job de esta carga.
+
+      perform_enqueued_jobs do
+        post_carga(admin, tipo: 'facturas', modo: 'anexar', archivo: archivo_csv(contenido))
+      end
+
+      carga = Helic3::Carga.find(response.parsed_body['id'])
+      expect(carga).to have_attributes(estado: 'completado', filas_leidas: 1, filas_insertadas: 1)
+      expect(Helic3::FacturaVenta.sole.numero_documento).to eq('FV-001')
     end
 
     it 'rechaza un tipo que todavia no tiene parser' do
@@ -44,17 +62,27 @@ RSpec.describe 'Helic3 Cargas (IND-03, parcial)', type: :request do
       expect(response).to have_http_status(:unprocessable_entity)
     end
 
-    it 'rechaza un archivo sin las columnas requeridas, nombrandolas' do
+    it 'rechaza un archivo sin las columnas requeridas, nombrandolas, sin crear ninguna Carga' do
       post_carga(admin, tipo: 'facturas', modo: 'anexar', archivo: archivo_csv("Nro documento\nFV-001\n"))
 
       expect(response).to have_http_status(:unprocessable_entity)
       expect(response.parsed_body['error']).to include('Desc. C.O.')
+      expect(Helic3::Carga.count).to eq(0)
     end
 
     it 'exige el archivo' do
       post_carga(admin, tipo: 'facturas', modo: 'anexar')
 
       expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    # Revision de Jhan: si "modo" no llega (o llega invalido) hoy revienta con
+    # un 500 (ActiveRecord::RecordInvalid sin capturar); debe ser 422.
+    it 'rechaza con 422, no 500, cuando falta el modo o llega invalido' do
+      post_carga(admin, tipo: 'facturas', archivo: archivo_csv("Nro documento,Desc. C.O.,Fecha,Valor subtotal\nFV-001,Cali,2026-09-01,100000\n"))
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(Helic3::Carga.count).to eq(0)
     end
   end
 

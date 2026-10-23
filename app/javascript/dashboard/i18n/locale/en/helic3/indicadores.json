@@ -131,6 +131,9 @@
       "COL_INSERTED": "Inserted",
       "COL_UPDATED": "Updated",
       "COL_SKIPPED": "Skipped",
+      "COL_ERRORS": "Errors",
+      "VIEW_ERRORS": "View {cantidad} error(s)",
+      "ERROR_ROW": "Row {fila}",
       "STATUS_PROCESANDO": "Processing",
       "STATUS_COMPLETADO": "Completed",
       "STATUS_FALLIDO": "Failed"

@@ -31,6 +31,11 @@ class Helic3::Carga < ApplicationRecord
   belongs_to :usuario, class_name: 'User', optional: true
   has_many :facturas, class_name: 'Helic3::FacturaVenta', inverse_of: :carga, dependent: :restrict_with_error
 
+  # revision de Jhan (PR #140): el archivo se procesa en un job, fuera de la
+  # peticion -- necesita sobrevivir mas alla del tempfile del upload, que Rails
+  # borra apenas termina la peticion.
+  has_one_attached :archivo
+
   validates :tipo, inclusion: { in: TIPOS }
   validates :modo, inclusion: { in: MODOS }
   validates :estado, inclusion: { in: ESTADOS }
