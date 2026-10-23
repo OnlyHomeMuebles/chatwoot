@@ -27,8 +27,13 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
   # Todo en UNA transaccion: Radicar abre la suya, pero al anidarla dentro de esta
   # los operativos (status/assignee) quedan en el mismo alcance. Si su update! falla,
   # se revierte tambien la radicacion — nunca queda un expediente huerfano con numero
-  # y reloj legal corriendo que nadie atenderia. No se rescata aqui: la excepcion
-  # debe salir de la transaccion para que haya rollback (el rescue_from base responde).
+  # y reloj legal corriendo que nadie atenderia. Los errores operativos NO se rescatan:
+  # salen de la transaccion para que haya rollback (el rescue_from base responde).
+  #
+  # La unica excepcion que SI capturamos es EtapaInicialFaltante (riesgo 1 de la
+  # revision de #127): se rescata a nivel de metodo —fuera del bloque, con el rollback
+  # ya hecho— para responder 422 nombrando la causa, en vez del 404/500 enganoso que
+  # dejaba al operador sin saber que la cuenta no esta bien sembrada.
   def create
     validar_radicacion_manual!
     Helic3::Ticket.transaction do
