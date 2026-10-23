@@ -2,35 +2,47 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
+import { useAdmin } from 'dashboard/composables/useAdmin';
 
-// IND-01/IND-02: contenedor de la seccion "Indicadores" -- la barra de
+// IND-01/IND-02/IND-03: contenedor de la seccion "Indicadores" -- la barra de
 // pestañas (una URL compartible por pestaña, via router children) y el
 // contenido de la pestaña activa. Una pestaña aparece SOLO cuando su ticket
-// se integra (Garantías con IND-01, Derechos de Petición con IND-02);
-// nada de pestañas vacías ni avisos de "próximamente". "Todas las PQR" no es
-// un ticket aparte: es un resumen que combina lo que ya calculan las otras
-// dos pestañas, por eso entra junto a ellas.
+// se integra; nada de pestañas vacías ni avisos de "próximamente". "Todas
+// las PQR" no es un ticket aparte: es un resumen que combina lo que ya
+// calculan las otras pestañas. "Carga de datos" (IND-03) es la unica que
+// ademas se oculta a los agentes (criterio del Dash CX: "un agente no ve la
+// pestaña Carga de Datos").
 const { t } = useI18n();
 const route = useRoute();
+const { isAdmin } = useAdmin();
 
 // computed, no un array plano: un array plano evalua t() UNA sola vez al
 // montar el componente, antes de que el locale de la cuenta termine de
 // resolverse -- la pestaña quedaba en ingles ("Warranties") aunque el resto
 // de la pagina ya mostrara espanol, porque nunca se volvia a recalcular.
-const TABS = computed(() => [
-  {
-    name: 'helic3_indicadores_garantias',
-    label: t('HELIC3_INDICADORES.TABS.GARANTIAS'),
-  },
-  {
-    name: 'helic3_indicadores_pqr',
-    label: t('HELIC3_INDICADORES.TABS.PQR'),
-  },
-  {
-    name: 'helic3_indicadores_todas',
-    label: t('HELIC3_INDICADORES.TABS.TODAS'),
-  },
-]);
+const TABS = computed(() => {
+  const tabs = [
+    {
+      name: 'helic3_indicadores_garantias',
+      label: t('HELIC3_INDICADORES.TABS.GARANTIAS'),
+    },
+    {
+      name: 'helic3_indicadores_pqr',
+      label: t('HELIC3_INDICADORES.TABS.PQR'),
+    },
+    {
+      name: 'helic3_indicadores_todas',
+      label: t('HELIC3_INDICADORES.TABS.TODAS'),
+    },
+  ];
+  if (isAdmin.value) {
+    tabs.push({
+      name: 'helic3_indicadores_carga',
+      label: t('HELIC3_INDICADORES.TABS.CARGA'),
+    });
+  }
+  return tabs;
+});
 </script>
 
 <template>

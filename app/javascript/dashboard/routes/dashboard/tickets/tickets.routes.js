@@ -9,6 +9,7 @@ import IndicadoresPage from './pages/IndicadoresPage.vue';
 import GarantiasTab from './pages/indicadores/GarantiasTab.vue';
 import PqrTab from './pages/indicadores/PqrTab.vue';
 import TodasTab from './pages/indicadores/TodasTab.vue';
+import CargaTab from './pages/indicadores/CargaTab.vue';
 
 const ticketsRoutes = {
   routes: [
@@ -95,6 +96,16 @@ const ticketsRoutes = {
             permissions: ['administrator', 'agent'],
           },
           component: TodasTab,
+        },
+        {
+          // IND-03 (parcial): solo administradores, igual que el Dash CX
+          // ("un agente no ve la pestaña Carga de Datos").
+          path: 'carga',
+          name: 'helic3_indicadores_carga',
+          meta: {
+            permissions: ['administrator'],
+          },
+          component: CargaTab,
         },
       ],
     },

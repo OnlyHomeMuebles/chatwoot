@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_10_07_120100) do
+ActiveRecord::Schema[7.2].define(version: 2026_10_20_100100) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1144,6 +1144,24 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_07_120100) do
     t.index ["inbox_id"], name: "idx_h3agb_inbox"
   end
 
+  create_table "helic3_cargas", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "tipo", null: false
+    t.string "nombre_archivo", null: false
+    t.string "modo", null: false
+    t.bigint "usuario_id"
+    t.string "estado", default: "procesando", null: false
+    t.integer "filas_leidas", default: 0, null: false
+    t.integer "filas_insertadas", default: 0, null: false
+    t.integer "filas_actualizadas", default: 0, null: false
+    t.integer "filas_omitidas", default: 0, null: false
+    t.jsonb "errores", default: [], null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "tipo"], name: "idx_h3_cargas_account_tipo"
+    t.index ["account_id"], name: "idx_h3_cargas_account"
+  end
+
   create_table "helic3_catalogo_categorias", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "nombre", null: false
@@ -1336,6 +1354,20 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_07_120100) do
     t.index ["actor_id"], name: "idx_h3_eventos_actor"
     t.index ["garantia_id"], name: "idx_h3_eventos_garantia"
     t.index ["ticket_id"], name: "idx_h3_eventos_ticket"
+  end
+
+  create_table "helic3_facturas_venta", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "numero_documento", null: false
+    t.string "centro_operacion"
+    t.date "fecha", null: false
+    t.decimal "valor_subtotal", precision: 14, scale: 2, null: false
+    t.bigint "carga_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "numero_documento"], name: "idx_h3_facturas_account_numero", unique: true
+    t.index ["account_id"], name: "idx_h3_facturas_account"
+    t.index ["carga_id"], name: "idx_h3_facturas_carga"
   end
 
   create_table "helic3_garantia_items", force: :cascade do |t|
@@ -2042,6 +2074,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_07_120100) do
   add_foreign_key "helic3_agentes", "users", column: "creado_por_id", on_delete: :nullify
   add_foreign_key "helic3_agentes_bandejas", "helic3_agentes", column: "agente_id", on_delete: :cascade
   add_foreign_key "helic3_agentes_bandejas", "inboxes", on_delete: :cascade
+  add_foreign_key "helic3_cargas", "users", column: "usuario_id", on_delete: :nullify
   add_foreign_key "helic3_catalogo_detalles_tipificados", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
   add_foreign_key "helic3_catalogo_formatos", "accounts"
   add_foreign_key "helic3_catalogo_motivos_pqr", "helic3_catalogo_categorias", column: "categoria_id"
@@ -2056,6 +2089,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_07_120100) do
   add_foreign_key "helic3_eventos", "helic3_garantias", column: "garantia_id"
   add_foreign_key "helic3_eventos", "helic3_tickets", column: "ticket_id"
   add_foreign_key "helic3_eventos", "users", column: "actor_id", on_delete: :nullify
+  add_foreign_key "helic3_facturas_venta", "helic3_cargas", column: "carga_id"
   add_foreign_key "helic3_garantia_items", "helic3_catalogo_detalles_tipificados", column: "detalle_tipificado_id"
   add_foreign_key "helic3_garantia_items", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
   add_foreign_key "helic3_garantia_items", "helic3_catalogo_procesos_garantia", column: "proceso_id"

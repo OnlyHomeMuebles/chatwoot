@@ -4,7 +4,8 @@
     "TABS": {
       "GARANTIAS": "Garantías",
       "PQR": "Derechos de Petición",
-      "TODAS": "Todas las PQR"
+      "TODAS": "Todas las PQR",
+      "CARGA": "Carga de datos"
     },
     "FILTERS": {
       "YEAR": "Año",
@@ -102,6 +103,45 @@
       "MONTHLY_CHART": "Recuento por mes",
       "QUARTERLY": "Detalle trimestral",
       "TOTAL_COLUMN": "Total"
+    },
+    "CARGA": {
+      "TITLE": "Subir archivo",
+      "SUBTITLE": "Carga facturas, garantías, peticiones o devoluciones en CSV, con el mismo modo de duplicados del Dash CX.",
+      "TYPE_LABEL": "Tipo",
+      "TIPO_FACTURAS": "Facturas",
+      "TIPO_GARANTIAS": "Garantías",
+      "TIPO_PETICIONES": "Peticiones",
+      "TIPO_DEVOLUCIONES": "Devoluciones",
+      "TIPO_PENDIENTE": "{tipo} (pendiente definir columnas)",
+      "MODE_LABEL": "Modo de duplicados",
+      "MODE_ANEXAR": "Anexar (omitir existentes)",
+      "MODE_SOBRESCRIBIR": "Sobrescribir / Actualizar",
+      "FILE_LABEL": "Archivo (CSV)",
+      "REQUIRED_COLUMNS": "Columnas requeridas:",
+      "UPLOAD_BUTTON": "Subir y procesar",
+      "ARCHIVO_REQUERIDO": "Selecciona un archivo antes de subir",
+      "EXITO": "Archivo procesado",
+      "ERROR": "No se pudo procesar el archivo",
+      "HISTORY": "Historial de cargas",
+      "EMPTY": "Todavía no se ha subido ningún archivo",
+      "COL_FILE": "Archivo",
+      "COL_MODE": "Modo",
+      "COL_STATUS": "Estado",
+      "COL_READ": "Leídas",
+      "COL_INSERTED": "Insertadas",
+      "COL_UPDATED": "Actualizadas",
+      "COL_SKIPPED": "Omitidas",
+      "COL_ERRORS": "Errores",
+      "VIEW_ERRORS": "Ver {cantidad} error(es)",
+      "ERROR_ROW": "Fila {fila}",
+      "ERROR_GENERAL": "Error general",
+      "COL_ACTIONS": "Acciones",
+      "DELETE": "Borrar",
+      "DELETE_CONFIRM": "¿Confirmar?",
+      "DELETE_ERROR": "No se pudo borrar la carga",
+      "STATUS_PROCESANDO": "Procesando",
+      "STATUS_COMPLETADO": "Completado",
+      "STATUS_FALLIDO": "Fallido"
     }
   }
 }
