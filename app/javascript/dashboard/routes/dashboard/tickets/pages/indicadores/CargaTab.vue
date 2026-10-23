@@ -88,19 +88,33 @@ onMounted(() => cargasStore.fetchCargas());
 // job por fuera de la peticion -- la carga queda "procesando" en la respuesta
 // inmediata. Mientras haya alguna asi en el historial, se refresca sola cada
 // pocos segundos; apenas ninguna sigue "procesando" el polling se detiene.
+//
+// Tope de intentos (visto en vivo, no hipotetico): un job puede perderse entre
+// que se encola y que Sidekiq lo recoge (hiccup de Redis, deploy a mitad de
+// proceso) y la carga queda "procesando" para siempre -- sin tope, la pantalla
+// quedaria parpadeando sin parar. A los ~2 minutos se rinde solo.
 const hayCargaProcesando = computed(() =>
   cargas.value.some(carga => carga.estado === 'procesando')
 );
 const POLL_MS = 4000;
+const POLL_MAX_INTENTOS = 30;
 let intervalo = null;
+let intentos = 0;
 const detenerPolling = () => {
   if (!intervalo) return;
   clearInterval(intervalo);
   intervalo = null;
+  intentos = 0;
 };
 const iniciarPollingSiHaceFalta = () => {
   if (intervalo || !hayCargaProcesando.value) return;
-  intervalo = setInterval(() => cargasStore.fetchCargas(), POLL_MS);
+  intervalo = setInterval(async () => {
+    intentos += 1;
+    await cargasStore.fetchCargas();
+    if (!hayCargaProcesando.value || intentos >= POLL_MAX_INTENTOS) {
+      detenerPolling();
+    }
+  }, POLL_MS);
 };
 watch(hayCargaProcesando, activo => {
   if (activo) iniciarPollingSiHaceFalta();
