@@ -12,6 +12,14 @@ class Helic3::Casos::Radicar
   # un valor por defecto silencioso
   class ParametroFaltante < StandardError; end
 
+  # misma familia que ParametroFaltante: la cuenta no esta bien sembrada. Antes el
+  # find_by! de la etapa inicial soltaba un RecordNotFound crudo que el controlador
+  # traducia a un 404 "Resource could not be found" — enganoso, porque sugiere una
+  # ruta inexistente cuando el problema es un catalogo sin sembrar (o sin ninguna
+  # etapa marcada como inicial). Este error nombra la causa. (Unifica el riesgo 1 de
+  # #127 con la identificacion por flag `inicial` de este PR.)
+  class EtapaInicialFaltante < StandardError; end
+
   PLAZO_RESPALDO = 'plazo_respuesta_pqr'.freeze
 
   # La firma es un contrato publicado en la especificacion de la entrega
@@ -89,10 +97,16 @@ class Helic3::Casos::Radicar
     @motivo_pqr&.categoria
   end
 
-  # find_by! a proposito: si la cuenta no tiene la etapa "nueva" es que
-  # no esta sembrada, y eso debe verse en el momento, no silenciarse
+  # La etapa inicial se identifica por el flag `inicial`, NO por el texto del
+  # codigo: asi Karen puede renombrar la etapa inicial desde el admin sin romper
+  # la radicacion. find_by! a proposito: si la cuenta no tiene una etapa inicial
+  # activa es que no esta sembrada, y eso debe verse en el momento, no silenciarse.
   def etapa_inicial
-    Helic3::Catalogo::EtapaPqr.activos.find_by!(account: @account, codigo: 'nueva')
+    Helic3::Catalogo::EtapaPqr.activos.find_by!(account: @account, inicial: true)
+  rescue ActiveRecord::RecordNotFound
+    raise EtapaInicialFaltante,
+          "falta una etapa inicial activa en la cuenta #{@account.id}: " \
+          'siembra los catalogos o marca una etapa como inicial'
   end
 
   def radicada_at

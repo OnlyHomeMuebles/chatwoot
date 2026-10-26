@@ -10,10 +10,33 @@ RSpec.describe Helic3::Catalogo::SeederService do
     resumen = service.sembrar!
 
     expect(resumen).to eq(
-      categorias: 6, tipos: 5, etapas_pqr: 4, motivos_pqr: 7, resultados: 7,
+      categorias: 6, tipos: 5, etapas_pqr: 3, motivos_pqr: 7, resultados: 7,
       motivos_garantia: 5, detalles_tipificados: 31, procesos_garantia: 7,
-      coberturas_ciudad: 10, parametros: 19
+      coberturas_ciudad: 10, parametros: 24, formatos: 4
     )
+  end
+
+  it 'precarga el formato sugerido por proceso, salvo entrega_producto (N1 Jhan)' do
+    service.sembrar!
+
+    visita = Helic3::Catalogo::ProcesoGarantia.find_by!(account: account, codigo: 'visita_tecnica')
+    entrega = Helic3::Catalogo::ProcesoGarantia.find_by!(account: account, codigo: 'entrega_producto')
+    formato_visita = Helic3::Catalogo::Formato.find_by!(account: account, codigo: 'visita_tecnica')
+
+    expect(visita.formato_sugerido).to eq(formato_visita)
+    # entrega_producto -> No. 2 queda sin precargar hasta que Karen lo confirme.
+    expect(entrega.formato_sugerido_id).to be_nil
+  end
+
+  # PRM: los mensajes del agente son largos (>255), asi que necesitan la columna
+  # `valor` como text (migracion 20261002110000). Este test lo prueba de punta a
+  # punta: si la columna siguiera siendo string, el seeder reventaria aqui.
+  it 'siembra los mensajes largos del agente (requiere valor como texto)' do
+    service.sembrar!
+
+    msg = Helic3::Catalogo::Parametro.find_by!(account: account, clave: 'mensaje_recoleccion')
+    expect(msg.valor.length).to be > 255
+    expect(msg.valor).to include('Recolección de producto')
   end
 
   it 'se ejecuta dos veces seguidas sin generar duplicados' do
@@ -31,6 +54,32 @@ RSpec.describe Helic3::Catalogo::SeederService do
     described_class.new(account).sembrar!
 
     expect(proceso.reload.plazo_dias_habiles).to eq(12)
+  end
+
+  # SIE-01 (CA5): parte de lo que Samuel creo a mano en el CRM desplegado. Si las
+  # categorias manuales usan los codigos de la semilla, la siembra completa las que
+  # faltan y crea los motivos (que las referencian por codigo) sin error.
+  it 'completa lo que falta cuando ya hay categorias creadas a mano con el codigo de la semilla' do
+    Helic3::Catalogo::Categoria.create!(account: account, codigo: 'garantia', nombre: 'Garantía', posicion: 0)
+    Helic3::Catalogo::Categoria.create!(account: account, codigo: 'servicio', nombre: 'Servicio', posicion: 1)
+
+    expect { service.sembrar! }.not_to raise_error
+    expect(Helic3::Catalogo::Categoria.where(account: account).count).to eq(6)
+    expect(Helic3::Catalogo::MotivoPqr.where(account: account).count).to eq(7)
+  end
+
+  # SIE-01 (CA7): si la tabla de un catalogo todavia no existe (un ambiente atrasado
+  # que corre la siembra antes de la migracion que crea esa tabla), se omite ese
+  # catalogo con una advertencia y se siembra el resto, sin romper la migracion.
+  it 'omite un catalogo cuya tabla aun no existe y siembra el resto' do
+    allow(Helic3::Catalogo::DetalleTipificado).to receive(:table_exists?).and_return(false)
+    allow(Rails.logger).to receive(:warn)
+
+    resumen = service.sembrar!
+
+    expect(resumen[:detalles_tipificados]).to eq(0)
+    expect(resumen[:categorias]).to eq(6)
+    expect(Rails.logger).to have_received(:warn).with(/helic3_catalogo_detalles_tipificados/)
   end
 
   it 'siembra los 7 motivos de PQR con su politica de garantia (frente D)' do
@@ -64,11 +113,25 @@ RSpec.describe Helic3::Catalogo::SeederService do
     expect(requiere_admin).to all(be(true))
   end
 
-  it 'deja a Respondida como la unica etapa que detiene el reloj legal' do
+  it 'siembra las 3 etapas del mockup: nuevo, en_gestion, solucionado' do
+    service.sembrar!
+
+    codigos = Helic3::Catalogo::EtapaPqr.where(account: account).order(:posicion).pluck(:codigo)
+    expect(codigos).to eq(%w[nuevo en_gestion solucionado])
+  end
+
+  it 'deja a Solucionado como la unica etapa que detiene el reloj legal' do
     service.sembrar!
 
     detienen = Helic3::Catalogo::EtapaPqr.where(account: account, detiene_reloj: true).pluck(:codigo)
-    expect(detienen).to eq(['respondida'])
+    expect(detienen).to eq(['solucionado'])
+  end
+
+  it 'marca a Nuevo como la unica etapa inicial (con la que nace una PQR)' do
+    service.sembrar!
+
+    iniciales = Helic3::Catalogo::EtapaPqr.where(account: account, inicial: true).pluck(:codigo)
+    expect(iniciales).to eq(['nuevo'])
   end
 
   it 'asigna el plazo legal de 15 dias a peticion, queja y reclamo' do
@@ -151,6 +214,19 @@ RSpec.describe Helic3::Catalogo::SeederService do
     expect(flag.unidad).to eq('booleano')
     expect(flag.valor_booleano).to be(false)
     expect(Helic3::Agents::FeatureFlag.agentes_desde_bd?(account)).to be(false)
+  end
+
+  # SIE-01 (CA8): si alguien prendio agentes_desde_bd desde el panel, re-sembrar no
+  # la vuelve a false. Asi la migracion de siembra no cambia el comportamiento del
+  # bot en ese mismo despliegue.
+  it 'no cambia agentes_desde_bd si ya estaba prendida' do
+    service.sembrar!
+    flag = Helic3::Catalogo::Parametro.find_by!(account: account, clave: 'agentes_desde_bd')
+    flag.update!(valor: 'true')
+
+    described_class.new(account).sembrar!
+
+    expect(flag.reload.valor_booleano).to be(true)
   end
 
   it 'siembra los cinco umbrales del semaforo y la autonomia (PRM-01, criterio 3)' do

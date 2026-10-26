@@ -171,6 +171,16 @@ RSpec.describe 'Helic3 administracion de catalogos (ADM-01)', type: :request do
       let(:registro) { modelo.create!(account: account, nombre: 'Radicada', codigo: 'radicada') }
 
       it_behaves_like 'catalogo con las cuatro operaciones (ADM-02)', 'etapas_pqr'
+
+      it 'permite marcar la etapa inicial (flag editable por el admin)' do
+        post "/api/v1/accounts/#{account.id}/helic3/admin/catalogos/etapas_pqr",
+             params: { catalogo: { nombre: 'Radicada', codigo: 'radicada', inicial: true } },
+             headers: admin.create_new_auth_token, as: :json
+
+        expect(response).to have_http_status(:created)
+        expect(response.parsed_body['inicial']).to be(true)
+        expect(modelo.find_by(account: account, codigo: 'radicada').inicial).to be(true)
+      end
     end
 
     describe 'motivos_garantia' do
@@ -202,6 +212,36 @@ RSpec.describe 'Helic3 administracion de catalogos (ADM-01)', type: :request do
             headers: admin.create_new_auth_token, as: :json
 
       expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe 'formatos (FMT-06): Karen los crea sin devs' do
+    let(:formatos_base) { "/api/v1/accounts/#{account.id}/helic3/admin/catalogos/formatos" }
+
+    it 'un administrador crea un formato nuevo' do
+      post formatos_base,
+           params: { catalogo: { nombre: 'Acta especial', codigo: 'acta_especial' } },
+           headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(Helic3::Catalogo::Formato.find_by(account: account, codigo: 'acta_especial')).to be_present
+    end
+
+    it 'un agente NO puede crear un formato' do
+      post formatos_base,
+           params: { catalogo: { nombre: 'Acta', codigo: 'acta' } },
+           headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'borrar un formato con plantillas devuelve 422, no 500' do
+      formato = Helic3::Catalogo::Formato.create!(account: account, nombre: 'Con plantilla', codigo: 'con_plantilla')
+      formato.plantillas.create!(account: account, version: 1, estado: 'activa')
+
+      delete "#{formatos_base}/#{formato.id}", headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
     end
   end
 end

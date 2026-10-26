@@ -53,6 +53,94 @@
       "ERROR": "Hubo un error al crear el ticket",
       "CATALOGS_ERROR": "No se pudieron cargar los catálogos de clasificación"
     },
+    "NUEVA": {
+      "TITLE": "Nueva PQR manual",
+      "BADGE": "Registro por agente",
+      "SUBTITLE": "Radica la solicitud y prepara su gestión en un solo flujo.",
+      "VOLVER": "Volver a la bandeja",
+      "PASO1": "Datos del caso",
+      "PASO2": "Cliente y compra",
+      "PASO_DE": "Paso {n} de {total}",
+      "PASOS_ARIA": "Pasos del formulario",
+      "OBLIGATORIOS": "Campos obligatorios",
+      "CONTINUAR": "Continuar",
+      "ANTERIOR": "Anterior",
+      "CREAR": "Crear PQR",
+      "CREADA": "PQR #{consecutivo} creada",
+      "ADJUNTO_FALLO": "No se pudo subir el adjunto {nombre}",
+      "CASO": {
+        "TITLE": "Datos del caso",
+        "SUBTITLE": "Clasifica la solicitud y asigna quién la atenderá.",
+        "TIPO": "Tipo",
+        "TIPO_PH": "Selecciona un tipo",
+        "MOTIVO": "Motivo",
+        "MOTIVO_PH": "Selecciona un motivo",
+        "DETALLE": "Detalle tipificado",
+        "DETALLE_PH": "Selecciona un detalle",
+        "DESCRIPCION": "Descripción de la solicitud",
+        "DESCRIPCION_PH": "Describe qué solicita el cliente y qué ocurrió con el producto.",
+        "RESPONSABLE": "Responsable",
+        "RESPONSABLE_PH": "Sin asignar",
+        "ETAPA": "Etapa",
+        "ETAPA_PH": "Selecciona una etapa",
+        "EDITAR_ETAPAS": "Editar etapas",
+        "ETAPA_DESCRIPCION": {
+          "NUEVO": "Creado por un agente; pendiente de revisión.",
+          "EN_GESTION": "La solicitud está siendo atendida.",
+          "SOLUCIONADO": "La solicitud ya fue resuelta.",
+          "DEFAULT": "Etapa actual de la solicitud."
+        },
+        "ETAPA_RESUMEN": "{etapa} · {descripcion}",
+        "ADJUNTOS": "Adjuntos",
+        "ADJUNTOS_CTA": "Agregar fotos o documentos",
+        "ADJUNTOS_HINT": "Factura, evidencia del producto o solicitud del cliente",
+        "ADJUNTO_QUITAR": "Quitar adjunto"
+      },
+      "CLIENTE": {
+        "TITLE": "Cliente",
+        "SUBTITLE": "Registra los datos del cliente.",
+        "CEDULA": "Cédula del cliente",
+        "CEDULA_PH": "Ej. 1020304050",
+        "NOMBRE": "Cliente",
+        "NOMBRE_PH": "Nombre completo",
+        "TELEFONO": "Teléfono",
+        "TELEFONO_PH": "Número de contacto",
+        "CORREO": "Correo electrónico",
+        "CORREO_PH": "correo{'@'}ejemplo.com" 
+      },
+      "COMPRA": {
+        "TITLE": "Compra y producto",
+        "FACTURA": "Factura",
+        "FACTURA_PH": "Número de factura",
+        "FECHA": "Fecha de compra",
+        "PRODUCTO": "Producto",
+        "PRODUCTO_PH": "Nombre del producto",
+        "REFERENCIA": "Referencia",
+        "REFERENCIA_PH": "Referencia o código del producto"
+      },
+      "DIRECCION": {
+        "TITLE": "Dirección actual",
+        "CIUDAD": "Ciudad actual",
+        "CIUDAD_PH": "Ciudad donde está el producto",
+        "DIRECCION": "Dirección actual",
+        "DIRECCION_PH": "Dirección, barrio y complemento"
+      },
+      "RESUMEN": {
+        "TITLE": "Resumen de la PQR",
+        "BORRADOR": "Borrador",
+        "ORIGEN": "Origen",
+        "MANUAL": "Registro manual",
+        "CATEGORIA": "Categoría",
+        "ADJUNTOS": "{n} archivo | {n} archivos"
+      },
+      "ERRORES": {
+        "MOTIVO": "Selecciona un motivo para continuar.",
+        "DESCRIPCION": "Escribe la descripción de la solicitud.",
+        "CLIENTE": "El nombre del cliente es obligatorio.",
+        "TELEFONO": "El teléfono del cliente es obligatorio.",
+        "GENERAL": "No se pudo crear la PQR. Revisa los datos e inténtalo de nuevo."
+      }
+    },
     "CLOCK": {
       "NO_RADICADO": "Sin radicado",
       "REMAINING": "{days} días hábiles restantes",
@@ -112,8 +200,8 @@
       "TABS": {
         "ALL": "Todas",
         "UNANSWERED": "Sin responder",
-        "IN_REVIEW": "En análisis",
-        "ANSWERED": "Respondidas"
+        "IN_REVIEW": "En gestión",
+        "ANSWERED": "Solucionadas"
       },
       "NEW": "Nueva PQR",
       "EXPORT": "Exportar",
@@ -183,7 +271,8 @@
         "MOTIVOS_GARANTIA": "Motivos de garantía",
         "PROCESOS_GARANTIA": "Procesos de garantía",
         "COBERTURAS_CIUDAD": "Cobertura por ciudad",
-        "PARAMETROS": "Parámetros"
+        "PARAMETROS": "Parámetros",
+        "FORMATOS": "Formatos"
       },
       "SUBTITLE": "El vocabulario del módulo se administra aquí. Ningún valor está escrito en el código.",
       "ACTIVE": "Activa",
@@ -202,8 +291,44 @@
         "MOTIVOS_GARANTIA": "Qué pasó con el producto; puede activar una regla de asignación por fecha.",
         "PROCESOS_GARANTIA": "Hitos dentro del mismo presupuesto de días hábiles; no reinician el reloj.",
         "COBERTURAS_CIUDAD": "Con técnico propio la garantía arranca en visita; sin técnico, en recolección.",
-        "PARAMETROS": "Tiempos y umbrales de operación del módulo."
+        "PARAMETROS": "Tiempos y umbrales de operación del módulo.",
+        "FORMATOS": "Plantillas .docx de los formatos de garantía."
       }
+    },
+    "FORMATOS": {
+      "TITLE": "Formatos",
+      "SIN_PLANTILLA": "Aún no tiene plantilla; no se puede generar.",
+      "VERSION_ACTIVA": "Versión %{version} (activa)",
+      "SUBIR": "Subir nueva versión",
+      "DESCARGAR": "Descargar .docx",
+      "ACTIVAR": "Activar esta versión",
+      "ACTIVAR_CONFIRMACION": "Desde ahora todos los casos usan esta versión del formato. ¿Activar?",
+      "DESCARTAR": "Descartar borrador",
+      "VISTA_PREVIA": "Vista previa",
+      "ABRIR_NUEVA_PESTANA": "Abrir en pestaña nueva",
+      "DESCONOCIDOS": "Marcadores no reconocidos:",
+      "MARCADORES": {
+        "TITLE": "Marcadores disponibles",
+        "COPIAR": "Copiar",
+        "COPIADO": "Copiado"
+      },
+      "SOLO_LECTURA": "Solo lectura",
+      "GUARDADO": "Listo",
+      "FORBIDDEN": "No tienes permiso para esta acción.",
+      "ERROR": "Ocurrió un error. Inténtalo de nuevo.",
+      "NUEVO": "Nuevo formato",
+      "NUEVO_TITULO": "Crear formato",
+      "NOMBRE": "Nombre",
+      "CODIGO": "Código",
+      "CODIGO_AYUDA": "Si lo dejas vacío, se genera del nombre.",
+      "CREAR": "Crear",
+      "CREADO": "Formato creado",
+      "DESACTIVAR": "Desactivar",
+      "DESACTIVAR_CONFIRMACION": "El formato deja de ofrecerse, pero se conserva el historial. ¿Desactivar?",
+      "DESACTIVADO": "Formato desactivado",
+      "REACTIVAR": "Reactivar",
+      "REACTIVADO": "Formato reactivado",
+      "DESACTIVADO_BADGE": "Desactivado"
     },
     "DETAIL": {
       "TITLE": "Detalle del expediente",
@@ -231,6 +356,7 @@
       "BACK": "Volver a la bandeja",
       "OPEN_CONVERSATION": "Abrir la conversación",
       "LEGAL_TITLE": "PQR · expediente legal",
+      "LEGAL_SUBTITLE": "Clasificación, plazo de respuesta y resultado.",
       "RADICADO": "Radicado",
       "CLOCK_RUNNING": "Reloj en curso",
       "CLOCK_STOPPED": "Reloj detenido",
@@ -343,6 +469,9 @@
       "TITLE": "Datos del caso",
       "SAVED": "Dato actualizado",
       "ERROR": "Hubo un error al guardar el dato",
+      "EDIT": "Editar",
+      "SAVE": "Guardar",
+      "CANCEL": "Cancelar",
       "SOURCE": {
         "IA": "IA",
         "ERP": "ERP",
@@ -350,13 +479,26 @@
         "HUMANO": "Manual"
       },
       "FIELDS": {
+        "CLIENTE_NOMBRE": "Cliente",
+        "CLIENTE_TELEFONO": "Teléfono",
+        "CLIENTE_EMAIL": "Correo",
         "CEDULA": "Cédula",
         "DIRECCION": "Dirección",
         "CIUDAD": "Ciudad",
         "FACTURA_NUMERO": "Factura",
+        "FACTURA_FECHA": "Fecha de compra",
         "PRODUCTO_NOMBRE": "Producto",
+        "PRODUCTO_REFERENCIA": "Referencia",
         "DETALLE": "Detalle"
       }
+    },
+    "RESOLVER": {
+      "TITLE": "Resolver PQR",
+      "HINT": "Elige el resultado para cerrar esta PQR. Si el resultado abre garantía, se pedirán los datos del producto.",
+      "PLACEHOLDER": "Elegir resultado…",
+      "PROPOSAL_PENDING": "El agente dejó una propuesta de resolución pendiente de aprobación.",
+      "GO_TO_DECISIONS": "Ir a Decisiones",
+      "CATALOG_ERROR": "No se pudieron cargar los resultados para resolver la PQR."
     },
     "DELETE": {
       "TITLE": "Eliminar ticket",
@@ -365,6 +507,19 @@
       "SUCCESS": "Ticket eliminado",
       "ERROR": "Hubo un error al eliminar el ticket",
       "FORBIDDEN": "No tienes permiso para eliminar este ticket."
+    },
+    "GENERAR_FORMATO": {
+      "TITLE": "Generar formato",
+      "GENERAR": "Generar y guardar",
+      "PREVIEW": "Vista previa",
+      "ITEM_LABEL": "Producto",
+      "FORMATO_LABEL": "Formato",
+      "SUGERIDO": "Sugerido",
+      "SIN_PLANTILLA": "Sin plantilla activa",
+      "FALTANTES_TITLE": "Faltan datos en la ficha:",
+      "SIN_GARANTIA": "Este caso no tiene garantía; no hay formatos para generar.",
+      "GUARDADO": "Formato generado y guardado en el expediente",
+      "ERROR": "No se pudo generar el formato"
     }
   }
 }

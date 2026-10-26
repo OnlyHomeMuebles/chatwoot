@@ -53,6 +53,94 @@
       "ERROR": "There was an error creating the ticket",
       "CATALOGS_ERROR": "The classification catalogs could not be loaded"
     },
+    "NUEVA": {
+      "TITLE": "New manual PQR",
+      "BADGE": "Agent entry",
+      "SUBTITLE": "File the request and prepare its handling in a single flow.",
+      "VOLVER": "Back to inbox",
+      "PASO1": "Case data",
+      "PASO2": "Customer and purchase",
+      "PASO_DE": "Step {n} of {total}",
+      "PASOS_ARIA": "Form steps",
+      "OBLIGATORIOS": "Required fields",
+      "CONTINUAR": "Continue",
+      "ANTERIOR": "Back",
+      "CREAR": "Create PQR",
+      "CREADA": "PQR #{consecutivo} created",
+      "ADJUNTO_FALLO": "Could not upload attachment {nombre}",
+      "CASO": {
+        "TITLE": "Case data",
+        "SUBTITLE": "Classify the request and assign who will handle it.",
+        "TIPO": "Type",
+        "TIPO_PH": "Select a type",
+        "MOTIVO": "Reason",
+        "MOTIVO_PH": "Select a reason",
+        "DETALLE": "Typified detail",
+        "DETALLE_PH": "Select a detail",
+        "DESCRIPCION": "Request description",
+        "DESCRIPCION_PH": "Describe what the customer requests and what happened with the product.",
+        "RESPONSABLE": "Assignee",
+        "RESPONSABLE_PH": "Unassigned",
+        "ETAPA": "Stage",
+        "ETAPA_PH": "Select a stage",
+        "EDITAR_ETAPAS": "Edit stages",
+        "ETAPA_DESCRIPCION": {
+          "NUEVO": "Created by an agent; pending review.",
+          "EN_GESTION": "The request is being handled.",
+          "SOLUCIONADO": "The request has been resolved.",
+          "DEFAULT": "Current request stage."
+        },
+        "ETAPA_RESUMEN": "{etapa} · {descripcion}",
+        "ADJUNTOS": "Attachments",
+        "ADJUNTOS_CTA": "Add photos or documents",
+        "ADJUNTOS_HINT": "Invoice, product evidence or customer request",
+        "ADJUNTO_QUITAR": "Remove attachment"
+      },
+      "CLIENTE": {
+        "TITLE": "Customer",
+        "SUBTITLE": "Enter the customer details.",
+        "CEDULA": "Customer ID",
+        "CEDULA_PH": "e.g. 1020304050",
+        "NOMBRE": "Customer",
+        "NOMBRE_PH": "Full name",
+        "TELEFONO": "Phone",
+        "TELEFONO_PH": "Contact number",
+        "CORREO": "Email",
+        "CORREO_PH": "email{'@'}example.com"
+      },
+      "COMPRA": {
+        "TITLE": "Purchase and product",
+        "FACTURA": "Invoice",
+        "FACTURA_PH": "Invoice number",
+        "FECHA": "Purchase date",
+        "PRODUCTO": "Product",
+        "PRODUCTO_PH": "Product name",
+        "REFERENCIA": "Reference",
+        "REFERENCIA_PH": "Product reference or code"
+      },
+      "DIRECCION": {
+        "TITLE": "Current address",
+        "CIUDAD": "Current city",
+        "CIUDAD_PH": "City where the product is",
+        "DIRECCION": "Current address",
+        "DIRECCION_PH": "Address, neighborhood and details"
+      },
+      "RESUMEN": {
+        "TITLE": "PQR summary",
+        "BORRADOR": "Draft",
+        "ORIGEN": "Origin",
+        "MANUAL": "Manual entry",
+        "CATEGORIA": "Category",
+        "ADJUNTOS": "{n} file | {n} files"
+      },
+      "ERRORES": {
+        "MOTIVO": "Select a reason to continue.",
+        "DESCRIPCION": "Write the request description.",
+        "CLIENTE": "The customer name is required.",
+        "TELEFONO": "The customer phone is required.",
+        "GENERAL": "The PQR could not be created. Check the data and try again."
+      }
+    },
     "CLOCK": {
       "NO_RADICADO": "No case number",
       "REMAINING": "{days} business days left",
@@ -183,7 +271,8 @@
         "MOTIVOS_GARANTIA": "Warranty motives",
         "PROCESOS_GARANTIA": "Warranty processes",
         "COBERTURAS_CIUDAD": "City coverage",
-        "PARAMETROS": "Parameters"
+        "PARAMETROS": "Parameters",
+        "FORMATOS": "Formats"
       },
       "SUBTITLE": "The module vocabulary is managed here. No value is hard-coded.",
       "ACTIVE": "Active",
@@ -202,8 +291,44 @@
         "MOTIVOS_GARANTIA": "What happened to the product; can drive a date-based assignment rule.",
         "PROCESOS_GARANTIA": "Milestones within the same business-day budget; they do not reset the clock.",
         "COBERTURAS_CIUDAD": "With an in-house technician the warranty starts with a visit; otherwise, with pickup.",
-        "PARAMETROS": "Operational times and thresholds of the module."
+        "PARAMETROS": "Operational times and thresholds of the module.",
+        "FORMATOS": ".docx templates for the warranty formats."
       }
+    },
+    "FORMATOS": {
+      "TITLE": "Formats",
+      "SIN_PLANTILLA": "No template yet; it cannot be generated.",
+      "VERSION_ACTIVA": "Version %{version} (active)",
+      "SUBIR": "Upload new version",
+      "DESCARGAR": "Download .docx",
+      "ACTIVAR": "Activate this version",
+      "ACTIVAR_CONFIRMACION": "From now on all cases use this version of the format. Activate?",
+      "DESCARTAR": "Discard draft",
+      "VISTA_PREVIA": "Preview",
+      "ABRIR_NUEVA_PESTANA": "Open in new tab",
+      "DESCONOCIDOS": "Unrecognized markers:",
+      "MARCADORES": {
+        "TITLE": "Available markers",
+        "COPIAR": "Copy",
+        "COPIADO": "Copied"
+      },
+      "SOLO_LECTURA": "Read only",
+      "GUARDADO": "Done",
+      "FORBIDDEN": "You don't have permission for this action.",
+      "ERROR": "Something went wrong. Please try again.",
+      "NUEVO": "New format",
+      "NUEVO_TITULO": "Create format",
+      "NOMBRE": "Name",
+      "CODIGO": "Code",
+      "CODIGO_AYUDA": "If left blank, it is generated from the name.",
+      "CREAR": "Create",
+      "CREADO": "Format created",
+      "DESACTIVAR": "Deactivate",
+      "DESACTIVAR_CONFIRMACION": "The format stops being offered, but the history is kept. Deactivate?",
+      "DESACTIVADO": "Format deactivated",
+      "REACTIVAR": "Reactivate",
+      "REACTIVADO": "Format reactivated",
+      "DESACTIVADO_BADGE": "Deactivated"
     },
     "DETAIL": {
       "TITLE": "Case detail",
@@ -231,6 +356,7 @@
       "BACK": "Back to inbox",
       "OPEN_CONVERSATION": "Open the conversation",
       "LEGAL_TITLE": "PQR · legal case",
+      "LEGAL_SUBTITLE": "Classification, response deadline and outcome.",
       "RADICADO": "Case number",
       "CLOCK_RUNNING": "Clock running",
       "CLOCK_STOPPED": "Clock stopped",
@@ -343,6 +469,9 @@
       "TITLE": "Case data",
       "SAVED": "Data updated",
       "ERROR": "There was an error saving the data",
+      "EDIT": "Edit",
+      "SAVE": "Save",
+      "CANCEL": "Cancel",
       "SOURCE": {
         "IA": "AI",
         "ERP": "ERP",
@@ -350,13 +479,26 @@
         "HUMANO": "Manual"
       },
       "FIELDS": {
+        "CLIENTE_NOMBRE": "Customer",
+        "CLIENTE_TELEFONO": "Phone",
+        "CLIENTE_EMAIL": "Email",
         "CEDULA": "ID number",
         "DIRECCION": "Address",
         "CIUDAD": "City",
         "FACTURA_NUMERO": "Invoice",
+        "FACTURA_FECHA": "Purchase date",
         "PRODUCTO_NOMBRE": "Product",
+        "PRODUCTO_REFERENCIA": "Reference",
         "DETALLE": "Detail"
       }
+    },
+    "RESOLVER": {
+      "TITLE": "Resolve PQR",
+      "HINT": "Pick the result to close this PQR. If the result opens a warranty, product details will be requested.",
+      "PLACEHOLDER": "Pick a result…",
+      "PROPOSAL_PENDING": "The agent left a resolution proposal pending approval.",
+      "GO_TO_DECISIONS": "Go to Decisions",
+      "CATALOG_ERROR": "The results needed to resolve the PQR could not be loaded."
     },
     "DELETE": {
       "TITLE": "Delete ticket",
@@ -365,6 +507,19 @@
       "SUCCESS": "Ticket deleted",
       "ERROR": "There was an error deleting the ticket",
       "FORBIDDEN": "You don't have permission to delete this ticket."
+    },
+    "GENERAR_FORMATO": {
+      "TITLE": "Generate format",
+      "GENERAR": "Generate and save",
+      "PREVIEW": "Preview",
+      "ITEM_LABEL": "Product",
+      "FORMATO_LABEL": "Format",
+      "SUGERIDO": "Suggested",
+      "SIN_PLANTILLA": "No active template",
+      "FALTANTES_TITLE": "Missing data in the case sheet:",
+      "SIN_GARANTIA": "This case has no warranty; there are no formats to generate.",
+      "GUARDADO": "Format generated and saved to the case file",
+      "ERROR": "The format could not be generated"
     }
   }
 }

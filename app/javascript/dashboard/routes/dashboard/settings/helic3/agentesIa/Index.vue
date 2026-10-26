@@ -56,13 +56,19 @@ onMounted(() => {
 });
 
 const irACrear = () => router.push({ name: 'agentes_ia_new' });
-const irAEditar = id => router.push({ name: 'agentes_ia_edit', params: { agenteId: id } });
-const irAEstadoEnVivo = () => router.push({ name: 'agentes_ia_estado_en_vivo' });
+const irAEditar = id =>
+  router.push({ name: 'agentes_ia_edit', params: { agenteId: id } });
+const irAEstadoEnVivo = () =>
+  router.push({ name: 'agentes_ia_estado_en_vivo' });
 
 const alternar = async agente => {
   try {
     await store.toggle(agente.id);
-    useAlert(t(agente.activo ? 'AI_AGENTS.TOGGLE.PAUSED' : 'AI_AGENTS.TOGGLE.ACTIVATED'));
+    useAlert(
+      t(
+        agente.activo ? 'AI_AGENTS.TOGGLE.PAUSED' : 'AI_AGENTS.TOGGLE.ACTIVATED'
+      )
+    );
   } catch (error) {
     useAlert(error?.response?.data?.message || t('AI_AGENTS.TOGGLE.ERROR'));
   }
@@ -90,47 +96,89 @@ const limpiarFiltros = () => {
     <!-- Encabezado -->
     <header class="flex items-start justify-between gap-4">
       <div>
-        <p class="mb-1 text-xs font-medium tracking-wide uppercase text-n-slate-10">
+        <p
+          class="mb-1 text-xs font-medium tracking-wide uppercase text-n-slate-10"
+        >
           {{ t('AI_AGENTS.KICKER') }}
         </p>
-        <h1 class="text-2xl font-semibold text-n-slate-12">{{ t('AI_AGENTS.HEADER') }}</h1>
-        <p class="mt-1 text-sm text-n-slate-11">{{ t('AI_AGENTS.SUBTITLE') }}</p>
+        <h1 class="text-2xl font-semibold text-n-slate-12">
+          {{ t('AI_AGENTS.HEADER') }}
+        </h1>
+        <p class="mt-1 text-sm text-n-slate-11">
+          {{ t('AI_AGENTS.SUBTITLE') }}
+        </p>
       </div>
       <div class="flex items-center gap-2">
-        <Button variant="faded" color="slate" icon="i-lucide-radio" :label="t('AI_AGENTS.LIVE.LINK')" @click="irAEstadoEnVivo" />
-        <Button color="teal" :label="t('AI_AGENTS.CREATE')" icon="i-lucide-plus" @click="irACrear" />
+        <Button
+          variant="faded"
+          color="slate"
+          icon="i-lucide-radio"
+          :label="t('AI_AGENTS.LIVE.LINK')"
+          @click="irAEstadoEnVivo"
+        />
+        <Button
+          color="teal"
+          :label="t('AI_AGENTS.CREATE')"
+          icon="i-lucide-plus"
+          @click="irACrear"
+        />
       </div>
     </header>
 
     <!-- Contadores (H3A-13) -->
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <div class="flex items-center gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1">
-        <span class="flex items-center justify-center rounded-lg size-9 bg-n-slate-3 text-n-slate-11">
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div
+        class="flex items-center py-4 gap-3.5 px-[1.125rem] border rounded-xl border-n-weak bg-n-solid-1"
+      >
+        <span
+          class="flex items-center justify-center rounded-xl size-10 bg-n-slate-3 text-n-slate-11"
+        >
           <span class="i-lucide-bot size-5" />
         </span>
         <div>
-          <strong class="block text-xl font-semibold text-n-slate-12">{{ stats.total }}</strong>
-          <p class="text-sm text-n-slate-11">{{ t('AI_AGENTS.STATS.TOTAL') }}</p>
+          <strong class="block text-2xl font-semibold text-n-slate-12">{{
+            stats.total
+          }}</strong>
+          <p class="text-xs text-n-slate-11">
+            {{ t('AI_AGENTS.STATS.TOTAL') }}
+          </p>
         </div>
       </div>
-      <div class="flex items-center gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1">
-        <span class="flex items-center justify-center rounded-lg size-9 bg-n-teal-3 text-n-teal-11">
+      <div
+        class="flex items-center py-4 gap-3.5 px-[1.125rem] border rounded-xl border-n-weak bg-n-solid-1"
+      >
+        <span
+          class="flex items-center justify-center rounded-xl size-10 bg-n-teal-3 text-n-teal-11"
+        >
           <span class="i-lucide-circle-play size-5" />
         </span>
         <div>
-          <strong class="block text-xl font-semibold text-n-slate-12">{{ stats.activos }}</strong>
-          <p class="text-sm text-n-slate-11">{{ t('AI_AGENTS.STATS.ACTIVE') }}</p>
+          <strong class="block text-2xl font-semibold text-n-slate-12">{{
+            stats.activos
+          }}</strong>
+          <p class="text-xs text-n-slate-11">
+            {{ t('AI_AGENTS.STATS.ACTIVE') }}
+          </p>
         </div>
       </div>
-      <div class="flex items-center gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1">
-        <span class="flex items-center justify-center rounded-lg size-9 bg-n-slate-3 text-n-slate-11">
+      <div
+        class="flex items-center py-4 gap-3.5 px-[1.125rem] border rounded-xl border-n-weak bg-n-solid-1"
+      >
+        <span
+          class="flex items-center justify-center rounded-xl size-10 bg-n-slate-3 text-n-slate-11"
+        >
           <span class="i-lucide-inbox size-5" />
         </span>
         <div>
-          <strong class="block text-xl font-semibold text-n-slate-12">
-            {{ stats.bandejasCubiertas }} <span class="text-sm font-normal text-n-slate-10">{{ t('AI_AGENTS.STATS.OF', { total: inboxes.length }) }}</span>
+          <strong class="block text-2xl font-semibold text-n-slate-12">
+            {{ stats.bandejasCubiertas }}
+            <span class="text-xs font-normal text-n-slate-10">{{
+              t('AI_AGENTS.STATS.OF', { total: inboxes.length })
+            }}</span>
           </strong>
-          <p class="text-sm text-n-slate-11">{{ t('AI_AGENTS.STATS.INBOXES') }}</p>
+          <p class="text-xs text-n-slate-11">
+            {{ t('AI_AGENTS.STATS.INBOXES') }}
+          </p>
         </div>
       </div>
     </div>
@@ -139,8 +187,12 @@ const limpiarFiltros = () => {
     <div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr),320px]">
       <!-- Lista -->
       <section class="border rounded-xl border-n-weak bg-n-solid-1 h-fit">
-        <div class="flex flex-wrap items-center gap-3 p-4 border-b border-n-weak">
-          <h2 class="text-sm font-semibold text-n-slate-12">{{ t('AI_AGENTS.LIST.TITLE') }}</h2>
+        <div
+          class="flex flex-wrap items-center gap-3 p-4 border-b border-n-weak"
+        >
+          <h2 class="text-sm font-semibold text-n-slate-12">
+            {{ t('AI_AGENTS.LIST.TITLE') }}
+          </h2>
           <div class="flex items-center gap-2 ml-auto">
             <input
               v-model="query"
@@ -153,28 +205,60 @@ const limpiarFiltros = () => {
               class="h-8 px-2 text-sm border rounded-lg outline-none border-n-weak bg-n-alpha-black1 text-n-slate-12"
             >
               <option value="all">{{ t('AI_AGENTS.LIST.FILTER_ALL') }}</option>
-              <option value="active">{{ t('AI_AGENTS.LIST.FILTER_ACTIVE') }}</option>
-              <option value="paused">{{ t('AI_AGENTS.LIST.FILTER_PAUSED') }}</option>
+              <option value="active">
+                {{ t('AI_AGENTS.LIST.FILTER_ACTIVE') }}
+              </option>
+              <option value="paused">
+                {{ t('AI_AGENTS.LIST.FILTER_PAUSED') }}
+              </option>
             </select>
           </div>
         </div>
 
-        <div v-if="uiFlags.isFetching" class="p-10 text-sm text-center text-n-slate-10">
+        <div
+          v-if="uiFlags.isFetching"
+          class="p-10 text-sm text-center text-n-slate-10"
+        >
           {{ t('AI_AGENTS.LIST.LOADING') }}
         </div>
 
-        <div v-else-if="!agentesFiltrados.length" class="flex flex-col items-center gap-3 p-12 text-center">
-          <span class="flex items-center justify-center rounded-full size-12 bg-n-slate-3 text-n-slate-10">
+        <div
+          v-else-if="!agentesFiltrados.length"
+          class="flex flex-col items-center gap-3 p-12 text-center"
+        >
+          <span
+            class="flex items-center justify-center rounded-full size-12 bg-n-slate-3 text-n-slate-10"
+          >
             <span class="i-lucide-bot size-6" />
           </span>
           <h3 class="text-sm font-semibold text-n-slate-12">
-            {{ store.getAgentes.length ? t('AI_AGENTS.EMPTY.FILTERED_TITLE') : t('AI_AGENTS.EMPTY.TITLE') }}
+            {{
+              store.getAgentes.length
+                ? t('AI_AGENTS.EMPTY.FILTERED_TITLE')
+                : t('AI_AGENTS.EMPTY.TITLE')
+            }}
           </h3>
           <p class="max-w-sm text-sm text-n-slate-11">
-            {{ store.getAgentes.length ? t('AI_AGENTS.EMPTY.FILTERED_BODY') : t('AI_AGENTS.EMPTY.BODY') }}
+            {{
+              store.getAgentes.length
+                ? t('AI_AGENTS.EMPTY.FILTERED_BODY')
+                : t('AI_AGENTS.EMPTY.BODY')
+            }}
           </p>
-          <Button v-if="store.getAgentes.length" variant="faded" color="slate" :label="t('AI_AGENTS.EMPTY.CLEAR')" @click="limpiarFiltros" />
-          <Button v-else color="teal" :label="t('AI_AGENTS.CREATE')" icon="i-lucide-plus" @click="irACrear" />
+          <Button
+            v-if="store.getAgentes.length"
+            variant="faded"
+            color="slate"
+            :label="t('AI_AGENTS.EMPTY.CLEAR')"
+            @click="limpiarFiltros"
+          />
+          <Button
+            v-else
+            color="teal"
+            :label="t('AI_AGENTS.CREATE')"
+            icon="i-lucide-plus"
+            @click="irACrear"
+          />
         </div>
 
         <div v-else class="flex flex-col divide-y divide-n-weak">
@@ -189,41 +273,92 @@ const limpiarFiltros = () => {
           />
         </div>
 
-        <p class="p-4 text-xs border-t border-n-weak text-n-slate-10">{{ t('AI_AGENTS.LIST.FOOTNOTE') }}</p>
+        <p class="p-4 text-xs border-t border-n-weak text-n-slate-10">
+          {{ t('AI_AGENTS.LIST.FOOTNOTE') }}
+        </p>
       </section>
 
       <!-- Aside: proceso + cobertura (mockup) -->
       <aside class="flex flex-col gap-5">
         <section class="p-4 border rounded-xl border-n-weak bg-n-solid-1">
-          <h2 class="mb-3 text-sm font-semibold text-n-slate-12">{{ t('AI_AGENTS.PROCESS.TITLE') }}</h2>
+          <h2 class="mb-3 text-sm font-semibold text-n-slate-12">
+            {{ t('AI_AGENTS.PROCESS.TITLE') }}
+          </h2>
           <ol class="flex flex-col gap-3">
             <li class="flex gap-3">
-              <span class="flex items-center justify-center rounded-lg size-7 shrink-0 bg-n-slate-3 text-n-slate-11"><span class="i-lucide-inbox size-4" /></span>
-              <div><b class="text-sm text-n-slate-12">{{ t('AI_AGENTS.PROCESS.S1_T') }}</b><p class="text-xs text-n-slate-11">{{ t('AI_AGENTS.PROCESS.S1_B') }}</p></div>
+              <span
+                class="flex items-center justify-center rounded-lg size-7 shrink-0 bg-n-slate-3 text-n-slate-11"
+                ><span class="i-lucide-inbox size-4"
+              /></span>
+              <div>
+                <b class="text-sm text-n-slate-12">{{
+                  t('AI_AGENTS.PROCESS.S1_T')
+                }}</b>
+                <p class="text-xs text-n-slate-11">
+                  {{ t('AI_AGENTS.PROCESS.S1_B') }}
+                </p>
+              </div>
             </li>
             <li class="flex gap-3">
-              <span class="flex items-center justify-center rounded-lg size-7 shrink-0 bg-n-teal-3 text-n-teal-11"><span class="i-lucide-bot size-4" /></span>
-              <div><b class="text-sm text-n-slate-12">{{ t('AI_AGENTS.PROCESS.S2_T') }}</b><p class="text-xs text-n-slate-11">{{ t('AI_AGENTS.PROCESS.S2_B') }}</p></div>
+              <span
+                class="flex items-center justify-center rounded-lg size-7 shrink-0 bg-n-teal-3 text-n-teal-11"
+                ><span class="i-lucide-bot size-4"
+              /></span>
+              <div>
+                <b class="text-sm text-n-slate-12">{{
+                  t('AI_AGENTS.PROCESS.S2_T')
+                }}</b>
+                <p class="text-xs text-n-slate-11">
+                  {{ t('AI_AGENTS.PROCESS.S2_B') }}
+                </p>
+              </div>
             </li>
             <li class="flex gap-3">
-              <span class="flex items-center justify-center rounded-lg size-7 shrink-0 bg-n-slate-3 text-n-slate-11"><span class="i-lucide-users size-4" /></span>
-              <div><b class="text-sm text-n-slate-12">{{ t('AI_AGENTS.PROCESS.S3_T') }}</b><p class="text-xs text-n-slate-11">{{ t('AI_AGENTS.PROCESS.S3_B') }}</p></div>
+              <span
+                class="flex items-center justify-center rounded-lg size-7 shrink-0 bg-n-slate-3 text-n-slate-11"
+                ><span class="i-lucide-users size-4"
+              /></span>
+              <div>
+                <b class="text-sm text-n-slate-12">{{
+                  t('AI_AGENTS.PROCESS.S3_T')
+                }}</b>
+                <p class="text-xs text-n-slate-11">
+                  {{ t('AI_AGENTS.PROCESS.S3_B') }}
+                </p>
+              </div>
             </li>
           </ol>
         </section>
 
         <section class="p-4 border rounded-xl border-n-weak bg-n-solid-1">
-          <h2 class="text-sm font-semibold text-n-slate-12">{{ t('AI_AGENTS.COVERAGE.TITLE') }}</h2>
-          <p class="mb-3 text-xs text-n-slate-10">{{ t('AI_AGENTS.COVERAGE.HINT') }}</p>
+          <h2 class="text-sm font-semibold text-n-slate-12">
+            {{ t('AI_AGENTS.COVERAGE.TITLE') }}
+          </h2>
+          <p class="mb-3 text-xs text-n-slate-10">
+            {{ t('AI_AGENTS.COVERAGE.HINT') }}
+          </p>
           <div class="flex flex-col gap-3">
-            <div v-for="c in cobertura" :key="c.id" class="flex items-center gap-2">
-              <span class="rounded-full size-2 shrink-0" :class="c.agente ? 'bg-n-teal-9' : 'bg-n-slate-6'" />
+            <div
+              v-for="c in cobertura"
+              :key="c.id"
+              class="flex items-center gap-2"
+            >
+              <span
+                class="rounded-full size-2 shrink-0"
+                :class="c.agente ? 'bg-n-teal-9' : 'bg-n-slate-6'"
+              />
               <div class="min-w-0">
-                <b class="block text-sm truncate text-n-slate-12">{{ c.name }}</b>
-                <p class="text-xs text-n-slate-11">{{ c.agente || t('AI_AGENTS.COVERAGE.HUMAN') }}</p>
+                <b class="block text-sm truncate text-n-slate-12">{{
+                  c.name
+                }}</b>
+                <p class="text-xs text-n-slate-11">
+                  {{ c.agente || t('AI_AGENTS.COVERAGE.HUMAN') }}
+                </p>
               </div>
             </div>
-            <p v-if="!cobertura.length" class="text-xs text-n-slate-10">{{ t('AI_AGENTS.COVERAGE.EMPTY') }}</p>
+            <p v-if="!cobertura.length" class="text-xs text-n-slate-10">
+              {{ t('AI_AGENTS.COVERAGE.EMPTY') }}
+            </p>
           </div>
         </section>
       </aside>

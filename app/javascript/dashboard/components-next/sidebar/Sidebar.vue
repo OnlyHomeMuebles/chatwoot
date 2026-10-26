@@ -764,6 +764,14 @@ const menuItems = computed(() => {
           activeOn: ['helic3_catalogos_admin'],
           to: accountScopedRoute('helic3_catalogos_admin'),
         },
+        {
+          // IND-01: debajo de Catalogos y parametros, decidido con Karen (6-oct).
+          name: 'PQR Indicadores',
+          label: t('HELIC3_INDICADORES.MENU'),
+          icon: 'i-lucide-bar-chart-3',
+          activeOn: ['helic3_indicadores', 'helic3_indicadores_garantias'],
+          to: accountScopedRoute('helic3_indicadores'),
+        },
       ],
     },
     {

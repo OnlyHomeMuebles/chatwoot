@@ -27,6 +27,24 @@ RSpec.shared_examples 'un catalogo de clasificacion' do
     expect(repetido.errors[:codigo]).to be_present
   end
 
+  # Barrera contra el bug de produccion (15-oct): un "nueva " con espacio final
+  # rompia la radicacion con un 404 porque find_by!(codigo: 'nueva') no lo hallaba.
+  it 'normaliza codigo y nombre: les quita los espacios de sobra al guardar' do
+    fila = construir(account)
+    fila.codigo = '  valor  '
+    fila.nombre = '  Valor  '
+    fila.save!
+    expect(fila.reload.codigo).to eq('valor')
+    expect(fila.nombre).to eq('Valor')
+  end
+
+  it 'rechaza un codigo que no es slug (mayusculas o espacios internos)' do
+    fila = construir(account)
+    fila.codigo = 'Valor con espacios'
+    expect(fila).not_to be_valid
+    expect(fila.errors[:codigo]).to be_present
+  end
+
   it 'permite el mismo codigo en otra cuenta' do
     construir(account).save!
     otra = create(:account)
@@ -79,6 +97,17 @@ RSpec.describe 'Helic3::Catalogo' do
       motivo = described_class.new(account: account, nombre: 'Valor', codigo: 'valor')
       expect(motivo).not_to be_valid
       expect(motivo.errors[:categoria]).to be_present
+    end
+  end
+
+  describe Helic3::Catalogo::EtapaPqr do
+    it 'mantiene una sola etapa inicial por cuenta: marcar otra desmarca la anterior' do
+      account = create(:account)
+      primera = described_class.create!(account: account, nombre: 'Nuevo', codigo: 'nuevo', inicial: true)
+      segunda = described_class.create!(account: account, nombre: 'Recibido', codigo: 'recibido', inicial: true)
+
+      expect(segunda.reload.inicial).to be(true)
+      expect(primera.reload.inicial).to be(false)
     end
   end
 

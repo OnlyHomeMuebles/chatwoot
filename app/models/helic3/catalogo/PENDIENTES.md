@@ -13,6 +13,7 @@ fuente esperada. La estructura está completa; lo pendiente es DATO.
 | GarantiaItem (futuro) | [P] La ruta alterna cuando el cliente se niega a la recolección (deriva a cambio mano a mano). Se resuelve marcando filas del catálogo cuando se confirme | Only Home / Jhan |
 | Parametro | El consecutivo del radicado de garantía (GAR-01) es configurable pero NO se siembra: Only Home no decide si continúa el consecutivo actual o arranca uno nuevo (atado a la migración de histórico, diferida). Claves: `radicado_garantia_prefijo` (unidad texto) y `radicado_garantia_inicio` (unidad cantidad; la lee el trigger al crear la secuencia de la cuenta). Sin configurar: sin prefijo y arranca en 1 | Only Home / Karen |
 | Parametro | Los umbrales del semáforo (`umbral_verde`, `umbral_amarillo`) siguen sin valores confirmados; propuesta enviada a Jhan (verde ≥15, amarillo 5–14, rojo <5) | Jhan / Karen |
+| Parametro (mensajes PRM) | **Choque de plazos.** Los mensajes del agente (`mensaje_visita_tecnica` dice 12–15 días hábiles; `mensaje_recoleccion` y `mensaje_cambio_producto` dicen 15 días hábiles) traen plazos **literales de Karen** que difieren de los plazos del catálogo de procesos (`ProcesoGarantia`) y de los parámetros `plazo_*`. Hoy son **dos fuentes de verdad**: editar un `plazo_*` NO actualiza el texto del mensaje. Conciliar con Karen cuál rige; o, si se cablean los mensajes, hacer que el texto use un marcador de plazo en vez del número escrito a mano | Karen / Jhan |
 
 ## Resuelto por el addendum del 24/08 (ya sembrado)
 

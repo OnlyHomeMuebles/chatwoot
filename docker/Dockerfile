@@ -102,6 +102,8 @@ RUN apk update && apk add --no-cache \
   vips \
   tesseract-ocr \
   tesseract-ocr-data-spa \
+  libreoffice \
+  ttf-dejavu \
   && gem install bundler -v "$BUNDLER_VERSION"
 # Restrict libvips to its trusted image loaders when generating variants
 ENV VIPS_BLOCK_UNTRUSTED=1

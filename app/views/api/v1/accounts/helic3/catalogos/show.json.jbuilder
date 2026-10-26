@@ -10,7 +10,7 @@ json.motivos_pqr @motivos_pqr do |motivo|
 end
 
 json.etapas_pqr @etapas_pqr do |etapa|
-  json.call(etapa, :id, :codigo, :nombre, :detiene_reloj, :visible_cliente)
+  json.call(etapa, :id, :codigo, :nombre, :detiene_reloj, :visible_cliente, :inicial)
 end
 
 json.resultados @resultados do |resultado|
@@ -30,4 +30,9 @@ end
 
 json.detalles_tipificados @detalles_tipificados do |detalle|
   json.call(detalle, :id, :codigo, :nombre)
+end
+
+# IND-01: etapa del producto de garantia, para el filtro de la seccion Indicadores.
+json.procesos_garantia @procesos_garantia do |proceso|
+  json.call(proceso, :id, :codigo, :nombre)
 end

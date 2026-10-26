@@ -6,8 +6,8 @@ RSpec.describe Helic3::Casos::Radicar do
   let(:account) { create(:account) }
 
   # la porcion minima del catalogo que la radicacion necesita
-  let!(:etapa_nueva) do
-    Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nueva', codigo: 'nueva')
+  let!(:etapa_inicial) do
+    Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nuevo', codigo: 'nuevo', inicial: true)
   end
   let(:garantia) do
     Helic3::Catalogo::Categoria.create!(account: account, nombre: 'Garantía', codigo: 'garantia')
@@ -126,10 +126,10 @@ RSpec.describe Helic3::Casos::Radicar do
   end
 
   describe 'los sellos y el origen' do
-    it 'nace en etapa Nueva, con radicada_at sellado' do
+    it 'nace en la etapa inicial, con radicada_at sellado' do
       ticket = radicar(tipo: reclamo)
 
-      expect(ticket.etapa).to eq(etapa_nueva)
+      expect(ticket.etapa).to eq(etapa_inicial)
       expect(ticket.radicada_at).to be_present
     end
 
@@ -142,10 +142,18 @@ RSpec.describe Helic3::Casos::Radicar do
       expect(de_persona.pqrs_metadata).not_to have_key('numero_orden')
     end
 
-    it 'si la cuenta no tiene la etapa "nueva", revienta en vez de silenciarse' do
-      etapa_nueva.update!(activo: false)
+    it 'si la cuenta no tiene etapa inicial activa, revienta con un error que nombra la causa' do
+      etapa_inicial.update!(activo: false)
 
-      expect { radicar(tipo: reclamo) }.to raise_error(ActiveRecord::RecordNotFound)
+      expect { radicar(tipo: reclamo) }.to raise_error(Helic3::Casos::Radicar::EtapaInicialFaltante)
+    end
+
+    it 'encuentra la etapa inicial por el flag, no por el texto del codigo' do
+      etapa_inicial.update!(codigo: 'recibida', nombre: 'Recibida') # renombrada, pero sigue inicial
+
+      ticket = radicar(tipo: reclamo)
+
+      expect(ticket.etapa).to eq(etapa_inicial)
     end
   end
 

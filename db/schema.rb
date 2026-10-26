@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_10_03_120000) do
+ActiveRecord::Schema[7.2].define(version: 2026_10_19_130000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1155,6 +1155,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_03_120000) do
     t.boolean "genera_radicado", default: true, null: false
     t.index ["account_id", "codigo"], name: "idx_h3cat_categorias_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_categorias_account"
+    t.check_constraint "codigo::text ~ '^[a-z0-9_]+$'::text", name: "helic3_catalogo_categorias_codigo_slug"
   end
 
   create_table "helic3_catalogo_coberturas_ciudad", force: :cascade do |t|
@@ -1169,6 +1170,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_03_120000) do
     t.datetime "updated_at", null: false
     t.index ["account_id", "codigo"], name: "idx_h3cat_coberturas_ciudad_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_coberturas_ciudad_account"
+    t.check_constraint "codigo::text ~ '^[a-z0-9_]+$'::text", name: "helic3_catalogo_coberturas_ciudad_codigo_slug"
   end
 
   create_table "helic3_catalogo_detalles_tipificados", force: :cascade do |t|
@@ -1183,6 +1185,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_03_120000) do
     t.index ["account_id", "codigo"], name: "idx_h3cat_detalles_tipificados_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_detalles_tipificados_account"
     t.index ["motivo_garantia_id"], name: "idx_h3cat_detalles_motivo"
+    t.check_constraint "codigo::text ~ '^[a-z0-9_]+$'::text", name: "helic3_catalogo_detalles_tipificados_codigo_slug"
   end
 
   create_table "helic3_catalogo_etapas_pqr", force: :cascade do |t|
@@ -1195,8 +1198,24 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_03_120000) do
     t.boolean "visible_cliente", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "inicial", default: false, null: false
     t.index ["account_id", "codigo"], name: "idx_h3cat_etapas_pqr_account_codigo", unique: true
+    t.index ["account_id"], name: "idx_h3_etapa_inicial_unica", unique: true, where: "inicial"
     t.index ["account_id"], name: "idx_h3cat_etapas_pqr_account"
+    t.check_constraint "codigo::text ~ '^[a-z0-9_]+$'::text", name: "helic3_catalogo_etapas_pqr_codigo_slug"
+  end
+
+  create_table "helic3_catalogo_formatos", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "nombre", null: false
+    t.string "codigo", null: false
+    t.integer "posicion", default: 0, null: false
+    t.boolean "activo", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "codigo"], name: "idx_h3cat_formatos_account_codigo", unique: true
+    t.index ["account_id"], name: "idx_h3cat_formatos_account"
+    t.check_constraint "codigo::text ~ '^[a-z0-9_]+$'::text", name: "helic3_catalogo_formatos_codigo_slug"
   end
 
   create_table "helic3_catalogo_motivos_garantia", force: :cascade do |t|
@@ -1211,6 +1230,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_03_120000) do
     t.datetime "updated_at", null: false
     t.index ["account_id", "codigo"], name: "idx_h3cat_motivos_garantia_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_motivos_garantia_account"
+    t.check_constraint "codigo::text ~ '^[a-z0-9_]+$'::text", name: "helic3_catalogo_motivos_garantia_codigo_slug"
   end
 
   create_table "helic3_catalogo_motivos_pqr", force: :cascade do |t|
@@ -1227,12 +1247,13 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_03_120000) do
     t.index ["account_id", "codigo"], name: "idx_h3cat_motivos_pqr_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_motivos_pqr_account"
     t.index ["categoria_id"], name: "idx_h3cat_motivos_pqr_categoria"
+    t.check_constraint "codigo::text ~ '^[a-z0-9_]+$'::text", name: "helic3_catalogo_motivos_pqr_codigo_slug"
   end
 
   create_table "helic3_catalogo_parametros", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "clave", null: false
-    t.string "valor", null: false
+    t.text "valor", null: false
     t.string "unidad", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -1250,8 +1271,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_03_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "es_terminal", default: false, null: false
+    t.bigint "formato_sugerido_id"
     t.index ["account_id", "codigo"], name: "idx_h3cat_procesos_garantia_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_procesos_garantia_account"
+    t.index ["formato_sugerido_id"], name: "idx_h3cat_procesos_garantia_formato_sugerido"
+    t.check_constraint "codigo::text ~ '^[a-z0-9_]+$'::text", name: "helic3_catalogo_procesos_garantia_codigo_slug"
   end
 
   create_table "helic3_catalogo_resultados", force: :cascade do |t|
@@ -1268,6 +1292,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_03_120000) do
     t.boolean "requiere_admin", default: true, null: false
     t.index ["account_id", "codigo"], name: "idx_h3cat_resultados_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_resultados_account"
+    t.check_constraint "codigo::text ~ '^[a-z0-9_]+$'::text", name: "helic3_catalogo_resultados_codigo_slug"
   end
 
   create_table "helic3_catalogo_tipos", force: :cascade do |t|
@@ -1281,6 +1306,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_03_120000) do
     t.datetime "updated_at", null: false
     t.index ["account_id", "codigo"], name: "idx_h3cat_tipos_account_codigo", unique: true
     t.index ["account_id"], name: "idx_h3cat_tipos_account"
+    t.check_constraint "codigo::text ~ '^[a-z0-9_]+$'::text", name: "helic3_catalogo_tipos_codigo_slug"
   end
 
   create_table "helic3_documentos", force: :cascade do |t|
@@ -1406,6 +1432,24 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_03_120000) do
     t.index ["conversation_id"], name: "index_helic3_knowledge_faq_suggestions_on_conversation_id"
   end
 
+  create_table "helic3_plantillas_formato", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "formato_id", null: false
+    t.integer "version", null: false
+    t.string "estado", default: "borrador", null: false
+    t.jsonb "marcadores", default: [], null: false
+    t.bigint "subido_por_id"
+    t.string "subido_por_nombre"
+    t.datetime "activada_at"
+    t.bigint "activada_por_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "idx_h3_plantilla_formato_account"
+    t.index ["formato_id", "version"], name: "idx_h3_plantilla_formato_version", unique: true
+    t.index ["formato_id"], name: "idx_h3_plantilla_activa_unica", unique: true, where: "((estado)::text = 'activa'::text)"
+    t.index ["formato_id"], name: "idx_h3_plantilla_formato_formato"
+  end
+
   create_table "helic3_pqrs_centros_operacion", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "nombre", null: false
@@ -1463,6 +1507,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_03_120000) do
     t.jsonb "fuentes", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "cliente_nombre"
+    t.string "cliente_telefono"
+    t.string "cliente_email"
+    t.string "producto_referencia"
+    t.date "factura_fecha"
     t.index ["account_id"], name: "idx_h3_ticket_datos_account"
     t.index ["detalle_tipificado_id"], name: "idx_h3_ticket_datos_detalle"
     t.index ["ticket_id"], name: "idx_h3_ticket_datos_ticket", unique: true
@@ -2011,7 +2060,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_03_120000) do
   add_foreign_key "helic3_agentes_bandejas", "helic3_agentes", column: "agente_id", on_delete: :cascade
   add_foreign_key "helic3_agentes_bandejas", "inboxes", on_delete: :cascade
   add_foreign_key "helic3_catalogo_detalles_tipificados", "helic3_catalogo_motivos_garantia", column: "motivo_garantia_id"
+  add_foreign_key "helic3_catalogo_formatos", "accounts"
   add_foreign_key "helic3_catalogo_motivos_pqr", "helic3_catalogo_categorias", column: "categoria_id"
+  add_foreign_key "helic3_catalogo_procesos_garantia", "helic3_catalogo_formatos", column: "formato_sugerido_id", on_delete: :nullify
   add_foreign_key "helic3_documentos", "accounts"
   add_foreign_key "helic3_documentos", "attachments", on_delete: :nullify
   add_foreign_key "helic3_documentos", "helic3_garantias", column: "garantia_id"
@@ -2028,6 +2079,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_03_120000) do
   add_foreign_key "helic3_garantia_items", "helic3_garantias", column: "garantia_id"
   add_foreign_key "helic3_garantias", "helic3_catalogo_coberturas_ciudad", column: "cobertura_ciudad_id"
   add_foreign_key "helic3_garantias", "helic3_tickets", column: "ticket_id"
+  add_foreign_key "helic3_plantillas_formato", "accounts"
+  add_foreign_key "helic3_plantillas_formato", "helic3_catalogo_formatos", column: "formato_id"
+  add_foreign_key "helic3_plantillas_formato", "users", column: "activada_por_id", on_delete: :nullify
+  add_foreign_key "helic3_plantillas_formato", "users", column: "subido_por_id", on_delete: :nullify
   add_foreign_key "helic3_pqrs_detalles", "helic3_pqrs_motivos", column: "motivo_id"
   add_foreign_key "helic3_ticket_datos", "accounts"
   add_foreign_key "helic3_ticket_datos", "helic3_catalogo_detalles_tipificados", column: "detalle_tipificado_id"

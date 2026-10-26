@@ -3,8 +3,11 @@ import { frontendURL } from 'dashboard/helper/URLHelper.js';
 import TicketsPage from './pages/TicketsPage.vue';
 import PqrCatalogosPage from './pages/PqrCatalogosPage.vue';
 import PqrDetailPage from './pages/PqrDetailPage.vue';
+import PqrNuevaPage from './pages/PqrNuevaPage.vue';
 import PqrDecisionesPage from './pages/PqrDecisionesPage.vue';
 import AgentInboxPage from './pages/AgentInboxPage.vue';
+import IndicadoresPage from './pages/IndicadoresPage.vue';
+import GarantiasTab from './pages/indicadores/GarantiasTab.vue';
 
 const ticketsRoutes = {
   routes: [
@@ -36,6 +39,16 @@ const ticketsRoutes = {
       component: PqrDecisionesPage,
     },
     {
+      // MAN-02: pagina de radicacion manual. Debe ir ANTES de la ruta con :id
+      // para que "nueva" no se capture como un id (igual que "decisiones").
+      path: frontendURL('accounts/:accountId/helic3/pqr/nueva'),
+      name: 'helic3_pqr_nueva',
+      meta: {
+        permissions: ['administrator', 'agent'],
+      },
+      component: PqrNuevaPage,
+    },
+    {
       // Detalle del expediente (DET-01), con URL compartible.
       path: frontendURL('accounts/:accountId/helic3/pqr/:id'),
       name: 'helic3_pqr_detail',
@@ -54,6 +67,29 @@ const ticketsRoutes = {
         permissions: ['administrator', 'agent'],
       },
       component: AgentInboxPage,
+    },
+    {
+      // IND-01: seccion "Indicadores" -- lo que hoy se consulta en el Dash CX
+      // externo, dentro del CRM. Ruta padre + una hija por pestaña, para que
+      // cada una tenga su propia URL compartible; esta entrega solo registra
+      // "garantias" y la ruta padre redirige a ella.
+      path: frontendURL('accounts/:accountId/helic3/indicadores'),
+      name: 'helic3_indicadores',
+      meta: {
+        permissions: ['administrator', 'agent'],
+      },
+      component: IndicadoresPage,
+      redirect: { name: 'helic3_indicadores_garantias' },
+      children: [
+        {
+          path: 'garantias',
+          name: 'helic3_indicadores_garantias',
+          meta: {
+            permissions: ['administrator', 'agent'],
+          },
+          component: GarantiasTab,
+        },
+      ],
     },
   ],
 };
