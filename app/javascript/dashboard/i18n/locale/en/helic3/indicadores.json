@@ -24,7 +24,7 @@
     "EMPTY": "No data for this filter",
     "ERROR": "Could not load the indicators",
     "RETRY": "Retry",
-    "DOWNLOAD": "Download Excel",
+    "DOWNLOAD": "Download CSV",
     "DOWNLOAD_ERROR": "Could not download the file",
     "GARANTIAS": {
       "KPI_TOTAL": "Warranties",
