@@ -75,6 +75,42 @@ const motivoOptions = opcionesDe('motivos_devolucion');
 const detalleOptions = opcionesDe('detalles_tipificados');
 const procesoOptions = opcionesDe('procesos_garantia');
 
+// Mismo agrupamiento que GarantiasTab.vue (mockup v12): año/mes/ciudad/motivo/
+// etapa en una fila, detalle tipificado junto al producto en la segunda.
+const selectFiltrosPrincipales = computed(() => [
+  {
+    clave: 'anio',
+    label: t('HELIC3_INDICADORES.FILTERS.YEAR'),
+    opciones: anioOptions.value,
+  },
+  {
+    clave: 'mes',
+    label: t('HELIC3_INDICADORES.FILTERS.MONTH'),
+    opciones: mesOptions.value,
+  },
+  {
+    clave: 'cobertura_ciudad_id',
+    label: t('HELIC3_INDICADORES.FILTERS.OPERATION_CENTER'),
+    opciones: ciudadOptions.value,
+  },
+  {
+    clave: 'motivo_devolucion_id',
+    label: t('HELIC3_INDICADORES.FILTERS.MOTIVE'),
+    opciones: motivoOptions.value,
+  },
+  {
+    clave: 'proceso_id',
+    label: t('HELIC3_INDICADORES.FILTERS.STAGE'),
+    opciones: procesoOptions.value,
+  },
+]);
+
+const detalleFiltro = computed(() => ({
+  clave: 'detalle_tipificado_id',
+  label: t('HELIC3_INDICADORES.FILTERS.DETAIL'),
+  opciones: detalleOptions.value,
+}));
+
 const huboError = ref(false);
 
 const parametrosActuales = () => {
@@ -222,96 +258,53 @@ const anchoBarra = cantidad => `${(cantidad / maxPorCiudad.value) * 100}%`;
 
 <template>
   <div class="flex flex-col gap-6">
-    <!-- Filtros -->
-    <div class="flex flex-wrap items-stretch gap-3">
-      <div
-        class="flex flex-wrap items-center divide-x divide-n-weak rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 overflow-hidden"
-      >
-        <div class="flex items-center gap-2 px-3 py-2">
-          <span
-            class="text-xs font-medium tracking-wide uppercase text-n-slate-11"
-          >
-            {{ t('HELIC3_INDICADORES.FILTERS.YEAR') }}
-          </span>
+    <!-- Filtros (mismo agrupamiento que GarantiasTab.vue / mockup v12) -->
+    <div class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1">
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+        <div
+          v-for="filtro in selectFiltrosPrincipales"
+          :key="filtro.clave"
+          class="min-w-0 space-y-1.5"
+        >
+          <label class="block text-xs font-medium text-n-slate-11">
+            {{ filtro.label }}
+          </label>
           <Select
-            v-model="filtros.anio"
-            :options="anioOptions"
-            :aria-label="t('HELIC3_INDICADORES.FILTERS.YEAR')"
-          />
-        </div>
-        <div class="flex items-center gap-2 px-3 py-2">
-          <span
-            class="text-xs font-medium tracking-wide uppercase text-n-slate-11"
-          >
-            {{ t('HELIC3_INDICADORES.FILTERS.MONTH') }}
-          </span>
-          <Select
-            v-model="filtros.mes"
-            :options="mesOptions"
-            :aria-label="t('HELIC3_INDICADORES.FILTERS.MONTH')"
-          />
-        </div>
-        <div class="flex items-center gap-2 px-3 py-2">
-          <span
-            class="text-xs font-medium tracking-wide uppercase text-n-slate-11"
-          >
-            {{ t('HELIC3_INDICADORES.FILTERS.CITY') }}
-          </span>
-          <Select
-            v-model="filtros.cobertura_ciudad_id"
-            :options="ciudadOptions"
-            :aria-label="t('HELIC3_INDICADORES.FILTERS.CITY')"
-          />
-        </div>
-        <div class="flex items-center gap-2 px-3 py-2">
-          <span
-            class="text-xs font-medium tracking-wide uppercase text-n-slate-11"
-          >
-            {{ t('HELIC3_INDICADORES.FILTERS.MOTIVE') }}
-          </span>
-          <Select
-            v-model="filtros.motivo_devolucion_id"
-            :options="motivoOptions"
-            :aria-label="t('HELIC3_INDICADORES.FILTERS.MOTIVE')"
-          />
-        </div>
-        <div class="flex items-center gap-2 px-3 py-2">
-          <span
-            class="text-xs font-medium tracking-wide uppercase text-n-slate-11"
-          >
-            {{ t('HELIC3_INDICADORES.FILTERS.DETAIL') }}
-          </span>
-          <Select
-            v-model="filtros.detalle_tipificado_id"
-            :options="detalleOptions"
-            :aria-label="t('HELIC3_INDICADORES.FILTERS.DETAIL')"
-          />
-        </div>
-        <div class="flex items-center gap-2 px-3 py-2">
-          <span
-            class="text-xs font-medium tracking-wide uppercase text-n-slate-11"
-          >
-            {{ t('HELIC3_INDICADORES.FILTERS.STAGE') }}
-          </span>
-          <Select
-            v-model="filtros.proceso_id"
-            :options="procesoOptions"
-            :aria-label="t('HELIC3_INDICADORES.FILTERS.STAGE')"
+            v-model="filtros[filtro.clave]"
+            :options="filtro.opciones"
+            :aria-label="filtro.label"
           />
         </div>
       </div>
-      <Input
-        v-model="filtros.producto"
-        :placeholder="t('HELIC3_INDICADORES.FILTERS.PRODUCT_PLACEHOLDER')"
-        class="w-56"
-      />
-      <Button
-        :label="t('HELIC3_INDICADORES.FILTERS.CLEAR')"
-        variant="ghost"
-        color="slate"
-        size="sm"
-        @click="limpiarFiltros"
-      />
+      <div class="grid gap-3 mt-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
+        <div class="min-w-0 space-y-1.5">
+          <label class="block text-xs font-medium text-n-slate-11">
+            {{ t('HELIC3_INDICADORES.FILTERS.PRODUCT') }}
+          </label>
+          <Input
+            v-model="filtros.producto"
+            :placeholder="t('HELIC3_INDICADORES.FILTERS.PRODUCT_PLACEHOLDER')"
+          />
+        </div>
+        <div class="min-w-0 space-y-1.5">
+          <label class="block text-xs font-medium text-n-slate-11">
+            {{ detalleFiltro.label }}
+          </label>
+          <Select
+            v-model="filtros[detalleFiltro.clave]"
+            :options="detalleFiltro.opciones"
+            :aria-label="detalleFiltro.label"
+          />
+        </div>
+        <Button
+          :label="t('HELIC3_INDICADORES.FILTERS.CLEAR')"
+          icon="i-lucide-rotate-ccw"
+          variant="outline"
+          color="slate"
+          size="sm"
+          @click="limpiarFiltros"
+        />
+      </div>
     </div>
 
     <div v-if="cargando" class="flex justify-center py-12">
@@ -636,3 +629,12 @@ const anchoBarra = cantidad => `${(cantidad / maxPorCiudad.value) * 100}%`;
     </template>
   </div>
 </template>
+
+<style scoped>
+/* Mismo ajuste de GarantiasTab.vue (revision de Jhan, PR #123): Select.vue es
+   upstream puro, no se toca. El ancho se fuerza desde la pagina. */
+:deep(.w-fit.relative),
+:deep(.w-fit.relative select) {
+  width: 100%;
+}
+</style>
