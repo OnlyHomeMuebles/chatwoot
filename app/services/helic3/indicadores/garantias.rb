@@ -92,10 +92,14 @@ class Helic3::Indicadores::Garantias
     { periodo: yield(fecha), cantidad: cantidad, solucionadas: resueltas, en_proceso: cantidad - resueltas }
   end
 
+  # valor (el id del catalogo) viaja ademas de la etiqueta: el mockup permite
+  # hacer click en una tienda para filtrar el resto del tablero por ella, y
+  # el frontend necesita el id (no el nombre) para setear ese filtro.
   def por_ciudad
     conteos = garantias_filtradas.group(:cobertura_ciudad_id).count
     nombres = Helic3::Catalogo::CoberturaCiudad.where(id: conteos.keys.compact).pluck(:id, :nombre).to_h
-    ordenar_por_cantidad(conteos) { |id| nombres[id] }
+    conteos.map { |id, cantidad| { etiqueta: nombres[id], valor: id, cantidad: cantidad } }
+           .sort_by { |fila| -fila[:cantidad] }
   end
 
   def por_motivo

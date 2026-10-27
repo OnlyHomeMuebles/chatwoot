@@ -146,6 +146,14 @@ const limpiarFiltros = () => {
   });
 };
 
+// Mismo ajuste de interactividad que GarantiasTab.vue (mockup v12): click en
+// un mes de "Detalle mensual" filtra el resto del tablero por ese periodo.
+const seleccionarPeriodo = periodo => {
+  const [anio, mes] = periodo.split('-');
+  filtros.anio = Number(anio);
+  filtros.mes = Number(mes);
+};
+
 onMounted(() => {
   store.dispatch('tickets/getCatalogos');
   store.dispatch('agents/get');
@@ -372,7 +380,21 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
                   :key="fila.periodo"
                   class="border-t border-n-weak"
                 >
-                  <td class="px-3 py-2 text-n-slate-11">{{ fila.periodo }}</td>
+                  <td class="px-3 py-2">
+                    <button
+                      type="button"
+                      class="hover:text-n-brand"
+                      :class="
+                        filtros.anio == fila.periodo.split('-')[0] &&
+                        filtros.mes == fila.periodo.split('-')[1]
+                          ? 'text-n-brand font-medium'
+                          : 'text-n-slate-11'
+                      "
+                      @click="seleccionarPeriodo(fila.periodo)"
+                    >
+                      {{ fila.periodo }}
+                    </button>
+                  </td>
                   <td
                     class="px-3 py-2 text-right font-medium tabular-nums text-n-slate-12"
                   >

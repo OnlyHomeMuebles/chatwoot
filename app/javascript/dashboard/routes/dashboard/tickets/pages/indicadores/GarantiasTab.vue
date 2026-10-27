@@ -163,6 +163,20 @@ const limpiarFiltros = () => {
   });
 };
 
+// Ajuste de interactividad (mockup v12): click en un mes de "Detalle mensual"
+// o en una tienda de "Centro de operacion" filtra el resto del tablero por
+// ese periodo/tienda, igual que data-month/data-center en el mockup.
+const seleccionarPeriodo = periodo => {
+  const [anio, mes] = periodo.split('-');
+  filtros.anio = Number(anio);
+  filtros.mes = Number(mes);
+};
+
+const seleccionarCiudad = cobertura_ciudad_id => {
+  if (!cobertura_ciudad_id) return;
+  filtros.cobertura_ciudad_id = cobertura_ciudad_id;
+};
+
 const cargarCatalogos = async () => {
   try {
     await store.dispatch('tickets/getCatalogos');
@@ -426,7 +440,21 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
                   :key="fila.periodo"
                   class="border-t border-n-weak"
                 >
-                  <td class="px-3 py-2 text-n-slate-11">{{ fila.periodo }}</td>
+                  <td class="px-3 py-2">
+                    <button
+                      type="button"
+                      class="hover:text-n-brand"
+                      :class="
+                        filtros.anio == fila.periodo.split('-')[0] &&
+                        filtros.mes == fila.periodo.split('-')[1]
+                          ? 'text-n-brand font-medium'
+                          : 'text-n-slate-11'
+                      "
+                      @click="seleccionarPeriodo(fila.periodo)"
+                    >
+                      {{ fila.periodo }}
+                    </button>
+                  </td>
                   <td
                     class="px-3 py-2 text-right font-medium tabular-nums text-n-slate-12"
                   >
@@ -550,8 +578,20 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
                 :key="fila.etiqueta"
                 class="border-t border-n-weak"
               >
-                <td class="px-3 py-2 text-n-slate-11">
-                  {{ etiquetaDe('BY_CITY', fila.etiqueta) }}
+                <td class="px-3 py-2">
+                  <button
+                    type="button"
+                    class="hover:text-n-brand"
+                    :class="
+                      filtros.cobertura_ciudad_id == fila.valor
+                        ? 'text-n-brand font-medium'
+                        : 'text-n-slate-11'
+                    "
+                    :disabled="!fila.valor"
+                    @click="seleccionarCiudad(fila.valor)"
+                  >
+                    {{ etiquetaDe('BY_CITY', fila.etiqueta) }}
+                  </button>
                 </td>
                 <td
                   class="px-3 py-2 font-medium text-right tabular-nums text-n-slate-12"
@@ -571,9 +611,21 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
               {{ t('HELIC3_INDICADORES.GARANTIAS.BY_CITY_CHART_SUBTITLE') }}
             </p>
             <div class="space-y-3">
-              <div v-for="fila in datos.por_ciudad" :key="fila.etiqueta">
+              <button
+                v-for="fila in datos.por_ciudad"
+                :key="fila.etiqueta"
+                type="button"
+                class="block w-full text-start"
+                :disabled="!fila.valor"
+                @click="seleccionarCiudad(fila.valor)"
+              >
                 <div
-                  class="flex items-center justify-between gap-3 text-xs text-n-slate-11"
+                  class="flex items-center justify-between gap-3 text-xs"
+                  :class="
+                    filtros.cobertura_ciudad_id == fila.valor
+                      ? 'text-n-brand font-medium'
+                      : 'text-n-slate-11'
+                  "
                 >
                   <span class="truncate">
                     {{ etiquetaDe('BY_CITY', fila.etiqueta) }}
@@ -586,7 +638,7 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
                     :style="{ width: `${anchoBarra(fila.cantidad)}%` }"
                   />
                 </div>
-              </div>
+              </button>
             </div>
           </div>
         </div>
