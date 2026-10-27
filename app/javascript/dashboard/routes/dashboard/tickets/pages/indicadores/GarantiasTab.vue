@@ -8,7 +8,7 @@ import Select from 'dashboard/components-next/select/Select.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
-import BarChart from 'shared/components/charts/BarChart.vue';
+import ComboBarLineChart from 'dashboard/components-next/helic3/ComboBarLineChart.vue';
 import { useIndicadoresStore } from 'dashboard/store/helic3/indicadores';
 import IndicadoresAPI from 'dashboard/api/helic3/indicadores';
 import { downloadBlobResponse } from 'dashboard/helper/helic3/downloadHelper';
@@ -280,23 +280,67 @@ const kpiCards = computed(() => [
   },
 ]);
 
-// shared/components/charts/BarChart.vue (@chatwoot/viz): categories + series[].data
-// como arreglo de numeros en el mismo orden (patron de superadmin_pages/views/
-// dashboard/Index.vue, mas simple que el de ReportContainer, que es para metricas
-// con series multiples). Un solo color: estos indicadores solo tienen una serie.
-const comoGrafica = filas => ({
-  categories: filas.map(fila => fila.etiqueta ?? fila.periodo),
-  series: [
-    {
-      id: 'cantidad',
-      label: t('HELIC3_INDICADORES.GARANTIAS.COUNT'),
-      color: 'rgb(var(--blue-9))',
-      data: filas.map(fila => fila.cantidad),
-    },
-  ],
-});
+// "Recuento vs. ratio" (mockup v12): el mockup traza una linea de
+// garantias/facturas, pero Facturas todavia no tiene modelo de datos (eso
+// es IND-04). Mientras tanto la linea muestra % solucionadas -- un ratio
+// real, calculable hoy, no un dato inventado.
+const porcentajeSolucionadas = fila =>
+  fila.cantidad > 0
+    ? Math.round((fila.solucionadas / fila.cantidad) * 1000) / 10
+    : 0;
 
-const graficaMensual = computed(() => comoGrafica(datos.value?.mensual || []));
+const categoriasMensual = computed(() =>
+  (datos.value?.mensual || []).map(fila => fila.periodo)
+);
+const cantidadMensual = computed(() =>
+  (datos.value?.mensual || []).map(fila => fila.cantidad)
+);
+const porcentajeSolucionadasMensual = computed(() =>
+  (datos.value?.mensual || []).map(porcentajeSolucionadas)
+);
+
+// Detalle trimestral: click en un trimestre despliega sus meses (mockup v12:
+// "al hacer click en la fecha debe dar un diagrama e info sobre esos meses").
+// Sin pedir nada al backend: el detalle mensual ya esta completo en memoria,
+// solo se filtra por el rango de meses del trimestre elegido.
+const trimestreSeleccionado = ref(null);
+const seleccionarTrimestre = periodo => {
+  trimestreSeleccionado.value =
+    trimestreSeleccionado.value === periodo ? null : periodo;
+};
+const mesesDelTrimestre = periodo => {
+  const [anioTexto, trimestreTexto] = periodo.split('-T');
+  const trimestre = Number(trimestreTexto);
+  const primerMes = (trimestre - 1) * 3 + 1;
+  const ultimoMes = trimestre * 3;
+  return (datos.value?.mensual || []).filter(fila => {
+    const [anioFila, mesFila] = fila.periodo.split('-').map(Number);
+    return (
+      String(anioFila) === anioTexto &&
+      mesFila >= primerMes &&
+      mesFila <= ultimoMes
+    );
+  });
+};
+const filaTrimestreSeleccionada = computed(() =>
+  (datos.value?.trimestral || []).find(
+    fila => fila.periodo === trimestreSeleccionado.value
+  )
+);
+const mesesTrimestreSeleccionado = computed(() =>
+  trimestreSeleccionado.value
+    ? mesesDelTrimestre(trimestreSeleccionado.value)
+    : []
+);
+const categoriasTrimestre = computed(() =>
+  mesesTrimestreSeleccionado.value.map(fila => fila.periodo)
+);
+const cantidadTrimestre = computed(() =>
+  mesesTrimestreSeleccionado.value.map(fila => fila.cantidad)
+);
+const porcentajeSolucionadasTrimestre = computed(() =>
+  mesesTrimestreSeleccionado.value.map(porcentajeSolucionadas)
+);
 
 // Ajuste visual (mockup v12, seccion "Centro de operacion"): por_ciudad suma
 // una comparacion visual de barras ademas de la tabla -- sin facturas (eso es
@@ -546,9 +590,13 @@ const conversacionUrlDe = fila =>
             <p class="mt-1 mb-2 text-xs text-n-slate-11">
               {{ t('HELIC3_INDICADORES.GARANTIAS.MONTHLY_SUBTITLE') }}
             </p>
-            <BarChart
+            <ComboBarLineChart
               v-if="datos.mensual.length"
-              :data="graficaMensual"
+              :categories="categoriasMensual"
+              :bar-data="cantidadMensual"
+              :bar-label="t('HELIC3_INDICADORES.GARANTIAS.COUNT')"
+              :line-data="porcentajeSolucionadasMensual"
+              :line-label="t('HELIC3_INDICADORES.GARANTIAS.RESOLVED_RATE')"
               :height="ALTURA_GRAFICA"
               :aria-label="t('HELIC3_INDICADORES.GARANTIAS.MONTHLY_CHART')"
             />
@@ -601,7 +649,20 @@ const conversacionUrlDe = fila =>
                 :key="fila.periodo"
                 class="border-t border-n-weak"
               >
-                <td class="px-3 py-2 text-n-slate-11">{{ fila.periodo }}</td>
+                <td class="px-3 py-2">
+                  <button
+                    type="button"
+                    class="hover:text-n-brand"
+                    :class="
+                      trimestreSeleccionado === fila.periodo
+                        ? 'text-n-brand font-medium'
+                        : 'text-n-slate-11'
+                    "
+                    @click="seleccionarTrimestre(fila.periodo)"
+                  >
+                    {{ fila.periodo }}
+                  </button>
+                </td>
                 <td
                   class="px-3 py-2 text-right font-medium tabular-nums text-n-slate-12"
                 >
@@ -616,6 +677,66 @@ const conversacionUrlDe = fila =>
               </tr>
             </tbody>
           </table>
+
+          <!-- Detalle del trimestre elegido: info + grafica de sus meses
+          (mockup v12). Se calcula en el cliente, sin pedir nada nuevo al
+          backend -- el detalle mensual ya esta completo en memoria. -->
+          <div
+            v-if="trimestreSeleccionado && filaTrimestreSeleccionada"
+            class="p-4 mt-4 rounded-xl bg-n-solid-2"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <p class="text-sm font-medium text-n-slate-12">
+                {{
+                  t('HELIC3_INDICADORES.GARANTIAS.QUARTER_DETAIL_TITLE', {
+                    trimestre: trimestreSeleccionado,
+                  })
+                }}
+              </p>
+              <Button
+                icon="i-lucide-x"
+                variant="ghost"
+                color="slate"
+                size="xs"
+                @click="trimestreSeleccionado = null"
+              />
+            </div>
+            <div class="flex flex-wrap gap-6 mt-2 text-xs text-n-slate-11">
+              <span>
+                {{ t('HELIC3_INDICADORES.GARANTIAS.COUNT') }}:
+                <strong class="text-n-slate-12">{{
+                  filaTrimestreSeleccionada.cantidad
+                }}</strong>
+              </span>
+              <span>
+                {{ t('HELIC3_INDICADORES.GARANTIAS.KPI_SOLVED') }}:
+                <strong class="text-n-teal-11">{{
+                  filaTrimestreSeleccionada.solucionadas
+                }}</strong>
+              </span>
+              <span>
+                {{ t('HELIC3_INDICADORES.GARANTIAS.KPI_IN_PROGRESS') }}:
+                <strong class="text-n-amber-11">{{
+                  filaTrimestreSeleccionada.en_proceso
+                }}</strong>
+              </span>
+            </div>
+            <ComboBarLineChart
+              v-if="mesesTrimestreSeleccionado.length"
+              class="mt-4"
+              :categories="categoriasTrimestre"
+              :bar-data="cantidadTrimestre"
+              :bar-label="t('HELIC3_INDICADORES.GARANTIAS.COUNT')"
+              :line-data="porcentajeSolucionadasTrimestre"
+              :line-label="t('HELIC3_INDICADORES.GARANTIAS.RESOLVED_RATE')"
+              :height="180"
+              :aria-label="
+                t('HELIC3_INDICADORES.GARANTIAS.QUARTER_DETAIL_TITLE', {
+                  trimestre: trimestreSeleccionado,
+                })
+              "
+            />
+          </div>
         </div>
 
         <!-- Por ciudad: tabla + comparativo de barras (mockup v12, "Centro de operacion") -->
