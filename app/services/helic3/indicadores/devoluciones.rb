@@ -67,10 +67,14 @@ class Helic3::Indicadores::Devoluciones
     { periodo: yield(fecha), cantidad: cantidad, solucionadas: solucionadas, en_proceso: cantidad - solucionadas }
   end
 
+  # valor (el id del catalogo) viaja ademas de la etiqueta, igual que en
+  # Garantias: el mockup permite hacer click en una tienda para filtrar el
+  # resto del tablero por ella.
   def por_ciudad
     conteos = devoluciones_filtradas.group(:cobertura_ciudad_id).count
     nombres = Helic3::Catalogo::CoberturaCiudad.where(id: conteos.keys.compact).pluck(:id, :nombre).to_h
-    ordenar_por_cantidad(conteos) { |id| nombres[id] }
+    conteos.map { |id, cantidad| { etiqueta: nombres[id], valor: id, cantidad: cantidad } }
+           .sort_by { |fila| -fila[:cantidad] }
   end
 
   def por_motivo
