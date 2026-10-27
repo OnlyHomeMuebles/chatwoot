@@ -12,6 +12,8 @@
 # motivos distintos.
 class Helic3::Indicadores::Garantias
   TOP_PRODUCTOS = 20
+  POR_PAGINA_CASOS = 7
+  RANGO_URGENCIA = { rojo: 0, amarillo: 1, verde: 2, sin_presupuesto: 3, resuelta: 4 }.freeze
 
   # abierta_at es un timestamp sin zona en UTC. Agrupar/filtrar directo sobre esa
   # columna corre el riesgo de que una garantia abierta el 31 a las 9pm en Bogota
@@ -42,9 +44,64 @@ class Helic3::Indicadores::Garantias
     }
   end
 
+  # Lista de casos individuales (mockup v12, "Detalle de clientes y casos"):
+  # ordenada por urgencia (vencidas primero, solucionadas al final, igual que
+  # el mockup) y paginada -- es la unica seccion de Indicadores que no es un
+  # agregado, asi que vive en su propio metodo en vez de en #call.
+  def casos(pagina: 1)
+    calendario = Helic3::CalendarioHabil.new
+    parametros = Helic3::ParametrosGarantia.desde_catalogo(account, ambito: :garantia)
+    filas = garantias_filtradas
+            .includes(:cobertura_ciudad, items: :proceso, ticket: { conversation: :contact })
+            .map { |garantia| fila_de_caso(garantia, parametros, calendario) }
+            .sort_by { |fila| [fila.delete(:rango_urgencia), fila[:id]] }
+    paginar_casos(filas, pagina)
+  end
+
   private
 
   attr_reader :account, :filtros
+
+  def fila_de_caso(garantia, parametros, calendario)
+    resuelta = garantia.resuelta?
+    presupuesto = resuelta ? nil : garantia.presupuesto(parametros: parametros, calendario: calendario)
+    conversacion = garantia.ticket.conversation
+    {
+      id: garantia.id,
+      numero_radicado: garantia.numero_radicado,
+      cliente: conversacion&.contact&.name,
+      centro_operacion: garantia.cobertura_ciudad&.nombre,
+      proceso: garantia.proceso_visible&.nombre,
+      etapa: resuelta ? 'solucionada' : 'en_gestion',
+      conversation_display_id: conversacion&.display_id,
+      vencimiento: vencimiento_de_caso(resuelta, presupuesto),
+      rango_urgencia: rango_urgencia_de_caso(resuelta, presupuesto)
+    }
+  end
+
+  def vencimiento_de_caso(resuelta, presupuesto)
+    return { estado: 'solucionada' } if resuelta
+
+    {
+      estado: presupuesto.semaforo.to_s,
+      saldo_dias_habiles: presupuesto.saldo,
+      fecha_etapa_vigente: presupuesto.fecha_etapa_vigente
+    }
+  end
+
+  def rango_urgencia_de_caso(resuelta, presupuesto)
+    return RANGO_URGENCIA[:resuelta] if resuelta
+
+    RANGO_URGENCIA.fetch(presupuesto.semaforo, RANGO_URGENCIA[:sin_presupuesto])
+  end
+
+  def paginar_casos(filas, pagina)
+    total = filas.size
+    paginas = [(total.to_f / POR_PAGINA_CASOS).ceil, 1].max
+    pagina_actual = pagina.to_i.clamp(1, paginas)
+    inicio = (pagina_actual - 1) * POR_PAGINA_CASOS
+    { casos: filas.slice(inicio, POR_PAGINA_CASOS) || [], pagina: pagina_actual, paginas: paginas, total: total }
+  end
 
   def kpis
     base = garantias_filtradas

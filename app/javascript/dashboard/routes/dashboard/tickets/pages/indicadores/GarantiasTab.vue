@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute } from 'vue-router';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import Select from 'dashboard/components-next/select/Select.vue';
@@ -16,6 +17,7 @@ import { downloadBlobResponse } from 'dashboard/helper/helic3/downloadHelper';
 // con filtros resueltos en el servidor (GET helic3/indicadores/garantias).
 // Nº de facturas, ratio y subtotal llegan con IND-03; histórico con IND-04.
 const { t, locale } = useI18n();
+const route = useRoute();
 const store = useStore();
 const indicadoresStore = useIndicadoresStore();
 
@@ -141,6 +143,34 @@ const cargar = async () => {
   }
 };
 
+// Detalle de clientes y casos (mockup v12): paginado aparte de los agregados
+// de arriba, con los mismos filtros. Un cambio de filtro vuelve a la pagina 1
+// (la pagina 7 de un filtro anterior no tiene por que existir en el nuevo).
+const casos = computed(() => indicadoresStore.getGarantiasCasos);
+const cargandoCasos = computed(
+  () => indicadoresStore.getUIFlags.isFetchingGarantiasCasos
+);
+const casosPagina = ref(1);
+const cargarCasos = async () => {
+  try {
+    await indicadoresStore.fetchGarantiasCasos(
+      parametrosActuales(),
+      casosPagina.value
+    );
+  } catch (error) {
+    useAlert(t('HELIC3_INDICADORES.ERROR'));
+  }
+};
+const irAPagina = pagina => {
+  casosPagina.value = pagina;
+  cargarCasos();
+};
+const cargarTodo = () => {
+  cargar();
+  casosPagina.value = 1;
+  cargarCasos();
+};
+
 const descargando = reactive({});
 const descargarCsv = async seccion => {
   descargando[seccion] = true;
@@ -187,7 +217,7 @@ const cargarCatalogos = async () => {
 
 onMounted(() => {
   cargarCatalogos();
-  cargar();
+  cargarTodo();
 });
 
 // los selectores aplican de inmediato: los indicadores son pocas filas
@@ -201,7 +231,7 @@ watch(
     filtros.detalle_tipificado_id,
     filtros.proceso_id,
   ],
-  cargar
+  cargarTodo
 );
 
 // producto es texto libre: sin debounce, cada tecla dispararia una consulta y
@@ -212,7 +242,7 @@ watch(
   () => filtros.producto,
   () => {
     clearTimeout(debounceBusqueda);
-    debounceBusqueda = setTimeout(cargar, DEBOUNCE_BUSQUEDA_MS);
+    debounceBusqueda = setTimeout(cargarTodo, DEBOUNCE_BUSQUEDA_MS);
   }
 );
 
@@ -291,6 +321,43 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
   const clave = ETIQUETA_SIN_DATO[seccionTitulo];
   return clave ? t(`HELIC3_INDICADORES.GARANTIAS.${clave}`) : etiqueta;
 };
+
+// "Detalle de clientes y casos" (mockup v12, data-stats-record/data-month):
+// el semaforo ya viene calculado del backend (PLZ-01); aqui solo se traduce
+// a color + texto, igual que el resto de etiquetas de esta pantalla.
+const COLOR_VENCIMIENTO = {
+  rojo: 'text-n-ruby-11',
+  amarillo: 'text-n-amber-11',
+  verde: 'text-n-slate-11',
+  solucionada: 'text-n-teal-11',
+};
+const colorVencimiento = estado =>
+  COLOR_VENCIMIENTO[estado] || 'text-n-slate-11';
+const textoVencimiento = fila => {
+  if (fila.vencimiento.estado === 'solucionada') {
+    return t('HELIC3_INDICADORES.GARANTIAS.CASES.DUE_DONE');
+  }
+  const dias = fila.vencimiento.saldo_dias_habiles;
+  return dias < 0
+    ? t('HELIC3_INDICADORES.GARANTIAS.CASES.DUE_OVERDUE', {
+        dias: Math.abs(dias),
+      })
+    : t('HELIC3_INDICADORES.GARANTIAS.CASES.DUE_REMAINING', { dias });
+};
+
+// Mismo patron de PqrDetailPage.vue (conversacionUrl): se navega por
+// display_id (el id de conversacion que expone Chatwoot), nunca por el id de
+// base de datos -- "Ver caso" abre la conversacion real, no un modal.
+const conversacionUrlDe = fila =>
+  fila.conversation_display_id
+    ? {
+        name: 'inbox_conversation',
+        params: {
+          accountId: route.params.accountId,
+          conversation_id: fila.conversation_display_id,
+        },
+      }
+    : null;
 </script>
 
 <template>
@@ -704,6 +771,139 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Detalle de clientes y casos (mockup v12): paginado, ordenado por
+        urgencia (vencidos primero, solucionados al final). "Ver caso" abre la
+        conversacion real, no un modal. -->
+        <div
+          class="rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 overflow-hidden"
+        >
+          <div
+            class="flex items-start justify-between gap-3 px-4 py-4 border-b border-n-weak"
+          >
+            <div>
+              <p class="font-semibold text-n-slate-12">
+                {{ t('HELIC3_INDICADORES.GARANTIAS.CASES.TITLE') }}
+              </p>
+              <p class="mt-1 text-xs text-n-slate-11">
+                {{ t('HELIC3_INDICADORES.GARANTIAS.CASES.SUBTITLE') }}
+              </p>
+            </div>
+          </div>
+          <div v-if="cargandoCasos && !casos" class="flex justify-center py-8">
+            <Spinner :size="24" />
+          </div>
+          <template v-else-if="casos">
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[48rem] text-sm">
+                <thead class="text-xs text-n-slate-11">
+                  <tr>
+                    <th class="px-4 py-2 text-left font-medium">
+                      {{ t('HELIC3_INDICADORES.GARANTIAS.CASES.COL_CLIENT') }}
+                    </th>
+                    <th class="px-4 py-2 text-left font-medium">
+                      {{ t('HELIC3_INDICADORES.GARANTIAS.CASES.COL_CENTER') }}
+                    </th>
+                    <th class="px-4 py-2 text-left font-medium">
+                      {{ t('HELIC3_INDICADORES.GARANTIAS.CASES.COL_STAGE') }}
+                    </th>
+                    <th class="px-4 py-2 text-left font-medium">
+                      {{ t('HELIC3_INDICADORES.GARANTIAS.CASES.COL_PROCESS') }}
+                    </th>
+                    <th class="px-4 py-2 text-left font-medium">
+                      {{ t('HELIC3_INDICADORES.GARANTIAS.CASES.COL_DUE') }}
+                    </th>
+                    <th class="px-4 py-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="fila in casos.casos"
+                    :key="fila.id"
+                    class="border-t border-n-weak"
+                  >
+                    <td class="px-4 py-3">
+                      <span class="text-n-brand">
+                        #{{ fila.numero_radicado }}
+                      </span>
+                      <span class="block mt-0.5 text-n-slate-12">
+                        {{
+                          fila.cliente ||
+                          t('HELIC3_INDICADORES.GARANTIAS.CASES.NO_CLIENT')
+                        }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-n-slate-11">
+                      {{ fila.centro_operacion || '—' }}
+                    </td>
+                    <td class="px-4 py-3 text-n-slate-11">
+                      {{
+                        t(
+                          `HELIC3_INDICADORES.GARANTIAS.CASES.STAGE_${fila.etapa.toUpperCase()}`
+                        )
+                      }}
+                    </td>
+                    <td class="px-4 py-3 text-n-slate-11">
+                      {{ fila.proceso || '—' }}
+                    </td>
+                    <td class="px-4 py-3">
+                      <span :class="colorVencimiento(fila.vencimiento.estado)">
+                        {{ textoVencimiento(fila) }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-right whitespace-nowrap">
+                      <router-link
+                        v-if="conversacionUrlDe(fila)"
+                        :to="conversacionUrlDe(fila)"
+                        class="text-n-brand hover:underline"
+                      >
+                        {{ t('HELIC3_INDICADORES.GARANTIAS.CASES.VIEW_CASE') }}
+                      </router-link>
+                    </td>
+                  </tr>
+                  <tr v-if="!casos.casos.length">
+                    <td
+                      colspan="6"
+                      class="px-4 py-8 text-sm text-center text-n-slate-11"
+                    >
+                      {{ t('HELIC3_INDICADORES.GARANTIAS.CASES.EMPTY') }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div
+              class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-n-weak text-xs text-n-slate-11"
+            >
+              <p>
+                {{
+                  t('HELIC3_INDICADORES.GARANTIAS.CASES.TOTAL', {
+                    total: casos.total,
+                  })
+                }}
+              </p>
+              <div class="flex items-center gap-3">
+                <Button
+                  :label="t('HELIC3_INDICADORES.GARANTIAS.CASES.PREV')"
+                  variant="ghost"
+                  color="slate"
+                  size="xs"
+                  :disabled="casos.pagina <= 1 || cargandoCasos"
+                  @click="irAPagina(casos.pagina - 1)"
+                />
+                <span>{{ casos.pagina }} / {{ casos.paginas }}</span>
+                <Button
+                  :label="t('HELIC3_INDICADORES.GARANTIAS.CASES.NEXT')"
+                  variant="ghost"
+                  color="slate"
+                  size="xs"
+                  :disabled="casos.pagina >= casos.paginas || cargandoCasos"
+                  @click="irAPagina(casos.pagina + 1)"
+                />
+              </div>
+            </div>
+          </template>
         </div>
       </template>
     </template>

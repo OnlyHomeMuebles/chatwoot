@@ -5,6 +5,7 @@ import { useIndicadoresStore } from '../indicadores';
 vi.mock('dashboard/api/helic3/indicadores', () => ({
   default: {
     garantias: vi.fn(),
+    garantiasCasos: vi.fn(),
     pqr: vi.fn(),
     todas: vi.fn(),
   },
@@ -37,6 +38,20 @@ describe('helic3Indicadores store', () => {
       { signal: expect.any(AbortSignal) }
     );
     expect(store.getGarantias).toEqual(payload);
+  });
+
+  it('fetchGarantiasCasos pasa los filtros y la pagina al API y guarda la respuesta', async () => {
+    const payload = { casos: [{ id: 1 }], pagina: 2, paginas: 5, total: 33 };
+    IndicadoresAPI.garantiasCasos.mockResolvedValue({ data: payload });
+    const store = useIndicadoresStore();
+
+    await store.fetchGarantiasCasos({ anio: 2026 }, 2);
+
+    expect(IndicadoresAPI.garantiasCasos).toHaveBeenCalledWith(
+      { anio: 2026, pagina: 2 },
+      { signal: expect.any(AbortSignal) }
+    );
+    expect(store.getGarantiasCasos).toEqual(payload);
   });
 
   it('prende y apaga isFetchingGarantias alrededor de la peticion', async () => {
@@ -112,6 +127,7 @@ describe('helic3Indicadores store', () => {
 
     expect(capturado).toEqual({
       isFetchingGarantias: false,
+      isFetchingGarantiasCasos: false,
       isFetchingPqr: true,
       isFetchingTodas: false,
     });

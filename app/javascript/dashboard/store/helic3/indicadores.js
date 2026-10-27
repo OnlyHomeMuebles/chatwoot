@@ -11,18 +11,21 @@ import { useAbortableRequest } from 'dashboard/composables/useAbortableRequest';
 // store, no dentro de un setup-store) cancela la peticion anterior apenas
 // arranca una nueva, asi solo la ultima puede escribir el estado.
 const garantiasRequest = useAbortableRequest();
+const garantiasCasosRequest = useAbortableRequest();
 const pqrRequest = useAbortableRequest();
 const todasRequest = useAbortableRequest();
 
 export const useIndicadoresStore = defineStore('helic3Indicadores', {
   state: () => ({
     garantias: null,
+    garantiasCasos: null,
     pqr: null,
     todas: null,
   }),
 
   getters: {
     getGarantias: state => state.garantias,
+    getGarantiasCasos: state => state.garantiasCasos,
     getPqr: state => state.pqr,
     getTodas: state => state.todas,
     // isPending ya solo refleja la peticion vigente (ver "Only the latest run
@@ -30,6 +33,7 @@ export const useIndicadoresStore = defineStore('helic3Indicadores', {
     // cancelada no apaga el spinner de la que la reemplazo.
     getUIFlags: () => ({
       isFetchingGarantias: garantiasRequest.isPending.value,
+      isFetchingGarantiasCasos: garantiasCasosRequest.isPending.value,
       isFetchingPqr: pqrRequest.isPending.value,
       isFetchingTodas: todasRequest.isPending.value,
     }),
@@ -43,6 +47,17 @@ export const useIndicadoresStore = defineStore('helic3Indicadores', {
         // debe escribir el estado, aunque el mock/navegador no respete el abort.
         if (signal.aborted) return;
         this.garantias = response.data;
+      });
+    },
+
+    async fetchGarantiasCasos(filtros = {}, pagina = 1) {
+      await garantiasCasosRequest.run(async signal => {
+        const response = await IndicadoresAPI.garantiasCasos(
+          { ...filtros, pagina },
+          { signal }
+        );
+        if (signal.aborted) return;
+        this.garantiasCasos = response.data;
       });
     },
 
