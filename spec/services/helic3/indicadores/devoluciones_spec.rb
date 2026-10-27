@@ -57,12 +57,11 @@ RSpec.describe Helic3::Indicadores::Devoluciones do
       expect(mensual['2026-01']).to eq(periodo: '2026-01', cantidad: 2, solucionadas: 1, en_proceso: 1)
     end
 
-    # N3 (mismo criterio de Garantias, PR #113): etiqueta nil cuando no hay catalogo.
-    it 'por_ciudad: Manizales 1, sin ciudad (nil) 1' do
+    it 'por_ciudad: Manizales 1, la devolucion sin ciudad queda excluida' do
       por_ciudad = llamar[:por_ciudad].index_by { |fila| fila[:etiqueta] }
 
       expect(por_ciudad['Manizales'][:cantidad]).to eq(1)
-      expect(por_ciudad[nil][:cantidad]).to eq(1)
+      expect(por_ciudad).not_to have_key(nil)
     end
 
     it 'por_motivo cuenta PRODUCTOS, no radicados: cambio_talla aparece 2 veces' do
