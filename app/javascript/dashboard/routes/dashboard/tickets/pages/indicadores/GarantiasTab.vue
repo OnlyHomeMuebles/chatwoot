@@ -187,10 +187,22 @@ const descargarCsv = async seccion => {
   }
 };
 
+// Mismo criterio del mockup (data-action="stats-reset"): un solo click
+// vuelve todo a su estado inicial -- filtros y el trimestre desplegado, no
+// solo los selectores. El recargo de garantias/casos lo dispara el watch de
+// abajo en cuanto cambia algun filtro; si ya estaban todos vacios, no hay
+// nada que recargar, pero el trimestre igual se cierra.
+// Se despliega al hacer click en un trimestre de "Detalle trimestral" (ver
+// seleccionarTrimestre mas abajo); declarado aqui para que limpiarFiltros
+// pueda cerrarlo sin dejar un trimestre viejo abierto tras limpiar filtros.
+const trimestreSeleccionado = ref(null);
+
 const limpiarFiltros = () => {
   Object.keys(filtros).forEach(clave => {
     filtros[clave] = '';
   });
+  trimestreSeleccionado.value = null;
+  casosPagina.value = 1;
 };
 
 // Ajuste de interactividad (mockup v12): click en un mes de "Detalle mensual"
@@ -303,7 +315,6 @@ const porcentajeSolucionadasMensual = computed(() =>
 // "al hacer click en la fecha debe dar un diagrama e info sobre esos meses").
 // Sin pedir nada al backend: el detalle mensual ya esta completo en memoria,
 // solo se filtra por el rango de meses del trimestre elegido.
-const trimestreSeleccionado = ref(null);
 const seleccionarTrimestre = periodo => {
   trimestreSeleccionado.value =
     trimestreSeleccionado.value === periodo ? null : periodo;
