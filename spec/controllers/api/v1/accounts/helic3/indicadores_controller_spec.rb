@@ -218,12 +218,25 @@ RSpec.describe 'Helic3 Indicadores (IND-01)', type: :request do
     # Las etiquetas nil del JSON (N3, PR #113) se traducen a texto fijo en el
     # CSV: no hay capa de i18n al abrir un archivo en Excel.
     it 'traduce una etiqueta nil a texto fijo, igual al que ya se ve en pantalla' do
+      garantia = Helic3::Garantia.create!(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 1, 1, 12, 0))
+      Helic3::GarantiaItem.create!(account: account, garantia: garantia, producto_nombre: 'Sofá')
+
+      get_garantias_csv('por_motivo')
+
+      filas = CSV.parse(response.body.delete_prefix("\xEF\xBB\xBF"), col_sep: ';')
+      expect(filas).to include(['Sin motivo', '1'])
+    end
+
+    # "quita ese sin ciudad": una tienda sin asignar no es comparable contra
+    # las demas, asi que se excluye del desglose (pantalla y CSV), a
+    # diferencia de motivo/detalle/proceso donde "sin dato" si es util.
+    it 'excluye del CSV las garantias sin ciudad asignada' do
       Helic3::Garantia.create!(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 1, 1, 12, 0))
 
       get_garantias_csv('por_ciudad')
 
       filas = CSV.parse(response.body.delete_prefix("\xEF\xBB\xBF"), col_sep: ';')
-      expect(filas).to include(['Sin ciudad', '1'])
+      expect(filas).to eq([%w[Etiqueta Cantidad]])
     end
   end
 

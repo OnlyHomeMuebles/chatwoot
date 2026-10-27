@@ -84,14 +84,12 @@ RSpec.describe Helic3::Indicadores::Garantias do
       )
     end
 
-    # N3 (revision de Jhan, PR #113): sin catalogo asociado, etiqueta es nil (no un
-    # texto en español quemado en el backend) -- el frontend decide como traducirlo.
-    it 'por_ciudad: Manizales 1, Pereira 1, sin ciudad (nil) 1' do
+    it 'por_ciudad: Manizales 1, Pereira 1, la garantia sin ciudad queda excluida' do
       por_ciudad = llamar[:por_ciudad].index_by { |fila| fila[:etiqueta] }
 
       expect(por_ciudad['Manizales'][:cantidad]).to eq(1)
       expect(por_ciudad['Pereira'][:cantidad]).to eq(1)
-      expect(por_ciudad[nil][:cantidad]).to eq(1)
+      expect(por_ciudad).not_to have_key(nil)
     end
 
     it 'por_motivo cuenta PRODUCTOS, no radicados: calidad aparece 2 veces (en dos garantias distintas)' do

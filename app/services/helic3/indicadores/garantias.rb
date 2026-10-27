@@ -152,9 +152,13 @@ class Helic3::Indicadores::Garantias
   # valor (el id del catalogo) viaja ademas de la etiqueta: el mockup permite
   # hacer click en una tienda para filtrar el resto del tablero por ella, y
   # el frontend necesita el id (no el nombre) para setear ese filtro.
+  # El comparativo por tienda no tiene sentido con un bulto "sin ciudad": no
+  # es una tienda que se pueda comparar contra las demas, asi que se excluye
+  # en vez de traducirla (a diferencia de por_motivo/por_detalle/por_proceso,
+  # donde "sin dato" si es informacion util).
   def por_ciudad
-    conteos = garantias_filtradas.group(:cobertura_ciudad_id).count
-    nombres = Helic3::Catalogo::CoberturaCiudad.where(id: conteos.keys.compact).pluck(:id, :nombre).to_h
+    conteos = garantias_filtradas.where.not(cobertura_ciudad_id: nil).group(:cobertura_ciudad_id).count
+    nombres = Helic3::Catalogo::CoberturaCiudad.where(id: conteos.keys).pluck(:id, :nombre).to_h
     conteos.map { |id, cantidad| { etiqueta: nombres[id], valor: id, cantidad: cantidad } }
            .sort_by { |fila| -fila[:cantidad] }
   end
