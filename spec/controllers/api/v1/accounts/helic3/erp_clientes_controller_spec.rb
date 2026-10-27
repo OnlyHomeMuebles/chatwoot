@@ -60,6 +60,62 @@ RSpec.describe 'ERP clientes API', type: :request do
     end
   end
 
+  describe 'GET helic3/erp/clientes/:cedula/facturas (ERP-15)' do
+    def facturas(cedula, modo: 'simulado', headers: agent.create_new_auth_token)
+      with_modified_env HELIC3_ERP_MODO: modo do
+        get "/api/v1/accounts/#{account.id}/helic3/erp/clientes/#{cedula}/facturas", headers: headers, as: :json
+      end
+    end
+
+    it 'exige autenticacion' do
+      get "/api/v1/accounts/#{account.id}/helic3/erp/clientes/1032456789/facturas"
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'CA1: con el simulado, devuelve las facturas con sus productos para una cedula conocida' do
+      facturas('1.032.456.789')
+
+      expect(response).to have_http_status(:success)
+      lista = response.parsed_body['facturas']
+      expect(lista.map { |f| f['numero'] }).to contain_exactly('FV-1001', 'FV-1002')
+
+      con_dos = lista.find { |f| f['numero'] == 'FV-1001' }
+      expect(con_dos).to include('fecha', 'total', 'centro_operacion' => 'Armenia Centro')
+      expect(con_dos['items'].size).to eq(2)
+      expect(con_dos['items'].first).to include('referencia' => 'MIL-200', 'descripcion' => 'Puerta Milano',
+                                                'cantidad' => 2, 'valor' => 900_000)
+    end
+
+    it 'CA1: una cedula sin facturas devuelve lista vacia (no es error)' do
+      facturas('99999999')
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['facturas']).to eq([])
+    end
+
+    it 'responde 422 cedula_invalida para una cedula fuera de rango' do
+      facturas('123')
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.parsed_body['error']).to eq('cedula_invalida')
+    end
+
+    it 'CA2: con el ERP desactivado responde 503 erp_desactivado' do
+      facturas('1032456789', modo: nil)
+
+      expect(response).to have_http_status(:service_unavailable)
+      expect(response.parsed_body['error']).to eq('erp_desactivado')
+    end
+
+    it 'cuando el adaptador no esta disponible responde 503 erp_no_disponible' do
+      allow(Helic3::Erp).to receive(:adapter).and_raise(Helic3::Erp::NoDisponible)
+      facturas('1032456789')
+
+      expect(response).to have_http_status(:service_unavailable)
+      expect(response.parsed_body['error']).to eq('erp_no_disponible')
+    end
+  end
+
   describe 'GET helic3/catalogos' do
     it 'CA2: incluye erp_habilitado (false cuando el ERP esta desactivado)' do
       with_modified_env HELIC3_ERP_MODO: nil do

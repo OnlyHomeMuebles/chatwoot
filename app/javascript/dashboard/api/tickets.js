@@ -54,6 +54,13 @@ class TicketsAPI extends ApiClient {
     return axios.get(`${base}/${encodeURIComponent(cedula)}`, { signal });
   }
 
+  // ERP-15: facturas + productos del cliente por cedula, para el selector del wizard.
+  // Mismo namespace que la consulta de cliente; acepta AbortSignal (cancela la anterior).
+  consultarErpFacturas(cedula, signal) {
+    const base = this.url.replace(/tickets$/, 'erp/clientes');
+    return axios.get(`${base}/${encodeURIComponent(cedula)}/facturas`, { signal });
+  }
+
   // Archivo documental del expediente (EVI-02/EVI-03): evidencias del cliente
   // (referenciadas, no copiadas) y cargas manuales del operador.
   documentos(ticketId) {

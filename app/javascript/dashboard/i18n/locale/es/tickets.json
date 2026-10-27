@@ -112,7 +112,11 @@
         "PRODUCTO": "Producto",
         "PRODUCTO_PH": "Nombre del producto",
         "REFERENCIA": "Referencia",
-        "REFERENCIA_PH": "Referencia o código del producto"
+        "REFERENCIA_PH": "Referencia o código del producto",
+        "SELECTOR_TITLE": "Facturas en Siesa",
+        "SELECTOR_HINT": "Elige la factura y el producto que reclama. Si no está en la lista, escríbelo abajo.",
+        "SELECTOR_ELEGIR": "Elegir",
+        "SELECTOR_CANT": "Cant: {n}"
       },
       "DIRECCION": {
         "TITLE": "Dirección actual",

@@ -9,6 +9,7 @@ const alert = vi.fn();
 const crearApi = vi.fn();
 const subirApi = vi.fn();
 const consultarErpApi = vi.fn();
+const consultarFacturasApi = vi.fn();
 // crear() pasa por store.dispatch('tickets/create'); el mock delega en crearApi
 // (que los tests configuran) y devuelve el ticket como lo hace el store real
 // (response.data). Un rechazo de crearApi se propaga, igual que el store.
@@ -38,6 +39,7 @@ vi.mock('dashboard/api/tickets', () => ({
     create: (...args) => crearApi(...args),
     subirDocumento: (...args) => subirApi(...args),
     consultarErpCliente: (...args) => consultarErpApi(...args),
+    consultarErpFacturas: (...args) => consultarFacturasApi(...args),
   },
 }));
 
@@ -80,6 +82,7 @@ beforeEach(() => {
   crearApi.mockReset();
   subirApi.mockReset().mockResolvedValue();
   consultarErpApi.mockReset();
+  consultarFacturasApi.mockReset();
   delete catalogosRef.value.erp_habilitado;
   routeState.query = {};
 });
@@ -313,5 +316,38 @@ describe('PqrNuevaPage.vue — ERP (ERP-11)', () => {
     await flushPromises();
     expect(crearApi).toHaveBeenCalled();
     expect(crearApi.mock.calls[0][0].ticket.consultado_erp).toBe(false);
+  });
+
+  it('ERP-15: "Consultar Siesa" trae las facturas y elegir llena la seccion compra', async () => {
+    catalogosRef.value = { ...catalogosRef.value, erp_habilitado: true };
+    consultarErpApi.mockResolvedValue({ data: { encontrado: false } });
+    consultarFacturasApi.mockResolvedValue({
+      data: {
+        facturas: [
+          {
+            numero: 'FV-1001',
+            fecha: '2026-05-10',
+            centro_operacion: 'Armenia Centro',
+            items: [
+              { referencia: 'MIL-200', descripcion: 'Puerta Milano', cantidad: 2, valor: 900000 },
+            ],
+          },
+        ],
+      },
+    });
+    const vm = montar().vm;
+    vm.form.cedula = '26478046';
+
+    vm.consultarSiesa();
+    await flushPromises();
+
+    const facturas = vm.facturasErp.facturas.value;
+    expect(facturas).toHaveLength(1);
+
+    vm.facturasErp.elegir(facturas[0], facturas[0].items[0]);
+    expect(vm.form.numero_orden).toBe('FV-1001');
+    expect(vm.form.factura_fecha).toBe('2026-05-10');
+    expect(vm.form.producto_referencia).toBe('MIL-200');
+    expect(vm.form.producto_nombre).toBe('Puerta Milano');
   });
 });

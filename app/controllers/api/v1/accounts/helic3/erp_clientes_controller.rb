@@ -28,6 +28,24 @@ class Api::V1::Accounts::Helic3::ErpClientesController < Api::V1::Accounts::Base
     render json: { error: 'erp_no_disponible' }, status: :service_unavailable
   end
 
+  # ERP-15: facturas + productos del cliente, para que el agente escoja en el wizard cual
+  # reclama. Misma regla que #show: el ERP NUNCA bloquea; si falla, 503 y el agente sigue
+  # a mano. Una cedula sin compras no es error (lista vacia).
+  def facturas
+    return erp_desactivado unless Helic3::Erp.habilitado?
+
+    cedula = Helic3::Erp.normalizar_cedula(params[:cedula])
+    return render(json: { error: 'cedula_invalida' }, status: :unprocessable_entity) if cedula.blank?
+
+    facturas = Helic3::Erp.adapter.invoices(cedula: cedula)
+    render json: { facturas: facturas.map { |factura| factura_json(factura) } }
+  rescue Helic3::Erp::ConfiguracionInvalida
+    erp_desactivado
+  rescue Helic3::Erp::NoDisponible, StandardError => e
+    Rails.logger.warn("[ERP-15] consulta de facturas fallo: #{e.class.name}") unless e.is_a?(Helic3::Erp::NoDisponible)
+    render json: { error: 'erp_no_disponible' }, status: :service_unavailable
+  end
+
   private
 
   # Misma puerta que radicar: un agente de la cuenta (TicketPolicy#create? es true).
@@ -45,5 +63,17 @@ class Api::V1::Accounts::Helic3::ErpClientesController < Api::V1::Accounts::Base
 
   def erp_desactivado
     render json: { error: 'erp_desactivado' }, status: :service_unavailable
+  end
+
+  def factura_json(factura)
+    {
+      numero: factura.numero, fecha: factura.fecha, total: factura.total,
+      saldo: factura.saldo, estado: factura.estado, centro_operacion: factura.centro_operacion,
+      items: factura.items.map { |item| item_json(item) }
+    }
+  end
+
+  def item_json(item)
+    { referencia: item.referencia, descripcion: item.descripcion, cantidad: item.cantidad, valor: item.valor }
   end
 end
