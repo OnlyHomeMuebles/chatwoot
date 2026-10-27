@@ -75,7 +75,7 @@ module Helic3::Erp::SimulatedData
                                  items: [item('CLO-400', 'Closet Multiuso', 1, 1_500_000)]),
         Helic3::Erp::Invoice.new(numero: 'FV-1102', fecha: '2026-02-10', total: 600_000, saldo: 600_000, estado: 'vencida',
                                  centro_operacion: 'Medellín El Poblado',
-                                 items: [item('NOC-100', 'Nochero', 2, 300_000)])
+                                 items: [item('NOC-100', 'Nochero', 2, 600_000)])
       ]
     }
   end
