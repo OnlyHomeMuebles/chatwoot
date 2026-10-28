@@ -19,9 +19,12 @@ module Helic3::Erp
   # Credenciales y datos de conexion de Siesa Hub. Son secretos e infraestructura
   # (se configuran en Dokploy), NO valores de negocio: por eso van por ENV y nunca a
   # catalogo ni a Parametro, ni al repositorio.
+  # v1 (ERP-05): el adaptador consulta compras (SIESA_HUB_CONSULTA_COMPRAS) y el cliente se
+  # llena a mano. La consulta de clientes (SIESA_HUB_CONSULTA_CLIENTES) se exige en ERP-12,
+  # cuando find_customer la use: no se pide un secreto que el codigo todavia no lee.
   VARIABLES_SIESA = %w[
     SIESA_HUB_BASE_URL SIESA_HUB_CLIENT_ID SIESA_HUB_CONNI_KEY
-    SIESA_HUB_CONNI_TOKEN SIESA_HUB_ID_COMPANIA SIESA_HUB_CONSULTA_CLIENTES
+    SIESA_HUB_CONNI_TOKEN SIESA_HUB_ID_COMPANIA SIESA_HUB_CONSULTA_COMPRAS
   ].freeze
 
   module_function
@@ -70,17 +73,11 @@ module Helic3::Erp
   end
 
   # En modo siesa exige TODAS las variables de conexion. Nombra la primera que falta, sin
-  # imprimir ningun valor (son secretos). El adaptador real se implementa en ERP-05.
+  # imprimir ningun valor (son secretos).
   def adaptador_siesa
     faltante = VARIABLES_SIESA.find { |variable| ENV[variable].to_s.strip.empty? }
     raise ConfiguracionInvalida, "falta la variable #{faltante} para el ERP Siesa" if faltante
 
-    Helic3::Erp::SiesaHubAdapter.new # ERP-05
-  rescue NameError => e
-    raise unless e.message.include?('SiesaHubAdapter')
-
-    # El adaptador real aun no existe (ERP-05): se devuelve un error controlado del modulo
-    # (NoDisponible), no un NameError crudo, para que el consumidor pueda continuar a mano.
-    raise NoDisponible, 'el adaptador real de Siesa aun no esta implementado (ERP-05)'
+    Helic3::Erp::SiesaHubAdapter.new
   end
 end
