@@ -20,6 +20,15 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
     @indicadores = Helic3::Indicadores::Todas.call(account: Current.account, filtros: filtros_todas)
   end
 
+  # Detalle de clientes y casos (mockup v12): paginado y ordenado por urgencia,
+  # con los mismos filtros de #garantias -- se pide aparte porque, a
+  # diferencia de los agregados de #garantias, no tiene sentido recalcularlo
+  # en cada filtro si lo unico que cambio fue la pagina.
+  def garantias_casos
+    servicio = Helic3::Indicadores::Garantias.new(account: Current.account, filtros: filtros_garantias)
+    @casos = servicio.casos(pagina: params[:pagina])
+  end
+
   # IND-05: la misma tabla que se esta viendo en pantalla, con los mismos
   # filtros, descargada en CSV. Nunca se calcula nada que la tabla no muestre
   # ya -- esto solo reempaqueta la respuesta de los servicios existentes.

@@ -383,6 +383,9 @@ Rails.application.routes.draw do
             # Indicadores (IND-01/IND-02): lo que hoy se consulta en el Dash CX externo,
             # calculado con las tablas propias del modulo. Una ruta por pestana.
             get 'indicadores/garantias', to: 'indicadores#garantias'
+            # Detalle de clientes y casos (mockup v12): paginado, se pide aparte
+            # de la ruta de arriba para no recalcular los agregados en cada pagina.
+            get 'indicadores/garantias/casos', to: 'indicadores#garantias_casos'
             get 'indicadores/pqr', to: 'indicadores#pqr'
             get 'indicadores/todas', to: 'indicadores#todas'
             # Descarga a Excel (IND-05): la misma tabla, con los mismos filtros,

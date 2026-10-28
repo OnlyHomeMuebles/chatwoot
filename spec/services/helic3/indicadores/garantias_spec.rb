@@ -84,14 +84,12 @@ RSpec.describe Helic3::Indicadores::Garantias do
       )
     end
 
-    # N3 (revision de Jhan, PR #113): sin catalogo asociado, etiqueta es nil (no un
-    # texto en español quemado en el backend) -- el frontend decide como traducirlo.
-    it 'por_ciudad: Manizales 1, Pereira 1, sin ciudad (nil) 1' do
+    it 'por_ciudad: Manizales 1, Pereira 1, la garantia sin ciudad queda excluida' do
       por_ciudad = llamar[:por_ciudad].index_by { |fila| fila[:etiqueta] }
 
       expect(por_ciudad['Manizales'][:cantidad]).to eq(1)
       expect(por_ciudad['Pereira'][:cantidad]).to eq(1)
-      expect(por_ciudad[nil][:cantidad]).to eq(1)
+      expect(por_ciudad).not_to have_key(nil)
     end
 
     it 'por_motivo cuenta PRODUCTOS, no radicados: calidad aparece 2 veces (en dos garantias distintas)' do
@@ -203,5 +201,57 @@ RSpec.describe Helic3::Indicadores::Garantias do
     crear_garantia(abierta_at: Time.zone.local(2026, 1, 1))
 
     expect(llamar[:kpis][:garantias]).to eq(1)
+  end
+
+  describe '#casos (mockup v12: detalle de clientes y casos)' do
+    before do
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'plazo_total_garantia', valor: '30',
+                                          unidad: 'dias_habiles')
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'umbral_verde_garantia', valor: '15',
+                                          unidad: 'dias_habiles')
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'umbral_amarillo_garantia', valor: '5',
+                                          unidad: 'dias_habiles')
+    end
+
+    it 'ordena vencidas antes que solucionadas, y pagina' do
+      vencida = crear_garantia(abierta_at: 60.days.ago, ciudad: manizales,
+                               productos: [{ producto_nombre: 'Cama', proceso: visita }])
+      solucionada = crear_garantia(abierta_at: 5.days.ago, cerrada_at: Time.current, ciudad: pereira,
+                                   productos: [{ producto_nombre: 'Silla', proceso: entrega }])
+
+      resultado = described_class.new(account: account, filtros: {}).casos(pagina: 1)
+
+      expect(resultado[:total]).to eq(2)
+      expect(resultado[:pagina]).to eq(1)
+      expect(resultado[:paginas]).to eq(1)
+      ids = resultado[:casos].map { |fila| fila[:id] }
+      expect(ids).to eq([vencida.id, solucionada.id])
+      expect(resultado[:casos].first[:vencimiento][:estado]).to eq('rojo')
+      expect(resultado[:casos].second[:vencimiento]).to eq(estado: 'solucionada')
+      expect(resultado[:casos].second[:etapa]).to eq('solucionada')
+    end
+
+    it 'respeta los mismos filtros que los agregados' do
+      crear_garantia(abierta_at: Time.zone.local(2026, 1, 1), ciudad: manizales,
+                     productos: [{ producto_nombre: 'Cama', proceso: visita }])
+      crear_garantia(abierta_at: Time.zone.local(2026, 1, 1), ciudad: pereira,
+                     productos: [{ producto_nombre: 'Silla', proceso: visita }])
+
+      resultado = described_class.new(account: account, filtros: { cobertura_ciudad_id: manizales.id })
+                                 .casos(pagina: 1)
+
+      expect(resultado[:total]).to eq(1)
+      expect(resultado[:casos].first[:centro_operacion]).to eq('Manizales')
+    end
+
+    it 'con una pagina fuera de rango, se acomoda a la ultima pagina disponible' do
+      crear_garantia(abierta_at: Time.zone.local(2026, 1, 1),
+                     productos: [{ producto_nombre: 'Cama', proceso: visita }])
+
+      resultado = described_class.new(account: account, filtros: {}).casos(pagina: 99)
+
+      expect(resultado[:pagina]).to eq(1)
+      expect(resultado[:casos].size).to eq(1)
+    end
   end
 end

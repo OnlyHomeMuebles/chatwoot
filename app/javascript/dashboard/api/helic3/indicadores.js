@@ -12,6 +12,12 @@ class IndicadoresAPI extends ApiClient {
     return axios.get(`${this.url}/garantias`, { params, signal });
   }
 
+  // Detalle de clientes y casos (mockup v12): misma tabla de #garantias,
+  // paginada aparte para no recalcular los agregados en cada pagina.
+  garantiasCasos(params, { signal } = {}) {
+    return axios.get(`${this.url}/garantias/casos`, { params, signal });
+  }
+
   pqr(params, { signal } = {}) {
     return axios.get(`${this.url}/pqr`, { params, signal });
   }

@@ -63,6 +63,45 @@ RSpec.describe 'Helic3 Indicadores (IND-01)', type: :request do
     expect(response.parsed_body['kpis']['garantias']).to eq(0)
   end
 
+  describe 'GET garantias/casos (mockup v12: detalle de clientes y casos)' do
+    def get_garantias_casos(query = {})
+      get "/api/v1/accounts/#{account.id}/helic3/indicadores/garantias/casos", params: query,
+                                                                               headers: agent.create_new_auth_token, as: :json
+    end
+
+    before do
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'plazo_total_garantia', valor: '30',
+                                          unidad: 'dias_habiles')
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'umbral_verde_garantia', valor: '15',
+                                          unidad: 'dias_habiles')
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'umbral_amarillo_garantia', valor: '5',
+                                          unidad: 'dias_habiles')
+    end
+
+    it 'devuelve la pagina de casos con su paginacion' do
+      Helic3::Garantia.create!(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 1, 1))
+
+      get_garantias_casos
+
+      expect(response).to have_http_status(:success)
+      body = response.parsed_body
+      expect(body.keys).to match_array(%w[casos pagina paginas total])
+      expect(body['total']).to eq(1)
+      expect(body['casos'].first['id']).to be_present
+    end
+
+    it 'pasa los mismos filtros que #garantias' do
+      ciudad = Helic3::Catalogo::CoberturaCiudad.create!(account: account, nombre: 'Manizales', codigo: 'manizales')
+      Helic3::Garantia.create!(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 1, 1),
+                               cobertura_ciudad: ciudad)
+      Helic3::Garantia.create!(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 1, 1))
+
+      get_garantias_casos(cobertura_ciudad_id: ciudad.id)
+
+      expect(response.parsed_body['total']).to eq(1)
+    end
+  end
+
   describe 'GET pqr (IND-02)' do
     let(:categoria) { Helic3::Catalogo::Categoria.create!(account: account, nombre: 'PQR', codigo: 'pqr') }
     let(:tipo) { Helic3::Catalogo::Tipo.create!(account: account, nombre: 'Reclamo', codigo: 'reclamo') }
@@ -179,12 +218,25 @@ RSpec.describe 'Helic3 Indicadores (IND-01)', type: :request do
     # Las etiquetas nil del JSON (N3, PR #113) se traducen a texto fijo en el
     # CSV: no hay capa de i18n al abrir un archivo en Excel.
     it 'traduce una etiqueta nil a texto fijo, igual al que ya se ve en pantalla' do
+      garantia = Helic3::Garantia.create!(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 1, 1, 12, 0))
+      Helic3::GarantiaItem.create!(account: account, garantia: garantia, producto_nombre: 'Sofá')
+
+      get_garantias_csv('por_motivo')
+
+      filas = CSV.parse(response.body.delete_prefix("\xEF\xBB\xBF"), col_sep: ';')
+      expect(filas).to include(['Sin motivo', '1'])
+    end
+
+    # "quita ese sin ciudad": una tienda sin asignar no es comparable contra
+    # las demas, asi que se excluye del desglose (pantalla y CSV), a
+    # diferencia de motivo/detalle/proceso donde "sin dato" si es util.
+    it 'excluye del CSV las garantias sin ciudad asignada' do
       Helic3::Garantia.create!(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 1, 1, 12, 0))
 
       get_garantias_csv('por_ciudad')
 
       filas = CSV.parse(response.body.delete_prefix("\xEF\xBB\xBF"), col_sep: ';')
-      expect(filas).to include(['Sin ciudad', '1'])
+      expect(filas).to eq([%w[Etiqueta Cantidad]])
     end
   end
 
