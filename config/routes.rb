@@ -359,12 +359,9 @@ Rails.application.routes.draw do
               resources :items, only: [:update], controller: 'garantia_items'
             end
             resource :catalogos, only: [:show]
-            # ERP-08: consulta de cliente por cedula para el wizard de PQR manual. El
-            # constraint deja pasar cedulas con puntos/guiones (no las corta como formato).
+            # ERP-08/15: en una sola consulta, el cliente y sus facturas+productos para el
+            # wizard de PQR manual. El constraint deja pasar cedulas con puntos/guiones.
             get 'erp/clientes/:cedula', to: 'erp_clientes#show', constraints: { cedula: %r{[^/]+} }
-            # ERP-15: facturas + productos del cliente, para el selector del wizard. El
-            # constraint [^/]+ de :cedula no incluye '/', asi que no choca con la ruta de arriba.
-            get 'erp/clientes/:cedula/facturas', to: 'erp_clientes#facturas', constraints: { cedula: %r{[^/]+} }
             # H3A-03: catalogo fijo de herramientas + reglas duras (solo lectura),
             # para que el panel de Agentes IA no duplique lo que vive en codigo.
             # Va ANTES del resources :agentes para que 'catalogo' no lo capture #show.

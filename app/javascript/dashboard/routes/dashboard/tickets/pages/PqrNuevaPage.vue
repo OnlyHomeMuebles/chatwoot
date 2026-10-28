@@ -67,11 +67,12 @@ const vieneDeConversacion = computed(() => !!conversationDisplayId);
 const erp = useErpCliente(form);
 const erpHabilitado = computed(() => Boolean(catalogos.value.erp_habilitado));
 
-// ERP-15: una sola accion de "Consultar Siesa" trae el cliente (ERP-11) y sus facturas.
+// ERP-15: una sola peticion trae el cliente (ERP-11) y sus facturas; se reparte la lista
+// al selector. Si la consulta se cancela (null), no se toca el selector: lo maneja la nueva.
 const facturasErp = useErpFacturas(form);
-const consultarSiesa = ({ refrescar = false } = {}) => {
-  erp.consultar({ refrescar });
-  facturasErp.consultar(form.cedula, { refrescar });
+const consultarSiesa = async ({ refrescar = false } = {}) => {
+  const facturas = await erp.consultar({ refrescar });
+  if (facturas !== null) facturasErp.recibir(facturas);
 };
 // ERP-14: "Volver a consultar" salta el cache de 24h; sirve cuando la factura entro a Siesa
 // despues de la primera consulta. Visible solo cuando ya hubo un resultado.

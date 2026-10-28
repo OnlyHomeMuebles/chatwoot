@@ -68,4 +68,46 @@ RSpec.describe Helic3::Erp::Cache do
 
     expect(resultado.cliente.nombre).to eq('Ana Ruiz') # vuelve del adaptador, sin tumbar el wizard
   end
+
+  # B1: dos consultas de la misma cedula a la vez (el wizard, o dos agentes) deben llamar al
+  # adaptador UNA sola vez. Necesita conexiones reales (hilos) viendo la misma fila, por eso
+  # se corre sin transaccion de test y se limpia a mano.
+  describe 'concurrencia (B1)' do
+    self.use_transactional_tests = false
+
+    let!(:cuenta) { create(:account) }
+
+    after do
+      Helic3::ErpConsulta.delete_all
+      cuenta.destroy
+    end
+
+    it 'dos consultas simultaneas de la misma cedula llaman al adaptador una sola vez' do
+      contador = 0
+      mutex = Mutex.new
+      # Adaptador de prueba: cuenta las llamadas y duerme, para forzar que la 2da consulta
+      # tenga que esperar en el lock mientras la 1ra todavia esta llamando al ERP.
+      adaptador = Class.new do
+        def initialize(alllamar) = (@alllamar = alllamar)
+        def find_customer(cedula:)
+          @alllamar.call
+          sleep 0.3
+          Helic3::Erp::Customer.new(cedula: cedula, nombre: 'Ana')
+        end
+        def invoices(cedula:) = []
+      end.new(-> { mutex.synchronize { contador += 1 } })
+      allow(Helic3::Erp).to receive(:adapter).and_return(adaptador)
+
+      hilos = Array.new(2) do
+        Thread.new do
+          ActiveRecord::Base.connection_pool.with_connection do
+            described_class.consultar(account: cuenta, cedula: '1032456789')
+          end
+        end
+      end
+      hilos.each(&:join)
+
+      expect(contador).to eq(1)
+    end
+  end
 end

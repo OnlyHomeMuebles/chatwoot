@@ -9,7 +9,6 @@ const alert = vi.fn();
 const crearApi = vi.fn();
 const subirApi = vi.fn();
 const consultarErpApi = vi.fn();
-const consultarFacturasApi = vi.fn();
 // crear() pasa por store.dispatch('tickets/create'); el mock delega en crearApi
 // (que los tests configuran) y devuelve el ticket como lo hace el store real
 // (response.data). Un rechazo de crearApi se propaga, igual que el store.
@@ -39,7 +38,6 @@ vi.mock('dashboard/api/tickets', () => ({
     create: (...args) => crearApi(...args),
     subirDocumento: (...args) => subirApi(...args),
     consultarErpCliente: (...args) => consultarErpApi(...args),
-    consultarErpFacturas: (...args) => consultarFacturasApi(...args),
   },
 }));
 
@@ -82,7 +80,6 @@ beforeEach(() => {
   crearApi.mockReset();
   subirApi.mockReset().mockResolvedValue();
   consultarErpApi.mockReset();
-  consultarFacturasApi.mockReset();
   delete catalogosRef.value.erp_habilitado;
   routeState.query = {};
 });
@@ -318,11 +315,12 @@ describe('PqrNuevaPage.vue — ERP (ERP-11)', () => {
     expect(crearApi.mock.calls[0][0].ticket.consultado_erp).toBe(false);
   });
 
-  it('ERP-15: "Consultar Siesa" trae las facturas y elegir llena la seccion compra', async () => {
+  it('ERP-15/B1: "Consultar Siesa" trae cliente + facturas en UNA peticion y elegir llena compra', async () => {
     catalogosRef.value = { ...catalogosRef.value, erp_habilitado: true };
-    consultarErpApi.mockResolvedValue({ data: { encontrado: false } });
-    consultarFacturasApi.mockResolvedValue({
+    // Una sola peticion (#show) devuelve cliente y facturas juntos.
+    consultarErpApi.mockResolvedValue({
       data: {
+        encontrado: false,
         facturas: [
           {
             numero: 'FV-1001',
@@ -338,9 +336,10 @@ describe('PqrNuevaPage.vue — ERP (ERP-11)', () => {
     const vm = montar().vm;
     vm.form.cedula = '26478046';
 
-    vm.consultarSiesa();
+    await vm.consultarSiesa();
     await flushPromises();
 
+    expect(consultarErpApi).toHaveBeenCalledTimes(1); // B1: una sola peticion, no dos
     const facturas = vm.facturasErp.facturas.value;
     expect(facturas).toHaveLength(1);
 
@@ -353,21 +352,20 @@ describe('PqrNuevaPage.vue — ERP (ERP-11)', () => {
 
   it('ERP-14: "Volver a consultar" aparece tras un resultado y reconsulta con refrescar', async () => {
     catalogosRef.value = { ...catalogosRef.value, erp_habilitado: true };
-    consultarErpApi.mockResolvedValue({ data: { encontrado: true, cliente: { nombre: 'Ana' } } });
-    consultarFacturasApi.mockResolvedValue({ data: { facturas: [] } });
+    consultarErpApi.mockResolvedValue({
+      data: { encontrado: true, cliente: { nombre: 'Ana' }, facturas: [] },
+    });
     const vm = montar().vm;
     vm.form.cedula = '26478046';
 
-    vm.consultarSiesa();
+    await vm.consultarSiesa();
     await flushPromises();
     expect(vm.hayConsultaErp).toBe(true); // ya hay resultado -> se muestra "Volver a consultar"
 
     consultarErpApi.mockClear();
-    consultarFacturasApi.mockClear();
-    vm.reconsultarSiesa();
+    await vm.reconsultarSiesa();
     await flushPromises();
 
     expect(consultarErpApi).toHaveBeenCalledWith('26478046', expect.anything(), { refrescar: true });
-    expect(consultarFacturasApi).toHaveBeenCalledWith('26478046', expect.anything(), { refrescar: true });
   });
 });

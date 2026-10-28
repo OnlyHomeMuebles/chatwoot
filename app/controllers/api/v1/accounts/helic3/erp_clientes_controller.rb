@@ -7,42 +7,27 @@
 class Api::V1::Accounts::Helic3::ErpClientesController < Api::V1::Accounts::BaseController
   before_action :check_authorization
 
+  # ERP-08/15: en UNA sola consulta devuelve el cliente y sus facturas+productos (el wizard
+  # hace una peticion, no dos). El ERP NUNCA bloquea: si falla, 503 y el agente sigue a mano.
+  # Una cedula sin cliente/compras no es error (encontrado:false, facturas:[]).
   def show
     return erp_desactivado unless Helic3::Erp.habilitado?
 
     cedula = Helic3::Erp.normalizar_cedula(params[:cedula])
     return render(json: { error: 'cedula_invalida' }, status: :unprocessable_entity) if cedula.blank?
 
-    cliente = Helic3::Erp::Cache.consultar(account: Current.account, cedula: cedula, refrescar: refrescar?).cliente
-    if cliente
-      render json: { encontrado: true, cliente: cliente_json(cliente) }
-    else
-      render json: { encontrado: false }
-    end
+    resultado = Helic3::Erp::Cache.consultar(account: Current.account, cedula: cedula, refrescar: refrescar?)
+    render json: {
+      encontrado: resultado.cliente.present?,
+      cliente: resultado.cliente && cliente_json(resultado.cliente),
+      facturas: resultado.compras.map { |factura| factura_json(factura) }
+    }
   rescue Helic3::Erp::ConfiguracionInvalida
     erp_desactivado
   rescue Helic3::Erp::NoDisponible, StandardError => e
     # el ERP nunca debe dejar al agente sin poder seguir: cualquier fallo de la consulta
     # se reporta como no disponible (503), nunca como un 500 inesperado.
-    Rails.logger.warn("[ERP-08] consulta de cliente fallo: #{e.class.name}") unless e.is_a?(Helic3::Erp::NoDisponible)
-    render json: { error: 'erp_no_disponible' }, status: :service_unavailable
-  end
-
-  # ERP-15: facturas + productos del cliente, para que el agente escoja en el wizard cual
-  # reclama. Misma regla que #show: el ERP NUNCA bloquea; si falla, 503 y el agente sigue
-  # a mano. Una cedula sin compras no es error (lista vacia).
-  def facturas
-    return erp_desactivado unless Helic3::Erp.habilitado?
-
-    cedula = Helic3::Erp.normalizar_cedula(params[:cedula])
-    return render(json: { error: 'cedula_invalida' }, status: :unprocessable_entity) if cedula.blank?
-
-    compras = Helic3::Erp::Cache.consultar(account: Current.account, cedula: cedula, refrescar: refrescar?).compras
-    render json: { facturas: compras.map { |factura| factura_json(factura) } }
-  rescue Helic3::Erp::ConfiguracionInvalida
-    erp_desactivado
-  rescue Helic3::Erp::NoDisponible, StandardError => e
-    Rails.logger.warn("[ERP-15] consulta de facturas fallo: #{e.class.name}") unless e.is_a?(Helic3::Erp::NoDisponible)
+    Rails.logger.warn("[ERP-08] consulta fallo: #{e.class.name}") unless e.is_a?(Helic3::Erp::NoDisponible)
     render json: { error: 'erp_no_disponible' }, status: :service_unavailable
   end
 

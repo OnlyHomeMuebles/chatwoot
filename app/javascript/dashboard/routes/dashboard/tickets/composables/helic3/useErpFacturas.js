@@ -1,43 +1,22 @@
 import { ref } from 'vue';
-import TicketsAPI from 'dashboard/api/tickets';
-import {
-  useAbortableRequest,
-  isAbortError,
-} from 'dashboard/composables/useAbortableRequest';
 
 /**
- * ERP-15: trae las facturas + productos del cliente por cedula (ERP-08 facturas) para
- * que el agente elija cual reclama en el wizard. Al elegir, llena los campos de la
- * seccion "Compra". El ERP nunca bloquea: si falla, queda `no_disponible` y el agente
- * escribe a mano. Cancela una consulta en vuelo si llega otra (sin respuestas fuera de orden).
+ * ERP-15: guarda las facturas + productos del cliente para que el agente elija cual
+ * reclama en el wizard. NO consulta por su cuenta: una sola peticion (useErpCliente)
+ * trae cliente + facturas y le pasa la lista con `recibir`. Al elegir, llena los campos
+ * de la seccion "Compra". Una cedula sin compras no es error (lista vacia).
  *
  * @param {object} form reactive del wizard; `elegir` lo muta con la factura/producto elegidos.
  */
 export function useErpFacturas(form) {
-  const { run, abort } = useAbortableRequest();
   const facturas = ref([]);
-  // idle | consultando | con_resultados | sin_resultados | no_disponible
+  // idle | con_resultados | sin_resultados
   const estado = ref('idle');
 
-  const consultar = async (cedula, { refrescar = false } = {}) => {
-    const valor = (cedula || '').trim();
-    if (!valor) return;
-
-    estado.value = 'consultando';
-    try {
-      const respuesta = await run(
-        signal => TicketsAPI.consultarErpFacturas(valor, signal, { refrescar }),
-        { onAbort: null }
-      );
-      if (respuesta === null) return; // la cancelo una consulta mas nueva
-
-      facturas.value = respuesta.data.facturas || [];
-      estado.value = facturas.value.length ? 'con_resultados' : 'sin_resultados';
-    } catch (error) {
-      if (isAbortError(error)) return;
-      facturas.value = [];
-      estado.value = 'no_disponible';
-    }
+  // Recibe las facturas que trajo la consulta del cliente (misma peticion).
+  const recibir = lista => {
+    facturas.value = lista || [];
+    estado.value = facturas.value.length ? 'con_resultados' : 'sin_resultados';
   };
 
   // El agente marca una factura + producto: va a la seccion "Compra" de la ficha.
@@ -49,10 +28,9 @@ export function useErpFacturas(form) {
   };
 
   const limpiar = () => {
-    abort();
     facturas.value = [];
     estado.value = 'idle';
   };
 
-  return { facturas, estado, consultar, elegir, limpiar };
+  return { facturas, estado, recibir, elegir, limpiar };
 }

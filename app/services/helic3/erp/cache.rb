@@ -14,19 +14,38 @@ module Helic3::Erp::Cache
   module_function
 
   def consultar(account:, cedula:, refrescar: false)
-    fila = Helic3::ErpConsulta.find_by(account_id: account.id, cedula: cedula)
-    if fila && !refrescar && vigente?(fila, account)
-      begin
-        return hidratar(fila)
-      rescue ArgumentError
-        # Fila guardada con una forma vieja del contrato (p. ej. ERP-05 renombro o quito un
-        # campo): Customer/Invoice son Data con keywords estrictos y revientan. En vez de
-        # tumbar el wizard con 503, se descarta la fila y se vuelve a consultar al adaptador.
-        nil
-      end
-    end
+    rapida = (desde_fila(account, cedula) unless refrescar)
+    return rapida if rapida
 
-    desde_adaptador(account, cedula)
+    # Fast-path (cache vigente) sin lock. Solo en miss se serializa por cuenta+cedula: si dos
+    # consultas de la misma cedula entran a la vez (el wizard, o dos agentes), la 1ra llama al
+    # ERP y la 2da, al despertar, relee la fila recien escrita en vez de volver a llamar.
+    # Siesa cobra por consulta exitosa, por eso no se puede llamar de mas.
+    Helic3::ErpConsulta.transaction do
+      tomar_lock(account, cedula)
+      (desde_fila(account, cedula) unless refrescar) || desde_adaptador(account, cedula)
+    end
+  end
+
+  # Resultado desde la fila guardada si existe y esta vigente; nil si no hay, vencio, o quedo
+  # con una forma vieja del contrato (ERP-05 cambio un campo): Customer/Invoice son Data con
+  # keywords estrictos y revientan al rehidratar. En ese caso se descarta y se reconsulta, en
+  # vez de tumbar el wizard con 503.
+  def desde_fila(account, cedula)
+    fila = Helic3::ErpConsulta.find_by(account_id: account.id, cedula: cedula)
+    return nil unless fila && vigente?(fila, account)
+
+    hidratar(fila)
+  rescue ArgumentError
+    nil
+  end
+
+  # Lock de asesoria por cuenta+cedula, atado a la transaccion (se suelta al cerrar). La cedula
+  # ya viene normalizada a digitos; se acota a int4 para la 2da clave de pg_advisory_xact_lock.
+  def tomar_lock(account, cedula)
+    Helic3::ErpConsulta.connection.execute(
+      "SELECT pg_advisory_xact_lock(#{account.id.to_i}, #{cedula.to_i % 2_147_483_647})"
+    )
   end
 
   # Llama al ERP y guarda el resultado. Si el adaptador falla, propaga (no cachea un
