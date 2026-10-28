@@ -42,6 +42,15 @@ describe('useErpFacturas (ERP-15)', () => {
     expect(erp.estado.value).toBe('sin_resultados');
   });
 
+  it('recibir ordena las facturas de la mas reciente a la mas vieja (m1)', () => {
+    const erp = useErpFacturas(nuevoForm());
+    erp.recibir([
+      { numero: 'VIEJA', fecha: '2026-01-01', items: [] },
+      { numero: 'NUEVA', fecha: '2026-09-01', items: [] },
+    ]);
+    expect(erp.facturas.value.map(f => f.numero)).toEqual(['NUEVA', 'VIEJA']);
+  });
+
   it('alternar elige un producto: queda elegido y llena los campos sueltos', () => {
     const form = nuevoForm();
     const erp = useErpFacturas(form);

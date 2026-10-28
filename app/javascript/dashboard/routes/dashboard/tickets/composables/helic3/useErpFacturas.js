@@ -17,7 +17,10 @@ export function useErpFacturas(form) {
   const referenciasElegidas = ref([]); // referencias de los productos elegidos de esa factura
 
   const recibir = lista => {
-    facturas.value = lista || [];
+    // De la mas reciente a la mas vieja (la fecha es ISO AAAA-MM-DD, compara cronologico).
+    facturas.value = [...(lista || [])].sort((a, b) =>
+      (b.fecha || '').localeCompare(a.fecha || '')
+    );
     estado.value = facturas.value.length ? 'con_resultados' : 'sin_resultados';
   };
 

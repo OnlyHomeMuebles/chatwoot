@@ -80,6 +80,11 @@ const reconsultarSiesa = () => consultarSiesa({ refrescar: true });
 const hayConsultaErp = computed(
   () => !['idle', 'consultando'].includes(erp.estado.value)
 );
+// ERP-15 (m1): total de la factura y valor de cada producto en pesos.
+const moneda = valor =>
+  valor == null
+    ? ''
+    : `$${Number(valor).toLocaleString('es-CO', { maximumFractionDigits: 0 })}`;
 // Cambiar la cedula limpia ambos (no mezclar cliente ni facturas de dos personas).
 const alCambiarCedula = () => {
   erp.alCambiarCedula();
@@ -620,6 +625,12 @@ defineExpose({
                     >
                       · {{ factura.centro_operacion }}
                     </span>
+                    <span
+                      v-if="factura.total != null"
+                      class="ml-auto text-xs font-semibold text-n-slate-12"
+                    >
+                      {{ moneda(factura.total) }}
+                    </span>
                   </div>
                   <div
                     v-for="(item, idx) in factura.items"
@@ -633,6 +644,9 @@ defineExpose({
                       <p class="mb-0 text-xs text-n-slate-11">
                         {{ item.referencia }} ·
                         {{ t('TICKETS.NUEVA.COMPRA.SELECTOR_CANT', { n: item.cantidad }) }}
+                        <template v-if="item.valor != null">
+                          · {{ moneda(item.valor) }}</template
+                        >
                       </p>
                     </div>
                     <Button
