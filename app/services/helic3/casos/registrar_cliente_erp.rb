@@ -39,7 +39,9 @@ class Helic3::Casos::RegistrarClienteErp
     cedula = @datos[:cedula]
     return nil if cedula.blank?
 
-    Helic3::Erp.adapter.find_customer(cedula: cedula)
+    # ERP-14: lee del cache (lo que el wizard ya consulto); solo llama a Siesa si no hay
+    # resultado vigente. Antes re-llamaba al adaptador en cada radicacion.
+    Helic3::Erp::Cache.consultar(account: @ticket.account, cedula: cedula).cliente
   rescue StandardError => e
     Rails.logger.warn("[ERP-08] ERP no disponible al radicar ticket #{@ticket.id}: #{e.class.name}")
     nil

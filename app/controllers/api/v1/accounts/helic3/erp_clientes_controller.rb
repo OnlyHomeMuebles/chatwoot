@@ -13,7 +13,7 @@ class Api::V1::Accounts::Helic3::ErpClientesController < Api::V1::Accounts::Base
     cedula = Helic3::Erp.normalizar_cedula(params[:cedula])
     return render(json: { error: 'cedula_invalida' }, status: :unprocessable_entity) if cedula.blank?
 
-    cliente = Helic3::Erp.adapter.find_customer(cedula: cedula)
+    cliente = Helic3::Erp::Cache.consultar(account: Current.account, cedula: cedula, refrescar: refrescar?).cliente
     if cliente
       render json: { encontrado: true, cliente: cliente_json(cliente) }
     else
@@ -37,8 +37,8 @@ class Api::V1::Accounts::Helic3::ErpClientesController < Api::V1::Accounts::Base
     cedula = Helic3::Erp.normalizar_cedula(params[:cedula])
     return render(json: { error: 'cedula_invalida' }, status: :unprocessable_entity) if cedula.blank?
 
-    facturas = Helic3::Erp.adapter.invoices(cedula: cedula)
-    render json: { facturas: facturas.map { |factura| factura_json(factura) } }
+    compras = Helic3::Erp::Cache.consultar(account: Current.account, cedula: cedula, refrescar: refrescar?).compras
+    render json: { facturas: compras.map { |factura| factura_json(factura) } }
   rescue Helic3::Erp::ConfiguracionInvalida
     erp_desactivado
   rescue Helic3::Erp::NoDisponible, StandardError => e
@@ -52,6 +52,11 @@ class Api::V1::Accounts::Helic3::ErpClientesController < Api::V1::Accounts::Base
   # No hay un modelo propio, asi que se autoriza explicitamente contra el ticket.
   def check_authorization
     authorize(Helic3::Ticket, :create?)
+  end
+
+  # ERP-14: "Volver a consultar" (?refrescar=1) salta el cache y vuelve a llamar a Siesa.
+  def refrescar?
+    params[:refrescar] == '1'
   end
 
   def cliente_json(cliente)

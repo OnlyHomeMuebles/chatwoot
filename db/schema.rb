@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_10_13_120000) do
+ActiveRecord::Schema[7.2].define(version: 2026_10_28_120100) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1322,6 +1322,19 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_13_120000) do
     t.index ["ticket_id"], name: "idx_h3_documentos_ticket"
   end
 
+  create_table "helic3_erp_consultas", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "cedula", null: false
+    t.jsonb "cliente"
+    t.jsonb "compras", default: [], null: false
+    t.string "estado", default: "ok", null: false
+    t.datetime "consultado_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "cedula"], name: "idx_h3_erp_consultas_cta_cedula", unique: true
+    t.index ["account_id"], name: "idx_h3_erp_consultas_account"
+  end
+
   create_table "helic3_eventos", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "ticket_id", null: false
@@ -2057,6 +2070,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_13_120000) do
   add_foreign_key "helic3_documentos", "helic3_tickets", column: "ticket_id"
   add_foreign_key "helic3_documentos", "messages", on_delete: :nullify
   add_foreign_key "helic3_documentos", "users", column: "remitente_user_id", on_delete: :nullify
+  add_foreign_key "helic3_erp_consultas", "accounts"
   add_foreign_key "helic3_eventos", "accounts"
   add_foreign_key "helic3_eventos", "helic3_garantias", column: "garantia_id"
   add_foreign_key "helic3_eventos", "helic3_tickets", column: "ticket_id"
