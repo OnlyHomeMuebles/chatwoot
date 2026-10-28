@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_10_28_120100) do
+ActiveRecord::Schema[7.2].define(version: 2026_10_28_130000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1513,6 +1513,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_28_120100) do
     t.string "cliente_email"
     t.string "producto_referencia"
     t.date "factura_fecha"
+    t.jsonb "productos", default: [], null: false
     t.index ["account_id"], name: "idx_h3_ticket_datos_account"
     t.index ["detalle_tipificado_id"], name: "idx_h3_ticket_datos_detalle"
     t.index ["ticket_id"], name: "idx_h3_ticket_datos_ticket", unique: true

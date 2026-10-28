@@ -85,7 +85,6 @@ const alCambiarCedula = () => {
   erp.alCambiarCedula();
   facturasErp.limpiar();
 };
-const elegirFactura = (factura, item) => facturasErp.elegir(factura, item);
 
 // Aviso segun el resultado de la consulta; ningun estado bloquea "Crear PQR".
 const AVISOS_ERP = {
@@ -261,6 +260,9 @@ const crear = async () => {
           producto_nombre: form.producto_nombre,
           producto_referencia: form.producto_referencia,
           factura_fecha: form.factura_fecha || null,
+          // ERP-15 (B3): los productos elegidos en el selector (uno o varios de una factura);
+          // el backend los cruza contra el cache y marca cuales son de Siesa.
+          productos: facturasErp.productosElegidos(),
         },
       },
     };
@@ -620,8 +622,8 @@ defineExpose({
                     </span>
                   </div>
                   <div
-                    v-for="item in factura.items"
-                    :key="item.referencia"
+                    v-for="(item, idx) in factura.items"
+                    :key="`${factura.numero}-${item.referencia}-${idx}`"
                     class="flex items-center gap-3 px-4 py-2.5"
                   >
                     <div class="flex-1 min-w-0">
@@ -637,14 +639,17 @@ defineExpose({
                       type="button"
                       size="sm"
                       faded
-                      :label="t('TICKETS.NUEVA.COMPRA.SELECTOR_ELEGIR')"
+                      :label="
+                        facturasErp.estaElegido(factura, item)
+                          ? t('TICKETS.NUEVA.COMPRA.SELECTOR_ELEGIDO')
+                          : t('TICKETS.NUEVA.COMPRA.SELECTOR_ELEGIR')
+                      "
                       :class="
-                        form.numero_orden === factura.numero &&
-                        form.producto_referencia === item.referencia
+                        facturasErp.estaElegido(factura, item)
                           ? '!bg-n-blue-3 !text-n-blue-11'
                           : ''
                       "
-                      @click="elegirFactura(factura, item)"
+                      @click="facturasErp.alternar(factura, item)"
                     />
                   </div>
                 </div>

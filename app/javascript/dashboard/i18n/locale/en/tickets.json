@@ -115,8 +115,9 @@
         "REFERENCIA": "Reference",
         "REFERENCIA_PH": "Product reference or code",
         "SELECTOR_TITLE": "Invoices in Siesa",
-        "SELECTOR_HINT": "Choose the invoice and the product being claimed. If it is not listed, type it below.",
+        "SELECTOR_HINT": "Choose the invoice and one or more products being claimed. If they are not listed, type them below.",
         "SELECTOR_ELEGIR": "Choose",
+        "SELECTOR_ELEGIDO": "Chosen",
         "SELECTOR_CANT": "Qty: {n}"
       },
       "DIRECCION": {

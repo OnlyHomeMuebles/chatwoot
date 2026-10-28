@@ -97,8 +97,10 @@ RSpec.describe 'ERP clientes API', type: :request do
       with_modified_env HELIC3_ERP_MODO: 'simulado' do
         post "/api/v1/accounts/#{account.id}/helic3/tickets",
              params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, consultado_erp: true,
+                                 numero_orden: 'FV-1001',
                                  datos: { cedula: '1032456789', cliente_nombre: 'Ana Ruiz',
-                                          cliente_telefono: '3001112233', direccion: 'Correccion 1' } } },
+                                          cliente_telefono: '3001112233', direccion: 'Correccion 1',
+                                          productos: [{ referencia: 'MIL-200' }, { referencia: 'CER-050' }] } } },
              headers: agent.create_new_auth_token, as: :json
       end
 
@@ -107,6 +109,11 @@ RSpec.describe 'ERP clientes API', type: :request do
       expect(ficha.fuentes['cliente_nombre']).to eq('erp')
       expect(ficha.fuentes['direccion']).to eq('humano')
       expect(ficha.direccion).to eq('Correccion 1')
+      # B3: la compra cruzada contra el cache queda fuente erp, y los dos productos elegidos
+      # quedan en la lista de la ficha (futuros items de la garantia).
+      expect(ficha.fuentes['factura_numero']).to eq('erp')
+      expect(ficha.productos.map { |p| p['referencia'] }).to contain_exactly('MIL-200', 'CER-050')
+      expect(ficha.productos.map { |p| p['fuente'] }).to all(eq('erp'))
     end
   end
 end

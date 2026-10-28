@@ -31,11 +31,21 @@ class Helic3::Casos::AbrirGarantia
       ticket: @ticket,
       cobertura_ciudad: @cobertura_ciudad
     )
-    @items.each { |datos| crear_item(garantia, datos) }
+    items_a_crear.each { |datos| crear_item(garantia, datos) }
     garantia
   end
 
   private
+
+  # ERP-15 (B3): si la resolucion no trajo productos, se abren los que quedaron en la ficha
+  # desde el selector del ERP (cada producto elegido en la radicacion -> un item de garantia).
+  def items_a_crear
+    return @items if @items.present?
+
+    Array(@ticket.datos&.productos).map do |producto|
+      { producto_nombre: producto['nombre'], producto_referencia: producto['referencia'] }
+    end
+  end
 
   # sin ciudad de cobertura no hay a donde enrutar la garantia: se rechaza con un
   # mensaje claro (ArgumentError -> 422 en el controlador) en vez de crear un

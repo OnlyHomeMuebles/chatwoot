@@ -315,7 +315,7 @@ describe('PqrNuevaPage.vue — ERP (ERP-11)', () => {
     expect(crearApi.mock.calls[0][0].ticket.consultado_erp).toBe(false);
   });
 
-  it('ERP-15/B1: "Consultar Siesa" trae cliente + facturas en UNA peticion y elegir llena compra', async () => {
+  it('ERP-15/B1/B3: UNA peticion trae cliente + facturas; multi-seleccion de productos', async () => {
     catalogosRef.value = { ...catalogosRef.value, erp_habilitado: true };
     // Una sola peticion (#show) devuelve cliente y facturas juntos.
     consultarErpApi.mockResolvedValue({
@@ -328,6 +328,7 @@ describe('PqrNuevaPage.vue — ERP (ERP-11)', () => {
             centro_operacion: 'Armenia Centro',
             items: [
               { referencia: 'MIL-200', descripcion: 'Puerta Milano', cantidad: 2, valor: 900000 },
+              { referencia: 'CER-050', descripcion: 'Cerradura Premium', cantidad: 1, valor: 900000 },
             ],
           },
         ],
@@ -343,11 +344,16 @@ describe('PqrNuevaPage.vue — ERP (ERP-11)', () => {
     const facturas = vm.facturasErp.facturas.value;
     expect(facturas).toHaveLength(1);
 
-    vm.facturasErp.elegir(facturas[0], facturas[0].items[0]);
+    // B3: se eligen DOS productos de la misma factura.
+    vm.facturasErp.alternar(facturas[0], facturas[0].items[0]);
+    vm.facturasErp.alternar(facturas[0], facturas[0].items[1]);
+
     expect(vm.form.numero_orden).toBe('FV-1001');
     expect(vm.form.factura_fecha).toBe('2026-05-10');
-    expect(vm.form.producto_referencia).toBe('MIL-200');
-    expect(vm.form.producto_nombre).toBe('Puerta Milano');
+    expect(vm.facturasErp.productosElegidos()).toEqual([
+      { nombre: 'Puerta Milano', referencia: 'MIL-200' },
+      { nombre: 'Cerradura Premium', referencia: 'CER-050' },
+    ]);
   });
 
   it('ERP-14: "Volver a consultar" aparece tras un resultado y reconsulta con refrescar', async () => {

@@ -161,16 +161,36 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
   # transaccion del create: si falla, se revierte todo (ni ticket, ni ficha, ni
   # evento radicada). RegistrarDatos ignora los vacios y los campos que no conoce.
   def registrar_datos_cliente_al_crear
-    # ERP-08: si el agente consulto el ERP, el backend RECONSULTA y marca la procedencia
-    # (erp lo que trajo Siesa, humano lo que el agente cambio). No confia en el frontend.
+    # ERP-08/15: si el agente consulto el ERP, el backend relee del cache y marca la
+    # procedencia (erp lo que trajo Siesa, humano lo que el agente cambio/agrego), tanto para
+    # el cliente como para la compra. No confia en que el frontend diga que algo vino de Siesa.
     if ActiveModel::Type::Boolean.new.cast(create_params[:consultado_erp])
-      return Helic3::Casos::RegistrarClienteErp.new(ticket: @ticket, datos: datos_cliente_params).call
+      Helic3::Casos::RegistrarClienteErp.new(ticket: @ticket, datos: datos_cliente_erp).call
+      Helic3::Casos::RegistrarCompraErp.new(
+        ticket: @ticket, cedula: datos_cliente_params[:cedula],
+        datos: { factura_numero: create_params[:numero_orden],
+                 factura_fecha: datos_cliente_params[:factura_fecha],
+                 productos: productos_params }
+      ).call
+      return
     end
 
     campos = datos_cliente_params.to_h.symbolize_keys.compact_blank
     return if campos.blank?
 
     Helic3::Casos::RegistrarDatos.new(ticket: @ticket, campos: campos, fuente: :humano).call
+  end
+
+  # Solo los campos del CLIENTE para RegistrarClienteErp (la compra la maneja RegistrarCompraErp;
+  # si le pasaramos los de producto, los marcaria humano por su cuenta).
+  def datos_cliente_erp
+    datos_cliente_params.slice(:cedula, :ciudad, :direccion, :cliente_nombre, :cliente_telefono, :cliente_email)
+  end
+
+  # ERP-15 (B3): los productos que el agente eligio en el selector (uno o varios de una factura).
+  # El backend los cruza contra el cache; aqui solo se permiten nombre y referencia por item.
+  def productos_params
+    params.require(:ticket).fetch(:datos, {}).permit(productos: %i[nombre referencia])[:productos] || []
   end
 
   # MAN-01: validacion de borde para la radicacion manual. Sin conversacion no hay
