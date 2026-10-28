@@ -15,7 +15,16 @@ module Helic3::Erp::Cache
 
   def consultar(account:, cedula:, refrescar: false)
     fila = Helic3::ErpConsulta.find_by(account_id: account.id, cedula: cedula)
-    return hidratar(fila) if fila && !refrescar && vigente?(fila, account)
+    if fila && !refrescar && vigente?(fila, account)
+      begin
+        return hidratar(fila)
+      rescue ArgumentError
+        # Fila guardada con una forma vieja del contrato (p. ej. ERP-05 renombro o quito un
+        # campo): Customer/Invoice son Data con keywords estrictos y revientan. En vez de
+        # tumbar el wizard con 503, se descarta la fila y se vuelve a consultar al adaptador.
+        nil
+      end
+    end
 
     desde_adaptador(account, cedula)
   end

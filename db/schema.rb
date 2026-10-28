@@ -1327,7 +1327,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_28_120100) do
     t.string "cedula", null: false
     t.jsonb "cliente"
     t.jsonb "compras", default: [], null: false
-    t.string "estado", default: "ok", null: false
+    t.string "estado", null: false
     t.datetime "consultado_at", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false

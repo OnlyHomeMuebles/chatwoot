@@ -45,14 +45,14 @@ export function useErpCliente(form) {
     });
   };
 
-  const consultar = async () => {
+  const consultar = async ({ refrescar = false } = {}) => {
     const cedula = (form.cedula || '').trim();
     if (!cedula) return;
 
     estado.value = 'consultando';
     try {
       const respuesta = await run(
-        signal => TicketsAPI.consultarErpCliente(cedula, signal),
+        signal => TicketsAPI.consultarErpCliente(cedula, signal, { refrescar }),
         { onAbort: null }
       );
       if (respuesta === null) return; // la cancelo una consulta mas nueva

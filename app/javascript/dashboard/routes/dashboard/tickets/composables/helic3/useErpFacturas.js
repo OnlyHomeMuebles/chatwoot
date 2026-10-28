@@ -19,14 +19,14 @@ export function useErpFacturas(form) {
   // idle | consultando | con_resultados | sin_resultados | no_disponible
   const estado = ref('idle');
 
-  const consultar = async cedula => {
+  const consultar = async (cedula, { refrescar = false } = {}) => {
     const valor = (cedula || '').trim();
     if (!valor) return;
 
     estado.value = 'consultando';
     try {
       const respuesta = await run(
-        signal => TicketsAPI.consultarErpFacturas(valor, signal),
+        signal => TicketsAPI.consultarErpFacturas(valor, signal, { refrescar }),
         { onAbort: null }
       );
       if (respuesta === null) return; // la cancelo una consulta mas nueva

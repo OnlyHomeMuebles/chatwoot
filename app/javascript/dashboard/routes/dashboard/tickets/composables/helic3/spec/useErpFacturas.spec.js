@@ -71,6 +71,32 @@ describe('useErpFacturas (ERP-15)', () => {
     expect(erp.estado.value).toBe('idle');
   });
 
+  it('consultar con refrescar manda la opcion a la API (Volver a consultar salta el cache)', async () => {
+    TicketsAPI.consultarErpFacturas.mockResolvedValue({ data: { facturas: FACTURAS } });
+    const erp = useErpFacturas(nuevoForm());
+
+    await erp.consultar('26478046', { refrescar: true });
+
+    expect(TicketsAPI.consultarErpFacturas).toHaveBeenCalledWith(
+      '26478046',
+      expect.anything(),
+      { refrescar: true }
+    );
+  });
+
+  it('consultar sin opciones no refresca (usa el cache)', async () => {
+    TicketsAPI.consultarErpFacturas.mockResolvedValue({ data: { facturas: FACTURAS } });
+    const erp = useErpFacturas(nuevoForm());
+
+    await erp.consultar('26478046');
+
+    expect(TicketsAPI.consultarErpFacturas).toHaveBeenCalledWith(
+      '26478046',
+      expect.anything(),
+      { refrescar: false }
+    );
+  });
+
   it('con el ERP caido (503) deja no_disponible y sin facturas', async () => {
     TicketsAPI.consultarErpFacturas.mockRejectedValue({ response: { status: 503 } });
     const erp = useErpFacturas(nuevoForm());

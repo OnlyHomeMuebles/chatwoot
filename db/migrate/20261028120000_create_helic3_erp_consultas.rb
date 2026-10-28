@@ -11,7 +11,7 @@ class CreateHelic3ErpConsultas < ActiveRecord::Migration[7.2]
       t.string   :cedula,        null: false
       t.jsonb    :cliente                                 # Customer serializado, o null si no existe
       t.jsonb    :compras,       null: false, default: [] # [Invoice] serializadas (con sus items)
-      t.string   :estado,        null: false, default: 'ok'
+      t.string   :estado,        null: false # guardar siempre escribe 'encontrado' o 'sin_cliente'
       t.datetime :consultado_at, null: false
       t.timestamps
     end

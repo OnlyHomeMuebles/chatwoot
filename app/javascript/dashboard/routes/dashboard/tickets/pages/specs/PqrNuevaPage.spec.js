@@ -350,4 +350,24 @@ describe('PqrNuevaPage.vue — ERP (ERP-11)', () => {
     expect(vm.form.producto_referencia).toBe('MIL-200');
     expect(vm.form.producto_nombre).toBe('Puerta Milano');
   });
+
+  it('ERP-14: "Volver a consultar" aparece tras un resultado y reconsulta con refrescar', async () => {
+    catalogosRef.value = { ...catalogosRef.value, erp_habilitado: true };
+    consultarErpApi.mockResolvedValue({ data: { encontrado: true, cliente: { nombre: 'Ana' } } });
+    consultarFacturasApi.mockResolvedValue({ data: { facturas: [] } });
+    const vm = montar().vm;
+    vm.form.cedula = '26478046';
+
+    vm.consultarSiesa();
+    await flushPromises();
+    expect(vm.hayConsultaErp).toBe(true); // ya hay resultado -> se muestra "Volver a consultar"
+
+    consultarErpApi.mockClear();
+    consultarFacturasApi.mockClear();
+    vm.reconsultarSiesa();
+    await flushPromises();
+
+    expect(consultarErpApi).toHaveBeenCalledWith('26478046', expect.anything(), { refrescar: true });
+    expect(consultarFacturasApi).toHaveBeenCalledWith('26478046', expect.anything(), { refrescar: true });
+  });
 });

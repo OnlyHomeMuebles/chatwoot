@@ -55,4 +55,17 @@ RSpec.describe Helic3::Erp::Cache do
     expect(resultado.compras).to eq([])
     expect(Helic3::ErpConsulta.where(account: account, cedula: '99999999')).to exist
   end
+
+  it 'una fila vigente con forma vieja (campo desconocido) no da 503: reconsulta al adaptador' do
+    described_class.consultar(account: account, cedula: '1032456789') # llena el cache
+    # Simula una fila guardada por una version anterior con un campo que el contrato ya no tiene:
+    # Customer es Data con keywords estrictos, asi que rehidratarla reventaria con ArgumentError.
+    Helic3::ErpConsulta.where(account: account, cedula: '1032456789')
+                       .update_all(cliente: { cedula: '1032456789', nombre: 'Ana Ruiz', campo_viejo: 'x' })
+
+    expect(Helic3::Erp).to receive(:adapter).and_call_original.at_least(:once)
+    resultado = described_class.consultar(account: account, cedula: '1032456789')
+
+    expect(resultado.cliente.nombre).to eq('Ana Ruiz') # vuelve del adaptador, sin tumbar el wizard
+  end
 end

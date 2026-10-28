@@ -98,6 +98,7 @@
         "CORREO": "Correo electrónico",
         "CORREO_PH": "correo{'@'}ejemplo.com",
         "CONSULTAR_SIESA": "Consultar Siesa",
+        "RECONSULTAR": "Volver a consultar",
         "BADGE_SIESA": "Siesa",
         "ERP_ENCONTRADO": "Cliente encontrado en Siesa",
         "ERP_NO_ENCONTRADO": "No está en Siesa: llena los datos a mano",

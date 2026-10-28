@@ -69,10 +69,16 @@ const erpHabilitado = computed(() => Boolean(catalogos.value.erp_habilitado));
 
 // ERP-15: una sola accion de "Consultar Siesa" trae el cliente (ERP-11) y sus facturas.
 const facturasErp = useErpFacturas(form);
-const consultarSiesa = () => {
-  erp.consultar();
-  facturasErp.consultar(form.cedula);
+const consultarSiesa = ({ refrescar = false } = {}) => {
+  erp.consultar({ refrescar });
+  facturasErp.consultar(form.cedula, { refrescar });
 };
+// ERP-14: "Volver a consultar" salta el cache de 24h; sirve cuando la factura entro a Siesa
+// despues de la primera consulta. Visible solo cuando ya hubo un resultado.
+const reconsultarSiesa = () => consultarSiesa({ refrescar: true });
+const hayConsultaErp = computed(
+  () => !['idle', 'consultando'].includes(erp.estado.value)
+);
 // Cambiar la cedula limpia ambos (no mezclar cliente ni facturas de dos personas).
 const alCambiarCedula = () => {
   erp.alCambiarCedula();
@@ -300,6 +306,8 @@ defineExpose({
   avisoErp,
   facturasErp,
   consultarSiesa,
+  reconsultarSiesa,
+  hayConsultaErp,
 });
 </script>
 
@@ -517,7 +525,7 @@ defineExpose({
                       @keyup.enter="consultarSiesa()"
                     />
                     <Button
-                      v-if="erpHabilitado"
+                      v-if="erpHabilitado && !hayConsultaErp"
                       type="button"
                       :label="t('TICKETS.NUEVA.CLIENTE.CONSULTAR_SIESA')"
                       icon="i-lucide-search"
@@ -525,6 +533,16 @@ defineExpose({
                       :disabled="!form.cedula"
                       faded
                       @click="consultarSiesa()"
+                    />
+                    <Button
+                      v-if="erpHabilitado && hayConsultaErp"
+                      type="button"
+                      :label="t('TICKETS.NUEVA.CLIENTE.RECONSULTAR')"
+                      icon="i-lucide-refresh-cw"
+                      :is-loading="erp.isPending.value"
+                      :disabled="!form.cedula"
+                      faded
+                      @click="reconsultarSiesa()"
                     />
                   </div>
                   <span v-if="avisoErp" class="text-xs" :class="avisoErpClase">

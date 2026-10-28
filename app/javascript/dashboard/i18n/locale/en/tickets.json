@@ -98,6 +98,7 @@
         "CORREO": "Email",
         "CORREO_PH": "email{'@'}example.com",
         "CONSULTAR_SIESA": "Query Siesa",
+        "RECONSULTAR": "Query again",
         "BADGE_SIESA": "Siesa",
         "ERP_ENCONTRADO": "Customer found in Siesa",
         "ERP_NO_ENCONTRADO": "Not in Siesa: fill in the data manually",
@@ -112,7 +113,11 @@
         "PRODUCTO": "Product",
         "PRODUCTO_PH": "Product name",
         "REFERENCIA": "Reference",
-        "REFERENCIA_PH": "Product reference or code"
+        "REFERENCIA_PH": "Product reference or code",
+        "SELECTOR_TITLE": "Invoices in Siesa",
+        "SELECTOR_HINT": "Choose the invoice and the product being claimed. If it is not listed, type it below.",
+        "SELECTOR_ELEGIR": "Choose",
+        "SELECTOR_CANT": "Qty: {n}"
       },
       "DIRECCION": {
         "TITLE": "Current address",
