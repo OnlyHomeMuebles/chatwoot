@@ -2,52 +2,50 @@
 
 # ERP-05: adaptador real del ERP contra Siesa HUB. Implementa el contrato Helic3::Erp::Base.
 #
-# Alcance v1 (doc de Jhan 27-oct): `invoices` trae las facturas + productos por cedula.
-# Las FUENTES de compras son una lista de consultas en la config (1 o 2), no una consulta
-# fija: cada una devuelve el mismo contrato Invoice y se concatenan. `find_customer` queda
-# para la consulta de clientes (pendiente ERP-12); `invoice`/`account_statement` no los usa
-# ningun consumidor y heredan el NotImplementedError de Base.
+# `find_customer` consulta el MAESTRO DE CLIENTES (terceros) por cedula: trae el nombre de
+# cualquier cliente, tenga compras o no. `invoices` consulta las FACTURAS (una o varias
+# fuentes) por cedula+fecha; la ventana (`desde`) la decide el cache por cuenta (parametro
+# erp_meses_compras), no una constante ni una variable de entorno. `invoice`/`account_statement`
+# no los usa ningun consumidor y heredan el NotImplementedError de Base.
 class Helic3::Erp::SiesaHubAdapter < Helic3::Erp::Base
-  MESES_DEFECTO = 12 # ventana de busqueda; Jhan: se amarra al periodo de garantia (afinar en ERP-12)
-
-  def initialize(cliente: nil, consultas_compras: nil, desde: nil)
+  def initialize(cliente: nil, consultas_compras: nil, consulta_clientes: nil)
     @cliente = cliente || cliente_desde_env
     @consultas_compras = consultas_compras || fuentes_desde_env
-    # Precedencia: inyectado (tests) -> SIESA_HUB_DESDE (ENV, para probar data historica de QA)
-    # -> default (ultimos MESES_DEFECTO meses, lo correcto en produccion).
-    @desde = desde || ENV['SIESA_HUB_DESDE'].presence || (Date.current << MESES_DEFECTO).iso8601
+    @consulta_clientes = consulta_clientes || ENV.fetch('SIESA_HUB_CONSULTA_CLIENTES')
   end
 
-  # Concatena las facturas de cada fuente. Si una fuente responde "sin registros"
-  # (codigo:1) el parser devuelve [], que es un resultado valido, no un error.
-  def invoices(cedula:)
+  # Facturas por cedula desde la fecha `desde` (ISO). Concatena las fuentes; si una responde
+  # "sin registros" (codigo:1) el parser devuelve [], que es un resultado valido, no un error.
+  def invoices(cedula:, desde:)
     @consultas_compras.flat_map do |consulta|
-      respuesta = @cliente.consultar(descripcion: consulta, parametros: filtro(cedula))
+      respuesta = @cliente.consultar(descripcion: consulta, parametros: filtro_compras(cedula, desde))
       Helic3::Erp::SiesaFacturas.parsear(respuesta)
     end
   end
 
-  # v1 (stopgap): el nombre se saca de la misma respuesta de compras (f200_razon_social_fact),
-  # asi la ficha muestra al cliente sin esperar a ERP-12. Ciudad/contacto quedan en nil (eso si
-  # necesita la consulta de clientes). nil si no tiene compras (no hay nombre que mostrar).
-  # shortcut: repite la consulta de compras solo por el nombre; el cache (ERP-14) la sirve 24h.
-  # Upgrade: ERP-12 reemplaza esto por la consulta de clientes real (nombre + ciudad + contacto).
+  # Cliente desde la consulta de clientes (maestro de terceros), filtrada por cedula (campo `id`).
+  # Trae identificacion, nombre y contacto (telefono, correo, direccion) para CUALQUIER cedula,
+  # tenga compras o no. La ciudad viene como codigo y queda nil (follow-up). nil si no esta.
   def find_customer(cedula:)
-    respuesta = @cliente.consultar(descripcion: @consultas_compras.first, parametros: filtro(cedula))
-    nombre = Helic3::Erp::SiesaFacturas.nombre_cliente(respuesta)
-    return nil if nombre.nil?
-
-    Helic3::Erp::Customer.new(cedula: cedula.to_s.gsub(/\D/, ''), nombre: nombre)
+    respuesta = @cliente.consultar(descripcion: @consulta_clientes, parametros: filtro_clientes(cedula))
+    Helic3::Erp::SiesaClientes.parsear(respuesta, cedula: solo_digitos(cedula))
   end
 
   private
 
-  # Filtro SQL de `parametros`: por cedula y por fecha (comillas simples dobles). La cedula se
-  # sanea a solo digitos aqui mismo (no se confia en que el llamador la haya normalizado): es
-  # lo unico que entra al SQL desde fuera, asi no se puede inyectar por `parametros`. `@desde`
-  # es interno (fecha iso). El cache/consumidor ya compara exacto del lado Helic3.
-  def filtro(cedula)
-    "f200_nit_fact=''#{cedula.to_s.gsub(/\D/, '')}'' and f350_fecha >= ''#{@desde}''"
+  # La cedula se sanea a solo digitos aqui mismo (no se confia en el llamador): es lo unico que
+  # entra al SQL de `parametros` desde fuera, asi no se puede inyectar. `desde` es interno (fecha
+  # iso que calcula el cache). Comillas simples dobles = una comilla para Siesa.
+  def filtro_compras(cedula, desde)
+    "f200_nit_fact=''#{solo_digitos(cedula)}'' and f350_fecha >= ''#{desde}''"
+  end
+
+  def filtro_clientes(cedula)
+    "id=''#{solo_digitos(cedula)}''"
+  end
+
+  def solo_digitos(cedula)
+    cedula.to_s.gsub(/\D/, '')
   end
 
   def cliente_desde_env

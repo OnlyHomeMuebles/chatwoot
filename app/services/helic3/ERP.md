@@ -60,9 +60,9 @@ Un valor desconocido levanta `Helic3::Erp::ConfiguracionInvalida`.
 | `SIESA_HUB_CONNI_TOKEN` | Credencial |
 | `SIESA_HUB_ID_COMPANIA` | Compañía donde se consulta |
 | `SIESA_HUB_CONSULTA_COMPRAS` | Nombre(s) de la(s) consulta(s) de facturas/compras (separadas por coma si son varias) |
-| `SIESA_HUB_DESDE` | *(opcional)* Fecha ISO desde la que se buscan compras. Sin ella, últimos 12 meses. Útil para probar data histórica de QA. |
+| `SIESA_HUB_CONSULTA_CLIENTES` | Nombre de la consulta del maestro de clientes (p. ej. `enterprise_mm_terceros_clie_v1`). Trae nombre y contacto del cliente por cédula. |
 
-> En v1 `find_customer` saca **solo el nombre** de la respuesta de compras (`f200_razon_social_fact`); ciudad y contacto quedan en blanco. La consulta de clientes (`SIESA_HUB_CONSULTA_CLIENTES`) y el cliente completo se exigen en ERP-12.
+> `find_customer` consulta el **maestro de clientes** (`SIESA_HUB_CONSULTA_CLIENTES`, filtro por cédula) y trae **nombre, teléfono, correo y dirección** de cualquier cédula, tenga compras o no. La **ciudad** llega como código (`idCiudad`/`idDepto` DANE), no como nombre, así que queda en blanco hasta agregar el catálogo DANE (follow-up). La **ventana de compras** la fija el parámetro administrable `erp_meses_compras` (no una fecha de entorno).
 
 En modo `siesa`, si falta alguna variable, `Helic3::Erp.adapter` levanta `ConfiguracionInvalida` nombrando la que falta (sin imprimir su valor). Errores del módulo: `ConfiguracionInvalida` (configuración) y `NoDisponible` (desactivado, o Siesa caído).
 

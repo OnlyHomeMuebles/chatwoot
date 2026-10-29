@@ -7,7 +7,8 @@ class Helic3::Erp::SimulatedAdapter < Helic3::Erp::Base
     Helic3::Erp::SimulatedData.customer(cedula)
   end
 
-  def invoices(cedula:)
+  # `desde` (la ventana que pasa el cache) no aplica al simulado: sus datos son fijos.
+  def invoices(cedula:, desde: nil)
     Helic3::Erp::SimulatedData.invoices_for(cedula)
   end
 
