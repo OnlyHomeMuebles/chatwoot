@@ -10,6 +10,7 @@
       "YEAR": "Año",
       "MONTH": "Mes",
       "CITY": "Ciudad",
+      "OPERATION_CENTER": "Centro de operación",
       "MOTIVE": "Motivo",
       "DETAIL": "Detalle",
       "STAGE": "Etapa",
@@ -103,6 +104,7 @@
       "QUARTERLY": "Detalle trimestral",
       "QUARTERLY_SUBTITLE": "Consolidado del período seleccionado",
       "QUARTER_COLUMN": "Trimestre",
+      "QUARTER_DETAIL_TITLE": "Detalle de {trimestre}",
       "BY_CITY": "Por ciudad",
       "BY_CITY_CHART": "Comparativo por ciudad",
       "BY_CITY_CHART_SUBTITLE": "Ordenado de mayor a menor",
@@ -111,10 +113,31 @@
       "BY_STAGE": "Por etapa",
       "BY_PRODUCT": "Por producto (top 20)",
       "COUNT": "Devoluciones",
+      "RESOLVED_RATE": "% solucionadas",
       "NO_CITY": "Sin ciudad",
       "NO_MOTIVE": "Sin motivo",
       "NO_DETAIL": "Sin detalle",
-      "NO_STAGE": "Sin etapa"
+      "NO_STAGE": "Sin etapa",
+      "CASES": {
+        "TITLE": "Detalle de clientes y casos",
+        "SUBTITLE": "Según los filtros seleccionados, ordenado por urgencia.",
+        "COL_CLIENT": "Consecutivo / Cliente",
+        "COL_CENTER": "Centro de operación",
+        "COL_STAGE": "Etapa",
+        "COL_PROCESS": "Proceso",
+        "COL_DUE": "Vencimiento",
+        "VIEW_CASE": "Ver caso →",
+        "NO_CLIENT": "Sin cliente registrado",
+        "EMPTY": "No hay casos con estos filtros.",
+        "STAGE_EN_GESTION": "En gestión",
+        "STAGE_SOLUCIONADA": "Solucionada",
+        "DUE_OVERDUE": "Vencido · {dias} días",
+        "DUE_REMAINING": "{dias} días restantes",
+        "DUE_DONE": "Solucionado",
+        "TOTAL": "{total} casos",
+        "PREV": "Anterior",
+        "NEXT": "Siguiente"
+      }
     }
   }
 }

@@ -1,13 +1,14 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute } from 'vue-router';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
-import BarChart from 'shared/components/charts/BarChart.vue';
+import ComboBarLineChart from 'dashboard/components-next/helic3/ComboBarLineChart.vue';
 import { useIndicadoresStore } from 'dashboard/store/helic3/indicadores';
 import IndicadoresAPI from 'dashboard/api/helic3/indicadores';
 import { downloadBlobResponse } from 'dashboard/helper/downloadHelper';
@@ -17,6 +18,7 @@ import { downloadBlobResponse } from 'dashboard/helper/downloadHelper';
 // habiles); el detalle tipificado y el proceso reusan los catalogos ya
 // existentes de Garantia (motivos_devolucion es el unico catalogo propio).
 const { t, locale } = useI18n();
+const route = useRoute();
 const store = useStore();
 const indicadoresStore = useIndicadoresStore();
 
@@ -131,6 +133,33 @@ const cargar = async () => {
   }
 };
 
+// Detalle de clientes y casos (mismo patron de GarantiasTab.vue): paginado
+// aparte de los agregados de arriba, con los mismos filtros.
+const casos = computed(() => indicadoresStore.getDevolucionesCasos);
+const cargandoCasos = computed(
+  () => indicadoresStore.getUIFlags.isFetchingDevolucionesCasos
+);
+const casosPagina = ref(1);
+const cargarCasos = async () => {
+  try {
+    await indicadoresStore.fetchDevolucionesCasos(
+      parametrosActuales(),
+      casosPagina.value
+    );
+  } catch (error) {
+    useAlert(t('HELIC3_INDICADORES.ERROR'));
+  }
+};
+const irAPagina = pagina => {
+  casosPagina.value = pagina;
+  cargarCasos();
+};
+const cargarTodo = () => {
+  cargar();
+  casosPagina.value = 1;
+  cargarCasos();
+};
+
 const descargando = reactive({});
 const descargarCsv = async seccion => {
   descargando[seccion] = true;
@@ -147,10 +176,20 @@ const descargarCsv = async seccion => {
   }
 };
 
+// Se despliega al hacer click en un trimestre de "Detalle trimestral" (ver
+// seleccionarTrimestre mas abajo); declarado aqui para que limpiarFiltros
+// pueda cerrarlo sin dejar un trimestre viejo abierto tras limpiar filtros.
+const trimestreSeleccionado = ref(null);
+
+// Mismo criterio del mockup (data-action="stats-reset"): un solo click
+// vuelve todo a su estado inicial -- filtros y el trimestre desplegado, no
+// solo los selectores.
 const limpiarFiltros = () => {
   Object.keys(filtros).forEach(clave => {
     filtros[clave] = '';
   });
+  trimestreSeleccionado.value = null;
+  casosPagina.value = 1;
 };
 
 // Mismo ajuste de interactividad que GarantiasTab.vue (mockup v12): click en
@@ -176,7 +215,7 @@ const cargarCatalogos = async () => {
 
 onMounted(() => {
   cargarCatalogos();
-  cargar();
+  cargarTodo();
 });
 
 watch(
@@ -188,7 +227,7 @@ watch(
     filtros.detalle_tipificado_id,
     filtros.proceso_id,
   ],
-  cargar
+  cargarTodo
 );
 
 let debounceBusqueda = null;
@@ -196,7 +235,7 @@ watch(
   () => filtros.producto,
   () => {
     clearTimeout(debounceBusqueda);
-    debounceBusqueda = setTimeout(cargar, DEBOUNCE_BUSQUEDA_MS);
+    debounceBusqueda = setTimeout(cargarTodo, DEBOUNCE_BUSQUEDA_MS);
   }
 );
 
@@ -231,19 +270,64 @@ const kpiCards = computed(() => [
   },
 ]);
 
-const comoGrafica = filas => ({
-  categories: filas.map(fila => fila.etiqueta ?? fila.periodo),
-  series: [
-    {
-      id: 'cantidad',
-      label: t('HELIC3_INDICADORES.DEVOLUCIONES.COUNT'),
-      color: 'rgb(var(--blue-9))',
-      data: filas.map(fila => fila.cantidad),
-    },
-  ],
-});
+// "Recuento vs. ratio" (mockup v12): la linea muestra % solucionadas en vez
+// de devoluciones/facturas -- ese ratio sigue bloqueado por el modelo de
+// datos de Facturas (IND-04, sin definir). Mismo criterio de GarantiasTab.vue.
+const porcentajeSolucionadas = fila =>
+  fila.cantidad > 0
+    ? Math.round((fila.solucionadas / fila.cantidad) * 1000) / 10
+    : 0;
 
-const graficaMensual = computed(() => comoGrafica(datos.value?.mensual || []));
+const categoriasMensual = computed(() =>
+  (datos.value?.mensual || []).map(fila => fila.periodo)
+);
+const cantidadMensual = computed(() =>
+  (datos.value?.mensual || []).map(fila => fila.cantidad)
+);
+const porcentajeSolucionadasMensual = computed(() =>
+  (datos.value?.mensual || []).map(porcentajeSolucionadas)
+);
+
+// Detalle trimestral: click en un trimestre despliega sus meses (mismo
+// patron de GarantiasTab.vue). Sin pedir nada al backend: el detalle
+// mensual ya esta completo en memoria.
+const seleccionarTrimestre = periodo => {
+  trimestreSeleccionado.value =
+    trimestreSeleccionado.value === periodo ? null : periodo;
+};
+const mesesDelTrimestre = periodo => {
+  const [anioTexto, trimestreTexto] = periodo.split('-T');
+  const trimestre = Number(trimestreTexto);
+  const primerMes = (trimestre - 1) * 3 + 1;
+  const ultimoMes = trimestre * 3;
+  return (datos.value?.mensual || []).filter(fila => {
+    const [anioFila, mesFila] = fila.periodo.split('-').map(Number);
+    return (
+      String(anioFila) === anioTexto &&
+      mesFila >= primerMes &&
+      mesFila <= ultimoMes
+    );
+  });
+};
+const filaTrimestreSeleccionada = computed(() =>
+  (datos.value?.trimestral || []).find(
+    fila => fila.periodo === trimestreSeleccionado.value
+  )
+);
+const mesesTrimestreSeleccionado = computed(() =>
+  trimestreSeleccionado.value
+    ? mesesDelTrimestre(trimestreSeleccionado.value)
+    : []
+);
+const categoriasTrimestre = computed(() =>
+  mesesTrimestreSeleccionado.value.map(fila => fila.periodo)
+);
+const cantidadTrimestre = computed(() =>
+  mesesTrimestreSeleccionado.value.map(fila => fila.cantidad)
+);
+const porcentajeSolucionadasTrimestre = computed(() =>
+  mesesTrimestreSeleccionado.value.map(porcentajeSolucionadas)
+);
 
 const ETIQUETA_SIN_DATO = {
   BY_CITY: 'NO_CITY',
@@ -267,6 +351,43 @@ const maxPorCiudad = computed(() =>
   Math.max(1, ...porCiudadConNombre.value.map(fila => fila.cantidad))
 );
 const anchoBarra = cantidad => `${(cantidad / maxPorCiudad.value) * 100}%`;
+
+// "Detalle de clientes y casos" (mismo patron de GarantiasTab.vue): el
+// semaforo ya viene calculado del backend (PLZ-01), aqui solo se traduce a
+// color + texto.
+const COLOR_VENCIMIENTO = {
+  rojo: 'text-n-ruby-11',
+  amarillo: 'text-n-amber-11',
+  verde: 'text-n-slate-11',
+  solucionada: 'text-n-teal-11',
+};
+const colorVencimiento = estado =>
+  COLOR_VENCIMIENTO[estado] || 'text-n-slate-11';
+const textoVencimiento = fila => {
+  if (fila.vencimiento.estado === 'solucionada') {
+    return t('HELIC3_INDICADORES.DEVOLUCIONES.CASES.DUE_DONE');
+  }
+  const dias = fila.vencimiento.saldo_dias_habiles;
+  return dias < 0
+    ? t('HELIC3_INDICADORES.DEVOLUCIONES.CASES.DUE_OVERDUE', {
+        dias: Math.abs(dias),
+      })
+    : t('HELIC3_INDICADORES.DEVOLUCIONES.CASES.DUE_REMAINING', { dias });
+};
+
+// Mismo patron de GarantiasTab.vue/PqrDetailPage.vue: se navega por
+// display_id (el id de conversacion que expone Chatwoot), nunca por el id de
+// base de datos -- "Ver caso" abre la conversacion real, no un modal.
+const conversacionUrlDe = fila =>
+  fila.conversation_display_id
+    ? {
+        name: 'inbox_conversation',
+        params: {
+          accountId: route.params.accountId,
+          conversation_id: fila.conversation_display_id,
+        },
+      }
+    : null;
 </script>
 
 <template>
@@ -452,9 +573,13 @@ const anchoBarra = cantidad => `${(cantidad / maxPorCiudad.value) * 100}%`;
             <p class="mt-1 mb-2 text-xs text-n-slate-11">
               {{ t('HELIC3_INDICADORES.DEVOLUCIONES.MONTHLY_SUBTITLE') }}
             </p>
-            <BarChart
+            <ComboBarLineChart
               v-if="datos.mensual.length"
-              :data="graficaMensual"
+              :categories="categoriasMensual"
+              :bar-data="cantidadMensual"
+              :bar-label="t('HELIC3_INDICADORES.DEVOLUCIONES.COUNT')"
+              :line-data="porcentajeSolucionadasMensual"
+              :line-label="t('HELIC3_INDICADORES.DEVOLUCIONES.RESOLVED_RATE')"
               :height="ALTURA_GRAFICA"
               :aria-label="t('HELIC3_INDICADORES.DEVOLUCIONES.MONTHLY_CHART')"
             />
@@ -507,7 +632,20 @@ const anchoBarra = cantidad => `${(cantidad / maxPorCiudad.value) * 100}%`;
                 :key="fila.periodo"
                 class="border-t border-n-weak"
               >
-                <td class="px-3 py-2 text-n-slate-11">{{ fila.periodo }}</td>
+                <td class="px-3 py-2">
+                  <button
+                    type="button"
+                    class="hover:text-n-brand"
+                    :class="
+                      trimestreSeleccionado === fila.periodo
+                        ? 'text-n-brand font-medium'
+                        : 'text-n-slate-11'
+                    "
+                    @click="seleccionarTrimestre(fila.periodo)"
+                  >
+                    {{ fila.periodo }}
+                  </button>
+                </td>
                 <td
                   class="px-3 py-2 text-right font-medium tabular-nums text-n-slate-12"
                 >
@@ -522,6 +660,66 @@ const anchoBarra = cantidad => `${(cantidad / maxPorCiudad.value) * 100}%`;
               </tr>
             </tbody>
           </table>
+
+          <!-- Detalle del trimestre elegido: info + grafica de sus meses
+          (mismo patron de GarantiasTab.vue). Se calcula en el cliente, sin
+          pedir nada nuevo al backend. -->
+          <div
+            v-if="trimestreSeleccionado && filaTrimestreSeleccionada"
+            class="p-4 mt-4 rounded-xl bg-n-solid-2"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <p class="text-sm font-medium text-n-slate-12">
+                {{
+                  t('HELIC3_INDICADORES.DEVOLUCIONES.QUARTER_DETAIL_TITLE', {
+                    trimestre: trimestreSeleccionado,
+                  })
+                }}
+              </p>
+              <Button
+                icon="i-lucide-x"
+                variant="ghost"
+                color="slate"
+                size="xs"
+                @click="trimestreSeleccionado = null"
+              />
+            </div>
+            <div class="flex flex-wrap gap-6 mt-2 text-xs text-n-slate-11">
+              <span>
+                {{ t('HELIC3_INDICADORES.DEVOLUCIONES.COUNT') }}:
+                <strong class="text-n-slate-12">{{
+                  filaTrimestreSeleccionada.cantidad
+                }}</strong>
+              </span>
+              <span>
+                {{ t('HELIC3_INDICADORES.DEVOLUCIONES.KPI_SOLVED') }}:
+                <strong class="text-n-teal-11">{{
+                  filaTrimestreSeleccionada.solucionadas
+                }}</strong>
+              </span>
+              <span>
+                {{ t('HELIC3_INDICADORES.DEVOLUCIONES.KPI_IN_PROGRESS') }}:
+                <strong class="text-n-amber-11">{{
+                  filaTrimestreSeleccionada.en_proceso
+                }}</strong>
+              </span>
+            </div>
+            <ComboBarLineChart
+              v-if="mesesTrimestreSeleccionado.length"
+              class="mt-4"
+              :categories="categoriasTrimestre"
+              :bar-data="cantidadTrimestre"
+              :bar-label="t('HELIC3_INDICADORES.DEVOLUCIONES.COUNT')"
+              :line-data="porcentajeSolucionadasTrimestre"
+              :line-label="t('HELIC3_INDICADORES.DEVOLUCIONES.RESOLVED_RATE')"
+              :height="180"
+              :aria-label="
+                t('HELIC3_INDICADORES.DEVOLUCIONES.QUARTER_DETAIL_TITLE', {
+                  trimestre: trimestreSeleccionado,
+                })
+              "
+            />
+          </div>
         </div>
 
         <!-- Por ciudad: tabla + comparativo -->
@@ -685,6 +883,147 @@ const anchoBarra = cantidad => `${(cantidad / maxPorCiudad.value) * 100}%`;
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Detalle de clientes y casos (mismo patron de GarantiasTab.vue):
+        paginado, ordenado por urgencia. "Ver caso" abre la conversacion
+        real, no un modal. -->
+        <div
+          class="rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 overflow-hidden"
+        >
+          <div
+            class="flex items-start justify-between gap-3 px-4 py-4 border-b border-n-weak"
+          >
+            <div>
+              <p class="font-semibold text-n-slate-12">
+                {{ t('HELIC3_INDICADORES.DEVOLUCIONES.CASES.TITLE') }}
+              </p>
+              <p class="mt-1 text-xs text-n-slate-11">
+                {{ t('HELIC3_INDICADORES.DEVOLUCIONES.CASES.SUBTITLE') }}
+              </p>
+            </div>
+          </div>
+          <div v-if="cargandoCasos && !casos" class="flex justify-center py-8">
+            <Spinner :size="24" />
+          </div>
+          <template v-else-if="casos">
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[48rem] text-sm">
+                <thead class="text-xs text-n-slate-11">
+                  <tr>
+                    <th class="px-4 py-2 text-left font-medium">
+                      {{
+                        t('HELIC3_INDICADORES.DEVOLUCIONES.CASES.COL_CLIENT')
+                      }}
+                    </th>
+                    <th class="px-4 py-2 text-left font-medium">
+                      {{
+                        t('HELIC3_INDICADORES.DEVOLUCIONES.CASES.COL_CENTER')
+                      }}
+                    </th>
+                    <th class="px-4 py-2 text-left font-medium">
+                      {{ t('HELIC3_INDICADORES.DEVOLUCIONES.CASES.COL_STAGE') }}
+                    </th>
+                    <th class="px-4 py-2 text-left font-medium">
+                      {{
+                        t('HELIC3_INDICADORES.DEVOLUCIONES.CASES.COL_PROCESS')
+                      }}
+                    </th>
+                    <th class="px-4 py-2 text-left font-medium">
+                      {{ t('HELIC3_INDICADORES.DEVOLUCIONES.CASES.COL_DUE') }}
+                    </th>
+                    <th class="px-4 py-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="fila in casos.casos"
+                    :key="fila.id"
+                    class="border-t border-n-weak"
+                  >
+                    <td class="px-4 py-3">
+                      <span class="text-n-brand">
+                        #{{ fila.numero_radicado }}
+                      </span>
+                      <span class="block mt-0.5 text-n-slate-12">
+                        {{
+                          fila.cliente ||
+                          t('HELIC3_INDICADORES.DEVOLUCIONES.CASES.NO_CLIENT')
+                        }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-n-slate-11">
+                      {{ fila.centro_operacion || '—' }}
+                    </td>
+                    <td class="px-4 py-3 text-n-slate-11">
+                      {{
+                        t(
+                          `HELIC3_INDICADORES.DEVOLUCIONES.CASES.STAGE_${fila.etapa.toUpperCase()}`
+                        )
+                      }}
+                    </td>
+                    <td class="px-4 py-3 text-n-slate-11">
+                      {{ fila.proceso || '—' }}
+                    </td>
+                    <td class="px-4 py-3">
+                      <span :class="colorVencimiento(fila.vencimiento.estado)">
+                        {{ textoVencimiento(fila) }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-right whitespace-nowrap">
+                      <router-link
+                        v-if="conversacionUrlDe(fila)"
+                        :to="conversacionUrlDe(fila)"
+                        class="text-n-brand hover:underline"
+                      >
+                        {{
+                          t('HELIC3_INDICADORES.DEVOLUCIONES.CASES.VIEW_CASE')
+                        }}
+                      </router-link>
+                    </td>
+                  </tr>
+                  <tr v-if="!casos.casos.length">
+                    <td
+                      colspan="6"
+                      class="px-4 py-8 text-sm text-center text-n-slate-11"
+                    >
+                      {{ t('HELIC3_INDICADORES.DEVOLUCIONES.CASES.EMPTY') }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div
+              class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-n-weak text-xs text-n-slate-11"
+            >
+              <p>
+                {{
+                  t('HELIC3_INDICADORES.DEVOLUCIONES.CASES.TOTAL', {
+                    total: casos.total,
+                  })
+                }}
+              </p>
+              <div class="flex items-center gap-3">
+                <Button
+                  :label="t('HELIC3_INDICADORES.DEVOLUCIONES.CASES.PREV')"
+                  variant="ghost"
+                  color="slate"
+                  size="xs"
+                  :disabled="casos.pagina <= 1 || cargandoCasos"
+                  @click="irAPagina(casos.pagina - 1)"
+                />
+                <span>{{ casos.pagina }} / {{ casos.paginas }}</span>
+                <Button
+                  :label="t('HELIC3_INDICADORES.DEVOLUCIONES.CASES.NEXT')"
+                  variant="ghost"
+                  color="slate"
+                  size="xs"
+                  :disabled="casos.pagina >= casos.paginas || cargandoCasos"
+                  @click="irAPagina(casos.pagina + 1)"
+                />
+              </div>
+            </div>
+          </template>
         </div>
       </template>
     </template>

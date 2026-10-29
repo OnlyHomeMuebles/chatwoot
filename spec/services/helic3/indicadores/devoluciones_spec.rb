@@ -109,4 +109,43 @@ RSpec.describe Helic3::Indicadores::Devoluciones do
 
     expect(llamar[:kpis][:devoluciones]).to eq(1)
   end
+
+  describe '#casos (mismo patron de Helic3::Indicadores::Garantias#casos)' do
+    before do
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'plazo_total_garantia', valor: '30',
+                                          unidad: 'dias_habiles')
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'umbral_verde_garantia', valor: '15',
+                                          unidad: 'dias_habiles')
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'umbral_amarillo_garantia', valor: '5',
+                                          unidad: 'dias_habiles')
+    end
+
+    it 'ordena vencidas antes que solucionadas, y pagina' do
+      vencida = crear_devolucion(abierta_at: 60.days.ago, ciudad: manizales,
+                                 productos: [{ producto_nombre: 'Camisa', proceso: visita }])
+      solucionada = crear_devolucion(abierta_at: 5.days.ago, cerrada_at: Time.current,
+                                     productos: [{ producto_nombre: 'Pantalón', proceso: entrega }])
+
+      resultado = described_class.new(account: account, filtros: {}).casos(pagina: 1)
+
+      expect(resultado[:total]).to eq(2)
+      ids = resultado[:casos].map { |fila| fila[:id] }
+      expect(ids).to eq([vencida.id, solucionada.id])
+      expect(resultado[:casos].first[:vencimiento][:estado]).to eq('rojo')
+      expect(resultado[:casos].second[:etapa]).to eq('solucionada')
+    end
+
+    it 'respeta los mismos filtros que los agregados' do
+      crear_devolucion(abierta_at: Time.zone.local(2026, 1, 1), ciudad: manizales,
+                       productos: [{ producto_nombre: 'Camisa', proceso: visita }])
+      crear_devolucion(abierta_at: Time.zone.local(2026, 1, 1),
+                       productos: [{ producto_nombre: 'Pantalón', proceso: visita }])
+
+      resultado = described_class.new(account: account, filtros: { cobertura_ciudad_id: manizales.id })
+                                 .casos(pagina: 1)
+
+      expect(resultado[:total]).to eq(1)
+      expect(resultado[:casos].first[:centro_operacion]).to eq('Manizales')
+    end
+  end
 end

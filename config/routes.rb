@@ -379,6 +379,7 @@ Rails.application.routes.draw do
             get 'indicadores/garantias', to: 'indicadores#garantias'
             get 'indicadores/pqr', to: 'indicadores#pqr'
             get 'indicadores/devoluciones', to: 'indicadores#devoluciones'
+            get 'indicadores/devoluciones/casos', to: 'indicadores#devoluciones_casos'
             # Descarga a Excel (IND-05): la misma tabla, con los mismos filtros,
             # en CSV. Accion propia (no format: :csv sobre la de arriba) para no
             # mezclar la respuesta jbuilder con el armado de filas del CSV.

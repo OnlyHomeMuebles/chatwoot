@@ -253,6 +253,34 @@ RSpec.describe 'Helic3 Indicadores (IND-01)', type: :request do
     end
   end
 
+  describe 'GET devoluciones/casos (mismo patron de garantias/casos)' do
+    def get_devoluciones_casos(query = {})
+      get "/api/v1/accounts/#{account.id}/helic3/indicadores/devoluciones/casos", params: query,
+                                                                                  headers: agent.create_new_auth_token,
+                                                                                  as: :json
+    end
+
+    before do
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'plazo_total_garantia', valor: '30',
+                                          unidad: 'dias_habiles')
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'umbral_verde_garantia', valor: '15',
+                                          unidad: 'dias_habiles')
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'umbral_amarillo_garantia', valor: '5',
+                                          unidad: 'dias_habiles')
+    end
+
+    it 'devuelve la pagina de casos con su paginacion' do
+      Helic3::Devolucion.create!(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 1, 1))
+
+      get_devoluciones_casos
+
+      expect(response).to have_http_status(:success)
+      body = response.parsed_body
+      expect(body.keys).to match_array(%w[casos pagina paginas total])
+      expect(body['total']).to eq(1)
+    end
+  end
+
   describe 'GET devoluciones.csv (IND-06)' do
     def get_devoluciones_csv(seccion, query = {})
       get "/api/v1/accounts/#{account.id}/helic3/indicadores/devoluciones/csv",
