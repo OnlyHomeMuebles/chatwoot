@@ -89,4 +89,17 @@ RSpec.describe Helic3::Erp::SiesaHubCliente do
 
     cliente.consultar(descripcion: 'X', parametros: 'y', tam_pag: 100)
   end
+
+  it 'no revienta cuando "sin registros" trae detalle como texto (no {Table})' do
+    # Siesa manda el "sin registros" con `detalle` como String ('No se encontraron registros'),
+    # no como {Table:[...]}. avisar_si_llena no debe asumir Hash (antes reventaba con
+    # "String no tiene #dig" y tumbaba toda la consulta cuando una cedula no tenia compras).
+    stub_request(:get, url).with(query: hash_including({}))
+                           .to_return(status: 400,
+                                      body: { 'codigo' => 1, 'detalle' => 'No se encontraron registros' }.to_json,
+                                      headers: { 'Content-Type' => 'application/json' })
+
+    expect { cliente.consultar(descripcion: 'X', parametros: 'y') }.not_to raise_error
+    expect(cliente.consultar(descripcion: 'X', parametros: 'y')['codigo']).to eq(1)
+  end
 end

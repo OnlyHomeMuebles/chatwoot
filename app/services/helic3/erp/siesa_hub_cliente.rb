@@ -75,7 +75,10 @@ class Helic3::Erp::SiesaHubCliente
   # Si la pagina llega llena puede haber compras sin traer (solo se pide la 1ra). Se avisa en el
   # log; no es error (el contrato trae lo que haya), pero deja rastro para cuando toque paginar.
   def avisar_si_llena(cuerpo, tam_pag)
-    filas = cuerpo.dig('detalle', 'Table')
+    # "sin registros" (codigo:1) trae `detalle` como texto, no como {Table:[...]}; por eso no se
+    # usa cuerpo.dig (reventaria con "String no tiene #dig"). Si no hay tabla, no hay que avisar.
+    detalle = cuerpo['detalle']
+    filas = detalle.is_a?(Hash) ? detalle['Table'] : nil
     if filas.is_a?(Array) && filas.size >= tam_pag
       Rails.logger.warn("[ERP-05] Siesa devolvio la pagina llena (#{filas.size} lineas); pueden faltar compras (paginar)")
     end
