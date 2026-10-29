@@ -69,6 +69,25 @@ RSpec.describe Helic3::Erp::Cache do
     expect(resultado.cliente.nombre).to eq('Ana Ruiz') # vuelve del adaptador, sin tumbar el wizard
   end
 
+  # ERP-05 (Jhan #147): el cache resuelve el adaptador UNA sola vez por consulta (no una
+  # instancia por cada metodo) y le pasa la ventana segun erp_meses_compras de la cuenta.
+  it 'resuelve el adaptador una sola vez por consulta' do
+    expect(Helic3::Erp).to receive(:adapter).once.and_call_original
+
+    described_class.consultar(account: account, cedula: '1032456789')
+  end
+
+  it 'pasa al adaptador la ventana de compras segun erp_meses_compras de la cuenta' do
+    Helic3::Catalogo::Parametro.create!(account: account, clave: 'erp_meses_compras',
+                                        valor: '6', unidad: 'meses')
+    esperado = (Date.current << 6).iso8601
+    adaptador = instance_double(Helic3::Erp::SimulatedAdapter, find_customer: nil)
+    allow(Helic3::Erp).to receive(:adapter).and_return(adaptador)
+    expect(adaptador).to receive(:invoices).with(cedula: '1032456789', desde: esperado).and_return([])
+
+    described_class.consultar(account: account, cedula: '1032456789')
+  end
+
   # B1: dos consultas de la misma cedula a la vez (el wizard, o dos agentes) deben llamar al
   # adaptador UNA sola vez. Necesita conexiones reales (hilos) viendo la misma fila, por eso
   # se corre sin transaccion de test y se limpia a mano.
@@ -94,7 +113,7 @@ RSpec.describe Helic3::Erp::Cache do
           sleep 0.3
           Helic3::Erp::Customer.new(cedula: cedula, nombre: 'Ana')
         end
-        def invoices(cedula:) = []
+        def invoices(cedula:, desde: nil) = []
       end.new(-> { mutex.synchronize { contador += 1 } })
       allow(Helic3::Erp).to receive(:adapter).and_return(adaptador)
 

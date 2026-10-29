@@ -20,6 +20,7 @@ import { useErpCliente } from '../composables/helic3/useErpCliente';
 // ERP-15: selector de facturas + productos del cliente contra el ERP.
 import { useErpFacturas } from '../composables/helic3/useErpFacturas';
 import ErpBadge from '../components/helic3/ErpBadge.vue';
+import ErpSinDato from '../components/helic3/ErpSinDato.vue';
 
 const store = useStore();
 const router = useRouter();
@@ -576,6 +577,7 @@ defineExpose({
                       @update:model-value="erp.alEditar('cliente_telefono')"
                     />
                     <ErpBadge v-if="erp.tieneBadge('cliente_telefono')" />
+                    <ErpSinDato v-if="erp.sinDato('cliente_telefono')" />
                   </div>
                 </div>
                 <div class="flex flex-col gap-1">
@@ -587,6 +589,7 @@ defineExpose({
                     @update:model-value="erp.alEditar('cliente_email')"
                   />
                   <ErpBadge v-if="erp.tieneBadge('cliente_email')" />
+                  <ErpSinDato v-if="erp.sinDato('cliente_email')" />
                 </div>
               </div>
             </section>
@@ -724,6 +727,7 @@ defineExpose({
                     @update:model-value="erp.alEditar('ciudad')"
                   />
                   <ErpBadge v-if="erp.tieneBadge('ciudad')" />
+                  <ErpSinDato v-if="erp.sinDato('ciudad')" />
                 </div>
                 <div class="flex flex-col gap-1">
                   <Input
@@ -733,6 +737,7 @@ defineExpose({
                     @update:model-value="erp.alEditar('direccion')"
                   />
                   <ErpBadge v-if="erp.tieneBadge('direccion')" />
+                  <ErpSinDato v-if="erp.sinDato('direccion')" />
                 </div>
               </div>
             </section>

@@ -142,6 +142,9 @@ class Helic3::Catalogo::SeederService
     { clave: 'mostrar_solo_ticket_garantia', valor: 'true', unidad: 'booleano' },
     # ERP-14: vigencia del cache del ERP (helic3_erp_consultas). Editable desde el panel.
     { clave: 'erp_cache_horas', valor: '24', unidad: 'cantidad' },
+    # ERP-05: meses hacia atras que se traen compras del ERP. Valor de negocio (se amarra al
+    # periodo de garantia), editable desde el panel; lo lee el cache por cuenta.
+    { clave: 'erp_meses_compras', valor: '12', unidad: 'meses' },
     # H3A-12: bandera del runner de agentes editables. Apagada por defecto (L-09).
     # Se siembra aqui para que se pueda PRENDER desde el panel (update del parametro),
     # sin un INSERT por consola. La lee Helic3::Agents::FeatureFlag.

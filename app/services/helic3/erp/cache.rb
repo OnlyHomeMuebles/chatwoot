@@ -9,6 +9,7 @@
 # con Helic3::Erp.normalizar_cedula antes de llamar aqui.
 module Helic3::Erp::Cache
   HORAS_DEFECTO = 24
+  MESES_DEFECTO = 12 # ventana de compras por defecto si la cuenta no sembro erp_meses_compras
   Resultado = Data.define(:cliente, :compras) # cliente: Customer|nil, compras: [Invoice]
 
   module_function
@@ -51,10 +52,18 @@ module Helic3::Erp::Cache
   # Llama al ERP y guarda el resultado. Si el adaptador falla, propaga (no cachea un
   # error): el consumidor es quien decide seguir a mano (el ERP nunca bloquea).
   def desde_adaptador(account, cedula)
-    cliente = Helic3::Erp.adapter.find_customer(cedula: cedula)
-    compras = Helic3::Erp.adapter.invoices(cedula: cedula)
+    adaptador = Helic3::Erp.adapter # una sola instancia para las dos consultas (clientes + compras)
+    cliente = adaptador.find_customer(cedula: cedula)
+    compras = adaptador.invoices(cedula: cedula, desde: ventana(account))
     guardar(account, cedula, cliente, compras)
     Resultado.new(cliente: cliente, compras: compras)
+  end
+
+  # Fecha desde la que se traen las compras: la cuenta decide cuantos meses hacia atras con el
+  # parametro erp_meses_compras (el cache conoce la cuenta; el adaptador no). Default si no esta.
+  def ventana(account)
+    meses = Helic3::Catalogo::Parametro.find_by(account_id: account.id, clave: 'erp_meses_compras')&.valor_entero
+    (Date.current << (meses || MESES_DEFECTO)).iso8601
   end
 
   # Escribe la fila del cache. Corre dentro del lock por cuenta+cedula (consultar), asi que no
