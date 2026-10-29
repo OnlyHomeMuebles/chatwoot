@@ -654,16 +654,16 @@ defineExpose({
                       size="sm"
                       faded
                       :label="
-                        facturasErp.estaElegido(factura, item)
+                        facturasErp.estaElegido(factura, idx)
                           ? t('TICKETS.NUEVA.COMPRA.SELECTOR_ELEGIDO')
                           : t('TICKETS.NUEVA.COMPRA.SELECTOR_ELEGIR')
                       "
                       :class="
-                        facturasErp.estaElegido(factura, item)
+                        facturasErp.estaElegido(factura, idx)
                           ? '!bg-n-blue-3 !text-n-blue-11'
                           : ''
                       "
-                      @click="facturasErp.alternar(factura, item)"
+                      @click="facturasErp.alternar(factura, idx)"
                     />
                   </div>
                 </div>

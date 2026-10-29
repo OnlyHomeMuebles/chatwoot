@@ -170,6 +170,9 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
         ticket: @ticket, cedula: datos_cliente_params[:cedula],
         datos: { factura_numero: create_params[:numero_orden],
                  factura_fecha: datos_cliente_params[:factura_fecha],
+                 # producto escrito/editado a mano en "Compra": si no cruza el selector, humano
+                 producto_nombre: datos_cliente_params[:producto_nombre],
+                 producto_referencia: datos_cliente_params[:producto_referencia],
                  productos: productos_params }
       ).call
       return

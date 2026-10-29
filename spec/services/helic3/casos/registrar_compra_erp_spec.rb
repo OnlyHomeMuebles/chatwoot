@@ -60,4 +60,41 @@ RSpec.describe Helic3::Casos::RegistrarCompraErp do
 
     expect(ticket.reload.datos.productos.first['fuente']).to eq('humano')
   end
+
+  # Jhan 2a vuelta #1: el producto escrito a mano (sin selector) no se puede perder.
+  it 'sin productos del selector, el producto escrito a mano queda en la ficha con fuente humano' do
+    described_class.new(ticket: ticket, cedula: '1032456789',
+                        datos: { factura_numero: 'FV-1001', productos: [],
+                                 producto_nombre: 'Mesa que no esta en Siesa',
+                                 producto_referencia: 'MANUAL-1' }).call
+
+    ficha = ticket.reload.datos
+    expect(ficha.producto_nombre).to eq('Mesa que no esta en Siesa')
+    expect(ficha.fuentes['producto_nombre']).to eq('humano')
+    expect(ficha.productos).to contain_exactly(
+      a_hash_including('nombre' => 'Mesa que no esta en Siesa', 'fuente' => 'humano')
+    )
+  end
+
+  it 'si el agente eligio un producto y luego edito el nombre, lo editado queda humano' do
+    described_class.new(ticket: ticket, cedula: '1032456789',
+                        datos: { factura_numero: 'FV-1001',
+                                 productos: [{ referencia: 'MIL-200' }],
+                                 producto_nombre: 'Puerta Milano (corregido)',
+                                 producto_referencia: 'MIL-200' }).call
+
+    ficha = ticket.reload.datos
+    expect(ficha.producto_nombre).to eq('Puerta Milano (corregido)')
+    expect(ficha.fuentes['producto_nombre']).to eq('humano')
+  end
+
+  it 'si lo escrito coincide con el producto elegido, se mantiene fuente erp' do
+    described_class.new(ticket: ticket, cedula: '1032456789',
+                        datos: { factura_numero: 'FV-1001',
+                                 productos: [{ referencia: 'MIL-200' }],
+                                 producto_nombre: 'Puerta Milano',
+                                 producto_referencia: 'MIL-200' }).call
+
+    expect(ticket.reload.datos.fuentes['producto_nombre']).to eq('erp')
+  end
 end

@@ -115,5 +115,24 @@ RSpec.describe 'ERP clientes API', type: :request do
       expect(ficha.productos.map { |p| p['referencia'] }).to contain_exactly('MIL-200', 'CER-050')
       expect(ficha.productos.map { |p| p['fuente'] }).to all(eq('erp'))
     end
+
+    # Jhan 2a vuelta #1: con consultado_erp pero sin producto en el selector, lo que el agente
+    # escribe en "Compra" NO se puede perder: queda en la ficha con fuente humano.
+    it 'con consultado_erp y productos vacios, el producto escrito a mano queda humano' do
+      with_modified_env HELIC3_ERP_MODO: 'simulado' do
+        post "/api/v1/accounts/#{account.id}/helic3/tickets",
+             params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, consultado_erp: true,
+                                 datos: { cedula: '1032456789', cliente_nombre: 'Ana Ruiz',
+                                          cliente_telefono: '3001112233',
+                                          producto_nombre: 'Producto fuera de Siesa',
+                                          producto_referencia: 'MANUAL-1', productos: [] } } },
+             headers: agent.create_new_auth_token, as: :json
+      end
+
+      expect(response).to have_http_status(:success)
+      ficha = Helic3::Ticket.find(response.parsed_body['id']).datos
+      expect(ficha.producto_nombre).to eq('Producto fuera de Siesa')
+      expect(ficha.fuentes['producto_nombre']).to eq('humano')
+    end
   end
 end

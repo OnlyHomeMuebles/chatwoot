@@ -13,12 +13,15 @@ class Helic3::Casos::RegistrarCompraErp
   def initialize(ticket:, cedula:, datos:)
     @ticket = ticket
     @cedula = Helic3::Erp.normalizar_cedula(cedula)
-    @datos = datos.to_h.symbolize_keys # { factura_numero:, factura_fecha:, productos: [{nombre:, referencia:}] }
+    # { factura_numero:, factura_fecha:, productos: [{nombre:, referencia:}],
+    #   producto_nombre:, producto_referencia: }  (los dos ultimos: lo que el agente
+    #   escribio/edito a mano en "Compra", para el caso "no esta en la lista")
+    @datos = datos.to_h.symbolize_keys
   end
 
   def call
     factura = factura_del_cache
-    productos = cruzar_productos(factura)
+    productos = ajustar_manual(cruzar_productos(factura))
     guardar(factura, productos)
   end
 
@@ -55,6 +58,27 @@ class Helic3::Casos::RegistrarCompraErp
     return nil if factura.nil? || referencia.blank?
 
     factura.items.find { |item| item.referencia.to_s == referencia.to_s }
+  end
+
+  # El agente tambien puede escribir el producto en "Compra" (lista del selector vacia, cliente
+  # sin esa factura, o "no esta en la lista") o editar el nombre del que eligio. Eso queda fuente
+  # humano. Si lo escrito coincide con el primero del selector, no se toca (se queda erp).
+  def ajustar_manual(productos)
+    manual = { 'nombre' => @datos[:producto_nombre].to_s.strip,
+               'referencia' => @datos[:producto_referencia].to_s.strip, 'fuente' => 'humano' }
+    return productos if manual['nombre'].blank? && manual['referencia'].blank?
+    return [manual] if productos.empty?
+    return productos if mismo?(productos.first, manual)
+
+    [manual] + productos[1..]
+  end
+
+  def mismo?(uno, otro)
+    normal(uno['nombre']) == normal(otro['nombre']) && normal(uno['referencia']) == normal(otro['referencia'])
+  end
+
+  def normal(valor)
+    valor.to_s.strip.downcase.gsub(/\s+/, ' ')
   end
 
   def guardar(factura, productos)

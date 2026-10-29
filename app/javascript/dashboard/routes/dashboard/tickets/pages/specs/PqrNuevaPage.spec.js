@@ -345,8 +345,8 @@ describe('PqrNuevaPage.vue — ERP (ERP-11)', () => {
     expect(facturas).toHaveLength(1);
 
     // B3: se eligen DOS productos de la misma factura.
-    vm.facturasErp.alternar(facturas[0], facturas[0].items[0]);
-    vm.facturasErp.alternar(facturas[0], facturas[0].items[1]);
+    vm.facturasErp.alternar(facturas[0], 0);
+    vm.facturasErp.alternar(facturas[0], 1);
 
     expect(vm.form.numero_orden).toBe('FV-1001');
     expect(vm.form.factura_fecha).toBe('2026-05-10');

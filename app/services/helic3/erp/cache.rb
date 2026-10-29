@@ -57,6 +57,10 @@ module Helic3::Erp::Cache
     Resultado.new(cliente: cliente, compras: compras)
   end
 
+  # Escribe la fila del cache. Corre dentro del lock por cuenta+cedula (consultar), asi que no
+  # hay carrera: NO se rescata RecordNotUnique. Un error de indice unico dentro de la transaccion
+  # del create del ticket la dejaria abortada (aunque se rescate) y la radicacion fallaria despues
+  # con un error confuso; mejor que reviente aqui, ruidoso y claro.
   def guardar(account, cedula, cliente, compras)
     fila = Helic3::ErpConsulta.find_or_initialize_by(account_id: account.id, cedula: cedula)
     fila.update!(
@@ -65,10 +69,6 @@ module Helic3::Erp::Cache
       estado: cliente ? 'encontrado' : 'sin_cliente',
       consultado_at: Time.current
     )
-  rescue ActiveRecord::RecordNotUnique
-    # Carrera: otra consulta en vuelo (wizard dispara cliente+facturas a la vez) ya creo
-    # la fila. No es error: el resultado recien traido se devuelve igual.
-    nil
   end
 
   def hidratar(fila)
