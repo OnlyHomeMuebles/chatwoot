@@ -62,7 +62,8 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
     enviar_csv("indicadores-pqr-#{params[:seccion]}", *filas_pqr(datos, params[:seccion]))
   end
 
-  SECCIONES_DEVOLUCIONES = %w[mensual trimestral por_ciudad por_motivo por_detalle por_proceso por_producto].freeze
+  SECCIONES_DEVOLUCIONES = %w[mensual trimestral por_ciudad por_motivo por_detalle por_proceso por_producto
+                              motivo_por_trimestre detalle_por_trimestre].freeze
 
   def devoluciones_csv
     return render_seccion_invalida unless SECCIONES_DEVOLUCIONES.include?(params[:seccion])
@@ -139,6 +140,10 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
       periodo_encabezado = seccion == 'mensual' ? 'Mes' : 'Trimestre'
       filas = datos[seccion.to_sym].map { |f| [f[:periodo], f[:cantidad], f[:solucionadas], f[:en_proceso]] }
       [[periodo_encabezado, etiqueta_cantidad, 'Solucionadas', 'En proceso'], filas]
+    when 'motivo_por_trimestre'
+      filas_catalogo_trimestre(datos, :motivo, 'por_motivo')
+    when 'detalle_por_trimestre'
+      filas_catalogo_trimestre(datos, :detalle, 'por_detalle')
     else
       filas_etiqueta_cantidad(datos[seccion.to_sym], seccion)
     end
@@ -151,13 +156,21 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
       filas = datos[seccion.to_sym].map { |f| [f[:periodo], f[:cantidad], f[:respondidas], f[:pendientes]] }
       [[periodo_encabezado, 'PQR', 'Respondidas', 'Pendientes'], filas]
     when 'motivo_por_trimestre'
-      filas = datos[:motivo_por_trimestre].map do |f|
-        [f[:motivo] || FALLBACK_ETIQUETA['por_motivo'], f[:t1], f[:t2], f[:t3], f[:t4], f[:total]]
-      end
-      [%w[Motivo T1 T2 T3 T4 Total], filas]
+      filas_catalogo_trimestre(datos, :motivo, 'por_motivo')
     else
       filas_etiqueta_cantidad(datos[seccion.to_sym], seccion)
     end
+  end
+
+  # "Garantias/Devoluciones por motivo"+"Detalle tipificado" (paridad con el
+  # Dash CX): misma forma matriz {campo, t1..t4, total} para motivo y detalle,
+  # tanto en PQR como en Garantias/Devoluciones -- solo cambia el campo y el
+  # fallback de "sin dato".
+  def filas_catalogo_trimestre(datos, campo, fallback_seccion)
+    filas = datos[:"#{campo}_por_trimestre"].map do |f|
+      [f[campo] || FALLBACK_ETIQUETA[fallback_seccion], f[:t1], f[:t2], f[:t3], f[:t4], f[:total]]
+    end
+    [[campo.to_s.capitalize, 'T1', 'T2', 'T3', 'T4', 'Total'], filas]
   end
 
   def filas_etiqueta_cantidad(registros, seccion)

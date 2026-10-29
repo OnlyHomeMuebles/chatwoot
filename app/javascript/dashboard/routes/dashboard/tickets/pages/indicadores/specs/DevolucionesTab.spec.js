@@ -144,4 +144,62 @@ describe('DevolucionesTab.vue (IND-06)', () => {
       vi.useRealTimers();
     });
   });
+
+  // Paridad con el Dash CX ("Devoluciones por motivo"): clickear un
+  // trimestre del grafico de colores lo despliega por mes, sin pedir nada
+  // al backend (motivo_por_mes ya viaja completo en la misma respuesta).
+  it('al hacer click en un trimestre de "Motivo por trimestre", lo despliega por mes', async () => {
+    devolucionesRef = {
+      ...indicadoresVacios(),
+      kpis: { devoluciones: 4, solucionadas: 0, en_proceso: 4, productos: 0 },
+      motivo_por_trimestre: [
+        { motivo: 'Cambio de talla', t1: 2, t2: 3, t3: 0, t4: 0, total: 5 },
+      ],
+      motivo_por_mes: [
+        { motivo: 'Cambio de talla', periodo: '2026-04', cantidad: 3 },
+        { motivo: 'Cambio de talla', periodo: '2026-01', cantidad: 2 },
+      ],
+    };
+    const wrapper = mount(DevolucionesTab);
+    await flushPromises();
+
+    const grupoT2 = wrapper
+      .findAll('g')
+      .find(g => g.text().trim().startsWith('T2'));
+    expect(grupoT2).toBeTruthy();
+    await grupoT2.trigger('click');
+
+    expect(wrapper.text()).toContain('2026-04');
+    expect(wrapper.text()).not.toContain('2026-01');
+    expect(wrapper.text()).toContain(
+      'HELIC3_INDICADORES.DEVOLUCIONES.BACK_TO_QUARTERS'
+    );
+  });
+
+  // Paridad con el Dash CX: "Producto" es un filtro global mas -- clickear
+  // un producto en "Por producto" filtra todo el tablero por ese producto,
+  // igual que clickear una ciudad.
+  it('al hacer click en un producto, lo deja como filtro y vuelve a pedir los indicadores', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    devolucionesRef = {
+      ...indicadoresVacios(),
+      kpis: { devoluciones: 4, solucionadas: 0, en_proceso: 4, productos: 4 },
+      por_producto: [{ etiqueta: 'Sofá Modular Santorini', cantidad: 4 }],
+    };
+    const wrapper = mount(DevolucionesTab);
+    await flushPromises();
+    fetchDevoluciones.mockClear();
+
+    const boton = wrapper
+      .findAll('button')
+      .find(btn => btn.text() === 'Sofá Modular Santorini');
+    await boton.trigger('click');
+
+    vi.advanceTimersByTime(300);
+    await flushPromises();
+    expect(fetchDevoluciones).toHaveBeenCalledWith({
+      producto: 'Sofá Modular Santorini',
+    });
+    vi.useRealTimers();
+  });
 });

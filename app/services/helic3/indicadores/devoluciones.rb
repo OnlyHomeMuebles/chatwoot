@@ -10,6 +10,10 @@ class Helic3::Indicadores::Devoluciones
   RANGO_URGENCIA = { rojo: 0, amarillo: 1, verde: 2, sin_presupuesto: 3, resuelta: 4 }.freeze
 
   FECHA_LOCAL = "(abierta_at AT TIME ZONE 'UTC') AT TIME ZONE '#{Helic3::CalendarioHabil::ZONA}'".freeze
+  # FECHA_LOCAL calificada con tabla, para el join con el item (motivo/detalle
+  # por trimestre/mes).
+  FECHA_LOCAL_ITEM = "(helic3_devoluciones.abierta_at AT TIME ZONE 'UTC') " \
+                     "AT TIME ZONE '#{Helic3::CalendarioHabil::ZONA}'".freeze
 
   def self.call(account:, filtros: {})
     new(account: account, filtros: filtros).call
@@ -29,17 +33,17 @@ class Helic3::Indicadores::Devoluciones
       por_motivo: por_motivo,
       por_detalle: por_detalle,
       por_proceso: por_proceso,
-      por_producto: por_producto
+      por_producto: por_producto,
+      motivo_por_trimestre: motivo_desglose.por_trimestre,
+      motivo_por_mes: motivo_desglose.por_mes,
+      detalle_por_trimestre: detalle_desglose.por_trimestre,
+      detalle_por_mes: detalle_desglose.por_mes
     }
   end
 
-  # Lista de casos individuales (mismo patron de Helic3::Indicadores::
-  # Garantias#casos, incluyendo el fix de desempeño: el ordenamiento usa una
-  # clave liviana para TODAS las devoluciones filtradas, y solo las 7 de la
-  # pagina final pagan el costo de numero_radicado/cliente/centro/proceso).
-  # Devolucion reusa el mismo presupuesto de Garantia (ambito: :garantia,
-  # ver comentario en Helic3::Devolucion#presupuesto) -- no hay un plazo
-  # distinto documentado para Devoluciones.
+  # Mismo patron de Garantias#casos: ordena con una clave liviana para TODAS
+  # las devoluciones filtradas, y solo las 7 de la pagina final pagan el
+  # costo de numero_radicado/cliente/centro/proceso.
   def casos(pagina: 1)
     calendario = Helic3::CalendarioHabil.new
     parametros = Helic3::ParametrosGarantia.desde_catalogo(account, ambito: :garantia)
@@ -139,13 +143,9 @@ class Helic3::Indicadores::Devoluciones
     { periodo: yield(fecha), cantidad: cantidad, solucionadas: solucionadas, en_proceso: cantidad - solucionadas }
   end
 
-  # valor (el id del catalogo) viaja ademas de la etiqueta, igual que en
-  # Garantias: el mockup permite hacer click en una tienda para filtrar el
-  # resto del tablero por ella.
-  # El comparativo por tienda no tiene sentido con un bulto "sin ciudad": no
-  # es una tienda que se pueda comparar contra las demas, asi que se excluye
-  # en vez de traducirla (a diferencia de por_motivo/por_detalle/por_proceso,
-  # donde "sin dato" si es informacion util).
+  # valor (el id) viaja ademas de la etiqueta para el click-to-filter; "sin
+  # ciudad" se excluye (no hay tienda con la que compararlo), a diferencia de
+  # por_motivo/por_detalle/por_proceso donde "sin dato" si es util.
   def por_ciudad
     conteos = devoluciones_filtradas.where.not(cobertura_ciudad_id: nil).group(:cobertura_ciudad_id).count
     nombres = Helic3::Catalogo::CoberturaCiudad.where(id: conteos.keys).pluck(:id, :nombre).to_h
@@ -176,6 +176,24 @@ class Helic3::Indicadores::Devoluciones
                    .map { |nombre, cantidad| { etiqueta: nombre, cantidad: cantidad } }
                    .sort_by { |fila| -fila[:cantidad] }
                    .first(TOP_PRODUCTOS)
+  end
+
+  # Paridad con el Dash CX ("Garantias por motivo"/"Detalle tipificado"): el
+  # calculo (matriz trimestre + despliegue por mes) vive en DesgloseTrimestral,
+  # compartido con Garantias; memoizado porque #call pide trimestre y mes.
+  def motivo_desglose
+    @motivo_desglose ||= desglose(:motivo_devolucion_id, Helic3::Catalogo::MotivoDevolucion, :motivo)
+  end
+
+  def detalle_desglose
+    @detalle_desglose ||= desglose(:detalle_tipificado_id, Helic3::Catalogo::DetalleTipificado, :detalle)
+  end
+
+  def desglose(columna, catalogo_clase, campo)
+    Helic3::Indicadores::DesgloseTrimestral.new(
+      items_con_fecha: items_filtrados.joins(:devolucion), fecha_local_sql: FECHA_LOCAL_ITEM,
+      columna: columna, catalogo_clase: catalogo_clase, campo: campo
+    )
   end
 
   def ordenar_por_cantidad(conteos)

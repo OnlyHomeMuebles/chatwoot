@@ -77,6 +77,21 @@ RSpec.describe Helic3::Indicadores::Devoluciones do
       expect(por_proceso['Visita técnica'][:cantidad]).to eq(2)
       expect(por_proceso['Entrega de producto'][:cantidad]).to eq(1)
     end
+
+    # Paridad con el Dash CX ("Devoluciones por motivo"): matriz motivo x
+    # trimestre, y su despliegue por mes para el click en un trimestre.
+    it 'motivo_por_trimestre: cambio_talla 2 en T1, no_satisfecho 1 en T1' do
+      por_trimestre = llamar[:motivo_por_trimestre].index_by { |fila| fila[:motivo] }
+
+      expect(por_trimestre['Cambio de talla']).to eq(motivo: 'Cambio de talla', t1: 2, t2: 0, t3: 0, t4: 0, total: 2)
+      expect(por_trimestre['Cliente no satisfecho'][:t1]).to eq(1)
+    end
+
+    it 'motivo_por_mes trae el desglose mes a mes para desplegar un trimestre' do
+      por_mes = llamar[:motivo_por_mes].select { |fila| fila[:motivo] == 'Cambio de talla' }
+
+      expect(por_mes).to contain_exactly({ motivo: 'Cambio de talla', periodo: '2026-01', cantidad: 2 })
+    end
   end
 
   # B1 (mismo criterio de Garantias): se agrupa en hora de Bogota, no UTC.

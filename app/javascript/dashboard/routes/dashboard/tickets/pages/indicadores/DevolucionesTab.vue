@@ -9,6 +9,7 @@ import Input from 'dashboard/components-next/input/Input.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import ComboBarLineChart from 'dashboard/components-next/helic3/ComboBarLineChart.vue';
+import MultiSeriesBarChart from 'dashboard/components-next/helic3/MultiSeriesBarChart.vue';
 import { useIndicadoresStore } from 'dashboard/store/helic3/indicadores';
 import IndicadoresAPI from 'dashboard/api/helic3/indicadores';
 import { downloadBlobResponse } from 'dashboard/helper/helic3/downloadHelper';
@@ -176,10 +177,13 @@ const descargarCsv = async seccion => {
   }
 };
 
-// Se despliega al hacer click en un trimestre de "Detalle trimestral" (ver
-// seleccionarTrimestre mas abajo); declarado aqui para que limpiarFiltros
-// pueda cerrarlo sin dejar un trimestre viejo abierto tras limpiar filtros.
+// Se despliega al hacer click en un trimestre de "Detalle trimestral"/
+// "Motivo por trimestre"/"Detalle tipificado por trimestre" (ver mas abajo);
+// declarados aqui para que limpiarFiltros pueda cerrarlos sin dejar un
+// trimestre viejo abierto tras limpiar filtros.
 const trimestreSeleccionado = ref(null);
+const trimestreMotivoSeleccionado = ref(null);
+const trimestreDetalleSeleccionado = ref(null);
 
 // Mismo criterio del mockup (data-action="stats-reset"): un solo click
 // vuelve todo a su estado inicial -- filtros y el trimestre desplegado, no
@@ -189,6 +193,8 @@ const limpiarFiltros = () => {
     filtros[clave] = '';
   });
   trimestreSeleccionado.value = null;
+  trimestreMotivoSeleccionado.value = null;
+  trimestreDetalleSeleccionado.value = null;
   casosPagina.value = 1;
 };
 
@@ -203,6 +209,14 @@ const seleccionarPeriodo = periodo => {
 const seleccionarCiudad = cobertura_ciudad_id => {
   if (!cobertura_ciudad_id) return;
   filtros.cobertura_ciudad_id = cobertura_ciudad_id;
+};
+
+// Paridad con el Dash CX: "Producto" es un filtro global mas (como ciudad),
+// no una ventana aparte -- clickear un producto filtra todo el tablero
+// (tarjetas, mensual, motivo, detalle) a ese producto exacto.
+const seleccionarProducto = nombre => {
+  if (!nombre) return;
+  filtros.producto = nombre;
 };
 
 const cargarCatalogos = async () => {
@@ -329,6 +343,96 @@ const porcentajeSolucionadasTrimestre = computed(() =>
   mesesTrimestreSeleccionado.value.map(porcentajeSolucionadas)
 );
 
+// Paridad con el Dash CX ("Devoluciones por motivo"/"Detalle tipificado"):
+// matriz motivo/detalle x trimestre con grafico de colores, donde clickear
+// un trimestre lo despliega por mes -- igual que "Detalle trimestral" de
+// arriba, pero la fuente es motivo_por_mes/detalle_por_mes en vez de
+// mensual, y el trimestre es solo T1..T4 (sin anio: ya viene agregado del
+// backend, igual que el motivo_por_trimestre de PQR).
+const TRIMESTRES_NUMERO = { T1: 1, T2: 2, T3: 3, T4: 4 };
+
+const alternarTrimestre = (seleccionadoRef, trimestre) => {
+  seleccionadoRef.value =
+    seleccionadoRef.value === trimestre ? null : trimestre;
+};
+const seleccionarTrimestreMotivo = trimestre =>
+  alternarTrimestre(trimestreMotivoSeleccionado, trimestre);
+const seleccionarTrimestreDetalle = trimestre =>
+  alternarTrimestre(trimestreDetalleSeleccionado, trimestre);
+
+const seriesPorTrimestre = (filas, campo, etiquetaSinDato) =>
+  filas.map(fila => ({
+    nombre: fila[campo] ?? etiquetaSinDato,
+    valores: [fila.t1, fila.t2, fila.t3, fila.t4],
+  }));
+
+const trimestreDeMes = periodo =>
+  Math.floor((Number(periodo.split('-')[1]) - 1) / 3) + 1;
+
+// Pivotea {motivo/detalle, periodo, cantidad} (lo que trae *_por_mes) a
+// series por nombre, recortadas al trimestre clickeado -- el periodo trae el
+// anio (p. ej. "2026-04"), asi que si el filtro de Año esta en "Todos" cada
+// anio del trimestre aparece como su propia columna en vez de sumarse.
+const pivotPorMes = (filas, campo, trimestre, etiquetaSinDato) => {
+  const delTrimestre = filas.filter(
+    fila => TRIMESTRES_NUMERO[trimestre] === trimestreDeMes(fila.periodo)
+  );
+  const categorias = [
+    ...new Set(delTrimestre.map(fila => fila.periodo)),
+  ].sort();
+  const nombres = [
+    ...new Set(delTrimestre.map(fila => fila[campo] ?? etiquetaSinDato)),
+  ];
+  const series = nombres.map(nombre => ({
+    nombre,
+    valores: categorias.map(
+      periodo =>
+        delTrimestre.find(
+          fila =>
+            (fila[campo] ?? etiquetaSinDato) === nombre &&
+            fila.periodo === periodo
+        )?.cantidad || 0
+    ),
+  }));
+  return { categorias, series };
+};
+
+const seriesMotivoTrimestre = computed(() =>
+  seriesPorTrimestre(
+    datos.value?.motivo_por_trimestre || [],
+    'motivo',
+    t('HELIC3_INDICADORES.DEVOLUCIONES.NO_MOTIVE')
+  )
+);
+const motivoPorMesPivot = computed(() =>
+  trimestreMotivoSeleccionado.value
+    ? pivotPorMes(
+        datos.value?.motivo_por_mes || [],
+        'motivo',
+        trimestreMotivoSeleccionado.value,
+        t('HELIC3_INDICADORES.DEVOLUCIONES.NO_MOTIVE')
+      )
+    : { categorias: [], series: [] }
+);
+
+const seriesDetalleTrimestre = computed(() =>
+  seriesPorTrimestre(
+    datos.value?.detalle_por_trimestre || [],
+    'detalle',
+    t('HELIC3_INDICADORES.DEVOLUCIONES.NO_DETAIL')
+  )
+);
+const detallePorMesPivot = computed(() =>
+  trimestreDetalleSeleccionado.value
+    ? pivotPorMes(
+        datos.value?.detalle_por_mes || [],
+        'detalle',
+        trimestreDetalleSeleccionado.value,
+        t('HELIC3_INDICADORES.DEVOLUCIONES.NO_DETAIL')
+      )
+    : { categorias: [], series: [] }
+);
+
 const ETIQUETA_SIN_DATO = {
   BY_CITY: 'NO_CITY',
   BY_MOTIVE: 'NO_MOTIVE',
@@ -351,6 +455,12 @@ const maxPorCiudad = computed(() =>
   Math.max(1, ...porCiudadConNombre.value.map(fila => fila.cantidad))
 );
 const anchoBarra = cantidad => `${(cantidad / maxPorCiudad.value) * 100}%`;
+
+const maxPorProducto = computed(() =>
+  Math.max(1, ...(datos.value?.por_producto || []).map(fila => fila.cantidad))
+);
+const anchoBarraProducto = cantidad =>
+  `${(cantidad / maxPorProducto.value) * 100}%`;
 
 // "Detalle de clientes y casos" (mismo patron de GarantiasTab.vue): el
 // semaforo ya viene calculado del backend (PLZ-01), aqui solo se traduce a
@@ -824,6 +934,294 @@ const conversacionUrlDe = fila =>
           </div>
         </div>
 
+        <!-- Por producto: tabla + comparativo (paridad con el Dash CX, donde
+        "Producto" es un filtro global mas -- clickear un producto filtra
+        todo el tablero, igual que ciudad). -->
+        <div class="grid grid-cols-1 gap-3 xl:grid-cols-[1.4fr_1fr]">
+          <table
+            class="w-full text-sm rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
+          >
+            <caption class="p-3 caption-top">
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-left text-n-slate-12">
+                  {{ t('HELIC3_INDICADORES.DEVOLUCIONES.BY_PRODUCT') }}
+                </span>
+                <Button
+                  icon="i-lucide-download"
+                  variant="ghost"
+                  color="slate"
+                  size="xs"
+                  :is-loading="descargando.por_producto"
+                  :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+                  @click="descargarCsv('por_producto')"
+                />
+              </div>
+            </caption>
+            <tbody>
+              <tr
+                v-for="fila in datos.por_producto"
+                :key="fila.etiqueta"
+                class="border-t border-n-weak"
+              >
+                <td class="px-3 py-2">
+                  <button
+                    type="button"
+                    class="hover:text-n-brand"
+                    :class="
+                      filtros.producto === fila.etiqueta
+                        ? 'text-n-brand font-medium'
+                        : 'text-n-slate-11'
+                    "
+                    @click="seleccionarProducto(fila.etiqueta)"
+                  >
+                    {{ fila.etiqueta }}
+                  </button>
+                </td>
+                <td class="px-3 py-2 font-medium text-right text-n-slate-12">
+                  {{ fila.cantidad }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div
+            class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
+          >
+            <p class="font-semibold text-n-slate-12">
+              {{ t('HELIC3_INDICADORES.DEVOLUCIONES.BY_PRODUCT_CHART') }}
+            </p>
+            <p class="mt-1 mb-3 text-xs text-n-slate-11">
+              {{
+                t('HELIC3_INDICADORES.DEVOLUCIONES.BY_PRODUCT_CHART_SUBTITLE')
+              }}
+            </p>
+            <ul class="space-y-2">
+              <li
+                v-for="fila in datos.por_producto"
+                :key="fila.etiqueta"
+                class="text-sm"
+              >
+                <button
+                  type="button"
+                  class="block w-full text-start"
+                  @click="seleccionarProducto(fila.etiqueta)"
+                >
+                  <div
+                    class="flex items-baseline justify-between mb-1 gap-2"
+                    :class="
+                      filtros.producto === fila.etiqueta
+                        ? 'text-n-brand font-medium'
+                        : ''
+                    "
+                  >
+                    <span
+                      class="truncate"
+                      :class="
+                        filtros.producto !== fila.etiqueta
+                          ? 'text-n-slate-11'
+                          : ''
+                      "
+                    >
+                      {{ fila.etiqueta }}
+                    </span>
+                    <span class="font-medium tabular-nums text-n-slate-12">
+                      {{ fila.cantidad }}
+                    </span>
+                  </div>
+                  <div class="h-1.5 rounded-full bg-n-slate-4 overflow-hidden">
+                    <div
+                      class="h-full rounded-full bg-n-blue-9"
+                      :style="{ width: anchoBarraProducto(fila.cantidad) }"
+                    />
+                  </div>
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Motivo/Detalle por trimestre (paridad con el Dash CX): matriz
+        T1-T4 + grafico de colores por motivo/detalle; click en un trimestre
+        lo despliega por mes, igual que "Detalle trimestral" de arriba. -->
+        <div
+          v-for="bloque in [
+            {
+              titulo: 'MOTIVE_QUARTER',
+              subtitulo: 'MOTIVE_QUARTER_SUBTITLE',
+              columna: 'MOTIVE_COLUMN',
+              clave: 'motivo_por_trimestre',
+              campo: 'motivo',
+              filas: datos.motivo_por_trimestre,
+              series: seriesMotivoTrimestre,
+              seleccionado: trimestreMotivoSeleccionado,
+              pivot: motivoPorMesPivot,
+              seleccionar: seleccionarTrimestreMotivo,
+            },
+            {
+              titulo: 'DETAIL_QUARTER',
+              subtitulo: 'DETAIL_QUARTER_SUBTITLE',
+              columna: 'DETAIL_COLUMN',
+              clave: 'detalle_por_trimestre',
+              campo: 'detalle',
+              filas: datos.detalle_por_trimestre,
+              series: seriesDetalleTrimestre,
+              seleccionado: trimestreDetalleSeleccionado,
+              pivot: detallePorMesPivot,
+              seleccionar: seleccionarTrimestreDetalle,
+            },
+          ]"
+          :key="bloque.titulo"
+          class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="font-semibold text-n-slate-12">
+                {{ t(`HELIC3_INDICADORES.DEVOLUCIONES.${bloque.titulo}`) }}
+              </p>
+              <p class="mt-1 text-xs text-n-slate-11">
+                {{ t(`HELIC3_INDICADORES.DEVOLUCIONES.${bloque.subtitulo}`) }}
+              </p>
+            </div>
+            <Button
+              icon="i-lucide-download"
+              variant="ghost"
+              color="slate"
+              size="xs"
+              :is-loading="descargando[bloque.clave]"
+              :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+              @click="descargarCsv(bloque.clave)"
+            />
+          </div>
+          <div class="grid grid-cols-1 gap-3 mt-3 xl:grid-cols-[1.4fr_1fr]">
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[28rem] text-sm">
+                <thead class="text-xs text-n-slate-11">
+                  <tr>
+                    <th class="px-3 py-2 text-left font-medium">
+                      {{
+                        t(`HELIC3_INDICADORES.DEVOLUCIONES.${bloque.columna}`)
+                      }}
+                    </th>
+                    <template v-if="!bloque.seleccionado">
+                      <th
+                        v-for="columna in ['T1', 'T2', 'T3', 'T4']"
+                        :key="columna"
+                        class="px-3 py-2 text-right font-medium"
+                      >
+                        {{ columna }}
+                      </th>
+                      <th class="px-3 py-2 text-right font-medium">
+                        {{ t('HELIC3_INDICADORES.DEVOLUCIONES.TOTAL_COLUMN') }}
+                      </th>
+                    </template>
+                    <th
+                      v-for="periodo in bloque.seleccionado
+                        ? bloque.pivot.categorias
+                        : []"
+                      :key="periodo"
+                      class="px-3 py-2 text-right font-medium"
+                    >
+                      {{ periodo }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template v-if="!bloque.seleccionado">
+                    <tr
+                      v-for="fila in bloque.filas"
+                      :key="fila[bloque.campo] ?? 'sin-dato'"
+                      class="border-t border-n-weak"
+                    >
+                      <td class="px-3 py-2 text-n-slate-11">
+                        {{
+                          etiquetaDe(
+                            bloque.titulo === 'MOTIVE_QUARTER'
+                              ? 'BY_MOTIVE'
+                              : 'BY_DETAIL',
+                            fila[bloque.campo]
+                          )
+                        }}
+                      </td>
+                      <td
+                        class="px-3 py-2 text-right tabular-nums text-n-slate-11"
+                      >
+                        {{ fila.t1 }}
+                      </td>
+                      <td
+                        class="px-3 py-2 text-right tabular-nums text-n-slate-11"
+                      >
+                        {{ fila.t2 }}
+                      </td>
+                      <td
+                        class="px-3 py-2 text-right tabular-nums text-n-slate-11"
+                      >
+                        {{ fila.t3 }}
+                      </td>
+                      <td
+                        class="px-3 py-2 text-right tabular-nums text-n-slate-11"
+                      >
+                        {{ fila.t4 }}
+                      </td>
+                      <td
+                        class="px-3 py-2 text-right font-medium tabular-nums text-n-slate-12"
+                      >
+                        {{ fila.total }}
+                      </td>
+                    </tr>
+                  </template>
+                  <template v-else>
+                    <tr
+                      v-for="serie in bloque.pivot.series"
+                      :key="serie.nombre"
+                      class="border-t border-n-weak"
+                    >
+                      <td class="px-3 py-2 text-n-slate-11">
+                        {{ serie.nombre }}
+                      </td>
+                      <td
+                        v-for="(valor, indice) in serie.valores"
+                        :key="indice"
+                        class="px-3 py-2 text-right tabular-nums text-n-slate-11"
+                      >
+                        {{ valor }}
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <Button
+                v-if="bloque.seleccionado"
+                variant="faded"
+                color="slate"
+                size="xs"
+                icon="i-lucide-arrow-left"
+                :label="t('HELIC3_INDICADORES.DEVOLUCIONES.BACK_TO_QUARTERS')"
+                class="mb-2"
+                @click="bloque.seleccionar(bloque.seleccionado)"
+              />
+              <MultiSeriesBarChart
+                :categories="
+                  bloque.seleccionado
+                    ? bloque.pivot.categorias
+                    : ['T1', 'T2', 'T3', 'T4']
+                "
+                :series="
+                  bloque.seleccionado ? bloque.pivot.series : bloque.series
+                "
+                :selected-category="bloque.seleccionado"
+                :aria-label="
+                  t(`HELIC3_INDICADORES.DEVOLUCIONES.${bloque.titulo}`)
+                "
+                @select-category="
+                  categoria =>
+                    !bloque.seleccionado && bloque.seleccionar(categoria)
+                "
+              />
+            </div>
+          </div>
+        </div>
+
         <!-- Otros desgloses -->
         <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <table
@@ -842,11 +1240,6 @@ const conversacionUrlDe = fila =>
                 titulo: 'BY_STAGE',
                 clave: 'por_proceso',
                 filas: datos.por_proceso,
-              },
-              {
-                titulo: 'BY_PRODUCT',
-                clave: 'por_producto',
-                filas: datos.por_producto,
               },
             ]"
             :key="seccion.titulo"
