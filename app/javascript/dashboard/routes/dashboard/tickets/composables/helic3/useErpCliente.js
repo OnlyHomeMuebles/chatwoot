@@ -33,6 +33,14 @@ export function useErpCliente(form) {
 
   const tieneBadge = campo => Boolean(badges[campo]);
 
+  // ERP-05: Siesa trae nombre, telefono, correo y direccion; la ciudad llega como codigo (no
+  // nombre), asi que por ahora no se llena. Si la consulta encontro al cliente y el campo quedo
+  // vacio sin badge, es que Siesa no lo trae: se avisa para que el agente lo llene a mano. No se
+  // hardcodea la lista de campos; cuando la ciudad se traduzca (catalogo DANE), le pondra badge y
+  // este aviso desaparece solo.
+  const sinDato = campo =>
+    estado.value === 'encontrado' && !badges[campo] && !form[campo];
+
   const llenar = cliente => {
     Object.entries(CAMPOS).forEach(([campo, atributo]) => {
       const valor = cliente[atributo];
@@ -103,6 +111,7 @@ export function useErpCliente(form) {
     estado,
     isPending,
     tieneBadge,
+    sinDato,
     consultar,
     alEditar,
     alCambiarCedula,

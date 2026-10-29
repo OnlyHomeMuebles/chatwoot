@@ -97,6 +97,7 @@ RSpec.describe Helic3::Erp do
                         SIESA_HUB_BASE_URL: 'https://qa.siesahub.com',
                         SIESA_HUB_CLIENT_ID: 'cid', SIESA_HUB_CONNI_KEY: 'key',
                         SIESA_HUB_CONNI_TOKEN: 'tok', SIESA_HUB_ID_COMPANIA: '1',
+                        SIESA_HUB_CONSULTA_CLIENTES: 'API_v2_Terceros',
                         SIESA_HUB_CONSULTA_COMPRAS: 'compras' do
         expect(described_class.adapter.class.name).to eq('Helic3::Erp::SiesaHubAdapter')
       end

@@ -146,6 +146,34 @@ describe('useErpCliente', () => {
     expect(facturas).toEqual(FACTURAS);
   });
 
+  it('sinDato: con Terceros (solo nombre) avisa los campos que Siesa no trae', async () => {
+    // Terceros trae el nombre pero no telefono/correo/ciudad/direccion.
+    TicketsAPI.consultarErpCliente.mockResolvedValue({
+      data: { encontrado: true, cliente: { cedula: '1092852257', nombre: 'Samuel Marin' } },
+    });
+    const form = nuevoForm();
+    form.cedula = '1092852257';
+    const erp = useErpCliente(form);
+
+    await erp.consultar();
+
+    expect(erp.sinDato('cliente_telefono')).toBe(true);
+    expect(erp.sinDato('ciudad')).toBe(true);
+    expect(erp.sinDato('direccion')).toBe(true);
+    expect(erp.sinDato('cliente_email')).toBe(true);
+    // el nombre si vino (tiene badge): no se avisa como faltante.
+    expect(erp.sinDato('cliente_nombre')).toBe(false);
+  });
+
+  it('sinDato es false si el agente ya escribio el campo, y antes de consultar', () => {
+    const form = nuevoForm();
+    const erp = useErpCliente(form);
+    expect(erp.sinDato('ciudad')).toBe(false); // estado idle, no se consulto
+
+    form.ciudad = 'Armenia';
+    expect(erp.sinDato('ciudad')).toBe(false); // tiene valor
+  });
+
   it('consultadoErp es true solo si la ultima consulta exitosa fue con la cedula actual', async () => {
     TicketsAPI.consultarErpCliente.mockResolvedValue({
       data: { encontrado: true, cliente: CLIENTE },

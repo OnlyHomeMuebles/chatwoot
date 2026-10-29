@@ -19,12 +19,12 @@ module Helic3::Erp
   # Credenciales y datos de conexion de Siesa Hub. Son secretos e infraestructura
   # (se configuran en Dokploy), NO valores de negocio: por eso van por ENV y nunca a
   # catalogo ni a Parametro, ni al repositorio.
-  # v1 (ERP-05): el adaptador consulta compras (SIESA_HUB_CONSULTA_COMPRAS) y el cliente se
-  # llena a mano. La consulta de clientes (SIESA_HUB_CONSULTA_CLIENTES) se exige en ERP-12,
-  # cuando find_customer la use: no se pide un secreto que el codigo todavia no lee.
+  # ERP-05: el adaptador usa DOS consultas: clientes (SIESA_HUB_CONSULTA_CLIENTES, para el
+  # nombre de cualquier cedula) y compras (SIESA_HUB_CONSULTA_COMPRAS, para las facturas). La
+  # ventana de compras NO es variable de entorno: la decide la cuenta (parametro erp_meses_compras).
   VARIABLES_SIESA = %w[
-    SIESA_HUB_BASE_URL SIESA_HUB_CLIENT_ID SIESA_HUB_CONNI_KEY
-    SIESA_HUB_CONNI_TOKEN SIESA_HUB_ID_COMPANIA SIESA_HUB_CONSULTA_COMPRAS
+    SIESA_HUB_BASE_URL SIESA_HUB_CLIENT_ID SIESA_HUB_CONNI_KEY SIESA_HUB_CONNI_TOKEN
+    SIESA_HUB_ID_COMPANIA SIESA_HUB_CONSULTA_CLIENTES SIESA_HUB_CONSULTA_COMPRAS
   ].freeze
 
   module_function
