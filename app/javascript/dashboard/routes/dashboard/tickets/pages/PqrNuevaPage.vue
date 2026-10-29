@@ -17,6 +17,8 @@ import Select from 'dashboard/components-next/select/Select.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 // ERP-11: consulta del cliente por cedula contra el ERP (ERP-08) para autocompletar.
 import { useErpCliente } from '../composables/helic3/useErpCliente';
+// ERP-15: selector de facturas + productos del cliente contra el ERP.
+import { useErpFacturas } from '../composables/helic3/useErpFacturas';
 import ErpBadge from '../components/helic3/ErpBadge.vue';
 
 const store = useStore();
@@ -64,6 +66,30 @@ const vieneDeConversacion = computed(() => !!conversationDisplayId);
 // ERP-11: el boton "Consultar Siesa" aparece solo si el ERP esta encendido (ERP-04).
 const erp = useErpCliente(form);
 const erpHabilitado = computed(() => Boolean(catalogos.value.erp_habilitado));
+
+// ERP-15: una sola peticion trae el cliente (ERP-11) y sus facturas; se reparte la lista
+// al selector. Si la consulta se cancela (null), no se toca el selector: lo maneja la nueva.
+const facturasErp = useErpFacturas(form);
+const consultarSiesa = async ({ refrescar = false } = {}) => {
+  const facturas = await erp.consultar({ refrescar });
+  if (facturas !== null) facturasErp.recibir(facturas);
+};
+// ERP-14: "Volver a consultar" salta el cache de 24h; sirve cuando la factura entro a Siesa
+// despues de la primera consulta. Visible solo cuando ya hubo un resultado.
+const reconsultarSiesa = () => consultarSiesa({ refrescar: true });
+const hayConsultaErp = computed(
+  () => !['idle', 'consultando'].includes(erp.estado.value)
+);
+// ERP-15 (m1): total de la factura y valor de cada producto en pesos.
+const moneda = valor =>
+  valor == null
+    ? ''
+    : `$${Number(valor).toLocaleString('es-CO', { maximumFractionDigits: 0 })}`;
+// Cambiar la cedula limpia ambos (no mezclar cliente ni facturas de dos personas).
+const alCambiarCedula = () => {
+  erp.alCambiarCedula();
+  facturasErp.limpiar();
+};
 
 // Aviso segun el resultado de la consulta; ningun estado bloquea "Crear PQR".
 const AVISOS_ERP = {
@@ -239,6 +265,9 @@ const crear = async () => {
           producto_nombre: form.producto_nombre,
           producto_referencia: form.producto_referencia,
           factura_fecha: form.factura_fecha || null,
+          // ERP-15 (B3): los productos elegidos en el selector (uno o varios de una factura);
+          // el backend los cruza contra el cache y marca cuales son de Siesa.
+          productos: facturasErp.productosElegidos(),
         },
       },
     };
@@ -283,6 +312,10 @@ defineExpose({
   erp,
   erpHabilitado,
   avisoErp,
+  facturasErp,
+  consultarSiesa,
+  reconsultarSiesa,
+  hayConsultaErp,
 });
 </script>
 
@@ -496,18 +529,28 @@ defineExpose({
                       v-model="form.cedula"
                       class="flex-1"
                       :placeholder="t('TICKETS.NUEVA.CLIENTE.CEDULA_PH')"
-                      @update:model-value="erp.alCambiarCedula()"
-                      @keyup.enter="erp.consultar()"
+                      @update:model-value="alCambiarCedula()"
+                      @keyup.enter="consultarSiesa()"
                     />
                     <Button
-                      v-if="erpHabilitado"
+                      v-if="erpHabilitado && !hayConsultaErp"
                       type="button"
                       :label="t('TICKETS.NUEVA.CLIENTE.CONSULTAR_SIESA')"
                       icon="i-lucide-search"
                       :is-loading="erp.isPending.value"
                       :disabled="!form.cedula"
                       faded
-                      @click="erp.consultar()"
+                      @click="consultarSiesa()"
+                    />
+                    <Button
+                      v-if="erpHabilitado && hayConsultaErp"
+                      type="button"
+                      :label="t('TICKETS.NUEVA.CLIENTE.RECONSULTAR')"
+                      icon="i-lucide-refresh-cw"
+                      :is-loading="erp.isPending.value"
+                      :disabled="!form.cedula"
+                      faded
+                      @click="reconsultarSiesa()"
                     />
                   </div>
                   <span v-if="avisoErp" class="text-xs" :class="avisoErpClase">
@@ -544,6 +587,85 @@ defineExpose({
                     @update:model-value="erp.alEditar('cliente_email')"
                   />
                   <ErpBadge v-if="erp.tieneBadge('cliente_email')" />
+                </div>
+              </div>
+            </section>
+
+            <!-- ERP-15: facturas + productos de Siesa. Al elegir se llenan los campos de
+                 "Compra" de abajo; si no esta en la lista, se escriben a mano. Aparece
+                 solo cuando la consulta trajo facturas. -->
+            <section
+              v-if="facturasErp.facturas.value.length"
+              class="overflow-hidden border rounded-lg border-n-weak bg-n-solid-1"
+            >
+              <div class="px-5 py-4 border-b border-n-weak">
+                <h2 class="mb-0 text-sm font-semibold text-n-slate-12">
+                  {{ t('TICKETS.NUEVA.COMPRA.SELECTOR_TITLE') }}
+                </h2>
+                <p class="mt-1 mb-0 text-xs text-n-slate-11">
+                  {{ t('TICKETS.NUEVA.COMPRA.SELECTOR_HINT') }}
+                </p>
+              </div>
+              <div class="flex flex-col gap-4 px-5 py-5">
+                <div
+                  v-for="factura in facturasErp.facturas.value"
+                  :key="factura.numero"
+                  class="border rounded-lg border-n-weak"
+                >
+                  <div
+                    class="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-n-weak bg-n-alpha-1"
+                  >
+                    <span class="text-xs font-semibold text-n-slate-12">{{
+                      factura.numero
+                    }}</span>
+                    <span class="text-xs text-n-slate-11">{{ factura.fecha }}</span>
+                    <span
+                      v-if="factura.centro_operacion"
+                      class="text-xs text-n-slate-11"
+                    >
+                      · {{ factura.centro_operacion }}
+                    </span>
+                    <span
+                      v-if="factura.total != null"
+                      class="ml-auto text-xs font-semibold text-n-slate-12"
+                    >
+                      {{ moneda(factura.total) }}
+                    </span>
+                  </div>
+                  <div
+                    v-for="(item, idx) in factura.items"
+                    :key="`${factura.numero}-${item.referencia}-${idx}`"
+                    class="flex items-center gap-3 px-4 py-2.5"
+                  >
+                    <div class="flex-1 min-w-0">
+                      <p class="mb-0 text-sm break-words text-n-slate-12">
+                        {{ item.descripcion }}
+                      </p>
+                      <p class="mb-0 text-xs text-n-slate-11">
+                        {{ item.referencia }} ·
+                        {{ t('TICKETS.NUEVA.COMPRA.SELECTOR_CANT', { n: item.cantidad }) }}
+                        <template v-if="item.valor != null">
+                          · {{ moneda(item.valor) }}</template
+                        >
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      faded
+                      :label="
+                        facturasErp.estaElegido(factura, idx)
+                          ? t('TICKETS.NUEVA.COMPRA.SELECTOR_ELEGIDO')
+                          : t('TICKETS.NUEVA.COMPRA.SELECTOR_ELEGIR')
+                      "
+                      :class="
+                        facturasErp.estaElegido(factura, idx)
+                          ? '!bg-n-blue-3 !text-n-blue-11'
+                          : ''
+                      "
+                      @click="facturasErp.alternar(factura, idx)"
+                    />
+                  </div>
                 </div>
               </div>
             </section>

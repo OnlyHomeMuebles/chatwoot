@@ -98,6 +98,7 @@
         "CORREO": "Correo electrónico",
         "CORREO_PH": "correo{'@'}ejemplo.com",
         "CONSULTAR_SIESA": "Consultar Siesa",
+        "RECONSULTAR": "Volver a consultar",
         "BADGE_SIESA": "Siesa",
         "ERP_ENCONTRADO": "Cliente encontrado en Siesa",
         "ERP_NO_ENCONTRADO": "No está en Siesa: llena los datos a mano",
@@ -112,7 +113,12 @@
         "PRODUCTO": "Producto",
         "PRODUCTO_PH": "Nombre del producto",
         "REFERENCIA": "Referencia",
-        "REFERENCIA_PH": "Referencia o código del producto"
+        "REFERENCIA_PH": "Referencia o código del producto",
+        "SELECTOR_TITLE": "Facturas en Siesa",
+        "SELECTOR_HINT": "Elige la factura y uno o más productos que reclama. Si no están en la lista, escríbelos abajo.",
+        "SELECTOR_ELEGIR": "Elegir",
+        "SELECTOR_ELEGIDO": "Elegido",
+        "SELECTOR_CANT": "Cant: {n}"
       },
       "DIRECCION": {
         "TITLE": "Dirección actual",

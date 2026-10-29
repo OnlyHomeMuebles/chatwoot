@@ -2,8 +2,8 @@
 
 # ERP-08: al radicar con consultado_erp, escribe en la ficha lo que trajo el ERP con
 # fuente erp, y del bloque que mando el agente solo lo que CAMBIO (o lo que el ERP no
-# trae) con fuente humano. El backend RECONSULTA el adaptador (no confia en que el
-# frontend diga que un dato vino de Siesa) y, si el ERP falla, deja todo humano: el
+# trae) con fuente humano. El backend relee el ERP por el cache (ERP-14), no confia en que
+# el frontend diga que un dato vino de Siesa; y si el ERP falla, deja todo humano: el
 # ERP nunca bloquea una radicacion.
 class Helic3::Casos::RegistrarClienteErp
   # Customer (ERP) -> campos de la ficha (Helic3::TicketDato).
@@ -39,7 +39,9 @@ class Helic3::Casos::RegistrarClienteErp
     cedula = @datos[:cedula]
     return nil if cedula.blank?
 
-    Helic3::Erp.adapter.find_customer(cedula: cedula)
+    # ERP-14: lee del cache (lo que el wizard ya consulto); solo llama a Siesa si no hay
+    # resultado vigente. Antes re-llamaba al adaptador en cada radicacion.
+    Helic3::Erp::Cache.consultar(account: @ticket.account, cedula: cedula).cliente
   rescue StandardError => e
     Rails.logger.warn("[ERP-08] ERP no disponible al radicar ticket #{@ticket.id}: #{e.class.name}")
     nil

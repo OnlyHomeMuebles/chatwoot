@@ -277,6 +277,8 @@ const onResultadoElegido = resultadoId => {
   if (resultado?.abre_garantia) {
     const d = expediente.value?.datos || {};
     garantiaDialogRef.value?.open(expediente.value, resultadoId, {
+      // ERP-15: una fila por producto de la ficha; fallback al producto unico si no hay lista.
+      productos: d.productos || [],
       producto_nombre: d.producto_nombre?.valor || '',
       producto_referencia: d.producto_referencia?.valor || '',
       ciudad_nombre: d.ciudad?.valor || '',

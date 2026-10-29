@@ -140,6 +140,8 @@ class Helic3::Catalogo::SeederService
     { clave: 'umbral_confianza_agente', valor: '85', unidad: 'porcentaje' },
     { clave: 'exigir_direccion_confirmada', valor: 'true', unidad: 'booleano' },
     { clave: 'mostrar_solo_ticket_garantia', valor: 'true', unidad: 'booleano' },
+    # ERP-14: vigencia del cache del ERP (helic3_erp_consultas). Editable desde el panel.
+    { clave: 'erp_cache_horas', valor: '24', unidad: 'cantidad' },
     # H3A-12: bandera del runner de agentes editables. Apagada por defecto (L-09).
     # Se siembra aqui para que se pueda PRENDER desde el panel (update del parametro),
     # sin un INSERT por consola. La lee Helic3::Agents::FeatureFlag.

@@ -132,6 +132,20 @@ describe('useErpCliente', () => {
     expect(erp.estado.value).toBe('no_encontrado');
   });
 
+  it('consultar devuelve las facturas de la misma respuesta (una sola peticion, B1)', async () => {
+    const FACTURAS = [{ numero: 'FV-1001', fecha: '2026-05-10', items: [] }];
+    TicketsAPI.consultarErpCliente.mockResolvedValue({
+      data: { encontrado: true, cliente: CLIENTE, facturas: FACTURAS },
+    });
+    const form = nuevoForm();
+    form.cedula = '1032456789';
+    const erp = useErpCliente(form);
+
+    const facturas = await erp.consultar();
+
+    expect(facturas).toEqual(FACTURAS);
+  });
+
   it('consultadoErp es true solo si la ultima consulta exitosa fue con la cedula actual', async () => {
     TicketsAPI.consultarErpCliente.mockResolvedValue({
       data: { encontrado: true, cliente: CLIENTE },

@@ -314,4 +314,64 @@ describe('PqrNuevaPage.vue — ERP (ERP-11)', () => {
     expect(crearApi).toHaveBeenCalled();
     expect(crearApi.mock.calls[0][0].ticket.consultado_erp).toBe(false);
   });
+
+  it('ERP-15/B1/B3: UNA peticion trae cliente + facturas; multi-seleccion de productos', async () => {
+    catalogosRef.value = { ...catalogosRef.value, erp_habilitado: true };
+    // Una sola peticion (#show) devuelve cliente y facturas juntos.
+    consultarErpApi.mockResolvedValue({
+      data: {
+        encontrado: false,
+        facturas: [
+          {
+            numero: 'FV-1001',
+            fecha: '2026-05-10',
+            centro_operacion: 'Armenia Centro',
+            items: [
+              { referencia: 'MIL-200', descripcion: 'Puerta Milano', cantidad: 2, valor: 900000 },
+              { referencia: 'CER-050', descripcion: 'Cerradura Premium', cantidad: 1, valor: 900000 },
+            ],
+          },
+        ],
+      },
+    });
+    const vm = montar().vm;
+    vm.form.cedula = '26478046';
+
+    await vm.consultarSiesa();
+    await flushPromises();
+
+    expect(consultarErpApi).toHaveBeenCalledTimes(1); // B1: una sola peticion, no dos
+    const facturas = vm.facturasErp.facturas.value;
+    expect(facturas).toHaveLength(1);
+
+    // B3: se eligen DOS productos de la misma factura.
+    vm.facturasErp.alternar(facturas[0], 0);
+    vm.facturasErp.alternar(facturas[0], 1);
+
+    expect(vm.form.numero_orden).toBe('FV-1001');
+    expect(vm.form.factura_fecha).toBe('2026-05-10');
+    expect(vm.facturasErp.productosElegidos()).toEqual([
+      { nombre: 'Puerta Milano', referencia: 'MIL-200' },
+      { nombre: 'Cerradura Premium', referencia: 'CER-050' },
+    ]);
+  });
+
+  it('ERP-14: "Volver a consultar" aparece tras un resultado y reconsulta con refrescar', async () => {
+    catalogosRef.value = { ...catalogosRef.value, erp_habilitado: true };
+    consultarErpApi.mockResolvedValue({
+      data: { encontrado: true, cliente: { nombre: 'Ana' }, facturas: [] },
+    });
+    const vm = montar().vm;
+    vm.form.cedula = '26478046';
+
+    await vm.consultarSiesa();
+    await flushPromises();
+    expect(vm.hayConsultaErp).toBe(true); // ya hay resultado -> se muestra "Volver a consultar"
+
+    consultarErpApi.mockClear();
+    await vm.reconsultarSiesa();
+    await flushPromises();
+
+    expect(consultarErpApi).toHaveBeenCalledWith('26478046', expect.anything(), { refrescar: true });
+  });
 });

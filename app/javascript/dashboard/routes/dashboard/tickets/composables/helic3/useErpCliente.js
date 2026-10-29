@@ -45,17 +45,20 @@ export function useErpCliente(form) {
     });
   };
 
-  const consultar = async () => {
+  // Devuelve las facturas de la misma respuesta (una sola peticion trae cliente + facturas),
+  // o null si no hubo respuesta usable (cedula vacia, consulta cancelada), para que el que
+  // llama no pise el selector con una lista vacia.
+  const consultar = async ({ refrescar = false } = {}) => {
     const cedula = (form.cedula || '').trim();
-    if (!cedula) return;
+    if (!cedula) return null;
 
     estado.value = 'consultando';
     try {
       const respuesta = await run(
-        signal => TicketsAPI.consultarErpCliente(cedula, signal),
+        signal => TicketsAPI.consultarErpCliente(cedula, signal, { refrescar }),
         { onAbort: null }
       );
-      if (respuesta === null) return; // la cancelo una consulta mas nueva
+      if (respuesta === null) return null; // la cancelo una consulta mas nueva
 
       if (respuesta.data.encontrado) {
         llenar(respuesta.data.cliente);
@@ -64,10 +67,12 @@ export function useErpCliente(form) {
       } else {
         estado.value = 'no_encontrado';
       }
+      return respuesta.data.facturas || [];
     } catch (error) {
-      if (isAbortError(error)) return;
+      if (isAbortError(error)) return null;
       estado.value =
         error?.response?.status === 422 ? 'cedula_invalida' : 'no_disponible';
+      return [];
     }
   };
 
