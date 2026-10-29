@@ -13,6 +13,9 @@ RSpec.describe Helic3::Erp::SiesaHubCliente do
 
   let(:url) { 'https://apiqa.siesacloud.com/siesahub/siesa/estandar/consulta/v3' }
 
+  # Los reintentos no deben dormir de verdad en las pruebas.
+  before { allow(cliente).to receive(:sleep) }
+
   it 'manda credenciales en headers + filtro en parametros y devuelve el JSON (codigo 0)' do
     peticion = stub_request(:get, url)
                .with(query: hash_including('descripcion' => 'API_v2_Ventas_Facturas_DesdePedido',
@@ -60,5 +63,30 @@ RSpec.describe Helic3::Erp::SiesaHubCliente do
 
     expect { cliente.consultar(descripcion: 'X', parametros: 'y') }
       .to raise_error(described_class::ErrorConsulta)
+  end
+
+  it 'ErrorConsulta es un NoDisponible (contrato del modulo)' do
+    expect(described_class::ErrorConsulta.ancestors).to include(Helic3::Erp::NoDisponible)
+  end
+
+  it 'reintenta ante un 5xx transitorio y devuelve el cuerpo si luego responde' do
+    stub_request(:get, url).with(query: hash_including({}))
+                           .to_return({ status: 503, body: 'down' },
+                                      { status: 200,
+                                        body: { 'codigo' => 0, 'detalle' => { 'Table' => [] } }.to_json,
+                                        headers: { 'Content-Type' => 'application/json' } })
+
+    expect(cliente.consultar(descripcion: 'X', parametros: 'y')['codigo']).to eq(0)
+  end
+
+  it 'avisa en el log si la pagina llega llena (puede faltar paginar)' do
+    filas = Array.new(100) { { 'f350_rowid' => 1 } }
+    stub_request(:get, url).with(query: hash_including({}))
+                           .to_return(status: 200,
+                                      body: { 'codigo' => 0, 'detalle' => { 'Table' => filas } }.to_json,
+                                      headers: { 'Content-Type' => 'application/json' })
+    expect(Rails.logger).to receive(:warn).with(/pagina llena/)
+
+    cliente.consultar(descripcion: 'X', parametros: 'y', tam_pag: 100)
   end
 end
