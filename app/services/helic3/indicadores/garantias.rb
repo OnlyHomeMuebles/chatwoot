@@ -48,23 +48,55 @@ class Helic3::Indicadores::Garantias
   # ordenada por urgencia (vencidas primero, solucionadas al final, igual que
   # el mockup) y paginada -- es la unica seccion de Indicadores que no es un
   # agregado, asi que vive en su propio metodo en vez de en #call.
+  #
+  # N1 (encontrado probando la paginacion en vivo): ordenar por urgencia
+  # obliga a recorrer TODAS las garantias filtradas, no solo las 7 de la
+  # pagina. Dos fixes de desempeño sobre la primera version:
+  #   1. numero_radicado/cliente/centro/proceso (fila_de_caso) solo hacen
+  #      falta para esas 7 -- antes se armaba la fila completa para las
+  #      ~1250 garantias y se descartaban casi todas; numero_radicado
+  #      consulta Catalogo::Parametro por cada llamada, eran 1250 consultas
+  #      N+1 solo para ordenar.
+  #   2. Ordenar solo necesita items/proceso (resuelta?/presupuesto); NO
+  #      necesita cobertura_ciudad ni ticket->conversation->contact. Precargar
+  #      esas dos asociaciones para las ~1250 garantias cuando solo 7 las
+  #      usan es trabajo tirado -- se precargan aparte, solo para la pagina
+  #      final.
   def casos(pagina: 1)
     calendario = Helic3::CalendarioHabil.new
     parametros = Helic3::ParametrosGarantia.desde_catalogo(account, ambito: :garantia)
-    filas = garantias_filtradas
-            .includes(:cobertura_ciudad, items: :proceso, ticket: { conversation: :contact })
-            .map { |garantia| fila_de_caso(garantia, parametros, calendario) }
-            .sort_by { |fila| [fila.delete(:rango_urgencia), fila[:id]] }
-    paginar_casos(filas, pagina)
+    ordenadas = garantias_filtradas
+                .includes(items: :proceso)
+                .map { |garantia| clave_urgencia(garantia, parametros, calendario) }
+                .sort_by { |clave| [clave[:rango], clave[:garantia_id]] }
+    paginar_casos(ordenadas, pagina)
   end
 
   private
 
   attr_reader :account, :filtros
 
-  def fila_de_caso(garantia, parametros, calendario)
+  # Solo lo necesario para ordenar (sin tocar numero_radicado ni las demas
+  # columnas de despliegue): resuelta?/presupuesto ya estan en memoria
+  # gracias al include de #casos, ninguno dispara una consulta por garantia.
+  def clave_urgencia(garantia, parametros, calendario)
     resuelta = garantia.resuelta?
     presupuesto = resuelta ? nil : garantia.presupuesto(parametros: parametros, calendario: calendario)
+    { garantia_id: garantia.id, resuelta: resuelta, presupuesto: presupuesto,
+      rango: rango_urgencia_de_caso(resuelta, presupuesto) }
+  end
+
+  # Re-consulta solo las garantias de la pagina final, ahora si con
+  # cobertura_ciudad/ticket->conversation->contact precargados -- 7 filas,
+  # no ~1250.
+  def filas_de_pagina(claves)
+    garantias = Helic3::Garantia.where(id: claves.pluck(:garantia_id))
+                                .includes(:cobertura_ciudad, items: :proceso, ticket: { conversation: :contact })
+                                .index_by(&:id)
+    claves.map { |clave| fila_de_caso(garantias.fetch(clave[:garantia_id]), clave) }
+  end
+
+  def fila_de_caso(garantia, clave)
     conversacion = garantia.ticket.conversation
     {
       id: garantia.id,
@@ -72,10 +104,9 @@ class Helic3::Indicadores::Garantias
       cliente: conversacion&.contact&.name,
       centro_operacion: garantia.cobertura_ciudad&.nombre,
       proceso: garantia.proceso_visible&.nombre,
-      etapa: resuelta ? 'solucionada' : 'en_gestion',
+      etapa: clave[:resuelta] ? 'solucionada' : 'en_gestion',
       conversation_display_id: conversacion&.display_id,
-      vencimiento: vencimiento_de_caso(resuelta, presupuesto),
-      rango_urgencia: rango_urgencia_de_caso(resuelta, presupuesto)
+      vencimiento: vencimiento_de_caso(clave[:resuelta], clave[:presupuesto])
     }
   end
 
@@ -95,12 +126,13 @@ class Helic3::Indicadores::Garantias
     RANGO_URGENCIA.fetch(presupuesto.semaforo, RANGO_URGENCIA[:sin_presupuesto])
   end
 
-  def paginar_casos(filas, pagina)
-    total = filas.size
+  def paginar_casos(claves, pagina)
+    total = claves.size
     paginas = [(total.to_f / POR_PAGINA_CASOS).ceil, 1].max
     pagina_actual = pagina.to_i.clamp(1, paginas)
     inicio = (pagina_actual - 1) * POR_PAGINA_CASOS
-    { casos: filas.slice(inicio, POR_PAGINA_CASOS) || [], pagina: pagina_actual, paginas: paginas, total: total }
+    pagina_de_claves = claves.slice(inicio, POR_PAGINA_CASOS) || []
+    { casos: filas_de_pagina(pagina_de_claves), pagina: pagina_actual, paginas: paginas, total: total }
   end
 
   def kpis

@@ -6,7 +6,7 @@ class Api::V1::Accounts::Helic3::CargasController < Api::V1::Accounts::BaseContr
   before_action :check_admin_authorization?
 
   def index
-    @cargas = Helic3::Carga.where(account: Current.account).order(created_at: :desc)
+    @cargas = Helic3::Carga.where(account: Current.account).includes(:usuario).order(created_at: :desc)
   end
 
   def create
