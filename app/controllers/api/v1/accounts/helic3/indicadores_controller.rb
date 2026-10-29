@@ -20,12 +20,23 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
     @indicadores = Helic3::Indicadores::Todas.call(account: Current.account, filtros: filtros_todas)
   end
 
+  # IND-06: Devolucion, expediente hermano de Garantia (ver
+  # Helic3::Indicadores::Devoluciones).
+  def devoluciones
+    @indicadores = Helic3::Indicadores::Devoluciones.call(account: Current.account, filtros: filtros_devoluciones)
+  end
+
   # Detalle de clientes y casos (mockup v12): paginado y ordenado por urgencia,
   # con los mismos filtros de #garantias -- se pide aparte porque, a
   # diferencia de los agregados de #garantias, no tiene sentido recalcularlo
   # en cada filtro si lo unico que cambio fue la pagina.
   def garantias_casos
     servicio = Helic3::Indicadores::Garantias.new(account: Current.account, filtros: filtros_garantias)
+    @casos = servicio.casos(pagina: params[:pagina])
+  end
+
+  def devoluciones_casos
+    servicio = Helic3::Indicadores::Devoluciones.new(account: Current.account, filtros: filtros_devoluciones)
     @casos = servicio.casos(pagina: params[:pagina])
   end
 
@@ -49,6 +60,15 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
 
     datos = Helic3::Indicadores::Pqr.call(account: Current.account, filtros: filtros_pqr)
     enviar_csv("indicadores-pqr-#{params[:seccion]}", *filas_pqr(datos, params[:seccion]))
+  end
+
+  SECCIONES_DEVOLUCIONES = %w[mensual trimestral por_ciudad por_motivo por_detalle por_proceso por_producto].freeze
+
+  def devoluciones_csv
+    return render_seccion_invalida unless SECCIONES_DEVOLUCIONES.include?(params[:seccion])
+
+    datos = Helic3::Indicadores::Devoluciones.call(account: Current.account, filtros: filtros_devoluciones)
+    enviar_csv("indicadores-devoluciones-#{params[:seccion]}", *filas_devoluciones(datos, params[:seccion]))
   end
 
   private
@@ -76,6 +96,13 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
     params.permit(*FILTROS_TODAS).to_h.symbolize_keys
   end
 
+  FILTROS_DEVOLUCIONES = %i[anio mes cobertura_ciudad_id motivo_devolucion_id detalle_tipificado_id proceso_id
+                            producto].freeze
+
+  def filtros_devoluciones
+    params.permit(*FILTROS_DEVOLUCIONES).to_h.symbolize_keys
+  end
+
   def render_seccion_invalida
     render json: { error: 'seccion invalida o faltante' }, status: :unprocessable_entity
   end
@@ -96,11 +123,22 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
   }.freeze
 
   def filas_garantias(datos, seccion)
+    filas_radicado_periodo(datos, seccion, 'Garantías')
+  end
+
+  def filas_devoluciones(datos, seccion)
+    filas_radicado_periodo(datos, seccion, 'Devoluciones')
+  end
+
+  # mensual/trimestral de Garantias y Devoluciones tienen la misma forma
+  # (periodo, cantidad, solucionadas, en_proceso) -- solo cambia el nombre de
+  # la columna de cantidad.
+  def filas_radicado_periodo(datos, seccion, etiqueta_cantidad)
     case seccion
     when 'mensual', 'trimestral'
       periodo_encabezado = seccion == 'mensual' ? 'Mes' : 'Trimestre'
       filas = datos[seccion.to_sym].map { |f| [f[:periodo], f[:cantidad], f[:solucionadas], f[:en_proceso]] }
-      [[periodo_encabezado, 'Garantías', 'Solucionadas', 'En proceso'], filas]
+      [[periodo_encabezado, etiqueta_cantidad, 'Solucionadas', 'En proceso'], filas]
     else
       filas_etiqueta_cantidad(datos[seccion.to_sym], seccion)
     end

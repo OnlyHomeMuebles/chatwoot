@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import { useAdmin } from 'dashboard/composables/useAdmin';
 
-// IND-01/IND-02/IND-03: contenedor de la seccion "Indicadores" -- la barra de
+// IND-01/IND-02/IND-03/IND-06: contenedor de la seccion "Indicadores" -- la barra de
 // pestañas (una URL compartible por pestaña, via router children) y el
 // contenido de la pestaña activa. Una pestaña aparece SOLO cuando su ticket
 // se integra; nada de pestañas vacías ni avisos de "próximamente". "Todas
@@ -29,6 +29,10 @@ const TABS = computed(() => {
     {
       name: 'helic3_indicadores_pqr',
       label: t('HELIC3_INDICADORES.TABS.PQR'),
+    },
+    {
+      name: 'helic3_indicadores_devoluciones',
+      label: t('HELIC3_INDICADORES.TABS.DEVOLUCIONES'),
     },
     {
       name: 'helic3_indicadores_todas',

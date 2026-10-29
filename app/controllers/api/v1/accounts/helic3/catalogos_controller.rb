@@ -8,6 +8,7 @@ class Api::V1::Accounts::Helic3::CatalogosController < Api::V1::Accounts::BaseCo
   def show
     cargar_catalogos_pqr
     cargar_catalogos_garantia
+    cargar_catalogos_devolucion
   end
 
   private
@@ -24,5 +25,11 @@ class Api::V1::Accounts::Helic3::CatalogosController < Api::V1::Accounts::BaseCo
     @motivos_garantia = Helic3::Catalogo::MotivoGarantia.where(account: Current.account).activos
     @detalles_tipificados = Helic3::Catalogo::DetalleTipificado.where(account: Current.account).activos
     @procesos_garantia = Helic3::Catalogo::ProcesoGarantia.where(account: Current.account).activos
+  end
+
+  # IND-06: motivo propio de Devolucion; detalle/proceso se reusan de garantia
+  # (ya van en @detalles_tipificados/@procesos_garantia arriba).
+  def cargar_catalogos_devolucion
+    @motivos_devolucion = Helic3::Catalogo::MotivoDevolucion.where(account: Current.account).activos
   end
 end

@@ -25,6 +25,7 @@ const TIPOS = [
   'detalles_tipificados',
   'motivos_garantia',
   'procesos_garantia',
+  'motivos_devolucion',
   'coberturas_ciudad',
 ];
 const PARAMETROS = 'parametros';
@@ -62,14 +63,15 @@ const CAMPOS = {
     { key: 'es_terminal', tipo: 'bool' },
     { key: 'plazo_dias_habiles', tipo: 'numero' },
   ],
+  motivos_devolucion: [],
   coberturas_ciudad: [
     { key: 'tecnico_propio', tipo: 'bool' },
     { key: 'origen_ruta', tipo: 'texto' },
   ],
 };
 
-// Menu lateral agrupado por ambito (como el mockup): PQR y Garantia. Parametros
-// va como entrada aparte al final. Nueve catalogos en total (ADM-02).
+// Menu lateral agrupado por ambito (como el mockup): PQR, Garantia y
+// Devolucion. Parametros va como entrada aparte al final.
 const GRUPOS = [
   {
     titulo: 'PQR',
@@ -85,6 +87,12 @@ const GRUPOS = [
   {
     titulo: 'GARANTIA',
     items: ['motivos_garantia', 'procesos_garantia', 'coberturas_ciudad'],
+  },
+  {
+    // IND-06: solo el motivo es propio de Devolucion; detalle tipificado y
+    // proceso ya estan arriba (se reusan tal cual de Garantia).
+    titulo: 'DEVOLUCION',
+    items: ['motivos_devolucion'],
   },
 ];
 

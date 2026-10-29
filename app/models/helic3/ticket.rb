@@ -71,6 +71,9 @@ class Helic3::Ticket < ApplicationRecord
   # tiene a lo sumo una. La garantia guarda su belongs_to :ticket desde GAR-01.
   has_one :garantia, class_name: 'Helic3::Garantia', dependent: :destroy, inverse_of: :ticket
 
+  # el radicado de devolucion (IND-06), expediente hermano de garantia.
+  has_one :devolucion, class_name: 'Helic3::Devolucion', dependent: :destroy, inverse_of: :ticket
+
   # la ficha de datos del caso (DAT-01): 1:1, con la procedencia por campo.
   has_one :datos, class_name: 'Helic3::TicketDato', dependent: :destroy, inverse_of: :ticket
 
