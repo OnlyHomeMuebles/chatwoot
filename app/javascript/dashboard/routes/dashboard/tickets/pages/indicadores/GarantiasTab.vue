@@ -290,6 +290,18 @@ const kpiCards = computed(() => [
     descripcion: t('HELIC3_INDICADORES.GARANTIAS.KPI_PRODUCTS_DESC'),
     color: 'text-n-slate-12',
   },
+  {
+    label: t('HELIC3_INDICADORES.GARANTIAS.KPI_INVOICES'),
+    valor: datos.value?.kpis.facturas,
+    descripcion: t('HELIC3_INDICADORES.GARANTIAS.KPI_INVOICES_DESC'),
+    color: 'text-n-blue-11',
+  },
+  {
+    label: t('HELIC3_INDICADORES.GARANTIAS.KPI_RATIO'),
+    valor: datos.value ? `${datos.value.kpis.ratio}%` : undefined,
+    descripcion: t('HELIC3_INDICADORES.GARANTIAS.KPI_RATIO_DESC'),
+    color: 'text-n-violet-11',
+  },
 ]);
 
 // "Recuento vs. ratio" (mockup v12): el mockup traza una linea de
@@ -354,12 +366,14 @@ const porcentajeSolucionadasTrimestre = computed(() =>
 );
 
 // Ajuste visual (mockup v12, seccion "Centro de operacion"): por_ciudad suma
-// una comparacion visual de barras ademas de la tabla -- sin facturas (eso es
-// IND-03), la barra compara CANTIDAD de garantias, no ratio.
-const maxPorCiudad = computed(() =>
-  Math.max(1, ...(datos.value?.por_ciudad || []).map(fila => fila.cantidad))
+// una comparacion visual de barras ademas de la tabla. IND-03: ya hay
+// facturas, asi que la barra compara RATIO (garantias/facturas), igual que
+// "Ratio por tienda" del Dash CX -- antes comparaba CANTIDAD porque no
+// existia el dato.
+const maxRatioPorCiudad = computed(() =>
+  Math.max(1, ...(datos.value?.por_ciudad || []).map(fila => fila.ratio))
 );
-const anchoBarra = cantidad => (cantidad / maxPorCiudad.value) * 100;
+const anchoBarra = ratio => (ratio / maxRatioPorCiudad.value) * 100;
 
 // N3 (revision de Jhan, PR #113): el backend ya no quema "Sin ciudad"/"Sin
 // motivo"/etc en español -- devuelve etiqueta: null para que el frontend
@@ -495,7 +509,7 @@ const conversacionUrlDe = fila =>
       <template v-else>
         <!-- Tarjetas: una sola franja con descripcion corta por metrica -->
         <div
-          class="grid grid-cols-2 divide-x divide-y divide-n-weak rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 md:grid-cols-4 md:divide-y-0 overflow-hidden"
+          class="grid grid-cols-2 divide-x divide-y divide-n-weak rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 md:grid-cols-3 xl:grid-cols-6 md:divide-y-0 overflow-hidden"
         >
           <div
             v-for="tarjeta in kpiCards"
@@ -771,6 +785,22 @@ const conversacionUrlDe = fila =>
                 />
               </div>
             </caption>
+            <thead class="text-xs text-n-slate-11">
+              <tr>
+                <th class="px-3 py-2 text-left font-medium">
+                  {{ t('HELIC3_INDICADORES.GARANTIAS.BY_CITY_COLUMN') }}
+                </th>
+                <th class="px-3 py-2 text-right font-medium">
+                  {{ t('HELIC3_INDICADORES.GARANTIAS.KPI_TOTAL') }}
+                </th>
+                <th class="px-3 py-2 text-right font-medium">
+                  {{ t('HELIC3_INDICADORES.GARANTIAS.KPI_INVOICES') }}
+                </th>
+                <th class="px-3 py-2 text-right font-medium">
+                  {{ t('HELIC3_INDICADORES.GARANTIAS.KPI_RATIO') }}
+                </th>
+              </tr>
+            </thead>
             <tbody>
               <tr
                 v-for="fila in datos.por_ciudad"
@@ -792,10 +822,16 @@ const conversacionUrlDe = fila =>
                     {{ etiquetaDe('BY_CITY', fila.etiqueta) }}
                   </button>
                 </td>
+                <td class="px-3 py-2 text-right tabular-nums text-n-slate-11">
+                  {{ fila.cantidad }}
+                </td>
+                <td class="px-3 py-2 text-right tabular-nums text-n-slate-11">
+                  {{ fila.facturas }}
+                </td>
                 <td
                   class="px-3 py-2 font-medium text-right tabular-nums text-n-slate-12"
                 >
-                  {{ fila.cantidad }}
+                  {{ fila.ratio }}%
                 </td>
               </tr>
             </tbody>
@@ -804,7 +840,7 @@ const conversacionUrlDe = fila =>
             class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
           >
             <p class="font-semibold text-n-slate-12">
-              {{ t('HELIC3_INDICADORES.GARANTIAS.BY_CITY_CHART') }}
+              {{ t('HELIC3_INDICADORES.GARANTIAS.RATIO_CHART') }}
             </p>
             <p class="mt-1 mb-3 text-xs text-n-slate-11">
               {{ t('HELIC3_INDICADORES.GARANTIAS.BY_CITY_CHART_SUBTITLE') }}
@@ -829,12 +865,12 @@ const conversacionUrlDe = fila =>
                   <span class="truncate">
                     {{ etiquetaDe('BY_CITY', fila.etiqueta) }}
                   </span>
-                  <span class="tabular-nums shrink-0">{{ fila.cantidad }}</span>
+                  <span class="tabular-nums shrink-0">{{ fila.ratio }}%</span>
                 </div>
                 <div class="mt-1.5 h-2 rounded-full bg-n-slate-4">
                   <div
                     class="h-2 rounded-full bg-n-blue-9"
-                    :style="{ width: `${anchoBarra(fila.cantidad)}%` }"
+                    :style="{ width: `${anchoBarra(fila.ratio)}%` }"
                   />
                 </div>
               </button>

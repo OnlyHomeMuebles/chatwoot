@@ -4,6 +4,9 @@ require 'rails_helper'
 
 RSpec.describe Helic3::Indicadores::Garantias do
   let(:account) { create(:account) }
+  let(:carga_facturas) do
+    Helic3::Carga.create!(account: account, tipo: 'facturas', modo: 'anexar', nombre_archivo: 'facturas.csv')
+  end
   let(:ticket) { create(:ticket, account: account) }
 
   let(:manizales) do
@@ -43,6 +46,11 @@ RSpec.describe Helic3::Indicadores::Garantias do
     garantia
   end
 
+  def crear_factura(centro_operacion:, fecha:, numero_documento: SecureRandom.hex(4))
+    Helic3::FacturaVenta.create!(account: account, carga: carga_facturas, numero_documento: numero_documento,
+                                 centro_operacion: centro_operacion, fecha: fecha, valor_subtotal: 100_000)
+  end
+
   def llamar(filtros: {})
     described_class.call(account: account, filtros: filtros)
   end
@@ -63,12 +71,17 @@ RSpec.describe Helic3::Indicadores::Garantias do
       # Marzo 2026 (T1 tambien, pero otro mes), sin ciudad, en proceso
       crear_garantia(abierta_at: Time.zone.local(2026, 3, 5),
                      productos: [{ producto_nombre: 'Silla Nogal', proceso: visita }])
+      # IND-03: facturas de enero 2026 para Manizales (2) y Pereira (1), para
+      # calcular el ratio garantias/facturas.
+      crear_factura(centro_operacion: 'Manizales', fecha: Date.new(2026, 1, 12))
+      crear_factura(centro_operacion: 'Manizales', fecha: Date.new(2026, 1, 18))
+      crear_factura(centro_operacion: 'Pereira', fecha: Date.new(2026, 1, 20))
     end
 
-    it 'kpis: 3 garantias, 1 solucionada, 2 en proceso, 4 productos' do
+    it 'kpis: 3 garantias, 1 solucionada, 2 en proceso, 4 productos, 3 facturas, ratio 100%' do
       kpis = llamar[:kpis]
 
-      expect(kpis).to eq(garantias: 3, solucionadas: 1, en_proceso: 2, productos: 4)
+      expect(kpis).to eq(garantias: 3, solucionadas: 1, en_proceso: 2, productos: 4, facturas: 3, ratio: 100.0)
     end
 
     it 'mensual: enero con 2 radicados (1 solucionada, 1 en proceso), marzo con 1 en proceso' do
@@ -84,12 +97,20 @@ RSpec.describe Helic3::Indicadores::Garantias do
       )
     end
 
-    it 'por_ciudad: Manizales 1, Pereira 1, la garantia sin ciudad queda excluida' do
+    it 'por_ciudad: Manizales y Pereira con facturas y ratio, la garantia sin ciudad queda excluida' do
       por_ciudad = llamar[:por_ciudad].index_by { |fila| fila[:etiqueta] }
 
-      expect(por_ciudad['Manizales'][:cantidad]).to eq(1)
-      expect(por_ciudad['Pereira'][:cantidad]).to eq(1)
+      expect(por_ciudad['Manizales']).to include(cantidad: 1, facturas: 2, ratio: 50.0)
+      expect(por_ciudad['Pereira']).to include(cantidad: 1, facturas: 1, ratio: 100.0)
       expect(por_ciudad).not_to have_key(nil)
+    end
+
+    it 'por_ciudad excluye una ciudad del catalogo sin ninguna factura' do
+      Helic3::Catalogo::CoberturaCiudad.create!(account: account, nombre: 'Bogotá', codigo: 'bogota')
+
+      por_ciudad = llamar[:por_ciudad].index_by { |fila| fila[:etiqueta] }
+
+      expect(por_ciudad).not_to have_key('Bogotá')
     end
 
     it 'por_motivo cuenta PRODUCTOS, no radicados: calidad aparece 2 veces (en dos garantias distintas)' do
@@ -162,7 +183,7 @@ RSpec.describe Helic3::Indicadores::Garantias do
 
     resultado = llamar(filtros: { cobertura_ciudad_id: pereira.id })
 
-    expect(resultado[:kpis]).to eq(garantias: 0, solucionadas: 0, en_proceso: 0, productos: 0)
+    expect(resultado[:kpis]).to eq(garantias: 0, solucionadas: 0, en_proceso: 0, productos: 0, facturas: 0, ratio: 0.0)
     expect(resultado[:mensual]).to eq([])
     expect(resultado[:por_ciudad]).to eq([])
   end
