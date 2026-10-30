@@ -27,7 +27,8 @@ RSpec.describe 'Helic3 Indicadores (IND-01)', type: :request do
     body = response.parsed_body
     expect(body.keys).to match_array(%w[kpis mensual trimestral por_ciudad por_motivo por_detalle por_proceso
                                         por_producto])
-    expect(body['kpis']).to eq('garantias' => 1, 'solucionadas' => 0, 'en_proceso' => 1, 'productos' => 0)
+    expect(body['kpis']).to eq('garantias' => 1, 'solucionadas' => 0, 'en_proceso' => 1, 'productos' => 0,
+                               'facturas' => 0, 'ratio' => 0.0)
   end
 
   it 'pasa los filtros de la query al servicio' do
@@ -208,6 +209,9 @@ RSpec.describe 'Helic3 Indicadores (IND-01)', type: :request do
                                cobertura_ciudad: ciudad)
       Helic3::Garantia.create!(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 1, 1, 12, 0),
                                cobertura_ciudad: otra_ciudad)
+      carga = Helic3::Carga.create!(account: account, tipo: 'facturas', modo: 'anexar', nombre_archivo: 'facturas.csv')
+      Helic3::FacturaVenta.create!(account: account, carga: carga, numero_documento: 'F-1',
+                                   centro_operacion: 'Manizales', fecha: Date.new(2026, 1, 1), valor_subtotal: 1)
 
       get_garantias_csv('por_ciudad', cobertura_ciudad_id: ciudad.id)
 

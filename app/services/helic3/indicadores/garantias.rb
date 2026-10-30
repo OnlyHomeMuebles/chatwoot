@@ -12,8 +12,6 @@
 # motivos distintos.
 class Helic3::Indicadores::Garantias
   TOP_PRODUCTOS = 20
-  POR_PAGINA_CASOS = 7
-  RANGO_URGENCIA = { rojo: 0, amarillo: 1, verde: 2, sin_presupuesto: 3, resuelta: 4 }.freeze
 
   # abierta_at es un timestamp sin zona en UTC. Agrupar/filtrar directo sobre esa
   # columna corre el riesgo de que una garantia abierta el 31 a las 9pm en Bogota
@@ -44,72 +42,29 @@ class Helic3::Indicadores::Garantias
     }
   end
 
-  # Lista de casos individuales (mockup v12, "Detalle de clientes y casos"):
-  # ordenada por urgencia (vencidas primero, solucionadas al final, igual que
-  # el mockup) y paginada -- es la unica seccion de Indicadores que no es un
-  # agregado, asi que vive en su propio metodo en vez de en #call.
+  # Vive en su propia clase (mismo criterio de DevolucionesCasos, PR #149):
+  # es una responsabilidad aparte de los agregados de #call.
   def casos(pagina: 1)
-    calendario = Helic3::CalendarioHabil.new
-    parametros = Helic3::ParametrosGarantia.desde_catalogo(account, ambito: :garantia)
-    filas = garantias_filtradas
-            .includes(:cobertura_ciudad, items: :proceso, ticket: { conversation: :contact })
-            .map { |garantia| fila_de_caso(garantia, parametros, calendario) }
-            .sort_by { |fila| [fila.delete(:rango_urgencia), fila[:id]] }
-    paginar_casos(filas, pagina)
+    Helic3::Indicadores::GarantiasCasos
+      .new(account: account, garantias_filtradas: garantias_filtradas)
+      .listar(pagina: pagina)
   end
 
   private
 
   attr_reader :account, :filtros
 
-  def fila_de_caso(garantia, parametros, calendario)
-    resuelta = garantia.resuelta?
-    presupuesto = resuelta ? nil : garantia.presupuesto(parametros: parametros, calendario: calendario)
-    conversacion = garantia.ticket.conversation
-    {
-      id: garantia.id,
-      numero_radicado: garantia.numero_radicado,
-      cliente: conversacion&.contact&.name,
-      centro_operacion: garantia.cobertura_ciudad&.nombre,
-      proceso: garantia.proceso_visible&.nombre,
-      etapa: resuelta ? 'solucionada' : 'en_gestion',
-      conversation_display_id: conversacion&.display_id,
-      vencimiento: vencimiento_de_caso(resuelta, presupuesto),
-      rango_urgencia: rango_urgencia_de_caso(resuelta, presupuesto)
-    }
-  end
-
-  def vencimiento_de_caso(resuelta, presupuesto)
-    return { estado: 'solucionada' } if resuelta
-
-    {
-      estado: presupuesto.semaforo.to_s,
-      saldo_dias_habiles: presupuesto.saldo,
-      fecha_etapa_vigente: presupuesto.fecha_etapa_vigente
-    }
-  end
-
-  def rango_urgencia_de_caso(resuelta, presupuesto)
-    return RANGO_URGENCIA[:resuelta] if resuelta
-
-    RANGO_URGENCIA.fetch(presupuesto.semaforo, RANGO_URGENCIA[:sin_presupuesto])
-  end
-
-  def paginar_casos(filas, pagina)
-    total = filas.size
-    paginas = [(total.to_f / POR_PAGINA_CASOS).ceil, 1].max
-    pagina_actual = pagina.to_i.clamp(1, paginas)
-    inicio = (pagina_actual - 1) * POR_PAGINA_CASOS
-    { casos: filas.slice(inicio, POR_PAGINA_CASOS) || [], pagina: pagina_actual, paginas: paginas, total: total }
-  end
-
   def kpis
     base = garantias_filtradas
+    garantias = base.count
+    facturas = facturas_filtradas.count
     {
-      garantias: base.count,
+      garantias: garantias,
       solucionadas: base.where.not(cerrada_at: nil).count,
       en_proceso: base.where(cerrada_at: nil).count,
-      productos: items_filtrados.count
+      productos: items_filtrados.count,
+      facturas: facturas,
+      ratio: ratio_de(garantias, facturas)
     }
   end
 
@@ -156,11 +111,52 @@ class Helic3::Indicadores::Garantias
   # es una tienda que se pueda comparar contra las demas, asi que se excluye
   # en vez de traducirla (a diferencia de por_motivo/por_detalle/por_proceso,
   # donde "sin dato" si es informacion util).
+  #
+  # IND-03: trae ademas facturas y ratio por ciudad, y recorre TODO el
+  # catalogo (no solo las ciudades con garantias) para que una ciudad sin
+  # garantias pero con facturas tambien aparezca con 0% -- igual que el
+  # Dash CX. cobertura_ciudad (Garantias) es por CIUDAD; el "Desc. C.O." de
+  # las facturas de Siesa es por TIENDA individual (varias por ciudad), asi
+  # que el cruce agrega todas las tiendas de una ciudad bajo su nombre -- no
+  # hay forma de bajar a tienda sin un catalogo de tiendas, que no existe hoy.
+  # Se excluyen las ciudades sin ninguna factura: no hay con que comparar su
+  # ratio.
   def por_ciudad
     conteos = garantias_filtradas.where.not(cobertura_ciudad_id: nil).group(:cobertura_ciudad_id).count
-    nombres = Helic3::Catalogo::CoberturaCiudad.where(id: conteos.keys).pluck(:id, :nombre).to_h
-    conteos.map { |id, cantidad| { etiqueta: nombres[id], valor: id, cantidad: cantidad } }
-           .sort_by { |fila| -fila[:cantidad] }
+    facturas_por_ciudad = facturas_filtradas.group(Arel.sql('UPPER(centro_operacion)')).count
+    Helic3::Catalogo::CoberturaCiudad.where(account: account).activos
+                                     .filter_map { |ciudad| fila_de_ciudad(ciudad, conteos, facturas_por_ciudad) }
+                                     .sort_by { |fila| -fila[:ratio] }
+  end
+
+  def fila_de_ciudad(ciudad, conteos, facturas_por_ciudad)
+    facturas = facturas_por_ciudad[ciudad.nombre.upcase] || 0
+    return nil unless facturas.positive?
+
+    cantidad = conteos[ciudad.id] || 0
+    { etiqueta: ciudad.nombre, valor: ciudad.id, cantidad: cantidad, facturas: facturas, ratio: ratio_de(cantidad, facturas) }
+  end
+
+  def ratio_de(garantias, facturas)
+    return 0.0 if facturas.zero?
+
+    (garantias.to_f / facturas * 100).round(2)
+  end
+
+  def facturas_filtradas
+    scope = Helic3::FacturaVenta.where(account: account)
+    anio = filtro_entero(:anio)
+    mes = filtro_entero(:mes)
+    scope = scope.where('EXTRACT(year FROM fecha) = ?', anio) if anio
+    scope = scope.where('EXTRACT(month FROM fecha) = ?', mes) if mes
+    scope = scope.where('centro_operacion ILIKE ?', ciudad_filtrada.nombre) if ciudad_filtrada
+    scope
+  end
+
+  def ciudad_filtrada
+    return nil if filtros[:cobertura_ciudad_id].blank?
+
+    @ciudad_filtrada ||= Helic3::Catalogo::CoberturaCiudad.find_by(id: filtros[:cobertura_ciudad_id])
   end
 
   def por_motivo

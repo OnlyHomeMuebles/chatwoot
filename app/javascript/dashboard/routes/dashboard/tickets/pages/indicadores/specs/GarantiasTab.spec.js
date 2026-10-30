@@ -48,7 +48,14 @@ vi.mock('dashboard/store/helic3/indicadores', () => ({
 }));
 
 const indicadoresVacios = () => ({
-  kpis: { garantias: 0, solucionadas: 0, en_proceso: 0, productos: 0 },
+  kpis: {
+    garantias: 0,
+    solucionadas: 0,
+    en_proceso: 0,
+    productos: 0,
+    facturas: 0,
+    ratio: 0,
+  },
   mensual: [],
   trimestral: [],
   por_ciudad: [],
@@ -103,6 +110,25 @@ describe('GarantiasTab.vue (IND-01)', () => {
     expect(wrapper.text()).toContain('7');
   });
 
+  // IND-03: el ratio garantias/facturas, paridad con el Dash CX.
+  it('muestra Nº Facturas y Ratio Garantías con los kpis que trae el servidor', () => {
+    garantiasRef = {
+      ...indicadoresVacios(),
+      kpis: {
+        garantias: 5,
+        solucionadas: 2,
+        en_proceso: 3,
+        productos: 7,
+        facturas: 100,
+        ratio: 5.0,
+      },
+    };
+    const wrapper = shallowMount(GarantiasTab);
+
+    expect(wrapper.text()).toContain('100');
+    expect(wrapper.text()).toContain('5%');
+  });
+
   // CA: un fallo del servidor no debe dejar el panel en blanco sin explicacion.
   it('muestra un aviso de error con boton de reintentar cuando el fetch falla, y reintentar vuelve a pedir', async () => {
     fetchGarantias.mockRejectedValueOnce(new Error('500'));
@@ -133,6 +159,28 @@ describe('GarantiasTab.vue (IND-01)', () => {
     const wrapper = shallowMount(GarantiasTab);
 
     expect(wrapper.text()).toContain('HELIC3_INDICADORES.GARANTIAS.NO_CITY');
+  });
+
+  // IND-03: "Centro de operacion" trae facturas y ratio por ciudad, no solo
+  // la cantidad de garantias.
+  it('muestra facturas y ratio por ciudad en "Centro de operacion"', () => {
+    garantiasRef = {
+      ...indicadoresVacios(),
+      kpis: { garantias: 2, solucionadas: 0, en_proceso: 2, productos: 0 },
+      por_ciudad: [
+        {
+          etiqueta: 'Manizales',
+          valor: 1,
+          cantidad: 2,
+          facturas: 10,
+          ratio: 20.0,
+        },
+      ],
+    };
+    const wrapper = shallowMount(GarantiasTab);
+
+    expect(wrapper.text()).toContain('10');
+    expect(wrapper.text()).toContain('20%');
   });
 
   // N4 (revision de Jhan, PR #113): el selector de mes muestra nombres, no 1-12.
