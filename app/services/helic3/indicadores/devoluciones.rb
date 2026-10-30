@@ -6,8 +6,6 @@
 # motivo, detalle y proceso cuentan PRODUCTOS (helic3_devolucion_items).
 class Helic3::Indicadores::Devoluciones
   TOP_PRODUCTOS = 20
-  POR_PAGINA_CASOS = 7
-  RANGO_URGENCIA = { rojo: 0, amarillo: 1, verde: 2, sin_presupuesto: 3, resuelta: 4 }.freeze
 
   FECHA_LOCAL = "(abierta_at AT TIME ZONE 'UTC') AT TIME ZONE '#{Helic3::CalendarioHabil::ZONA}'".freeze
   # FECHA_LOCAL calificada con tabla, para el join con el item (motivo/detalle
@@ -41,75 +39,17 @@ class Helic3::Indicadores::Devoluciones
     }
   end
 
-  # Mismo patron de Garantias#casos: ordena con una clave liviana para TODAS
-  # las devoluciones filtradas, y solo las 7 de la pagina final pagan el
-  # costo de numero_radicado/cliente/centro/proceso.
+  # Vive en su propia clase (revision de Jhan, PR #149): es una
+  # responsabilidad aparte de los agregados de #call.
   def casos(pagina: 1)
-    calendario = Helic3::CalendarioHabil.new
-    parametros = Helic3::ParametrosGarantia.desde_catalogo(account, ambito: :garantia)
-    ordenadas = devoluciones_filtradas
-                .includes(items: :proceso)
-                .map { |devolucion| clave_urgencia(devolucion, parametros, calendario) }
-                .sort_by { |clave| [clave[:rango], clave[:devolucion_id]] }
-    paginar_casos(ordenadas, pagina)
+    Helic3::Indicadores::DevolucionesCasos
+      .new(account: account, devoluciones_filtradas: devoluciones_filtradas)
+      .listar(pagina: pagina)
   end
 
   private
 
   attr_reader :account, :filtros
-
-  def clave_urgencia(devolucion, parametros, calendario)
-    resuelta = devolucion.resuelta?
-    presupuesto = resuelta ? nil : devolucion.presupuesto(parametros: parametros, calendario: calendario)
-    { devolucion_id: devolucion.id, resuelta: resuelta, presupuesto: presupuesto,
-      rango: rango_urgencia_de_caso(resuelta, presupuesto) }
-  end
-
-  def filas_de_pagina(claves)
-    devoluciones = Helic3::Devolucion.where(id: claves.pluck(:devolucion_id))
-                                     .includes(:cobertura_ciudad, items: :proceso, ticket: { conversation: :contact })
-                                     .index_by(&:id)
-    claves.map { |clave| fila_de_caso(devoluciones.fetch(clave[:devolucion_id]), clave) }
-  end
-
-  def fila_de_caso(devolucion, clave)
-    conversacion = devolucion.ticket.conversation
-    {
-      id: devolucion.id,
-      numero_radicado: devolucion.numero_radicado,
-      cliente: conversacion&.contact&.name,
-      centro_operacion: devolucion.cobertura_ciudad&.nombre,
-      proceso: devolucion.proceso_visible&.nombre,
-      etapa: clave[:resuelta] ? 'solucionada' : 'en_gestion',
-      conversation_display_id: conversacion&.display_id,
-      vencimiento: vencimiento_de_caso(clave[:resuelta], clave[:presupuesto])
-    }
-  end
-
-  def vencimiento_de_caso(resuelta, presupuesto)
-    return { estado: 'solucionada' } if resuelta
-
-    {
-      estado: presupuesto.semaforo.to_s,
-      saldo_dias_habiles: presupuesto.saldo,
-      fecha_etapa_vigente: presupuesto.fecha_etapa_vigente
-    }
-  end
-
-  def rango_urgencia_de_caso(resuelta, presupuesto)
-    return RANGO_URGENCIA[:resuelta] if resuelta
-
-    RANGO_URGENCIA.fetch(presupuesto.semaforo, RANGO_URGENCIA[:sin_presupuesto])
-  end
-
-  def paginar_casos(claves, pagina)
-    total = claves.size
-    paginas = [(total.to_f / POR_PAGINA_CASOS).ceil, 1].max
-    pagina_actual = pagina.to_i.clamp(1, paginas)
-    inicio = (pagina_actual - 1) * POR_PAGINA_CASOS
-    pagina_de_claves = claves.slice(inicio, POR_PAGINA_CASOS) || []
-    { casos: filas_de_pagina(pagina_de_claves), pagina: pagina_actual, paginas: paginas, total: total }
-  end
 
   def kpis
     base = devoluciones_filtradas

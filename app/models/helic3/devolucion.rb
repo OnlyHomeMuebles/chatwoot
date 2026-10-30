@@ -87,10 +87,14 @@ class Helic3::Devolucion < ApplicationRecord
     items.reject(&:resuelto?)
   end
 
+  # plazo_total_garantia, no uno propio de devolucion (revision de Jhan, PR
+  # #149): el comentario de esta clase ya documentaba que el presupuesto es
+  # el mismo de Garantia, reusado -- 'plazo_total_devolucion' nunca se
+  # siembra, asi que dejaba presupuesto_dias_habiles en nil siempre.
   def sellar_apertura_y_presupuesto
     self.abierta_at ||= Time.current
     self.presupuesto_dias_habiles ||= Helic3::Catalogo::Parametro
-                                      .find_by(account_id: account_id, clave: 'plazo_total_devolucion')
+                                      .find_by(account_id: account_id, clave: 'plazo_total_garantia')
                                       &.valor_entero
   end
 
