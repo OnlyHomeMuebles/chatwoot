@@ -159,6 +159,14 @@ const clasificacionEsIA = computed(() =>
 const ciudad = computed(() => expediente.value?.datos?.ciudad?.valor || null);
 
 const garantia = computed(() => expediente.value?.garantia || null);
+
+// COR-05: aviso antes de avanzar un proceso si el cliente no tiene un correo
+// valido registrado (ni en la ficha ni en el contacto de la conversacion) --
+// el envio automatico (COR-02) no va a poder notificarlo. Solo aplica con
+// garantia abierta: una PQR sin garantia no dispara estos correos.
+const sinCorreoCliente = computed(
+  () => !!garantia.value && !expediente.value?.correo_cliente
+);
 // El % y la barra los calcula el componente compartido Helic3BudgetBar (VIS-04);
 // aqui solo queda el color del punto del encabezado.
 const presupuestoDotClass = computed(
@@ -218,7 +226,17 @@ const avanzarItem = async (item, procesoId) => {
       procesoId,
     });
     await store.dispatch('pqrInbox/fetchOne', props.id);
-    useAlert(t('TICKETS.WARRANTY.ADVANCED'));
+    // COR-05: el envio del correo es asincrono (job), asi que el toast solo
+    // puede avisar lo que ya se sabe en este momento -- si hay a donde
+    // notificar o no. El resultado real (enviado/por que no) queda en la
+    // bitacora cuando el job corra.
+    useAlert(
+      t(
+        expediente.value?.correo_cliente
+          ? 'TICKETS.WARRANTY.ADVANCED_NOTIFICARA'
+          : 'TICKETS.WARRANTY.ADVANCED_SIN_CORREO'
+      )
+    );
   } catch (error) {
     refreshKey.value += 1;
     useAlert(
@@ -530,12 +548,32 @@ const TITULOS_EVENTO = {
   proceso_avanzado: 'TICKETS.DETAIL.ACT_PROCESO_AVANZADO',
   respondida: 'TICKETS.DETAIL.ACT_ANSWERED',
   evidencia_adjuntada: 'TICKETS.DETAIL.ACT_EVIDENCIA_ADJUNTADA',
+  // COR-05: el correo del cambio de proceso (COR-02) tambien queda en la
+  // bitacora, con la razon exacta cuando no salio.
+  correo_enviado: 'TICKETS.DETAIL.ACT_CORREO_ENVIADO',
+  correo_no_enviado: 'TICKETS.DETAIL.ACT_CORREO_NO_ENVIADO',
+};
+
+// claves i18n literales para el motivo de un correo_no_enviado (el linter no
+// admite claves dinamicas); mismos tres motivos que Helic3::Correos::NotificarCambioProceso::MOTIVOS.
+const MOTIVOS_CORREO_NO_ENVIADO = {
+  sin_correo: 'TICKETS.DETAIL.ACT_CORREO_MOTIVO_SIN_CORREO',
+  smtp_error: 'TICKETS.DETAIL.ACT_CORREO_MOTIVO_SMTP_ERROR',
+  smtp_no_configurado: 'TICKETS.DETAIL.ACT_CORREO_MOTIVO_SMTP_NO_CONFIGURADO',
 };
 
 const actividad = computed(() => {
   const eventos = expediente.value?.eventos ?? [];
   return eventos.map((evento, indice) => ({
+    id: evento.id,
     titulo: t(TITULOS_EVENTO[evento.tipo] || evento.tipo),
+    detalle:
+      evento.tipo === 'correo_no_enviado'
+        ? t(
+            MOTIVOS_CORREO_NO_ENVIADO[evento.payload?.motivo] ||
+              evento.payload?.motivo
+          )
+        : null,
     autor:
       evento.actor?.name ||
       t(
@@ -697,6 +735,14 @@ const formatFecha = valor =>
         {{
           t('TICKETS.DETAIL.ESCALATION_NOTICE', { escalation: escalamiento })
         }}
+      </section>
+      <section
+        v-if="sinCorreoCliente"
+        data-testid="aviso-sin-correo"
+        class="flex items-start gap-2 p-3 text-sm rounded-lg text-n-amber-11 bg-n-amber-3"
+      >
+        <Icon icon="i-lucide-mail-warning" class="mt-0.5 size-4 shrink-0" />
+        {{ t('TICKETS.DETAIL.SIN_CORREO_NOTICE') }}
       </section>
 
       <div class="grid grid-cols-1 gap-6 min-[1100px]:grid-cols-5">
@@ -1215,17 +1261,16 @@ const formatFecha = valor =>
               {{ t('TICKETS.DETAIL.ACTIVITY') }}
             </h3>
             <ol class="flex flex-col gap-3">
-              <li
-                v-for="hito in actividad"
-                :key="hito.titulo"
-                class="flex gap-2.5"
-              >
+              <li v-for="hito in actividad" :key="hito.id" class="flex gap-2.5">
                 <span
                   class="mt-1 rounded-full size-2 shrink-0"
                   :class="hito.ultimo ? 'bg-n-brand' : 'bg-n-teal-9'"
                 />
                 <div class="flex flex-col gap-0.5 min-w-0">
                   <span class="text-sm text-n-slate-12">{{ hito.titulo }}</span>
+                  <span v-if="hito.detalle" class="text-xs text-n-amber-11">
+                    {{ hito.detalle }}
+                  </span>
                   <span class="text-xs text-n-slate-11">
                     {{ hito.autor }} · {{ formatFecha(hito.at) }}
                   </span>

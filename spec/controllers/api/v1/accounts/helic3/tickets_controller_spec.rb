@@ -279,6 +279,26 @@ RSpec.describe 'Tickets API', type: :request do
     end
   end
 
+  describe 'GET show incluye correo_cliente (COR-05)' do
+    let!(:ticket) { create(:ticket, account: account) }
+
+    def mostrar
+      get "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+          headers: agent.create_new_auth_token, as: :json
+      response.parsed_body
+    end
+
+    it 'es nil sin ficha ni conversacion, para que el front avise antes de avanzar un proceso' do
+      expect(mostrar['correo_cliente']).to be_nil
+    end
+
+    it 'trae el correo de la ficha cuando existe' do
+      Helic3::TicketDato.create!(account: account, ticket: ticket, cliente_email: 'ana@example.com')
+
+      expect(mostrar['correo_cliente']).to eq('ana@example.com')
+    end
+  end
+
   describe 'robustez del listado y el update (review API-02)' do
     before { Helic3::Catalogo::SeederService.new(account).sembrar! }
 

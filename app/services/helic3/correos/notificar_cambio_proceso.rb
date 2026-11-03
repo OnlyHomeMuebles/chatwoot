@@ -50,13 +50,8 @@ class Helic3::Correos::NotificarCambioProceso
     Helic3::PlantillaCorreo.activas.find_by(account: account, proceso_garantia_id: evento.payload['proceso_id'])
   end
 
-  # MAN-01: primero la ficha (PQR manual sin conversacion), si no el contacto
-  # de la conversacion -- mismo orden que Helic3::Formatos::DatosDelFormato.
   def destinatario_valido
-    candidato = ticket.datos&.cliente_email.presence || ticket.conversation&.contact&.email.presence
-    return nil if candidato.blank?
-
-    Devise.email_regexp.match?(candidato) ? candidato : nil
+    ticket.correo_cliente
   end
 
   def smtp_configurado?

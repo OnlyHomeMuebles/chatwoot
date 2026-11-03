@@ -146,6 +146,18 @@ class Helic3::Ticket < ApplicationRecord
     ticket_number if genera_radicado?
   end
 
+  # COR-02/COR-05: el correo al que le llegarian las notificaciones de
+  # proceso. MAN-01: primero la ficha (PQR manual sin conversacion), si no el
+  # contacto de la conversacion -- mismo orden que Helic3::Formatos::DatosDelFormato.
+  # Nil si no hay ninguno o el que hay no tiene formato valido (COR-05 lo usa
+  # para avisarle al agente ANTES de avanzar un proceso, sin esperar al job).
+  def correo_cliente
+    candidato = datos&.cliente_email.presence || conversation&.contact&.email.presence
+    return nil if candidato.blank?
+
+    Devise.email_regexp.match?(candidato) ? candidato : nil
+  end
+
   # Los dos lectores del reloj (SEM-01). Derivados siempre: se guarda lo que
   # PASO (los sellos), se deriva lo que SIGNIFICA (cuanto queda y el color).
   # Congelamiento: respondido el expediente, la referencia deja de ser "hoy"
