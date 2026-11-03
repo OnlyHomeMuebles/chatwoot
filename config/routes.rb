@@ -401,6 +401,13 @@ Rails.application.routes.draw do
               get    'plantillas/:id/original',         to: 'plantillas#original'
               post   'plantillas/:id/activar',          to: 'plantillas#activar'
               delete 'plantillas/:id',                  to: 'plantillas#destroy'
+
+              # COR-04: plantillas de correo (una por proceso + la de cierre).
+              # create es para un disparador sin plantilla todavia (p. ej.
+              # garantia_negada, D2).
+              resources :plantillas_correo, only: %i[index create update]
+              post 'plantillas_correo/:id/vista_previa', to: 'plantillas_correo#vista_previa'
+              post 'plantillas_correo/:id/prueba',       to: 'plantillas_correo#prueba'
             end
           end
 
