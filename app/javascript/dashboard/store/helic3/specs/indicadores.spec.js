@@ -8,6 +8,8 @@ vi.mock('dashboard/api/helic3/indicadores', () => ({
     garantiasCasos: vi.fn(),
     pqr: vi.fn(),
     todas: vi.fn(),
+    devoluciones: vi.fn(),
+    devolucionesCasos: vi.fn(),
   },
 }));
 
@@ -130,6 +132,8 @@ describe('helic3Indicadores store', () => {
       isFetchingGarantiasCasos: false,
       isFetchingPqr: true,
       isFetchingTodas: false,
+      isFetchingDevoluciones: false,
+      isFetchingDevolucionesCasos: false,
     });
     expect(store.getUIFlags.isFetchingPqr).toBe(false);
   });
@@ -146,5 +150,35 @@ describe('helic3Indicadores store', () => {
       { signal: expect.any(AbortSignal) }
     );
     expect(store.getTodas).toEqual(payload);
+  });
+
+  it('fetchDevoluciones pasa los filtros al API y guarda la respuesta', async () => {
+    const payload = {
+      kpis: { devoluciones: 4, solucionadas: 1, en_proceso: 3, productos: 5 },
+    };
+    IndicadoresAPI.devoluciones.mockResolvedValue({ data: payload });
+    const store = useIndicadoresStore();
+
+    await store.fetchDevoluciones({ anio: 2026 });
+
+    expect(IndicadoresAPI.devoluciones).toHaveBeenCalledWith(
+      { anio: 2026 },
+      { signal: expect.any(AbortSignal) }
+    );
+    expect(store.getDevoluciones).toEqual(payload);
+  });
+
+  it('fetchDevolucionesCasos pasa los filtros y la pagina al API y guarda la respuesta', async () => {
+    const payload = { casos: [{ id: 1 }], pagina: 1, paginas: 2, total: 9 };
+    IndicadoresAPI.devolucionesCasos.mockResolvedValue({ data: payload });
+    const store = useIndicadoresStore();
+
+    await store.fetchDevolucionesCasos({ anio: 2026 }, 1);
+
+    expect(IndicadoresAPI.devolucionesCasos).toHaveBeenCalledWith(
+      { anio: 2026, pagina: 1 },
+      { signal: expect.any(AbortSignal) }
+    );
+    expect(store.getDevolucionesCasos).toEqual(payload);
   });
 });

@@ -14,6 +14,8 @@ const garantiasRequest = useAbortableRequest();
 const garantiasCasosRequest = useAbortableRequest();
 const pqrRequest = useAbortableRequest();
 const todasRequest = useAbortableRequest();
+const devolucionesRequest = useAbortableRequest();
+const devolucionesCasosRequest = useAbortableRequest();
 
 export const useIndicadoresStore = defineStore('helic3Indicadores', {
   state: () => ({
@@ -21,6 +23,8 @@ export const useIndicadoresStore = defineStore('helic3Indicadores', {
     garantiasCasos: null,
     pqr: null,
     todas: null,
+    devoluciones: null,
+    devolucionesCasos: null,
   }),
 
   getters: {
@@ -28,6 +32,8 @@ export const useIndicadoresStore = defineStore('helic3Indicadores', {
     getGarantiasCasos: state => state.garantiasCasos,
     getPqr: state => state.pqr,
     getTodas: state => state.todas,
+    getDevoluciones: state => state.devoluciones,
+    getDevolucionesCasos: state => state.devolucionesCasos,
     // isPending ya solo refleja la peticion vigente (ver "Only the latest run
     // owns the shared state" en useAbortableRequest) -- una respuesta
     // cancelada no apaga el spinner de la que la reemplazo.
@@ -36,6 +42,8 @@ export const useIndicadoresStore = defineStore('helic3Indicadores', {
       isFetchingGarantiasCasos: garantiasCasosRequest.isPending.value,
       isFetchingPqr: pqrRequest.isPending.value,
       isFetchingTodas: todasRequest.isPending.value,
+      isFetchingDevoluciones: devolucionesRequest.isPending.value,
+      isFetchingDevolucionesCasos: devolucionesCasosRequest.isPending.value,
     }),
   },
 
@@ -74,6 +82,25 @@ export const useIndicadoresStore = defineStore('helic3Indicadores', {
         const response = await IndicadoresAPI.todas(filtros, { signal });
         if (signal.aborted) return;
         this.todas = response.data;
+      });
+    },
+
+    async fetchDevoluciones(filtros = {}) {
+      await devolucionesRequest.run(async signal => {
+        const response = await IndicadoresAPI.devoluciones(filtros, { signal });
+        if (signal.aborted) return;
+        this.devoluciones = response.data;
+      });
+    },
+
+    async fetchDevolucionesCasos(filtros = {}, pagina = 1) {
+      await devolucionesCasosRequest.run(async signal => {
+        const response = await IndicadoresAPI.devolucionesCasos(
+          { ...filtros, pagina },
+          { signal }
+        );
+        if (signal.aborted) return;
+        this.devolucionesCasos = response.data;
       });
     },
   },

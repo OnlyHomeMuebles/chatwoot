@@ -44,6 +44,11 @@ class Api::V1::Accounts::Helic3::Admin::CatalogosController < Api::V1::Accounts:
       modelo: Helic3::Catalogo::ProcesoGarantia,
       campos: %i[nombre codigo activo posicion es_terminal plazo_dias_habiles]
     },
+    # IND-06: motivo propio de Devolucion; detalle/proceso reusan 'detalles_tipificados'/'procesos_garantia' de arriba.
+    'motivos_devolucion' => {
+      modelo: Helic3::Catalogo::MotivoDevolucion,
+      campos: %i[nombre codigo activo posicion]
+    },
     'coberturas_ciudad' => {
       modelo: Helic3::Catalogo::CoberturaCiudad,
       campos: %i[nombre codigo activo posicion origen_ruta tecnico_propio]
