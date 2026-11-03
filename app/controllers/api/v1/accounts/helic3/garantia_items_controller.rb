@@ -9,7 +9,7 @@ class Api::V1::Accounts::Helic3::GarantiaItemsController < Api::V1::Accounts::Ba
   # con su garantia refrescada, para que el panel actualice proceso y barra.
   def update
     Helic3::Casos::AvanzarGarantia.new(item: @item, proceso: proceso_de_cuenta,
-                                       decision: params[:decision]).call
+                                       decision: params[:decision], actor: Current.user).call
     @ticket = @item.garantia.ticket
     render 'api/v1/accounts/helic3/tickets/show', formats: [:json]
   end
