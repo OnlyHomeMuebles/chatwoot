@@ -61,11 +61,19 @@ RSpec.describe Helic3::Agents::Tools::RadicarPqrTool do
     expect(salida).to match(/ya (quedo registrado|estaba radicado)/)
   end
 
-  it 'respondida la PQR anterior, un caso nuevo en el mismo hilo si radica' do
+  it 'respondida la PQR anterior hace rato, un caso nuevo en el mismo hilo si radica' do
+    radicar
+    # respondida fuera de la ventana anti-doble: ya es un caso nuevo legitimo, no un doble disparo
+    Helic3::Ticket.last.update_columns(respondida_at: 1.hour.ago) # rubocop:disable Rails/SkipsModelValidations
+
+    expect { radicar }.to change { account.tickets.count }.by(1)
+  end
+
+  it 'respondida la PQR hace un momento, NO radica de nuevo (evita el doble: radica->resuelve->radica)' do
     radicar
     Helic3::Ticket.last.update_columns(respondida_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
 
-    expect { radicar }.to change { account.tickets.count }.by(1)
+    expect { radicar }.not_to change { account.tickets.count }
   end
 
   it 'en modo propone (el default sin parametro), la salida NO contiene el numero de radicado' do

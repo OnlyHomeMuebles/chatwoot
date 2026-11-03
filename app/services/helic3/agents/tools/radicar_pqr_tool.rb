@@ -9,6 +9,10 @@
 # autonomia para decidir que devuelve.
 class Helic3::Agents::Tools::RadicarPqrTool < Helic3::Agents::Tools::BaseTool
   PARAMETRO_AUTONOMIA = 'autonomia_radicar_pqr'
+  # Ventana en la que una PQR recien respondida AUN bloquea una nueva radicacion en el mismo hilo:
+  # cubre el doble expediente del agente (radica -> resuelve -> radica) sin impedir un caso nuevo
+  # dias despues. Afinar/parametrizar en integracion si el equipo lo prefiere.
+  VENTANA_DOBLE_RADICACION = 10.minutes
 
   description 'Radica formalmente el caso del cliente como expediente PQR (crea el registro real ' \
               'en el sistema, con su numero y su fecha de vencimiento en dias habiles). Usala cuando ' \
@@ -42,13 +46,16 @@ class Helic3::Agents::Tools::RadicarPqrTool < Helic3::Agents::Tools::BaseTool
     motivo = Helic3::Catalogo::MotivoPqr.activos.find_by(account: account, codigo: motivo_codigo)
     return codigos_invalidos(account, tipo, motivo) if tipo.nil? || motivo.nil?
 
-    # idempotencia simetrica con la compuerta automatica (RadicacionAutomatica), acotada al
-    # expediente VIGENTE (respondida_at: nil): no se duplica el caso en curso, pero respondida
-    # la PQR anterior, un caso nuevo en el mismo hilo vuelve a ser radicable. Asi el agente
-    # nunca le confirma al cliente un caso que ya no existe.
+    # idempotencia: no se duplica el expediente VIGENTE (respondida_at: nil) NI uno que se acaba de
+    # resolver en este mismo flujo (respondida hace < VENTANA_DOBLE_RADICACION). El segundo caso
+    # cubre el doble expediente observado en vivo: el agente radica -> resuelve -> vuelve a radicar,
+    # y sin esta ventana el segundo no veia al primero (ya respondido) y creaba otro. Pasada la
+    # ventana, una PQR respondida ya no bloquea: un caso NUEVO en el mismo hilo vuelve a ser radicable.
     conversation_id = conversacion_de_bd(account, tool_context)
-    existente = conversation_id &&
-                account.tickets.where(conversation_id: conversation_id, respondida_at: nil).first
+    existente = conversation_id && account.tickets
+                .where(conversation_id: conversation_id)
+                .where('respondida_at IS NULL OR respondida_at > ?', VENTANA_DOBLE_RADICACION.ago)
+                .order(created_at: :asc).first
     return ya_radicado(account, existente) if existente
 
     ticket = begin
