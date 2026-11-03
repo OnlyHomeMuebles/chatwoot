@@ -116,21 +116,26 @@ class Helic3::Indicadores::Garantias
   # catalogo (no solo las ciudades con garantias) para que una ciudad sin
   # garantias pero con facturas tambien aparezca con 0% -- igual que el
   # Dash CX. cobertura_ciudad (Garantias) es por CIUDAD; el "Desc. C.O." de
-  # las facturas de Siesa es por TIENDA individual (varias por ciudad), asi
-  # que el cruce agrega todas las tiendas de una ciudad bajo su nombre -- no
-  # hay forma de bajar a tienda sin un catalogo de tiendas, que no existe hoy.
-  # Se excluyen las ciudades sin ninguna factura: no hay con que comparar su
-  # ratio.
+  # las facturas de Siesa es por TIENDA individual (varias por ciudad, p. ej.
+  # "OM Armenia AXM"/"OM Armenia Sala"), sin un catalogo de tiendas propio
+  # hoy. Revision de Jhan (PR #150): comparar por igualdad exacta no sirve
+  # (una tienda nunca se llama igual a su ciudad); se confirmo contra el
+  # nombre real de ~25 tiendas del Dash CX que el nombre de la ciudad
+  # SIEMPRE aparece como substring del nombre de la tienda, sin ambiguedad
+  # entre las ciudades del catalogo -- el cruce normaliza tildes/mayusculas
+  # (ActiveSupport::Inflector.transliterate, sin agregar una gema nueva) y
+  # busca ese substring. Se excluyen las ciudades sin ninguna factura: no hay
+  # con que comparar su ratio.
   def por_ciudad
     conteos = garantias_filtradas.where.not(cobertura_ciudad_id: nil).group(:cobertura_ciudad_id).count
-    facturas_por_ciudad = facturas_filtradas.group(Arel.sql('UPPER(centro_operacion)')).count
+    conteos_por_tienda = facturas_filtradas.group(:centro_operacion).count
     Helic3::Catalogo::CoberturaCiudad.where(account: account).activos
-                                     .filter_map { |ciudad| fila_de_ciudad(ciudad, conteos, facturas_por_ciudad) }
+                                     .filter_map { |ciudad| fila_de_ciudad(ciudad, conteos, conteos_por_tienda) }
                                      .sort_by { |fila| -fila[:ratio] }
   end
 
-  def fila_de_ciudad(ciudad, conteos, facturas_por_ciudad)
-    facturas = facturas_por_ciudad[ciudad.nombre.upcase] || 0
+  def fila_de_ciudad(ciudad, conteos, conteos_por_tienda)
+    facturas = conteos_por_tienda.values_at(*tiendas_de(ciudad)).compact.sum
     return nil unless facturas.positive?
 
     cantidad = conteos[ciudad.id] || 0
@@ -143,13 +148,28 @@ class Helic3::Indicadores::Garantias
     (garantias.to_f / facturas * 100).round(2)
   end
 
+  # Nombres de centro_operacion (tiendas de Siesa) cuyo nombre normalizado
+  # contiene el de esta ciudad -- ver comentario de #por_ciudad.
+  def tiendas_de(ciudad)
+    nombre = normalizar(ciudad.nombre)
+    nombres_de_tienda.select { |tienda| normalizar(tienda).include?(nombre) }
+  end
+
+  def nombres_de_tienda
+    @nombres_de_tienda ||= Helic3::FacturaVenta.where(account: account).distinct.pluck(:centro_operacion).compact
+  end
+
+  def normalizar(texto)
+    ActiveSupport::Inflector.transliterate(texto.to_s).upcase
+  end
+
   def facturas_filtradas
     scope = Helic3::FacturaVenta.where(account: account)
     anio = filtro_entero(:anio)
     mes = filtro_entero(:mes)
     scope = scope.where('EXTRACT(year FROM fecha) = ?', anio) if anio
     scope = scope.where('EXTRACT(month FROM fecha) = ?', mes) if mes
-    scope = scope.where('centro_operacion ILIKE ?', ciudad_filtrada.nombre) if ciudad_filtrada
+    scope = scope.where(centro_operacion: tiendas_de(ciudad_filtrada)) if ciudad_filtrada
     scope
   end
 

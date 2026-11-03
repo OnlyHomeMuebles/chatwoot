@@ -113,6 +113,24 @@ RSpec.describe Helic3::Indicadores::Garantias do
       expect(por_ciudad).not_to have_key('Bogotá')
     end
 
+    # Revision de Jhan (PR #150): "Desc. C.O." es por tienda, no por ciudad
+    # ("OM Bogota Villa del Rio", no "Bogotá") -- el cruce normaliza tildes y
+    # suma varias tiendas bajo la misma ciudad, no compara por igualdad exacta.
+    it 'por_ciudad suma varias tiendas (con nombres reales de Siesa) bajo la misma ciudad, con tilde incluida' do
+      bogota = Helic3::Catalogo::CoberturaCiudad.create!(account: account, nombre: 'Bogotá', codigo: 'bogota')
+      crear_garantia(abierta_at: Time.zone.local(2026, 1, 1), ciudad: bogota)
+      crear_factura(centro_operacion: 'OM BOGOTA VILLA DEL RIO', fecha: Date.new(2026, 1, 5))
+      crear_factura(centro_operacion: 'OH BOGOTA DIVERPLAZA', fecha: Date.new(2026, 1, 6))
+      crear_factura(centro_operacion: 'OM CANDELARIA JUANCHITO', fecha: Date.new(2026, 1, 7))
+
+      por_ciudad = llamar[:por_ciudad].index_by { |fila| fila[:etiqueta] }
+
+      expect(por_ciudad['Bogotá']).to include(cantidad: 1, facturas: 2, ratio: 50.0)
+
+      resultado_filtrado = llamar(filtros: { cobertura_ciudad_id: bogota.id })
+      expect(resultado_filtrado[:kpis][:facturas]).to eq(2)
+    end
+
     it 'por_motivo cuenta PRODUCTOS, no radicados: calidad aparece 2 veces (en dos garantias distintas)' do
       por_motivo = llamar[:por_motivo].index_by { |fila| fila[:etiqueta] }
 
