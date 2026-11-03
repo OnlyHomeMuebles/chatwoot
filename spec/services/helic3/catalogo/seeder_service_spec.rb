@@ -12,7 +12,7 @@ RSpec.describe Helic3::Catalogo::SeederService do
     expect(resumen).to eq(
       categorias: 6, tipos: 5, etapas_pqr: 3, motivos_pqr: 7, resultados: 7,
       motivos_garantia: 5, detalles_tipificados: 31, procesos_garantia: 7,
-      coberturas_ciudad: 10, parametros: 24, formatos: 4
+      coberturas_ciudad: 10, parametros: 27, formatos: 4, plantillas_correo: 7
     )
   end
 
@@ -269,5 +269,65 @@ RSpec.describe Helic3::Catalogo::SeederService do
     described_class.new(account).sembrar!
 
     expect(umbral.reload.valor).to eq('10')
+  end
+
+  # COR-01: 6 plantillas de correo por proceso + 1 de cierre de caso.
+  # garantia_negada no tiene correo hasta que Karen la cree (D2).
+  it 'siembra las 6 plantillas de correo por proceso mas la de cierre de caso' do
+    service.sembrar!
+
+    por_proceso = Helic3::PlantillaCorreo.where(account: account, disparador: 'proceso_garantia')
+                                         .joins(:proceso_garantia).pluck('helic3_catalogo_procesos_garantia.codigo')
+    expect(por_proceso).to match_array(%w[visita_tecnica recoleccion reparacion_fabrica cambio_producto
+                                          entrega_producto devolucion_dinero])
+    expect(Helic3::PlantillaCorreo.where(account: account, disparador: 'cierre_caso').count).to eq(1)
+    expect(Helic3::PlantillaCorreo.joins(:proceso_garantia)
+                                  .where(helic3_catalogo_procesos_garantia: { codigo: 'garantia_negada' })).to be_none
+  end
+
+  it 'los marcadores de las plantillas de correo sembradas son todos conocidos' do
+    service.sembrar!
+
+    expect(Helic3::PlantillaCorreo.where(account: account).to_a).to all(be_valid)
+  end
+
+  it 'siembra remitente, firma y sitio web del correo; no inventa redes ni logo (Parametro exige valor)' do
+    service.sembrar!
+
+    expect(Helic3::Catalogo::Parametro.find_by!(account: account, clave: 'correo_remitente').valor)
+      .to eq('servicioalcliente@onlyhome.co')
+    expect(Helic3::Catalogo::Parametro.find_by!(account: account, clave: 'correo_sitio_web').valor)
+      .to eq('https://www.onlymuebles.com')
+    %w[correo_url_facebook correo_url_instagram correo_url_tiktok correo_logo_url].each do |clave|
+      expect(Helic3::Catalogo::Parametro.find_by(account: account, clave: clave)).to be_nil
+    end
+  end
+
+  it 'no pisa el asunto de una plantilla de correo editada por Karen en la segunda siembra' do
+    service.sembrar!
+    plantilla = Helic3::PlantillaCorreo.joins(:proceso_garantia)
+                                       .find_by!(helic3_catalogo_procesos_garantia: { codigo: 'visita_tecnica' })
+    plantilla.update!(asunto: 'Asunto editado por Karen')
+
+    described_class.new(account).sembrar!
+
+    expect(plantilla.reload.asunto).to eq('Asunto editado por Karen')
+  end
+
+  # mismo criterio que "completa lo que falta" para categorias: si el proceso de
+  # un codigo no existe en la cuenta, la plantilla de correo se omite (con
+  # advertencia) en vez de reventar la migracion.
+  it 'omite la plantilla de un proceso que no existe en la cuenta, y siembra el resto' do
+    allow(Helic3::Catalogo::ProcesoGarantia).to receive(:find_by).and_call_original
+    allow(Helic3::Catalogo::ProcesoGarantia).to receive(:find_by)
+      .with(account: account, codigo: 'visita_tecnica').and_return(nil)
+    allow(Rails.logger).to receive(:warn)
+
+    resumen = service.sembrar!
+
+    expect(resumen[:plantillas_correo]).to eq(6)
+    expect(Helic3::PlantillaCorreo.joins(:proceso_garantia)
+                                  .where(helic3_catalogo_procesos_garantia: { codigo: 'visita_tecnica' })).to be_none
+    expect(Rails.logger).to have_received(:warn).with(/visita_tecnica/)
   end
 end

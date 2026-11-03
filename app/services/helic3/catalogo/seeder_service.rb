@@ -201,8 +201,66 @@ class Helic3::Catalogo::SeederService
              'producción (fabricamos bajo pedido). Nos comunicaremos para coordinar los detalles del ' \
              'cambio; la llamada será desde un número terminado en 83. ¡Gracias por tu paciencia! 🩵',
       unidad: 'texto' },
-    { clave: 'correo_retracto', valor: 'servicioalcliente@onlyhome.co', unidad: 'texto' }
+    { clave: 'correo_retracto', valor: 'servicioalcliente@onlyhome.co', unidad: 'texto' },
+    # COR-01: remitente y pie de los correos de cambio de proceso/cierre.
+    # Remitente default = el mismo de correo_retracto (decision D6); firma y
+    # sitio web ya tienen texto confirmado (documento del ticket). Las redes
+    # (correo_url_facebook/instagram/tiktok) y el logo (correo_logo_url) NO
+    # tienen valor real todavia y Parametro exige valor presente (no admite
+    # "vacio a proposito"), asi que no se siembran: Karen los crea desde
+    # Catalogos (COR-04) cuando tenga el dato real, mismo criterio que
+    # garantia_negada sin plantilla.
+    { clave: 'correo_remitente', valor: 'servicioalcliente@onlyhome.co', unidad: 'texto' },
+    { clave: 'correo_firma', valor: "Atentamente,\nDepartamento de Experiencia al Cliente - Only Home",
+      unidad: 'texto' },
+    { clave: 'correo_sitio_web', valor: 'https://www.onlymuebles.com', unidad: 'texto' }
   ].freeze
+
+  # COR-01: una plantilla de correo por proceso de garantia (el texto es
+  # literal de Karen, igual que DETALLES_TIPIFICADOS). garantia_negada no
+  # tiene correo: Karen la crea desde COR-04 cuando tenga el texto (D2).
+  PLANTILLAS_CORREO = [
+    { proceso: 'visita_tecnica',
+      asunto: 'Tu PQR #{{RADICADO_PQR}} avanza a Visita Técnica',
+      cuerpo: 'Hola {{CLIENTE}}, Tu PQR # {{RADICADO_PQR}} avanza a **Visita Técnica**. Enviaremos a nuestro ' \
+              'técnico a tu domicilio para evaluar y reparar en sitio si las condiciones lo permiten. ' \
+              'Mantente atento/a, nuestro equipo te contactará pronto por WhatsApp o llamada telefónica para ' \
+              'coordinar la fecha de la visita.' },
+    { proceso: 'recoleccion',
+      asunto: 'Tu PQR #{{RADICADO_PQR}} avanza a Recolección',
+      cuerpo: 'Estimado/a {{CLIENTE}}, ¡Buenas noticias! Tu PQR # {{RADICADO_PQR}} avanza al estado de ' \
+              '**Recolección**. En los próximos días coordinaremos la recolección de tu producto para ' \
+              'revisión en fábrica. Mantente atento/a, nuestro equipo te contactará pronto por WhatsApp o ' \
+              'llamada telefónica para coordinar la fecha de recolección. ¡Gracias por confiar en Only Home!' },
+    { proceso: 'reparacion_fabrica',
+      asunto: 'Tu producto ya está en fábrica · PQR #{{RADICADO_PQR}}',
+      cuerpo: 'Estimado/a {{CLIENTE}}, Actualización de tu PQR # {{RADICADO_PQR}}: ¡Tu producto ya está en ' \
+              'fábrica para su reparación! El tiempo estimado es de **10 días hábiles**. Te notificaremos el ' \
+              'siguiente paso.' },
+    { proceso: 'cambio_producto',
+      asunto: 'Tu PQR #{{RADICADO_PQR}} fue aprobada para Cambio de Producto',
+      cuerpo: '¡Excelentes noticias, {{CLIENTE}}! Tu PQR # {{RADICADO_PQR}} fue aprobada para **Cambio de ' \
+              'Producto**. Recogeremos el actual y entregaremos uno nuevo en "mano a mano" para tu ' \
+              'comodidad. Como fabricamos bajo pedido, toma **15 días hábiles** en producción. Mantente ' \
+              'atento/a, te contactamos para coordinar la entrega de tu producto.' },
+    { proceso: 'entrega_producto',
+      asunto: 'Tu PQR #{{RADICADO_PQR}} está en Entrega de Producto',
+      cuerpo: '¡Ya casi está, {{CLIENTE}}! Tu PQR # {{RADICADO_PQR}} está en **Entrega de Producto**. Saldrá ' \
+              'pronto de fábrica hacia tu domicilio. Mantente atento/a, nuestro equipo te contactará pronto ' \
+              'por WhatsApp o llamada telefónica para coordinar la entrega de tu producto. ¡Inspecciona ' \
+              'todo al recibirlo!' },
+    { proceso: 'devolucion_dinero',
+      asunto: 'Tu PQR #{{RADICADO_PQR}} pasa a Devolución de Dinero',
+      cuerpo: 'Estimado/a {{CLIENTE}}, Tu PQR # {{RADICADO_PQR}} pasa a estado de **Devolución de Dinero**. ' \
+              'Tu reembolso se efectuará en un tiempo de **15 días hábiles**. Agradecemos tu comprensión y ' \
+              'confianza.' }
+  ].freeze
+
+  PLANTILLA_CIERRE_CASO = {
+    asunto: 'Finalizamos tu PQR #{{RADICADO_PQR}}',
+    cuerpo: '¡Felicidades, {{CLIENTE}}! Finalizamos tu PQR # {{RADICADO_PQR}} con éxito. Si necesitas algo ' \
+            'más, no dudes en contactarnos. ¡Gracias por ser parte de Only Home!'
+  }.freeze
 
   # FMT-02: los 4 formatos de Karen como catalogo. El codigo es explicito (no derivado
   # del nombre) porque lo referencian las plantillas y la logica. Karen puede renombrar
@@ -243,6 +301,7 @@ class Helic3::Catalogo::SeederService
     sembrar_sugerencia_formato
     sembrar_coberturas
     sembrar_parametros
+    sembrar_plantillas_correo
     resumen
   end
 
@@ -314,6 +373,36 @@ class Helic3::Catalogo::SeederService
     end
   end
 
+  # COR-01: una plantilla por proceso (busca el proceso por codigo; si no
+  # existe en la cuenta, se omite y se reporta por log, igual que
+  # tabla_lista? -- no revienta la migracion) + la de cierre de caso.
+  def sembrar_plantillas_correo
+    return unless tabla_lista?(Helic3::PlantillaCorreo)
+
+    PLANTILLAS_CORREO.each { |fila| sembrar_plantilla_de_proceso(fila) }
+    sembrar_plantilla_cierre_caso
+  end
+
+  def sembrar_plantilla_de_proceso(fila)
+    proceso = Helic3::Catalogo::ProcesoGarantia.find_by(account: @account, codigo: fila[:proceso])
+    if proceso.nil?
+      Rails.logger.warn("[Helic3][semilla] proceso #{fila[:proceso]} no existe en la cuenta #{@account.id}; " \
+                        'se omite su plantilla de correo')
+      return
+    end
+    return if Helic3::PlantillaCorreo.exists?(account: @account, proceso_garantia: proceso)
+
+    Helic3::PlantillaCorreo.create!(account: @account, proceso_garantia: proceso, disparador: 'proceso_garantia',
+                                    asunto: fila[:asunto], cuerpo: fila[:cuerpo])
+  end
+
+  def sembrar_plantilla_cierre_caso
+    return if Helic3::PlantillaCorreo.exists?(account: @account, disparador: 'cierre_caso')
+
+    Helic3::PlantillaCorreo.create!(account: @account, disparador: 'cierre_caso',
+                                    asunto: PLANTILLA_CIERRE_CASO[:asunto], cuerpo: PLANTILLA_CIERRE_CASO[:cuerpo])
+  end
+
   # SIE-01: si la tabla de un catalogo todavia no existe (p. ej. un ambiente
   # atrasado que corre la siembra por migracion ANTES de la migracion que crea
   # esa tabla), se omite ese catalogo con una linea de log y se sigue con el
@@ -350,11 +439,19 @@ class Helic3::Catalogo::SeederService
       procesos_garantia: Helic3::Catalogo::ProcesoGarantia.where(account: @account).count,
       coberturas_ciudad: Helic3::Catalogo::CoberturaCiudad.where(account: @account).count,
       parametros: Helic3::Catalogo::Parametro.where(account: @account).count,
-      # formatos es la tabla mas nueva: si SIE-01 corre el seeder en una migracion
-      # anterior a la de esta tabla, contar aqui daria PG::UndefinedTable y tumbaria
-      # el arranque (start.sh con set -e). Se devuelve 0 cuando aun no existe.
-      formatos: Helic3::Catalogo::Formato.table_exists? ? Helic3::Catalogo::Formato.where(account: @account).count : 0
+      # formatos y plantillas_correo son las tablas mas nuevas: si SIE-01 corre
+      # el seeder en una migracion anterior a la de cualquiera de las dos,
+      # contar daria PG::UndefinedTable y tumbaria el arranque (start.sh con
+      # set -e). conteo_si_existe devuelve 0 mientras la tabla no exista.
+      formatos: conteo_si_existe(Helic3::Catalogo::Formato),
+      plantillas_correo: conteo_si_existe(Helic3::PlantillaCorreo)
     }
+  end
+
+  def conteo_si_existe(modelo)
+    return 0 unless modelo.table_exists?
+
+    modelo.where(account: @account).count
   end
 end
 # rubocop:enable Metrics/ClassLength
