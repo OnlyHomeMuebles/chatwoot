@@ -50,6 +50,9 @@ json.resultado_propuesto_id resource.pqrs_metadata&.dig('resultado_propuesto_id'
 if local_assigns.fetch(:detallado, true)
   json.dias_habiles_restantes resource.dias_habiles_restantes
   json.semaforo resource.semaforo
+  # COR-05: para que el agente vea ANTES de avanzar un proceso si el cliente
+  # tiene un correo valido registrado, sin esperar al resultado del job.
+  json.correo_cliente resource.correo_cliente
 
   # Garantia (GAR-02): el radicado que cuelga del expediente, o nulo si no hay.
   # Solo en detallado: su presupuesto calcula dias habiles y festivos.

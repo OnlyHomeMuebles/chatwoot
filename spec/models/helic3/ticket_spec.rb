@@ -47,6 +47,38 @@ RSpec.describe Helic3::Ticket, type: :model do
     end
   end
 
+  describe 'correo_cliente (COR-05)' do
+    let(:account) { create(:account) }
+    let(:ticket) { create(:ticket, account: account) }
+
+    it 'sin ficha ni conversacion, es nil' do
+      expect(ticket.correo_cliente).to be_nil
+    end
+
+    it 'usa el correo de la ficha cuando existe (MAN-01)' do
+      Helic3::TicketDato.create!(account: account, ticket: ticket, cliente_email: 'ana@example.com')
+
+      expect(ticket.correo_cliente).to eq('ana@example.com')
+    end
+
+    it 'si la ficha no tiene correo, cae al contacto de la conversacion' do
+      contacto = create(:contact, account: account, email: 'contacto@example.com')
+      conversacion = create(:conversation, account: account, contact: contacto)
+      ticket.update!(conversation: conversacion)
+
+      expect(ticket.correo_cliente).to eq('contacto@example.com')
+    end
+
+    it 'un correo con formato invalido en la ficha es nil, no se intenta con el contacto' do
+      contacto = create(:contact, account: account, email: 'contacto@example.com')
+      conversacion = create(:conversation, account: account, contact: contacto)
+      ticket.update!(conversation: conversacion)
+      Helic3::TicketDato.create!(account: account, ticket: ticket, cliente_email: 'no-es-un-correo')
+
+      expect(ticket.correo_cliente).to be_nil
+    end
+  end
+
   describe 'resolved_at' do
     let(:account) { create(:account) }
 

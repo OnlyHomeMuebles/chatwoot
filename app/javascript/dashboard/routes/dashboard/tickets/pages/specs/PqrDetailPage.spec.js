@@ -31,6 +31,11 @@ vi.mock('vue-router', () => ({
   useRouter: () => ({ push: routerPush }),
 }));
 
+const alert = vi.fn();
+vi.mock('dashboard/composables', () => ({
+  useAlert: (...args) => alert(...args),
+}));
+
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
     t: (key, args) => (args ? `${key} ${JSON.stringify(args)}` : key),
@@ -88,8 +93,10 @@ beforeEach(() => {
   uiFlagsRef.value = { isFetchingItem: false, isUploadingDocumento: false };
   catalogosRef.value = { resultados: [] };
   dispatch.mockClear();
+  dispatch.mockImplementation(() => Promise.resolve());
   garantiaOpen.mockClear();
   routerPush.mockClear();
+  alert.mockClear();
 });
 
 describe('PqrDetailPage.vue — bloque de garantía (DET-01)', () => {
@@ -261,6 +268,129 @@ describe('PqrDetailPage.vue — actividad desde la bitácora real (EVI-03, cobro
     const wrapper = montar();
 
     expect(wrapper.text()).not.toContain('TICKETS.DETAIL.ACTIVITY');
+  });
+
+  it('un correo_no_enviado muestra el motivo exacto (COR-05)', () => {
+    expedienteRef.value = {
+      ...expedienteBase,
+      garantia: null,
+      eventos: [
+        {
+          id: 1,
+          tipo: 'correo_no_enviado',
+          origen: 'humano',
+          actor: null,
+          payload: { motivo: 'sin_correo' },
+          created_at: '2026-09-19T09:00:00Z',
+        },
+      ],
+    };
+
+    const wrapper = montar();
+
+    expect(wrapper.text()).toContain('TICKETS.DETAIL.ACT_CORREO_NO_ENVIADO');
+    expect(wrapper.text()).toContain(
+      'TICKETS.DETAIL.ACT_CORREO_MOTIVO_SIN_CORREO'
+    );
+  });
+
+  it('un correo_enviado no muestra ningun motivo', () => {
+    expedienteRef.value = {
+      ...expedienteBase,
+      garantia: null,
+      eventos: [
+        {
+          id: 1,
+          tipo: 'correo_enviado',
+          origen: 'humano',
+          actor: null,
+          payload: { destinatario: 'ana@example.com' },
+          created_at: '2026-09-19T09:00:00Z',
+        },
+      ],
+    };
+
+    const wrapper = montar();
+
+    expect(wrapper.text()).toContain('TICKETS.DETAIL.ACT_CORREO_ENVIADO');
+    expect(wrapper.text()).not.toContain('TICKETS.DETAIL.ACT_CORREO_MOTIVO');
+  });
+});
+
+describe('PqrDetailPage.vue — aviso de cliente sin correo (COR-05)', () => {
+  it('avisa cuando hay garantia abierta y el cliente no tiene correo valido', () => {
+    expedienteRef.value = { ...conGarantia, correo_cliente: null };
+
+    const wrapper = montar();
+
+    expect(wrapper.find('[data-testid="aviso-sin-correo"]').exists()).toBe(
+      true
+    );
+  });
+
+  it('no avisa si el cliente si tiene un correo valido', () => {
+    expedienteRef.value = { ...conGarantia, correo_cliente: 'ana@example.com' };
+
+    const wrapper = montar();
+
+    expect(wrapper.find('[data-testid="aviso-sin-correo"]').exists()).toBe(
+      false
+    );
+  });
+
+  it('no avisa sin garantia abierta, aunque falte el correo', () => {
+    expedienteRef.value = {
+      ...expedienteBase,
+      garantia: null,
+      correo_cliente: null,
+    };
+
+    const wrapper = montar();
+
+    expect(wrapper.find('[data-testid="aviso-sin-correo"]').exists()).toBe(
+      false
+    );
+  });
+});
+
+describe('PqrDetailPage.vue — avanzar proceso avisa si el cliente tiene correo (COR-05)', () => {
+  const conProcesoOptions = correoCliente => ({
+    ...conGarantia,
+    correo_cliente: correoCliente,
+    garantia: {
+      ...conGarantia.garantia,
+      procesos: [
+        { id: 1, nombre: 'Visita técnica' },
+        { id: 2, nombre: 'Entrega' },
+      ],
+    },
+  });
+
+  const selectProceso = wrapper =>
+    wrapper
+      .findAllComponents(Select)
+      .find(
+        s => s.props('placeholder') === 'TICKETS.WARRANTY.PROCESS_PLACEHOLDER'
+      );
+
+  it('con correo valido, el toast dice que se notificara', async () => {
+    expedienteRef.value = conProcesoOptions('ana@example.com');
+
+    const wrapper = montar();
+    await selectProceso(wrapper).vm.$emit('update:model-value', 2);
+    await flushPromises();
+
+    expect(alert).toHaveBeenCalledWith('TICKETS.WARRANTY.ADVANCED_NOTIFICARA');
+  });
+
+  it('sin correo del cliente, el toast avisa que no se podra notificar', async () => {
+    expedienteRef.value = conProcesoOptions(null);
+
+    const wrapper = montar();
+    await selectProceso(wrapper).vm.$emit('update:model-value', 2);
+    await flushPromises();
+
+    expect(alert).toHaveBeenCalledWith('TICKETS.WARRANTY.ADVANCED_SIN_CORREO');
   });
 });
 
