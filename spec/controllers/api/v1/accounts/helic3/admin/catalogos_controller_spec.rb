@@ -171,6 +171,16 @@ RSpec.describe 'Helic3 administracion de catalogos (ADM-01)', type: :request do
       let(:registro) { modelo.create!(account: account, nombre: 'Radicada', codigo: 'radicada') }
 
       it_behaves_like 'catalogo con las cuatro operaciones (ADM-02)', 'etapas_pqr'
+
+      it 'permite marcar la etapa inicial (flag editable por el admin)' do
+        post "/api/v1/accounts/#{account.id}/helic3/admin/catalogos/etapas_pqr",
+             params: { catalogo: { nombre: 'Radicada', codigo: 'radicada', inicial: true } },
+             headers: admin.create_new_auth_token, as: :json
+
+        expect(response).to have_http_status(:created)
+        expect(response.parsed_body['inicial']).to be(true)
+        expect(modelo.find_by(account: account, codigo: 'radicada').inicial).to be(true)
+      end
     end
 
     describe 'motivos_garantia' do

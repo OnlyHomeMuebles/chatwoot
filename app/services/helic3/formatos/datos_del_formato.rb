@@ -47,10 +47,12 @@ class Helic3::Formatos::DatosDelFormato
     }
   end
 
+  # MAN-01: el cliente sale de la ficha si esta (PQR manual sin conversacion); si
+  # no, del contacto de la conversacion, como venia funcionando para las del chat.
   def datos_contacto
     {
-      'CLIENTE' => @contacto&.name.to_s,
-      'TELEFONO' => @contacto&.phone_number.to_s
+      'CLIENTE' => (@ficha&.cliente_nombre.presence || @contacto&.name).to_s,
+      'TELEFONO' => (@ficha&.cliente_telefono.presence || @contacto&.phone_number).to_s
     }
   end
 
@@ -73,8 +75,9 @@ class Helic3::Formatos::DatosDelFormato
     }
   end
 
-  # AGT-11: la ficha aun no tiene factura_fecha en dev. Se conecta cuando AGT-11 entre.
+  # MAN-01: la fecha de compra sale de la ficha (factura_fecha), en dd/mm/aaaa.
+  # Vacio si no se registro. Antes dependia de "AGT-11", que nunca entro.
   def fecha_compra
-    ''
+    @ficha&.factura_fecha&.strftime('%d/%m/%Y').to_s
   end
 end

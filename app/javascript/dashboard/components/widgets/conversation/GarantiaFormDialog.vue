@@ -63,11 +63,33 @@ const puedeConfirmar = computed(
     productos.value.every(p => p.producto_nombre)
 );
 
-const open = (elTicket, elResultadoId) => {
+// Normaliza para cruzar la ciudad de la ficha (texto libre: "armenia", "Armenía")
+// con el nombre del catalogo ("Armenia"): sin acentos, sin espacios extremos, en
+// minusculas. Asi el precargado acierta aunque el operador no escriba igual.
+const normalizar = s =>
+  (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+
+// MAN-03: tercer argumento opcional para precargar producto/ciudad desde la ficha
+// del expediente (el detalle lo usa). ConversationTickets lo sigue llamando con
+// dos args, asi que prefill cae a {} y el comportamiento previo no cambia.
+const open = (elTicket, elResultadoId, prefill = {}) => {
   ticket.value = elTicket;
   resultadoId.value = elResultadoId;
-  ciudadId.value = '';
-  productos.value = [productoVacio()];
+  // La ficha guarda la ciudad como texto; el form usa el id del catalogo. Se
+  // traduce por nombre normalizado; si no hay cobertura equivalente, queda vacia y
+  // la elige el operador (nunca se envia un id inventado).
+  const ciudadBuscada = normalizar(prefill.ciudad_nombre);
+  const ciudad = (catalogos.value.coberturas_ciudad || []).find(
+    c => normalizar(c.nombre) === ciudadBuscada
+  );
+  ciudadId.value = ciudad?.id || '';
+  productos.value = [
+    {
+      ...productoVacio(),
+      producto_nombre: prefill.producto_nombre || '',
+      producto_referencia: prefill.producto_referencia || '',
+    },
+  ];
   error.value = '';
   dialogRef.value.open();
 };

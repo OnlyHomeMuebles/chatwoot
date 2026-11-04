@@ -30,7 +30,7 @@ class Api::V1::Accounts::Helic3::Admin::CatalogosController < Api::V1::Accounts:
     },
     'etapas_pqr' => {
       modelo: Helic3::Catalogo::EtapaPqr,
-      campos: %i[nombre codigo activo posicion detiene_reloj visible_cliente]
+      campos: %i[nombre codigo activo posicion detiene_reloj visible_cliente inicial]
     },
     'detalles_tipificados' => {
       modelo: Helic3::Catalogo::DetalleTipificado,

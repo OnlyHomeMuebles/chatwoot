@@ -40,14 +40,16 @@ class Helic3::Catalogo::SeederService
     { nombre: 'Felicitación', codigo: 'felicitacion' }
   ].freeze
 
-  # el reloj legal (addendum 24/08): la PQR se resuelve cuando se INFORMA al
-  # cliente que procede, no cuando el producto queda arreglado. Solo
-  # "Respondida" detiene el reloj. Todas visibles al cliente.
+  # Las 3 etapas del mockup (definidas con Karen, 19/10): Nuevo -> En gestion ->
+  # Solucionado. La PQR nace en "Nuevo" (flag inicial). El reloj legal (addendum
+  # 24/08): se resuelve cuando se INFORMA al cliente, no cuando el producto queda
+  # arreglado; por eso lo detiene "Solucionado" (detiene_reloj). Todas visibles al
+  # cliente. La etapa inicial se marca con el flag `inicial`, no por el texto del
+  # codigo, para que Karen pueda renombrarla sin romper la radicacion.
   ETAPAS_PQR = [
-    { nombre: 'Nueva', codigo: 'nueva' },
-    { nombre: 'En análisis', codigo: 'en_analisis' },
-    { nombre: 'Respondida', codigo: 'respondida', detiene_reloj: true },
-    { nombre: 'Cerrada', codigo: 'cerrada' }
+    { nombre: 'Nuevo', codigo: 'nuevo', inicial: true },
+    { nombre: 'En gestión', codigo: 'en_gestion' },
+    { nombre: 'Solucionado', codigo: 'solucionado', detiene_reloj: true }
   ].freeze
 
   # los 7 motivos de PQR del diseno validado (addendum 24/08), con su

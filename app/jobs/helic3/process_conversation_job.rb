@@ -4,8 +4,8 @@
 # reply back into the Chatwoot conversation. Triggered by the incoming-message webhook; the run
 # context is tied to the Chatwoot conversation (display_id) so tools act on the right conversation.
 #
-# Elige el "cerebro" del agente: Gemini si hay GEMINI_API_KEY, si no un modelo local (Ollama),
-# para poder responder sin depender de una API key de OpenAI.
+# El cerebro del agente es OpenAI con la llave de Super Admin (CFG-01, ver
+# Helic3::Agents::LlmRuntime).
 #
 # El job es grande porque es el punto donde confluyen tres frentes: el flujo E4
 # (runner por cuenta + compuertas de intervención y límites), la recolección

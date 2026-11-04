@@ -18,7 +18,7 @@ RSpec.describe Helic3::Agents::Tools::ResolverPqrTool do
   let(:ticket) { create(:ticket, account: account) }
 
   before do
-    Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Respondida', codigo: 'respondida',
+    Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Solucionado', codigo: 'solucionado',
                                        detiene_reloj: true)
     Helic3::Catalogo::Resultado.create!(account: account, nombre: 'Resuelta con información',
                                         codigo: 'resuelta_info', cierra_pqr: true)

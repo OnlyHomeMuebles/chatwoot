@@ -14,7 +14,7 @@ module Helic3::Formatos::Marcadores
     'DIRECCION' => { descripcion: 'Dirección del cliente', ejemplo: 'Calle 1 # 2-3' },
     'CIUDAD' => { descripcion: 'Ciudad del cliente', ejemplo: 'Cali' },
     'FACTURA_NUMERO' => { descripcion: 'Número de factura', ejemplo: 'FAC-999' },
-    'FECHA_COMPRA' => { descripcion: 'Fecha de compra (AGT-11, aún no disponible)', ejemplo: '' },
+    'FECHA_COMPRA' => { descripcion: 'Fecha de compra (dd/mm/aaaa)', ejemplo: '15/01/2026' },
     'PRODUCTO' => { descripcion: 'Nombre del producto', ejemplo: 'Sofá Milano' },
     'PRODUCTO_REFERENCIA' => { descripcion: 'Referencia del producto', ejemplo: 'REF-123' },
     'MOTIVO_GARANTIA' => { descripcion: 'Motivo de garantía', ejemplo: 'Falla de fábrica' },

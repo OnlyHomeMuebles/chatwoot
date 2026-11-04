@@ -13,7 +13,7 @@ RSpec.describe 'Resoluciones API', type: :request do
   # la etapa que detiene el reloj debe existir en la BD: responder! la busca con
   # find_by!. No se referencia por nombre en los tests, va en un before.
   before do
-    Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Respondida', codigo: 'respondida',
+    Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Solucionado', codigo: 'solucionado',
                                        detiene_reloj: true)
   end
 

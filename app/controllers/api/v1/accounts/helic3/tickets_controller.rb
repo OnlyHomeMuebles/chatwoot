@@ -27,9 +27,15 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
   # Todo en UNA transaccion: Radicar abre la suya, pero al anidarla dentro de esta
   # los operativos (status/assignee) quedan en el mismo alcance. Si su update! falla,
   # se revierte tambien la radicacion — nunca queda un expediente huerfano con numero
-  # y reloj legal corriendo que nadie atenderia. No se rescata aqui: la excepcion
-  # debe salir de la transaccion para que haya rollback (el rescue_from base responde).
+  # y reloj legal corriendo que nadie atenderia. Los errores operativos NO se rescatan:
+  # salen de la transaccion para que haya rollback (el rescue_from base responde).
+  #
+  # La unica excepcion que SI capturamos es EtapaInicialFaltante (riesgo 1 de la
+  # revision de #127): se rescata a nivel de metodo —fuera del bloque, con el rollback
+  # ya hecho— para responder 422 nombrando la causa, en vez del 404/500 enganoso que
+  # dejaba al operador sin saber que la cuenta no esta bien sembrada.
   def create
+    validar_radicacion_manual!
     Helic3::Ticket.transaction do
       @ticket = Helic3::Casos::Radicar.new(
         account: Current.account,
@@ -39,15 +45,29 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
         tipo: catalogo_de_cuenta(Helic3::Catalogo::Tipo, create_params[:tipo_id]),
         motivo_pqr: catalogo_de_cuenta(Helic3::Catalogo::MotivoPqr, create_params[:motivo_pqr_id]),
         creator: Current.user,
+        numero_orden: create_params[:numero_orden],
         origen: :humano
       ).call
       aplicar_operativos_al_crear
       registrar_detalle_al_crear
+      registrar_datos_cliente_al_crear
     end
+  rescue Helic3::Casos::Radicar::EtapaInicialFaltante => e
+    # misma familia que ParametroFaltante (riesgo 1 de #127): la cuenta no esta bien
+    # sembrada. Se responde 422 con la causa nombrada, no el 404/500 enganoso. La
+    # excepcion sale de la transaccion, asi que ya hubo rollback cuando se rescata.
+    render json: { error: e.message }, status: :unprocessable_entity
   end
 
   def update
-    @ticket.update!(update_params)
+    validar_cambio_de_etapa!
+    etapa_previa = @ticket.etapa_id
+    # update + evento en la MISMA transaccion: si falla el registro de la bitacora, no
+    # queda la etapa cambiada sin su evento (mismo criterio de atomicidad que create).
+    Helic3::Ticket.transaction do
+      @ticket.update!(update_params)
+      registrar_cambio_de_etapa(etapa_previa)
+    end
   end
 
   def destroy
@@ -120,14 +140,65 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
     modelo.find_by!(account: Current.account, id: id)
   end
 
-  # status/assignee_id no son parte de la firma de Radicar; se aplican dentro de la
-  # transaccion del create, sin silenciar lo que el panel pida al crear (ni tocar
-  # el servicio). Corre bajo la transaccion: si algo falla, se revierte todo.
+  # El menu del panel Acciones cambia la etapa operativa (Nuevo/En gestion). Un caso ya
+  # resuelto (reloj detenido) NO se reabre por aqui: dejaria la etapa operativa con el
+  # reloj ya parado (incoherente) y evadiria el flujo de resolucion que sella respondida_at
+  # (RES-01). Responde 422, no reabre en silencio.
+  def validar_cambio_de_etapa!
+    etapa_id = update_params[:etapa_id]
+    return if etapa_id.blank?
+
+    if @ticket.reloj_detenido?
+      errores = Helic3::Ticket.new
+      errores.errors.add(:base, 'El caso ya esta resuelto; su etapa no se cambia desde el panel')
+      raise ActiveRecord::RecordInvalid, errores
+    end
+
+    validar_etapa_operativa!(etapa_id)
+  end
+
+  # Deja una entrada en la bitacora (EVT-01) cuando el operador mueve la etapa desde el
+  # panel: queda registro de quien paso la PQR a En gestion y cuando (sustento ante la
+  # SIC). Solo si la etapa cambio de verdad; cambiar status/assignee no genera evento.
+  def registrar_cambio_de_etapa(etapa_previa)
+    return if @ticket.etapa_id == etapa_previa
+
+    Helic3::Evento.registrar!(
+      ticket: @ticket, tipo: 'etapa_cambiada', origen: 'humano', actor: Current.user,
+      payload: { 'etapa_id' => @ticket.etapa_id, 'etapa_anterior_id' => etapa_previa }
+    )
+  end
+
+  # Regla compartida por update (menu del detalle) y create (wizard): la etapa solo
+  # puede ser una operativa, que no detiene el reloj (Nuevo/En gestion). La etapa final
+  # (Solucionado) NO se marca por aqui: eso es resolver (RES-01). Una etapa inexistente,
+  # inactiva o de otra cuenta tampoco pasa (seguridad multi-tenant). Se valida antes del
+  # update! para no tocar nada si se rechaza; mismo patron de 422 que validar_radicacion_manual!.
+  def validar_etapa_operativa!(etapa_id)
+    return if etapa_id.blank?
+
+    etapa = Helic3::Catalogo::EtapaPqr.activos.find_by(account: Current.account, id: etapa_id)
+    errores = Helic3::Ticket.new
+    if etapa.nil?
+      errores.errors.add(:base, 'La etapa indicada no existe o esta inactiva')
+    elsif etapa.detiene_reloj?
+      errores.errors.add(:base, 'La etapa final (Solucionado) solo se marca al resolver la PQR')
+    end
+    raise ActiveRecord::RecordInvalid, errores if errores.errors.any?
+  end
+
+  # status/assignee_id/etapa_id no son parte de la firma de Radicar; se aplican dentro
+  # de la transaccion del create, sin silenciar lo que el panel pida al crear (ni tocar
+  # el servicio). La etapa deja al agente radicar directo en "En gestion" si ya la va a
+  # trabajar; Radicar siempre nace en Nuevo y esto la mueve despues (misma regla que el
+  # menu del detalle: solo etapas que no detienen el reloj). Corre bajo la transaccion:
+  # si algo falla, se revierte todo.
   def aplicar_operativos_al_crear
-    operativos = create_params.slice(:status, :assignee_id).compact_blank
+    operativos = create_params.slice(:status, :assignee_id, :etapa_id).compact_blank
     return if operativos.blank?
 
     validar_status!(operativos[:status])
+    validar_etapa_operativa!(operativos[:etapa_id])
     @ticket.update!(operativos)
   end
 
@@ -153,23 +224,91 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
     ).call
   end
 
+  # MAN-01: escribe en la ficha los datos del cliente y la compra que llegaron en el
+  # bloque `datos`, con fuente humano (lo escribio el operador). Corre bajo la
+  # transaccion del create: si falla, se revierte todo (ni ticket, ni ficha, ni
+  # evento radicada). RegistrarDatos ignora los vacios y los campos que no conoce.
+  def registrar_datos_cliente_al_crear
+    campos = datos_cliente_params.to_h.symbolize_keys.compact_blank
+    return if campos.blank?
+
+    Helic3::Casos::RegistrarDatos.new(ticket: @ticket, campos: campos, fuente: :humano).call
+  end
+
+  # MAN-01: validacion de borde para la radicacion manual. Sin conversacion no hay
+  # contacto de Chatwoot de donde sacar el cliente, asi que nombre y telefono son
+  # obligatorios (si no, el formato de garantia saldria sin cliente). Con conversacion
+  # siguen opcionales: el chat y su panel no cambian. factura_fecha invalida o futura
+  # se rechaza (un string invalido la columna date lo guardaria como nil en silencio).
+  # Se valida ANTES de abrir la transaccion: si falla, 422 y no se radica nada (CA2).
+  # Los errores van sobre :base y no sobre :cliente_nombre/:factura_fecha porque esos
+  # NO son atributos de Helic3::Ticket (viven en la ficha): al generar el mensaje,
+  # Rails leeria ticket.cliente_nombre y reventaria con NoMethodError -> 500. :base
+  # no lee ningun atributo y el mensaje nombra el campo igual (CA2).
+  def validar_radicacion_manual!
+    errores = Helic3::Ticket.new
+
+    if create_params[:conversation_id].blank?
+      datos = datos_cliente_params
+      errores.errors.add(:base, 'El nombre del cliente es obligatorio al radicar sin conversacion') if datos[:cliente_nombre].blank?
+      errores.errors.add(:base, 'El telefono del cliente es obligatorio al radicar sin conversacion') if datos[:cliente_telefono].blank?
+    end
+
+    validar_factura_fecha!(datos_cliente_params[:factura_fecha], errores)
+
+    raise ActiveRecord::RecordInvalid, errores if errores.errors.any?
+  end
+
+  # La fecha llega como AAAA-MM-DD (lo que manda un <input type="date">). Un valor
+  # no parseable o posterior a hoy es un error del cliente -> 422.
+  def validar_factura_fecha!(raw, errores)
+    return if raw.blank?
+
+    fecha = begin
+      Date.iso8601(raw)
+    rescue ArgumentError
+      nil
+    end
+
+    if fecha.nil?
+      errores.errors.add(:base, 'La fecha de compra no es una fecha valida (AAAA-MM-DD)')
+    elsif fecha > Date.current
+      errores.errors.add(:base, 'La fecha de compra no puede ser una fecha futura')
+    end
+  end
+
+  # MAN-01: el bloque `datos` del cliente y la compra que el panel escribe a mano.
+  # factura_numero NO va aqui (entra por numero_orden y lo guarda Radicar);
+  # detalle_tipificado_id tampoco (lo maneja registrar_detalle_al_crear).
+  def datos_cliente_params
+    @datos_cliente_params ||= params.require(:ticket).fetch(:datos, {}).permit(
+      :cedula, :ciudad, :direccion, :producto_nombre,
+      :cliente_nombre, :cliente_telefono, :cliente_email,
+      :producto_referencia, :factura_fecha
+    )
+  end
+
   # Datos de radicacion. NO incluye categoria_id: la categoria la deriva Radicar
   # del motivo, y recibirla abriria una segunda fuente de la misma verdad.
   def create_params
     params.require(:ticket).permit(:title, :description, :conversation_id,
                                    :tipo_id, :motivo_pqr_id, :detalle_tipificado_id,
-                                   :status, :assignee_id)
+                                   :status, :assignee_id, :etapa_id, :numero_orden)
   end
 
-  # Update solo toca lo operativo: estado y asignacion.
-  # resultado_id y etapa_id NO se permiten aqui a proposito (RES-01): resolver es
-  # un acto de dominio que sella respondida_at y detiene el reloj legal, y eso solo
-  # ocurre por POST /resolucion (Helic3::Casos::Resolver). Si se pudiera escribir
-  # resultado_id por un update, el reloj se detendria sin que nadie haya respondido:
-  # dos puertas a la misma verdad terminan contandola distinto.
+  # Update toca lo operativo: estado de Chatwoot, asignacion y la ETAPA de la PQR.
+  # La etapa es el menu del panel Acciones del detalle, y se permite SOLO hacia
+  # etapas que no detienen el reloj (Nuevo/En gestion). La etapa final (detiene_reloj)
+  # queda fuera: validar_cambio_de_etapa! la rechaza con 422.
+  #
+  # resultado_id NO se permite aqui a proposito (RES-01): resolver es un acto de
+  # dominio que sella respondida_at y detiene el reloj legal, y eso solo ocurre por
+  # POST /resolucion (Helic3::Casos::Resolver). Si se pudiera detener el reloj por un
+  # update, dos puertas a la misma verdad terminarian contandola distinto; por eso
+  # tampoco se admite por aqui la etapa que lo detiene.
   # Corregir la clasificacion ya radicada (tipo/motivo/categoria) tambien queda
   # fuera: cambiaria la categoria y el plazo sin re-derivarlos (decision de negocio).
   def update_params
-    params.require(:ticket).permit(:status, :assignee_id)
+    params.require(:ticket).permit(:status, :assignee_id, :etapa_id)
   end
 end

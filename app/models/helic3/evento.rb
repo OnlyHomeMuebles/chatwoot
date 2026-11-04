@@ -27,7 +27,7 @@
 # Foreign Keys
 #
 #  fk_rails_...  (account_id => accounts.id)
-#  fk_rails_...  (actor_id => users.id)
+#  fk_rails_...  (actor_id => users.id) ON DELETE => nullify
 #  fk_rails_...  (garantia_id => helic3_garantias.id)
 #  fk_rails_...  (ticket_id => helic3_tickets.id)
 #
@@ -40,7 +40,7 @@ class Helic3::Evento < ApplicationRecord
   # catalogo que Karen edite, por eso viven en codigo.
   TIPOS = %w[radicada clasificada resultado_propuesto resultado_aplicado
              garantia_abierta proceso_avanzado respondida evidencia_adjuntada
-             formato_generado].freeze
+             formato_generado etapa_cambiada].freeze
   ORIGENES = %w[humano agente].freeze
 
   belongs_to :account

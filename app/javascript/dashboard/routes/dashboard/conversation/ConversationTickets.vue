@@ -8,7 +8,6 @@ import Button from 'dashboard/components-next/button/Button.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Helic3SourceBadge from 'dashboard/components-next/helic3/Helic3SourceBadge.vue';
 import Helic3BudgetBar from 'dashboard/components-next/helic3/Helic3BudgetBar.vue';
-import CreateTicketDialog from 'dashboard/components/widgets/conversation/CreateTicketDialog.vue';
 import GarantiaFormDialog from 'dashboard/components/widgets/conversation/GarantiaFormDialog.vue';
 
 const props = defineProps({
@@ -25,7 +24,14 @@ const router = useRouter();
 
 const STATUSES = ['open', 'pending', 'resolved', 'closed'];
 
-const createDialogRef = ref(null);
+// Crear PQR desde el chat: lleva al wizard nuevo (PqrNuevaPage) con la conversacion
+// asociada por query, en vez del dialogo viejo (CreateTicketDialog).
+const nuevaPqr = () =>
+  router.push({
+    name: 'helic3_pqr_nueva',
+    params: { accountId: route.params.accountId },
+    query: { conversation: props.conversationId },
+  });
 const garantiaDialogRef = ref(null);
 
 const tickets = useMapGetter('tickets/getTickets');
@@ -498,12 +504,7 @@ const guardarDato = async (ticket, campo, event) => {
       sm
       faded
       class="w-full"
-      @click="createDialogRef.open()"
-    />
-
-    <CreateTicketDialog
-      ref="createDialogRef"
-      :conversation-id="conversationId"
+      @click="nuevaPqr"
     />
 
     <!-- GAR-05: formulario de apertura de garantia a mano por el operador -->

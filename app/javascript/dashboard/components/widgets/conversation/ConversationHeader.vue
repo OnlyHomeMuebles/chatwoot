@@ -1,12 +1,11 @@
 <script setup>
 import { computed, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { useElementSize } from '@vueuse/core';
 import BackButton from '../BackButton.vue';
 import InboxName from '../InboxName.vue';
 import MoreActions from './MoreActions.vue';
-import CreateTicketDialog from './CreateTicketDialog.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Avatar from 'next/avatar/Avatar.vue';
 import SLACardLabel from './components/SLACardLabel.vue';
@@ -33,13 +32,22 @@ const props = defineProps({
 const { t } = useI18n();
 const store = useStore();
 const route = useRoute();
+const router = useRouter();
 const conversationHeader = ref(null);
-const createTicketDialogRef = ref(null);
 const { width } = useElementSize(conversationHeader);
 const { isAWebWidgetInbox } = useInbox();
 
 const currentChat = computed(() => store.getters.getSelectedChat);
 const accountId = computed(() => store.getters.getCurrentAccountId);
+
+// Crear PQR desde el chat: lleva al wizard nuevo con la conversacion asociada por
+// query, en vez del dialogo viejo (CreateTicketDialog).
+const nuevaPqr = () =>
+  router.push({
+    name: 'helic3_pqr_nueva',
+    params: { accountId: accountId.value },
+    query: { conversation: currentChat.value.id },
+  });
 
 const chatMetadata = computed(() => props.chat.meta);
 
@@ -182,13 +190,9 @@ const copyConversationId = async () => {
         slate
         faded
         sm
-        @click="createTicketDialogRef.open()"
+        @click="nuevaPqr"
       />
       <MoreActions :conversation-id="currentChat.id" />
     </div>
-    <CreateTicketDialog
-      ref="createTicketDialogRef"
-      :conversation-id="currentChat.id"
-    />
   </div>
 </template>

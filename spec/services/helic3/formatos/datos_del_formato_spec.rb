@@ -29,7 +29,9 @@ RSpec.describe Helic3::Formatos::DatosDelFormato do
       contacto = instance_double(Contact, name: 'Ana Perez', phone_number: '3001234567')
       conversation = instance_double(Conversation, contact: contacto)
       ficha = instance_double(Helic3::TicketDato, cedula: '1.234.567', direccion: 'Calle 1',
-                                                  ciudad: 'Cali', factura_numero: 'FAC-9')
+                                                  ciudad: 'Cali', factura_numero: 'FAC-9',
+                                                  cliente_nombre: nil, cliente_telefono: nil,
+                                                  factura_fecha: nil)
       ticket = instance_double(Helic3::Ticket, display_id: 42, datos: ficha, conversation: conversation)
       garantia = instance_double(Helic3::Garantia, numero_radicado: 'GAR-0042', ticket: ticket)
       instance_double(Helic3::GarantiaItem,
@@ -49,6 +51,48 @@ RSpec.describe Helic3::Formatos::DatosDelFormato do
       expect(datos['PRODUCTO']).to eq('Sofa')
       expect(datos['DECISION']).to eq('Cambio')
       expect(datos['ELABORADO_POR']).to eq('Asesora SAC')
+    end
+  end
+
+  # MAN-01: en una PQR manual no hay conversacion, asi que CLIENTE/TELEFONO/FECHA_COMPRA
+  # salen de la ficha. En una del chat sin esos datos en ficha, caen al contacto.
+  describe 'MAN-01: cliente y fecha de compra desde la ficha' do
+    let(:user) { instance_double(User, name: 'Asesora') }
+
+    def item_con(ficha:, contacto:)
+      conversation = contacto && instance_double(Conversation, contact: contacto)
+      ticket = instance_double(Helic3::Ticket, display_id: 1, datos: ficha, conversation: conversation)
+      garantia = instance_double(Helic3::Garantia, numero_radicado: 'G', ticket: ticket)
+      instance_double(Helic3::GarantiaItem, garantia: garantia, producto_nombre: 'p',
+                                            producto_referencia: 'r', motivo_garantia: nil,
+                                            detalle_tipificado: nil, decision: nil)
+    end
+
+    it 'CA5: CLIENTE, TELEFONO y FECHA_COMPRA salen de la ficha aunque el contacto sea distinto' do
+      ficha = instance_double(Helic3::TicketDato, cedula: '1', direccion: 'd', ciudad: 'c',
+                                                  factura_numero: 'f', cliente_nombre: 'Cliente Ficha',
+                                                  cliente_telefono: '3151112222',
+                                                  factura_fecha: Date.new(2026, 1, 15))
+      contacto = instance_double(Contact, name: 'Contacto Viejo', phone_number: '000')
+
+      datos = described_class.call(item: item_con(ficha: ficha, contacto: contacto), user: user)
+
+      expect(datos['CLIENTE']).to eq('Cliente Ficha')
+      expect(datos['TELEFONO']).to eq('3151112222')
+      expect(datos['FECHA_COMPRA']).to eq('15/01/2026')
+    end
+
+    it 'CA5: sin cliente en la ficha, CLIENTE y TELEFONO caen al contacto (PQR del chat)' do
+      ficha = instance_double(Helic3::TicketDato, cedula: '1', direccion: 'd', ciudad: 'c',
+                                                  factura_numero: 'f', cliente_nombre: nil,
+                                                  cliente_telefono: nil, factura_fecha: nil)
+      contacto = instance_double(Contact, name: 'Ana Chat', phone_number: '3009998888')
+
+      datos = described_class.call(item: item_con(ficha: ficha, contacto: contacto), user: user)
+
+      expect(datos['CLIENTE']).to eq('Ana Chat')
+      expect(datos['TELEFONO']).to eq('3009998888')
+      expect(datos['FECHA_COMPRA']).to eq('')
     end
   end
 end
