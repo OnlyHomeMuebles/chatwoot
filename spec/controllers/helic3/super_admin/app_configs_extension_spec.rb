@@ -16,6 +16,13 @@ RSpec.describe 'Super Admin · Helic3 Agentes IA', type: :request do
       expect(response).to have_http_status(:success)
       expect(response.body).to include('OpenAI API Key')
     end
+
+    it 'pinta el campo Modelo de visión para imágenes' do
+      get '/super_admin/app_config?config=helic3_ia'
+
+      expect(response).to have_http_status(:success)
+      expect(response.body).to include('Modelo de visión para imágenes')
+    end
   end
 
   describe 'POST /super_admin/app_config?config=helic3_ia' do
@@ -25,6 +32,14 @@ RSpec.describe 'Super Admin · Helic3 Agentes IA', type: :request do
 
       expect(response).to redirect_to(super_admin_settings_path)
       expect(InstallationConfig.find_by(name: 'HELIC3_OPENAI_API_KEY')&.value).to eq('sk-nueva')
+    end
+
+    it 'guarda el modelo de visión para imágenes' do
+      post '/super_admin/app_config?config=helic3_ia',
+           params: { app_config: { HELIC3_VISION_MODELO: 'gpt-6-terra' } }
+
+      expect(response).to redirect_to(super_admin_settings_path)
+      expect(InstallationConfig.find_by(name: 'HELIC3_VISION_MODELO')&.value).to eq('gpt-6-terra')
     end
 
     it 'ignora una clave ajena a la pagina (FB_APP_ID)' do
