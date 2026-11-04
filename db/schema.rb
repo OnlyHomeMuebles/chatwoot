@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_10_19_130000) do
+ActiveRecord::Schema[7.2].define(version: 2026_11_03_120100) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1432,6 +1432,21 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_19_130000) do
     t.index ["conversation_id"], name: "index_helic3_knowledge_faq_suggestions_on_conversation_id"
   end
 
+  create_table "helic3_plantillas_correo", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "proceso_garantia_id"
+    t.string "disparador", null: false
+    t.string "asunto", null: false
+    t.text "cuerpo", null: false
+    t.boolean "activo", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "proceso_garantia_id"], name: "idx_h3_plantilla_correo_proceso_unico", unique: true, where: "((disparador)::text = 'proceso_garantia'::text)"
+    t.index ["account_id"], name: "idx_h3_plantilla_correo_account"
+    t.index ["account_id"], name: "idx_h3_plantilla_correo_cierre_unico", unique: true, where: "((disparador)::text = 'cierre_caso'::text)"
+    t.check_constraint "disparador::text = 'proceso_garantia'::text AND proceso_garantia_id IS NOT NULL OR disparador::text = 'cierre_caso'::text AND proceso_garantia_id IS NULL", name: "check_h3_plantilla_correo_disparador"
+  end
+
   create_table "helic3_plantillas_formato", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "formato_id", null: false
@@ -2079,6 +2094,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_19_130000) do
   add_foreign_key "helic3_garantia_items", "helic3_garantias", column: "garantia_id"
   add_foreign_key "helic3_garantias", "helic3_catalogo_coberturas_ciudad", column: "cobertura_ciudad_id"
   add_foreign_key "helic3_garantias", "helic3_tickets", column: "ticket_id"
+  add_foreign_key "helic3_plantillas_correo", "accounts"
+  add_foreign_key "helic3_plantillas_correo", "helic3_catalogo_procesos_garantia", column: "proceso_garantia_id"
   add_foreign_key "helic3_plantillas_formato", "accounts"
   add_foreign_key "helic3_plantillas_formato", "helic3_catalogo_formatos", column: "formato_id"
   add_foreign_key "helic3_plantillas_formato", "users", column: "activada_por_id", on_delete: :nullify
