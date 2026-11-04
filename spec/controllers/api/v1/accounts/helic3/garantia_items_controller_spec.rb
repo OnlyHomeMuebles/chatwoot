@@ -51,6 +51,19 @@ RSpec.describe 'Garantia items API', type: :request do
         expect(garantia.reload.cerrada_at).to be_present
         expect(response.parsed_body['garantia']['cerrada_at']).to be_present
       end
+
+      # COR-02: el aviso al cliente necesita saber QUIEN avanzo el proceso
+      # (bitacora EVT-01), no solo que avanzo.
+      it 'registra el evento proceso_avanzado con el administrador como actor' do
+        patch path,
+              params: { proceso_id: entrega.id },
+              headers: administrator.create_new_auth_token,
+              as: :json
+
+        evento = Helic3::Evento.find_by!(ticket: ticket, tipo: 'proceso_avanzado')
+        expect(evento.actor).to eq(administrator)
+        expect(evento.origen).to eq('humano')
+      end
     end
 
     context 'when the proceso belongs to another account' do
