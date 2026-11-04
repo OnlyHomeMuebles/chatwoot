@@ -27,6 +27,29 @@ RSpec.describe Helic3::Agents::LectorDeImagenes do
     expect(described_class.leer([url])).to eq('Factura N.° 8821')
   end
 
+  # Opt-in: con un modelo de vision configurado (LlmRuntime.modelo_vision), la imagen se lee con el
+  # modelo (gpt-6-terra) en vez del OCR local. Sin el parametro queda el OCR (los tests de arriba).
+  it 'con un modelo de vision configurado, lee con el modelo y no con el OCR local' do
+    url = 'https://cdn.chatwoot.test/factura.jpg'
+    responder_con_imagen(url)
+    allow(Helic3::Agents::LlmRuntime).to receive(:modelo_vision).and_return('gpt-6-terra')
+    allow_any_instance_of(described_class).to receive(:leer_con_vision) # rubocop:disable RSpec/AnyInstance
+      .and_return('Cliente Ana Ruiz, factura 8821, sofá descosido')
+    expect(described_class).not_to receive(:ocr)
+
+    expect(described_class.leer([url])).to eq('Cliente Ana Ruiz, factura 8821, sofá descosido')
+  end
+
+  it 'si la lectura con vision falla, cae al OCR local (nunca deja la imagen sin leer)' do
+    url = 'https://cdn.chatwoot.test/factura.jpg'
+    responder_con_imagen(url)
+    allow(Helic3::Agents::LlmRuntime).to receive(:modelo_vision).and_return('gpt-6-terra')
+    allow(Llm::Config).to receive(:with_api_key).and_raise(StandardError, 'API caida')
+    expect(described_class).to receive(:ocr).and_return('Factura N.° 8821')
+
+    expect(described_class.leer([url])).to eq('Factura N.° 8821')
+  end
+
   it 'concatena el texto de varias imagenes, separado por un delimitador' do
     url1 = 'https://cdn.chatwoot.test/factura.jpg'
     url2 = 'https://cdn.chatwoot.test/cedula.jpg'

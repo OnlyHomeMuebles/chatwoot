@@ -9,6 +9,9 @@
 # HELIC3_OPENAI_API_KEY). No se lee de variables de entorno ni de Captain.
 module Helic3::Agents::LlmRuntime
   CLAVE_API_KEY = 'HELIC3_OPENAI_API_KEY'
+  # Modelo de VISION para leer imagenes (p. ej. gpt-6-terra). Si esta vacio, el lector de imagenes
+  # usa el OCR local (tesseract), que es el comportamiento por defecto: prenderlo es opt-in.
+  CLAVE_MODELO_VISION = 'HELIC3_VISION_MODELO'
   # Explicito para no heredar CAPTAIN_OPEN_AI_ENDPOINT, que el initializer
   # upstream ai_agents.rb y Llm::Config aplican de forma global.
   API_BASE = "#{LlmConstants::OPENAI_API_ENDPOINT}/v1".freeze
@@ -32,6 +35,11 @@ module Helic3::Agents::LlmRuntime
     InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence ||
       ENV['ONLY_HOME_OPENAI_MODEL'].presence ||
       LlmConstants::DEFAULT_MODEL
+  end
+
+  # Modelo de vision para leer imagenes, o nil si no se configuro (entonces se usa OCR local).
+  def modelo_vision
+    GlobalConfig.get_value(CLAVE_MODELO_VISION).presence
   end
 
   # Opciones para el gem ai-agents (RunnerService / *Agent.build).

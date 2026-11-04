@@ -39,6 +39,16 @@ class Helic3::Agents::LectorDeImagenes
   # tesseract corre como proceso externo: sin tope, una imagen compleja o corrupta
   # puede colgar el worker de Sidekiq indefinidamente. Al vencer, se mata el proceso.
   TIMEOUT_OCR = 15
+  # Instruccion para el modelo de vision (cuando esta configurado). Texto plano, sin inventar.
+  PROMPT_VISION = <<~TXT.freeze
+    Eres el lector de evidencias de atencion al cliente de Only Home. Mira la imagen y responde en
+    texto plano, SIN inventar nada:
+    - Si es una FACTURA u orden: extrae lo que veas (nombre, cedula, ciudad, direccion, numero de
+      factura, producto).
+    - Si es la foto de un PRODUCTO: describe brevemente el dano o estado visible (rayado, roto,
+      descosido, incompleto...).
+    Devuelve solo lo que realmente se ve. Si no hay nada legible ni util, responde vacio.
+  TXT
 
   # Hosts de "bucle local": Chatwoot arma la URL del adjunto con FRONTEND_URL
   # (0.0.0.0 / localhost en desarrollo Docker). Esa URL sirve para el NAVEGADOR
@@ -126,8 +136,26 @@ class Helic3::Agents::LectorDeImagenes
   # (Attachment#external_url en WhatsApp/Instagram/Messenger no es un dominio
   # propio de Chatwoot).
   def leer_texto(url)
+    modelo = Helic3::Agents::LlmRuntime.modelo_vision
     SafeFetch.fetch(url, allowed_content_type_prefixes: ['image/'], read_timeout: TIMEOUT_DESCARGA) do |archivo|
-      self.class.ocr(archivo.tempfile.path)
+      if modelo.present?
+        leer_con_vision(archivo.tempfile.path, modelo)
+      else
+        self.class.ocr(archivo.tempfile.path)
+      end
     end
+  end
+
+  # Opt-in (LlmRuntime.modelo_vision, p. ej. gpt-6-terra): a diferencia del OCR, el modelo de vision
+  # ENTIENDE la imagen — lee la factura Y describe el dano del producto. Si falla (API caida, modelo
+  # sin vision, sin llave) cae al OCR local para no dejar la imagen sin leer.
+  def leer_con_vision(ruta, modelo)
+    Llm::Config.with_api_key(Helic3::Agents::LlmRuntime.api_key, api_base: Helic3::Agents::LlmRuntime.api_base) do |context|
+      context.chat(model: modelo, provider: :openai, assume_model_exists: true)
+             .ask(PROMPT_VISION, with: ruta).content.to_s.strip
+    end
+  rescue StandardError => e
+    Rails.logger.warn("[Helic3] lector de imagenes con vision (#{modelo}) fallo, cae a OCR: #{e.class}: #{e.message}")
+    self.class.ocr(ruta)
   end
 end
