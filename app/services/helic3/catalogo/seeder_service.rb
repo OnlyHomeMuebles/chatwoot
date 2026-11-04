@@ -222,44 +222,53 @@ class Helic3::Catalogo::SeederService
   PLANTILLAS_CORREO = [
     { proceso: 'visita_tecnica',
       asunto: 'Tu PQR #{{RADICADO_PQR}} avanza a Visita Técnica',
-      cuerpo: 'Hola {{CLIENTE}}, Tu PQR # {{RADICADO_PQR}} avanza a **Visita Técnica**. Enviaremos a nuestro ' \
-              'técnico a tu domicilio para evaluar y reparar en sitio si las condiciones lo permiten. ' \
+      cuerpo: "Hola {{CLIENTE}},\n\n" \
+              'Tu PQR # {{RADICADO_PQR}} avanza a **Visita Técnica**. Enviaremos a nuestro técnico a tu ' \
+              "domicilio para evaluar y reparar en sitio si las condiciones lo permiten.\n\n" \
               'Mantente atento/a, nuestro equipo te contactará pronto por WhatsApp o llamada telefónica para ' \
               'coordinar la fecha de la visita.' },
     { proceso: 'recoleccion',
       asunto: 'Tu PQR #{{RADICADO_PQR}} avanza a Recolección',
-      cuerpo: 'Estimado/a {{CLIENTE}}, ¡Buenas noticias! Tu PQR # {{RADICADO_PQR}} avanza al estado de ' \
-              '**Recolección**. En los próximos días coordinaremos la recolección de tu producto para ' \
-              'revisión en fábrica. Mantente atento/a, nuestro equipo te contactará pronto por WhatsApp o ' \
-              'llamada telefónica para coordinar la fecha de recolección. ¡Gracias por confiar en Only Home!' },
+      cuerpo: "Estimado/a {{CLIENTE}},\n\n" \
+              '¡Buenas noticias! Tu PQR # {{RADICADO_PQR}} avanza al estado de **Recolección**. En los ' \
+              "próximos días coordinaremos la recolección de tu producto para revisión en fábrica.\n\n" \
+              'Mantente atento/a, nuestro equipo te contactará pronto por WhatsApp o llamada telefónica para ' \
+              "coordinar la fecha de recolección.\n\n" \
+              '¡Gracias por confiar en Only Home!' },
     { proceso: 'reparacion_fabrica',
       asunto: 'Tu producto ya está en fábrica · PQR #{{RADICADO_PQR}}',
-      cuerpo: 'Estimado/a {{CLIENTE}}, Actualización de tu PQR # {{RADICADO_PQR}}: ¡Tu producto ya está en ' \
-              'fábrica para su reparación! El tiempo estimado es de **10 días hábiles**. Te notificaremos el ' \
-              'siguiente paso.' },
+      cuerpo: "Estimado/a {{CLIENTE}},\n\n" \
+              "Actualización de tu PQR # {{RADICADO_PQR}}: ¡Tu producto ya está en fábrica para su reparación!\n\n" \
+              'El tiempo estimado es de **10 días hábiles**. Te notificaremos el siguiente paso.' },
     { proceso: 'cambio_producto',
       asunto: 'Tu PQR #{{RADICADO_PQR}} fue aprobada para Cambio de Producto',
-      cuerpo: '¡Excelentes noticias, {{CLIENTE}}! Tu PQR # {{RADICADO_PQR}} fue aprobada para **Cambio de ' \
-              'Producto**. Recogeremos el actual y entregaremos uno nuevo en "mano a mano" para tu ' \
-              'comodidad. Como fabricamos bajo pedido, toma **15 días hábiles** en producción. Mantente ' \
-              'atento/a, te contactamos para coordinar la entrega de tu producto.' },
+      cuerpo: "¡Excelentes noticias, {{CLIENTE}}!\n\n" \
+              'Tu PQR # {{RADICADO_PQR}} fue aprobada para **Cambio de Producto**. Recogeremos el actual y ' \
+              "entregaremos uno nuevo en \"mano a mano\" para tu comodidad.\n\n" \
+              'Como fabricamos bajo pedido, toma **15 días hábiles** en producción. Mantente atento/a, te ' \
+              'contactamos para coordinar la entrega de tu producto.' },
     { proceso: 'entrega_producto',
       asunto: 'Tu PQR #{{RADICADO_PQR}} está en Entrega de Producto',
-      cuerpo: '¡Ya casi está, {{CLIENTE}}! Tu PQR # {{RADICADO_PQR}} está en **Entrega de Producto**. Saldrá ' \
-              'pronto de fábrica hacia tu domicilio. Mantente atento/a, nuestro equipo te contactará pronto ' \
-              'por WhatsApp o llamada telefónica para coordinar la entrega de tu producto. ¡Inspecciona ' \
-              'todo al recibirlo!' },
+      cuerpo: "¡Ya casi está, {{CLIENTE}}!\n\n" \
+              'Tu PQR # {{RADICADO_PQR}} está en **Entrega de Producto**. Saldrá pronto de fábrica hacia tu ' \
+              "domicilio.\n\n" \
+              'Mantente atento/a, nuestro equipo te contactará pronto por WhatsApp o llamada telefónica para ' \
+              "coordinar la entrega de tu producto.\n\n" \
+              '¡Inspecciona todo al recibirlo!' },
     { proceso: 'devolucion_dinero',
       asunto: 'Tu PQR #{{RADICADO_PQR}} pasa a Devolución de Dinero',
-      cuerpo: 'Estimado/a {{CLIENTE}}, Tu PQR # {{RADICADO_PQR}} pasa a estado de **Devolución de Dinero**. ' \
-              'Tu reembolso se efectuará en un tiempo de **15 días hábiles**. Agradecemos tu comprensión y ' \
-              'confianza.' }
+      cuerpo: "Estimado/a {{CLIENTE}},\n\n" \
+              'Tu PQR # {{RADICADO_PQR}} pasa a estado de **Devolución de Dinero**. Tu reembolso se efectuará ' \
+              "en un tiempo de **15 días hábiles**.\n\n" \
+              'Agradecemos tu comprensión y confianza.' }
   ].freeze
 
   PLANTILLA_CIERRE_CASO = {
     asunto: 'Finalizamos tu PQR #{{RADICADO_PQR}}',
-    cuerpo: '¡Felicidades, {{CLIENTE}}! Finalizamos tu PQR # {{RADICADO_PQR}} con éxito. Si necesitas algo ' \
-            'más, no dudes en contactarnos. ¡Gracias por ser parte de Only Home!'
+    cuerpo: "¡Felicidades, {{CLIENTE}}!\n\n" \
+            "Finalizamos tu PQR # {{RADICADO_PQR}} con éxito.\n\n" \
+            "Si necesitas algo más, no dudes en contactarnos.\n\n" \
+            '¡Gracias por ser parte de Only Home!'
   }.freeze
 
   # FMT-02: los 4 formatos de Karen como catalogo. El codigo es explicito (no derivado

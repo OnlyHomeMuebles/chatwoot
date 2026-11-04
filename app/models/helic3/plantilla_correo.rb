@@ -43,10 +43,17 @@ class Helic3::PlantillaCorreo < ApplicationRecord
   validates :asunto, :cuerpo, presence: true
   validate :proceso_segun_disparador
   validate :marcadores_conocidos
+  validate :validate_proceso_belongs_to_account
 
   scope :activas, -> { where(activo: true) }
 
   private
+
+  def validate_proceso_belongs_to_account
+    return if proceso_garantia.nil? || proceso_garantia.account_id == account_id
+
+    errors.add(:proceso_garantia, 'must belong to the same account')
+  end
 
   def proceso_segun_disparador
     if disparador == 'proceso_garantia' && proceso_garantia_id.blank?

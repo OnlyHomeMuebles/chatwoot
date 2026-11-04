@@ -291,6 +291,19 @@ RSpec.describe Helic3::Catalogo::SeederService do
     expect(Helic3::PlantillaCorreo.where(account: account).to_a).to all(be_valid)
   end
 
+  # Revision Jhan (PR #151): la tabla del documento COR aplano los parrafos al
+  # pasarla a texto; Helic3::Correos::Renderizar (COR-02) solo abre un <p> por
+  # cada "\n\n", asi que un cuerpo sin ese salto le llega al cliente como un
+  # solo bloque. El renderer vive en COR-02, no en esta rama: aqui se verifica
+  # el salto de parrafo en el texto crudo que siembra esta migracion.
+  it 'cada cuerpo sembrado (proceso y cierre de caso) tiene al menos un salto de parrafo' do
+    service.sembrar!
+
+    cuerpos = Helic3::PlantillaCorreo.where(account: account).pluck(:cuerpo)
+    expect(cuerpos.size).to eq(7) # 6 por proceso + cierre de caso
+    expect(cuerpos).to all(include("\n\n"))
+  end
+
   it 'siembra remitente, firma y sitio web del correo; no inventa redes ni logo (Parametro exige valor)' do
     service.sembrar!
 
