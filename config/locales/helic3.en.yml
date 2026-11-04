@@ -5,6 +5,8 @@ en:
     catalogos:
       referenciado: 'This entry is used by existing cases and cannot be deleted. Deactivate it instead.'
       tipo_desconocido: 'Unknown catalog.'
+    correos:
+      smtp_no_configurado: 'Email sending is not configured yet. Contact IT to set up the SMTP server.'
     parametros:
       plazo_respuesta_pqr: 'PQR response deadline'
       plazo_total_garantia: 'Total warranty deadline'

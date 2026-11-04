@@ -272,7 +272,8 @@
         "PROCESOS_GARANTIA": "Procesos de garantía",
         "COBERTURAS_CIUDAD": "Cobertura por ciudad",
         "PARAMETROS": "Parámetros",
-        "FORMATOS": "Formatos"
+        "FORMATOS": "Formatos",
+        "CORREOS": "Correos"
       },
       "SUBTITLE": "El vocabulario del módulo se administra aquí. Ningún valor está escrito en el código.",
       "ACTIVE": "Activa",
@@ -292,8 +293,30 @@
         "PROCESOS_GARANTIA": "Hitos dentro del mismo presupuesto de días hábiles; no reinician el reloj.",
         "COBERTURAS_CIUDAD": "Con técnico propio la garantía arranca en visita; sin técnico, en recolección.",
         "PARAMETROS": "Tiempos y umbrales de operación del módulo.",
-        "FORMATOS": "Plantillas .docx de los formatos de garantía."
+        "FORMATOS": "Plantillas .docx de los formatos de garantía.",
+        "CORREOS": "Correos que recibe el cliente cuando cambia el proceso de garantía."
       }
+    },
+    "CORREOS": {
+      "ACTIVA": "Activa",
+      "INACTIVA": "Inactiva",
+      "ASUNTO": "Asunto",
+      "CUERPO": "Cuerpo",
+      "GUARDAR": "Guardar",
+      "GUARDADO": "Listo",
+      "ACTIVAR": "Activar",
+      "DESACTIVAR": "Desactivar",
+      "VISTA_PREVIA": "Vista previa",
+      "ENVIAR_PRUEBA": "Enviarme una prueba",
+      "PRUEBA_ENVIADA": "Correo de prueba enviado a tu dirección",
+      "CIERRE_CASO": "Cierre de caso",
+      "SIN_CORREO_TITLE": "Todavía sin correo",
+      "NUEVA_PARA_PROCESO": "Correo nuevo para \"%{proceso}\"",
+      "NUEVA_CIERRE_CASO": "Correo nuevo de cierre de caso",
+      "CREAR": "Crear",
+      "CREADA": "Plantilla de correo creada",
+      "FORBIDDEN": "No tienes permiso para esta acción.",
+      "ERROR": "Algo salió mal. Inténtalo de nuevo."
     },
     "FORMATOS": {
       "TITLE": "Formatos",

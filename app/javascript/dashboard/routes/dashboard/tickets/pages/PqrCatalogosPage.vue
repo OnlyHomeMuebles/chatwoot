@@ -9,6 +9,7 @@ import Input from 'dashboard/components-next/input/Input.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import FormatosPanel from '../components/helic3/formatos/FormatosPanel.vue';
+import CorreosPanel from '../components/helic3/correos/CorreosPanel.vue';
 
 // Catalogos y parametros editables (ADM-01). Karen edita el vocabulario, las
 // marcas de comportamiento y los tiempos del modulo sin consola. Lectura para
@@ -29,6 +30,7 @@ const TIPOS = [
 ];
 const PARAMETROS = 'parametros';
 const FORMATOS = 'formatos';
+const CORREOS = 'correos';
 
 // Campos propios de cada catalogo, con el CONTROL resuelto por el tipo de columna
 // (no por el nombre): abre_garantia es enum en motivos y booleano en resultados.
@@ -95,11 +97,13 @@ const uiFlags = useMapGetter('pqrCatalogos/getUIFlags');
 const getCatalogo = useMapGetter('pqrCatalogos/getCatalogo');
 const parametros = useMapGetter('pqrCatalogos/getParametros');
 const formatos = useMapGetter('helic3Formatos/getFormatos');
+const plantillasCorreo = useMapGetter('helic3Correos/getPlantillas');
 const currentRole = useMapGetter('getCurrentRole');
 
 const esAdmin = computed(() => currentRole.value === 'administrator');
 const esParametros = computed(() => tabActivo.value === PARAMETROS);
 const esFormatos = computed(() => tabActivo.value === FORMATOS);
+const esCorreos = computed(() => tabActivo.value === CORREOS);
 const registros = computed(() => getCatalogo.value(tabActivo.value));
 const camposActivos = computed(() => CAMPOS[tabActivo.value] || []);
 
@@ -154,8 +158,8 @@ const reiniciarNuevo = () => {
 };
 
 const cargar = () => {
-  // formatos tiene su propio panel (FormatosPanel) que carga sus datos al montarse.
-  if (esFormatos.value) return;
+  // formatos y correos tienen su propio panel que carga sus datos al montarse.
+  if (esFormatos.value || esCorreos.value) return;
   if (esParametros.value) {
     store.dispatch('pqrCatalogos/fetchParametros');
   } else {
@@ -178,6 +182,7 @@ onMounted(() => {
 const conteoDe = tipo => {
   if (tipo === PARAMETROS) return parametros.value.length;
   if (tipo === FORMATOS) return formatos.value.length;
+  if (tipo === CORREOS) return plantillasCorreo.value.length;
   return (getCatalogo.value(tipo) || []).length;
 };
 
@@ -395,6 +400,20 @@ const confirmarEditorParametro = () => {
               {{ conteoDe(FORMATOS) }}
             </span>
           </button>
+          <button
+            class="flex items-center justify-between gap-2 px-2 py-1.5 text-sm rounded-lg"
+            :class="
+              esCorreos
+                ? 'bg-n-alpha-2 text-n-slate-12 font-medium'
+                : 'text-n-slate-11 hover:bg-n-alpha-1'
+            "
+            @click="tabActivo = CORREOS"
+          >
+            <span class="truncate">{{ labelDe(CORREOS) }}</span>
+            <span class="text-xs tabular-nums text-n-slate-10">
+              {{ conteoDe(CORREOS) }}
+            </span>
+          </button>
         </div>
       </aside>
 
@@ -421,6 +440,7 @@ const confirmarEditorParametro = () => {
 
         <div class="flex-1 p-6 overflow-y-auto">
           <FormatosPanel v-if="esFormatos" />
+          <CorreosPanel v-else-if="esCorreos" />
 
           <div
             v-else-if="uiFlags.isFetching"

@@ -3,6 +3,8 @@ es:
     catalogos:
       referenciado: 'Este registro lo usan expedientes existentes y no se puede borrar. Desactívalo en su lugar.'
       tipo_desconocido: 'Catálogo desconocido.'
+    correos:
+      smtp_no_configurado: 'El envío de correos todavía no está configurado. Contacta a TI para configurar el servidor SMTP.'
     parametros:
       plazo_respuesta_pqr: 'Plazo de respuesta de PQR'
       plazo_total_garantia: 'Plazo total de garantía'

@@ -272,7 +272,8 @@
         "PROCESOS_GARANTIA": "Warranty processes",
         "COBERTURAS_CIUDAD": "City coverage",
         "PARAMETROS": "Parameters",
-        "FORMATOS": "Formats"
+        "FORMATOS": "Formats",
+        "CORREOS": "Emails"
       },
       "SUBTITLE": "The module vocabulary is managed here. No value is hard-coded.",
       "ACTIVE": "Active",
@@ -292,8 +293,30 @@
         "PROCESOS_GARANTIA": "Milestones within the same business-day budget; they do not reset the clock.",
         "COBERTURAS_CIUDAD": "With an in-house technician the warranty starts with a visit; otherwise, with pickup.",
         "PARAMETROS": "Operational times and thresholds of the module.",
-        "FORMATOS": ".docx templates for the warranty formats."
+        "FORMATOS": ".docx templates for the warranty formats.",
+        "CORREOS": "Emails the client gets when a warranty process changes."
       }
+    },
+    "CORREOS": {
+      "ACTIVA": "Active",
+      "INACTIVA": "Inactive",
+      "ASUNTO": "Subject",
+      "CUERPO": "Body",
+      "GUARDAR": "Save",
+      "GUARDADO": "Done",
+      "ACTIVAR": "Activate",
+      "DESACTIVAR": "Deactivate",
+      "VISTA_PREVIA": "Preview",
+      "ENVIAR_PRUEBA": "Send me a test",
+      "PRUEBA_ENVIADA": "Test email sent to your address",
+      "CIERRE_CASO": "Case closure",
+      "SIN_CORREO_TITLE": "Still without an email",
+      "NUEVA_PARA_PROCESO": "New email for \"%{proceso}\"",
+      "NUEVA_CIERRE_CASO": "New case-closure email",
+      "CREAR": "Create",
+      "CREADA": "Email template created",
+      "FORBIDDEN": "You don't have permission for this action.",
+      "ERROR": "Something went wrong. Please try again."
     },
     "FORMATOS": {
       "TITLE": "Formats",

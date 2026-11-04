@@ -52,6 +52,7 @@ import tickets from './modules/tickets';
 import pqrInbox from './modules/pqrInbox';
 import pqrCatalogos from './modules/pqrCatalogos';
 import helic3Formatos from './modules/helic3/formatos';
+import helic3Correos from './modules/helic3/correos';
 import userNotificationSettings from './modules/userNotificationSettings';
 import webhooks from './modules/webhooks';
 import captainAgentSessions from './captain/agentSessions';
@@ -123,6 +124,7 @@ export default createStore({
     pqrInbox,
     pqrCatalogos,
     helic3Formatos,
+    helic3Correos,
     userNotificationSettings,
     webhooks,
     captainAgentSessions,
