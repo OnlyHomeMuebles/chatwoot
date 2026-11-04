@@ -105,7 +105,8 @@ watch(
   etapas => {
     if (form.etapa_id) return;
     const operativas = (etapas || []).filter(e => !e.detiene_reloj);
-    const defecto = operativas.find(e => !e.inicial) || operativas.find(e => e.inicial);
+    const defecto =
+      operativas.find(e => !e.inicial) || operativas.find(e => e.inicial);
     if (defecto) form.etapa_id = defecto.id;
   },
   { immediate: true }

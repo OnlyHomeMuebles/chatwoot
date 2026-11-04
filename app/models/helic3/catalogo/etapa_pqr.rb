@@ -8,6 +8,7 @@
 #  activo          :boolean          default(TRUE), not null
 #  codigo          :string           not null
 #  detiene_reloj   :boolean          default(FALSE), not null
+#  inicial         :boolean          default(FALSE), not null
 #  nombre          :string           not null
 #  posicion        :integer          default(0), not null
 #  visible_cliente :boolean          default(TRUE), not null
@@ -17,6 +18,7 @@
 #
 # Indexes
 #
+#  idx_h3_etapa_inicial_unica           (account_id) UNIQUE WHERE inicial
 #  idx_h3cat_etapas_pqr_account         (account_id)
 #  idx_h3cat_etapas_pqr_account_codigo  (account_id,codigo) UNIQUE
 #

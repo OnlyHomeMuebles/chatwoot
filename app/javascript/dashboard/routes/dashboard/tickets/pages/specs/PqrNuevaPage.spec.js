@@ -182,7 +182,9 @@ describe('PqrNuevaPage.vue — crear (MAN-02)', () => {
   // viajan en data.error. El wizard debe mostrar ambos, no caer al generico.
   it('muestra el error del backend cuando viene en data.error (etapa inicial faltante)', async () => {
     crearApi.mockRejectedValue({
-      response: { data: { error: "falta la etapa inicial 'nueva' en la cuenta 1" } },
+      response: {
+        data: { error: "falta la etapa inicial 'nueva' en la cuenta 1" },
+      },
     });
     const wrapper = montar();
     llenarMinimo(wrapper.vm);
@@ -190,7 +192,9 @@ describe('PqrNuevaPage.vue — crear (MAN-02)', () => {
     await wrapper.vm.crear();
     await flushPromises();
 
-    expect(wrapper.vm.errorBackend).toBe("falta la etapa inicial 'nueva' en la cuenta 1");
+    expect(wrapper.vm.errorBackend).toBe(
+      "falta la etapa inicial 'nueva' en la cuenta 1"
+    );
     expect(push).not.toHaveBeenCalled();
   });
 

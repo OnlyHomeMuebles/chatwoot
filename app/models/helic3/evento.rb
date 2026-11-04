@@ -27,7 +27,7 @@
 # Foreign Keys
 #
 #  fk_rails_...  (account_id => accounts.id)
-#  fk_rails_...  (actor_id => users.id)
+#  fk_rails_...  (actor_id => users.id) ON DELETE => nullify
 #  fk_rails_...  (garantia_id => helic3_garantias.id)
 #  fk_rails_...  (ticket_id => helic3_tickets.id)
 #

@@ -380,9 +380,28 @@ Rails.application.routes.draw do
             # Contadores livianos del rail (VIS-05): solo dos numeros con COUNT, sin
             # traer registros ni pisar el estado de la bandeja.
             get 'pqr/contadores', to: 'pqr#contadores'
-            # Indicadores (IND-01): lo que hoy se consulta en el Dash CX externo,
+            # Indicadores (IND-01/IND-02): lo que hoy se consulta en el Dash CX externo,
             # calculado con las tablas propias del modulo. Una ruta por pestana.
             get 'indicadores/garantias', to: 'indicadores#garantias'
+            # Detalle de clientes y casos (mockup v12): paginado, se pide aparte
+            # de la ruta de arriba para no recalcular los agregados en cada pagina.
+            get 'indicadores/garantias/casos', to: 'indicadores#garantias_casos'
+            get 'indicadores/pqr', to: 'indicadores#pqr'
+            get 'indicadores/todas', to: 'indicadores#todas'
+            get 'indicadores/devoluciones', to: 'indicadores#devoluciones'
+            get 'indicadores/devoluciones/casos', to: 'indicadores#devoluciones_casos'
+            # Descarga a Excel (IND-05): la misma tabla, con los mismos filtros,
+            # en CSV. Accion propia (no format: :csv sobre la de arriba) para no
+            # mezclar la respuesta jbuilder con el armado de filas del CSV.
+            # Segmento propio ('.../csv', no '....csv'): un sufijo .csv choca con
+            # el (.:format) implicito de la ruta de arriba y nunca llega aqui.
+            get 'indicadores/garantias/csv', to: 'indicadores#garantias_csv'
+            get 'indicadores/pqr/csv', to: 'indicadores#pqr_csv'
+            get 'indicadores/devoluciones/csv', to: 'indicadores#devoluciones_csv'
+            # Carga de Datos (IND-03, parcial): solo administradores.
+            get    'cargas',     to: 'cargas#index'
+            post   'cargas',     to: 'cargas#create'
+            delete 'cargas/:id', to: 'cargas#destroy'
             # Administracion de catalogos y parametros (ADM-01): lectura para
             # agentes, escritura solo administradores. El :tipo elige el catalogo.
             namespace :admin do
