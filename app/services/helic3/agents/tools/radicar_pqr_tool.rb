@@ -33,7 +33,7 @@ class Helic3::Agents::Tools::RadicarPqrTool < Helic3::Agents::Tools::BaseTool
   # modelo), no una decision de estilo; el perform ademas orquesta validacion,
   # idempotencia y radicacion de corrido (traduccion modelo->dominio, sin logica
   # de negocio propia), por eso se relajan tambien largo y complejidad aqui.
-  # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/AbcSize
+  # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength
   def perform(tool_context, tipo_codigo:, motivo_codigo:, resumen:, descripcion:, numero_orden: nil)
     account = resolve_account(tool_context)
     return 'No hay una cuenta configurada para radicar.' if account.blank?
@@ -42,36 +42,50 @@ class Helic3::Agents::Tools::RadicarPqrTool < Helic3::Agents::Tools::BaseTool
     motivo = Helic3::Catalogo::MotivoPqr.activos.find_by(account: account, codigo: motivo_codigo)
     return codigos_invalidos(account, tipo, motivo) if tipo.nil? || motivo.nil?
 
-    # idempotencia simetrica con la compuerta automatica (RadicacionAutomatica), acotada al
-    # expediente VIGENTE (respondida_at: nil): no se duplica el caso en curso, pero respondida
-    # la PQR anterior, un caso nuevo en el mismo hilo vuelve a ser radicable. Asi el agente
-    # nunca le confirma al cliente un caso que ya no existe.
     conversation_id = conversacion_de_bd(account, tool_context)
-    existente = conversation_id &&
-                account.tickets.where(conversation_id: conversation_id, respondida_at: nil).first
-    return ya_radicado(account, existente) if existente
+    con_candado(conversation_id) do
+      # idempotencia (ERP-06/T2): regla unica, compartida con la compuerta automatica
+      # (Helic3::Casos::ExpedienteVigente) -- bloquea un expediente VIGENTE o uno que
+      # se acaba de responder dentro de la ventana, sin duplicar la regla aqui.
+      existente = Helic3::Casos::ExpedienteVigente.para(account: account, conversation_id: conversation_id)
+      next ya_radicado(account, existente) if existente
 
-    ticket = begin
-      Helic3::Casos::Radicar.new(
-        account: account, titulo: resumen, descripcion: descripcion,
-        conversation_id: conversation_id,
-        tipo: tipo, motivo_pqr: motivo, numero_orden: numero_orden, origen: :agente
-      ).call
-    rescue StandardError => e
-      # el rescate protege el run, pero el rastro queda: CAS-01 exige que un
-      # error de configuracion (cuenta sin sembrar) SE VEA, no que se silencie
-      Rails.logger.error("[Helic3] radicar_pqr fallo account=#{account.id}: #{e.class}: #{e.message}")
-      e
+      ticket = begin
+        Helic3::Casos::Radicar.new(
+          account: account, titulo: resumen, descripcion: descripcion,
+          conversation_id: conversation_id,
+          tipo: tipo, motivo_pqr: motivo, numero_orden: numero_orden, origen: :agente
+        ).call
+      rescue StandardError => e
+        # el rescate protege el run, pero el rastro queda: CAS-01 exige que un
+        # error de configuracion (cuenta sin sembrar) SE VEA, no que se silencie
+        Rails.logger.error("[Helic3] radicar_pqr fallo account=#{account.id}: #{e.class}: #{e.message}")
+        e
+      end
+      # un fallo del dominio se vuelve texto legible: el run no se tumba
+      next "No se pudo radicar el expediente: #{ticket.message}" if ticket.is_a?(StandardError)
+
+      dejar_nota_privada(tool_context, ticket, tipo, motivo)
+      respuesta_segun_autonomia(account, ticket)
     end
-    # un fallo del dominio se vuelve texto legible: el run no se tumba
-    return "No se pudo radicar el expediente: #{ticket.message}" if ticket.is_a?(StandardError)
-
-    dejar_nota_privada(tool_context, ticket, tipo, motivo)
-    respuesta_segun_autonomia(account, ticket)
   end
-  # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/AbcSize
+  # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
 
   private
+
+  # Serializa el chequeo de idempotencia + la creacion sobre la misma conversacion
+  # (ERP-06/T2): sin este candado, el agente y la compuerta automatica podrian pasar
+  # el chequeo de ExpedienteVigente a la vez y crear dos expedientes. Mismo patron
+  # que Helic3::Casos::RadicacionAutomatica#radicar_seguro. Sin conversation_id (una
+  # PQR sin chat) no hay con que serializar, asi que corre directo.
+  def con_candado(conversation_id)
+    return yield unless conversation_id
+
+    Conversation.transaction do
+      Conversation.lock.find(conversation_id)
+      yield
+    end
+  end
 
   def resolve_account(tool_context)
     account_id = tool_context.context[:account_id]

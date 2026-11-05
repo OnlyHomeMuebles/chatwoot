@@ -38,5 +38,11 @@ RSpec.describe Helic3::Agents::CatalogoHerramientas do
         Helic3::Agents::Tools::HumanHandoffTool, Helic3::KnowledgeBaseSearchTool
       )
     end
+
+    # ERP-06: un agente CON consultar_cliente_erp recibe la tool que consulta el ERP por cedula.
+    it 'un agente CON consultar_cliente_erp recibe la herramienta del ERP' do
+      tools = described_class.instanciar(%w[consultar_cliente_erp])
+      expect(clases(tools)).to include(Helic3::Agents::Tools::ConsultarClienteErpTool)
+    end
   end
 end
