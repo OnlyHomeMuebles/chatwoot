@@ -133,7 +133,8 @@ class Helic3::Agents::PqrsAgent
         Helic3::KnowledgeBaseSearchTool.new,
         Helic3::Agents::Tools::RadicarPqrTool.new,
         Helic3::Agents::Tools::ResolverPqrTool.new,
-        Helic3::Agents::Tools::RegistrarDatosClienteTool.new
+        Helic3::Agents::Tools::RegistrarDatosClienteTool.new,
+        Helic3::Agents::Tools::ConsultarClienteErpTool.new
       ]
     )
   end
