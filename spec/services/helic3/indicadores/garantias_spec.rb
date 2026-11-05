@@ -4,6 +4,9 @@ require 'rails_helper'
 
 RSpec.describe Helic3::Indicadores::Garantias do
   let(:account) { create(:account) }
+  let(:carga_facturas) do
+    Helic3::Carga.create!(account: account, tipo: 'facturas', modo: 'anexar', nombre_archivo: 'facturas.csv')
+  end
   let(:ticket) { create(:ticket, account: account) }
 
   let(:manizales) do
@@ -43,6 +46,11 @@ RSpec.describe Helic3::Indicadores::Garantias do
     garantia
   end
 
+  def crear_factura(centro_operacion:, fecha:, numero_documento: SecureRandom.hex(4))
+    Helic3::FacturaVenta.create!(account: account, carga: carga_facturas, numero_documento: numero_documento,
+                                 centro_operacion: centro_operacion, fecha: fecha, valor_subtotal: 100_000)
+  end
+
   def llamar(filtros: {})
     described_class.call(account: account, filtros: filtros)
   end
@@ -63,33 +71,64 @@ RSpec.describe Helic3::Indicadores::Garantias do
       # Marzo 2026 (T1 tambien, pero otro mes), sin ciudad, en proceso
       crear_garantia(abierta_at: Time.zone.local(2026, 3, 5),
                      productos: [{ producto_nombre: 'Silla Nogal', proceso: visita }])
+      # IND-03: facturas de enero 2026 para Manizales (2) y Pereira (1), para
+      # calcular el ratio garantias/facturas.
+      crear_factura(centro_operacion: 'Manizales', fecha: Date.new(2026, 1, 12))
+      crear_factura(centro_operacion: 'Manizales', fecha: Date.new(2026, 1, 18))
+      crear_factura(centro_operacion: 'Pereira', fecha: Date.new(2026, 1, 20))
     end
 
-    it 'kpis: 3 garantias, 1 solucionada, 2 en proceso, 4 productos' do
+    it 'kpis: 3 garantias, 1 solucionada, 2 en proceso, 4 productos, 3 facturas, ratio 100%' do
       kpis = llamar[:kpis]
 
-      expect(kpis).to eq(garantias: 3, solucionadas: 1, en_proceso: 2, productos: 4)
+      expect(kpis).to eq(garantias: 3, solucionadas: 1, en_proceso: 2, productos: 4, facturas: 3, ratio: 100.0)
     end
 
-    it 'mensual: enero con 2 radicados, marzo con 1' do
+    it 'mensual: enero con 2 radicados (1 solucionada, 1 en proceso), marzo con 1 en proceso' do
       mensual = llamar[:mensual].index_by { |fila| fila[:periodo] }
 
-      expect(mensual['2026-01'][:cantidad]).to eq(2)
-      expect(mensual['2026-03'][:cantidad]).to eq(1)
+      expect(mensual['2026-01']).to eq(periodo: '2026-01', cantidad: 2, solucionadas: 1, en_proceso: 1)
+      expect(mensual['2026-03']).to eq(periodo: '2026-03', cantidad: 1, solucionadas: 0, en_proceso: 1)
     end
 
-    it 'trimestral: las tres caen en T1-2026 (una sola fila)' do
-      expect(llamar[:trimestral]).to contain_exactly({ periodo: '2026-T1', cantidad: 3 })
+    it 'trimestral: las tres caen en T1-2026 (una sola fila, con su desglose solucionadas/en_proceso)' do
+      expect(llamar[:trimestral]).to contain_exactly(
+        { periodo: '2026-T1', cantidad: 3, solucionadas: 1, en_proceso: 2 }
+      )
     end
 
-    # N3 (revision de Jhan, PR #113): sin catalogo asociado, etiqueta es nil (no un
-    # texto en español quemado en el backend) -- el frontend decide como traducirlo.
-    it 'por_ciudad: Manizales 1, Pereira 1, sin ciudad (nil) 1' do
+    it 'por_ciudad: Manizales y Pereira con facturas y ratio, la garantia sin ciudad queda excluida' do
       por_ciudad = llamar[:por_ciudad].index_by { |fila| fila[:etiqueta] }
 
-      expect(por_ciudad['Manizales'][:cantidad]).to eq(1)
-      expect(por_ciudad['Pereira'][:cantidad]).to eq(1)
-      expect(por_ciudad[nil][:cantidad]).to eq(1)
+      expect(por_ciudad['Manizales']).to include(cantidad: 1, facturas: 2, ratio: 50.0)
+      expect(por_ciudad['Pereira']).to include(cantidad: 1, facturas: 1, ratio: 100.0)
+      expect(por_ciudad).not_to have_key(nil)
+    end
+
+    it 'por_ciudad excluye una ciudad del catalogo sin ninguna factura' do
+      Helic3::Catalogo::CoberturaCiudad.create!(account: account, nombre: 'Bogotá', codigo: 'bogota')
+
+      por_ciudad = llamar[:por_ciudad].index_by { |fila| fila[:etiqueta] }
+
+      expect(por_ciudad).not_to have_key('Bogotá')
+    end
+
+    # Revision de Jhan (PR #150): "Desc. C.O." es por tienda, no por ciudad
+    # ("OM Bogota Villa del Rio", no "Bogotá") -- el cruce normaliza tildes y
+    # suma varias tiendas bajo la misma ciudad, no compara por igualdad exacta.
+    it 'por_ciudad suma varias tiendas (con nombres reales de Siesa) bajo la misma ciudad, con tilde incluida' do
+      bogota = Helic3::Catalogo::CoberturaCiudad.create!(account: account, nombre: 'Bogotá', codigo: 'bogota')
+      crear_garantia(abierta_at: Time.zone.local(2026, 1, 1), ciudad: bogota)
+      crear_factura(centro_operacion: 'OM BOGOTA VILLA DEL RIO', fecha: Date.new(2026, 1, 5))
+      crear_factura(centro_operacion: 'OH BOGOTA DIVERPLAZA', fecha: Date.new(2026, 1, 6))
+      crear_factura(centro_operacion: 'OM CANDELARIA JUANCHITO', fecha: Date.new(2026, 1, 7))
+
+      por_ciudad = llamar[:por_ciudad].index_by { |fila| fila[:etiqueta] }
+
+      expect(por_ciudad['Bogotá']).to include(cantidad: 1, facturas: 2, ratio: 50.0)
+
+      resultado_filtrado = llamar(filtros: { cobertura_ciudad_id: bogota.id })
+      expect(resultado_filtrado[:kpis][:facturas]).to eq(2)
     end
 
     it 'por_motivo cuenta PRODUCTOS, no radicados: calidad aparece 2 veces (en dos garantias distintas)' do
@@ -162,7 +201,7 @@ RSpec.describe Helic3::Indicadores::Garantias do
 
     resultado = llamar(filtros: { cobertura_ciudad_id: pereira.id })
 
-    expect(resultado[:kpis]).to eq(garantias: 0, solucionadas: 0, en_proceso: 0, productos: 0)
+    expect(resultado[:kpis]).to eq(garantias: 0, solucionadas: 0, en_proceso: 0, productos: 0, facturas: 0, ratio: 0.0)
     expect(resultado[:mensual]).to eq([])
     expect(resultado[:por_ciudad]).to eq([])
   end
@@ -201,5 +240,57 @@ RSpec.describe Helic3::Indicadores::Garantias do
     crear_garantia(abierta_at: Time.zone.local(2026, 1, 1))
 
     expect(llamar[:kpis][:garantias]).to eq(1)
+  end
+
+  describe '#casos (mockup v12: detalle de clientes y casos)' do
+    before do
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'plazo_total_garantia', valor: '30',
+                                          unidad: 'dias_habiles')
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'umbral_verde_garantia', valor: '15',
+                                          unidad: 'dias_habiles')
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'umbral_amarillo_garantia', valor: '5',
+                                          unidad: 'dias_habiles')
+    end
+
+    it 'ordena vencidas antes que solucionadas, y pagina' do
+      vencida = crear_garantia(abierta_at: 60.days.ago, ciudad: manizales,
+                               productos: [{ producto_nombre: 'Cama', proceso: visita }])
+      solucionada = crear_garantia(abierta_at: 5.days.ago, cerrada_at: Time.current, ciudad: pereira,
+                                   productos: [{ producto_nombre: 'Silla', proceso: entrega }])
+
+      resultado = described_class.new(account: account, filtros: {}).casos(pagina: 1)
+
+      expect(resultado[:total]).to eq(2)
+      expect(resultado[:pagina]).to eq(1)
+      expect(resultado[:paginas]).to eq(1)
+      ids = resultado[:casos].map { |fila| fila[:id] }
+      expect(ids).to eq([vencida.id, solucionada.id])
+      expect(resultado[:casos].first[:vencimiento][:estado]).to eq('rojo')
+      expect(resultado[:casos].second[:vencimiento]).to eq(estado: 'solucionada')
+      expect(resultado[:casos].second[:etapa]).to eq('solucionada')
+    end
+
+    it 'respeta los mismos filtros que los agregados' do
+      crear_garantia(abierta_at: Time.zone.local(2026, 1, 1), ciudad: manizales,
+                     productos: [{ producto_nombre: 'Cama', proceso: visita }])
+      crear_garantia(abierta_at: Time.zone.local(2026, 1, 1), ciudad: pereira,
+                     productos: [{ producto_nombre: 'Silla', proceso: visita }])
+
+      resultado = described_class.new(account: account, filtros: { cobertura_ciudad_id: manizales.id })
+                                 .casos(pagina: 1)
+
+      expect(resultado[:total]).to eq(1)
+      expect(resultado[:casos].first[:centro_operacion]).to eq('Manizales')
+    end
+
+    it 'con una pagina fuera de rango, se acomoda a la ultima pagina disponible' do
+      crear_garantia(abierta_at: Time.zone.local(2026, 1, 1),
+                     productos: [{ producto_nombre: 'Cama', proceso: visita }])
+
+      resultado = described_class.new(account: account, filtros: {}).casos(pagina: 99)
+
+      expect(resultado[:pagina]).to eq(1)
+      expect(resultado[:casos].size).to eq(1)
+    end
   end
 end

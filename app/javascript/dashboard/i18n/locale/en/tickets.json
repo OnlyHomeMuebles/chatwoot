@@ -81,6 +81,16 @@
         "DESCRIPCION_PH": "Describe what the customer requests and what happened with the product.",
         "RESPONSABLE": "Assignee",
         "RESPONSABLE_PH": "Unassigned",
+        "ETAPA": "Stage",
+        "ETAPA_PH": "Select a stage",
+        "EDITAR_ETAPAS": "Edit stages",
+        "ETAPA_DESCRIPCION": {
+          "NUEVO": "Created by an agent; pending review.",
+          "EN_GESTION": "The request is being handled.",
+          "SOLUCIONADO": "The request has been resolved.",
+          "DEFAULT": "Current request stage."
+        },
+        "ETAPA_RESUMEN": "{etapa} · {descripcion}",
         "ADJUNTOS": "Attachments",
         "ADJUNTOS_CTA": "Add photos or documents",
         "ADJUNTOS_HINT": "Invoice, product evidence or customer request",
@@ -273,6 +283,7 @@
         "DETALLES_TIPIFICADOS": "Typified detail",
         "MOTIVOS_GARANTIA": "Warranty motives",
         "PROCESOS_GARANTIA": "Warranty processes",
+        "MOTIVOS_DEVOLUCION": "Return motives",
         "COBERTURAS_CIUDAD": "City coverage",
         "PARAMETROS": "Parameters",
         "FORMATOS": "Formats"
@@ -282,7 +293,8 @@
       "INACTIVE": "Inactive",
       "GROUPS": {
         "PQR": "PQR",
-        "GARANTIA": "Warranty"
+        "GARANTIA": "Warranty",
+        "DEVOLUCION": "Return"
       },
       "DESC": {
         "CATEGORIAS": "First-level classification; decides whether the case is a real PQR before the SIC.",
@@ -293,6 +305,7 @@
         "DETALLES_TIPIFICADOS": "Standalone catalog of details; not tied to the motive.",
         "MOTIVOS_GARANTIA": "What happened to the product; can drive a date-based assignment rule.",
         "PROCESOS_GARANTIA": "Milestones within the same business-day budget; they do not reset the clock.",
+        "MOTIVOS_DEVOLUCION": "The underlying reason for the return (detail and process are reused from warranty).",
         "COBERTURAS_CIUDAD": "With an in-house technician the warranty starts with a visit; otherwise, with pickup.",
         "PARAMETROS": "Operational times and thresholds of the module.",
         "FORMATOS": ".docx templates for the warranty formats."

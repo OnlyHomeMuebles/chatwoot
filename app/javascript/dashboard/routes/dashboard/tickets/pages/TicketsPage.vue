@@ -158,9 +158,9 @@ const etapaIdPorCodigo = codigo =>
 const aplicarTab = key => {
   tabActivo.value = key;
   filtros.sin_responder = key === 'unanswered';
-  if (key === 'in_review') filtros.etapa_id = etapaIdPorCodigo('en_analisis');
+  if (key === 'in_review') filtros.etapa_id = etapaIdPorCodigo('en_gestion');
   else if (key === 'answered')
-    filtros.etapa_id = etapaIdPorCodigo('respondida');
+    filtros.etapa_id = etapaIdPorCodigo('solucionado');
   else filtros.etapa_id = '';
 };
 
@@ -247,11 +247,12 @@ const metricasCards = computed(() => {
   ];
 });
 
-// Etapa como chip: Respondida verde, Cerrada neutro, el resto azul.
+// Etapa como chip (colores del mockup v12): Nuevo azul, En gestión ámbar,
+// Solucionado verde. El default (Nuevo y cualquier otro) queda azul.
 const etapaTagClass = codigo =>
   ({
-    respondida: 'bg-n-teal-3 text-n-teal-11',
-    cerrada: 'bg-n-slate-3 text-n-slate-11',
+    en_gestion: 'bg-n-amber-3 text-n-amber-11',
+    solucionado: 'bg-n-teal-3 text-n-teal-11',
   })[codigo] || 'bg-n-blue-3 text-n-blue-11';
 
 // Plazo como chip con punto de semaforo: respondida dentro del plazo, vencida,

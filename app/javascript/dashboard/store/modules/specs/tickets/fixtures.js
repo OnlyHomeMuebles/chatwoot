@@ -23,6 +23,10 @@ export const catalogosData = {
       categoria: { id: 5, codigo: 'garantia', nombre: 'Garantia' },
     },
   ],
-  etapas_pqr: [{ id: 20, codigo: 'nueva', nombre: 'Nueva' }],
+  etapas_pqr: [
+    { id: 20, codigo: 'nuevo', nombre: 'Nuevo' },
+    { id: 21, codigo: 'en_gestion', nombre: 'En gestión' },
+    { id: 22, codigo: 'solucionado', nombre: 'Solucionado' },
+  ],
   resultados: [{ id: 30, codigo: 'procede', nombre: 'Procede' }],
 };

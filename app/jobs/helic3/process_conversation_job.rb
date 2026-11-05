@@ -4,8 +4,8 @@
 # reply back into the Chatwoot conversation. Triggered by the incoming-message webhook; the run
 # context is tied to the Chatwoot conversation (display_id) so tools act on the right conversation.
 #
-# Elige el "cerebro" del agente: Gemini si hay GEMINI_API_KEY, si no un modelo local (Ollama),
-# para poder responder sin depender de una API key de OpenAI.
+# El cerebro del agente es OpenAI con la llave de Super Admin (CFG-01, ver
+# Helic3::Agents::LlmRuntime).
 #
 # El job es grande porque es el punto donde confluyen tres frentes: el flujo E4
 # (runner por cuenta + compuertas de intervención y límites), la recolección
@@ -29,6 +29,11 @@ class Helic3::ProcessConversationJob < ApplicationJob
   # necesita un string no vacío, y así el agente sabe que llegó una imagen aunque
   # no haya texto que responder.
   SOLO_IMAGEN_CONTENT = 'El cliente envió una imagen sin texto.'
+  # Cuando la foto SÍ trae texto legible (factura/cédula), el mensaje de entrada no debe decir
+  # "sin texto": esa contradicción (mensaje dice "sin texto" mientras el contexto trae el texto)
+  # hace que el modelo se bloquee y no presente los datos. El texto leído viaja aparte, en el
+  # "Contexto de la conversación" que inyecta PqrsAgent.
+  IMAGEN_CON_TEXTO_CONTENT = 'El cliente adjuntó una imagen; su texto leído está en el contexto de la conversación.'
   # B3 (revision de Jhan, 23-sep): una nota de voz, un PDF, un video o una
   # ubicacion sin texto tambien deben tener respaldo -- sin esto, mensaje
   # queda en "" y el runner se invoca con una cadena vacia. Las notas de voz
@@ -304,7 +309,9 @@ class Helic3::ProcessConversationJob < ApplicationJob
   # (audio, documento, video, ubicacion), que el agente no puede leer y debe
   # pedirle al cliente que lo escriba.
   def mensaje_de_respaldo(entrada)
-    return SOLO_IMAGEN_CONTENT if entrada[:imagenes].present?
+    if entrada[:imagenes].present?
+      return @texto_imagenes.present? ? IMAGEN_CON_TEXTO_CONTENT : SOLO_IMAGEN_CONTENT
+    end
     return SOLO_ADJUNTO_CONTENT if entrada[:hay_adjuntos]
 
     entrada[:content]

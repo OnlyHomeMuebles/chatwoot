@@ -63,7 +63,7 @@ namespace :knowledge do
   task :agent_demo, [:question] => :environment do |_t, args|
     question = args[:question].presence || 'Compre una cama de madera hace 8 meses y el enchapado se levanto. Tiene garantia?'
 
-    Agents.configure { |config| config.openai_api_key = ENV.fetch('OPENAI_API_KEY') }
+    Helic3::Agents::LlmRuntime.configure_agents!
 
     agent = Agents::Agent.new(
       name: 'Asistente Only Home (demo)',

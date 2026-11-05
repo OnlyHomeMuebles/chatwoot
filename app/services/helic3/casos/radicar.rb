@@ -12,6 +12,14 @@ class Helic3::Casos::Radicar
   # un valor por defecto silencioso
   class ParametroFaltante < StandardError; end
 
+  # misma familia que ParametroFaltante: la cuenta no esta bien sembrada. Antes el
+  # find_by! de la etapa inicial soltaba un RecordNotFound crudo que el controlador
+  # traducia a un 404 "Resource could not be found" — enganoso, porque sugiere una
+  # ruta inexistente cuando el problema es un catalogo sin sembrar (o sin ninguna
+  # etapa marcada como inicial). Este error nombra la causa. (Unifica el riesgo 1 de
+  # #127 con la identificacion por flag `inicial` de este PR.)
+  class EtapaInicialFaltante < StandardError; end
+
   PLAZO_RESPALDO = 'plazo_respuesta_pqr'.freeze
 
   # La firma es un contrato publicado en la especificacion de la entrega
@@ -89,10 +97,16 @@ class Helic3::Casos::Radicar
     @motivo_pqr&.categoria
   end
 
-  # find_by! a proposito: si la cuenta no tiene la etapa "nueva" es que
-  # no esta sembrada, y eso debe verse en el momento, no silenciarse
+  # La etapa inicial se identifica por el flag `inicial`, NO por el texto del
+  # codigo: asi Karen puede renombrar la etapa inicial desde el admin sin romper
+  # la radicacion. find_by! a proposito: si la cuenta no tiene una etapa inicial
+  # activa es que no esta sembrada, y eso debe verse en el momento, no silenciarse.
   def etapa_inicial
-    Helic3::Catalogo::EtapaPqr.activos.find_by!(account: @account, codigo: 'nueva')
+    Helic3::Catalogo::EtapaPqr.activos.find_by!(account: @account, inicial: true)
+  rescue ActiveRecord::RecordNotFound
+    raise EtapaInicialFaltante,
+          "falta una etapa inicial activa en la cuenta #{@account.id}: " \
+          'siembra los catalogos o marca una etapa como inicial'
   end
 
   def radicada_at
@@ -101,12 +115,23 @@ class Helic3::Casos::Radicar
 
   # Informacion (genera_radicado false) no lleva reloj: vence en nulo.
   # El expediente se crea igual, para conservar el historial.
+  #
+  # GIT-01 (bloqueante de zona horaria, revision de Jhan): sumar_dias_habiles
+  # devuelve un Date. Asignar un Date directo a una columna datetime lo castea
+  # a medianoche en Time.zone (UTC, por defecto en esta app) -- medianoche UTC
+  # del dia de vencimiento es las 7pm de BOGOTA DEL DIA ANTERIOR, asi que el
+  # plazo quedaba venciendo casi un dia habil antes de lo real (y toda
+  # respuesta del dia de vencimiento, antes de esa hora, se leia como vencida).
+  # Se ancla explicitamente al final del dia habil en hora de Bogota.
   def vencimiento
     return nil unless genera_radicado?
 
     calendario = Helic3::CalendarioHabil.new
     fecha_radicacion = radicada_at.in_time_zone(Helic3::CalendarioHabil::ZONA).to_date
-    calendario.sumar_dias_habiles(fecha_radicacion, plazo_dias_habiles)
+    fecha_vencimiento = calendario.sumar_dias_habiles(fecha_radicacion, plazo_dias_habiles)
+    ActiveSupport::TimeZone[Helic3::CalendarioHabil::ZONA]
+      .local(fecha_vencimiento.year, fecha_vencimiento.month, fecha_vencimiento.day)
+      .end_of_day
   end
 
   def genera_radicado?

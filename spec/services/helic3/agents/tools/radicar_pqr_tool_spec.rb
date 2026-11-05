@@ -29,7 +29,7 @@ RSpec.describe Helic3::Agents::Tools::RadicarPqrTool do
 
   # la porcion del catalogo que la radicacion necesita
   before do
-    Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nueva', codigo: 'nueva')
+    Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nuevo', codigo: 'nuevo', inicial: true)
     Helic3::Catalogo::Tipo.create!(account: account, nombre: 'Reclamo', codigo: 'reclamo',
                                    plazo_dias_habiles: 15)
     Helic3::Catalogo::MotivoPqr.create!(account: account, nombre: 'Garantía de producto',
@@ -138,8 +138,8 @@ RSpec.describe Helic3::Agents::Tools::RadicarPqrTool do
   end
 
   it 'un fallo del dominio deja rastro en el log ademas de volverse texto para el modelo' do
-    # cuenta sin sembrar: la etapa "nueva" no esta activa y Radicar revienta
-    Helic3::Catalogo::EtapaPqr.find_by(account: account, codigo: 'nueva').update!(activo: false)
+    # cuenta sin sembrar: la etapa inicial no esta activa y Radicar revienta
+    Helic3::Catalogo::EtapaPqr.find_by(account: account, inicial: true).update!(activo: false)
     expect(Rails.logger).to receive(:error)
       .with(a_string_matching(/\[Helic3\] radicar_pqr fallo account=#{account.id}: ActiveRecord::RecordNotFound/))
 
