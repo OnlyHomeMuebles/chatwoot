@@ -28,11 +28,11 @@ RSpec.describe Helic3::Agents::LectorDeImagenes do
   end
 
   # Opt-in: con un modelo de vision configurado (LlmRuntime.modelo_vision), la imagen se lee con el
-  # modelo (gpt-6-terra) en vez del OCR local. Sin el parametro queda el OCR (los tests de arriba).
+  # modelo (gpt-6.1-terra) en vez del OCR local. Sin el parametro queda el OCR (los tests de arriba).
   it 'con un modelo de vision configurado, lee con el modelo y no con el OCR local' do
     url = 'https://cdn.chatwoot.test/factura.jpg'
     responder_con_imagen(url)
-    allow(Helic3::Agents::LlmRuntime).to receive(:modelo_vision).and_return('gpt-6-terra')
+    allow(Helic3::Agents::LlmRuntime).to receive(:modelo_vision).and_return('gpt-6.1-terra')
     allow_any_instance_of(described_class).to receive(:leer_con_vision) # rubocop:disable RSpec/AnyInstance
       .and_return('Cliente Ana Ruiz, factura 8821, sofá descosido')
     expect(described_class).not_to receive(:ocr)
@@ -43,7 +43,7 @@ RSpec.describe Helic3::Agents::LectorDeImagenes do
   it 'si la lectura con vision falla, cae al OCR local (nunca deja la imagen sin leer)' do
     url = 'https://cdn.chatwoot.test/factura.jpg'
     responder_con_imagen(url)
-    allow(Helic3::Agents::LlmRuntime).to receive(:modelo_vision).and_return('gpt-6-terra')
+    allow(Helic3::Agents::LlmRuntime).to receive(:modelo_vision).and_return('gpt-6.1-terra')
     allow(Llm::Config).to receive(:with_api_key).and_raise(StandardError, 'API caida')
     expect(described_class).to receive(:ocr).and_return('Factura N.° 8821')
 

@@ -9,7 +9,7 @@
 # HELIC3_OPENAI_API_KEY). No se lee de variables de entorno ni de Captain.
 module Helic3::Agents::LlmRuntime
   CLAVE_API_KEY = 'HELIC3_OPENAI_API_KEY'
-  # Modelo de VISION para leer imagenes (p. ej. gpt-6-terra). Si esta vacio, el lector de imagenes
+  # Modelo de VISION para leer imagenes (p. ej. gpt-6.1-terra). Si esta vacio, el lector de imagenes
   # usa el OCR local (tesseract), que es el comportamiento por defecto: prenderlo es opt-in.
   CLAVE_MODELO_VISION = 'HELIC3_VISION_MODELO'
   # Explicito para no heredar CAPTAIN_OPEN_AI_ENDPOINT, que el initializer

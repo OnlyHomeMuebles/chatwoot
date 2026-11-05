@@ -36,10 +36,10 @@ RSpec.describe 'Super Admin · Helic3 Agentes IA', type: :request do
 
     it 'guarda el modelo de visión para imágenes' do
       post '/super_admin/app_config?config=helic3_ia',
-           params: { app_config: { HELIC3_VISION_MODELO: 'gpt-6-terra' } }
+           params: { app_config: { HELIC3_VISION_MODELO: 'gpt-6.1-terra' } }
 
       expect(response).to redirect_to(super_admin_settings_path)
-      expect(InstallationConfig.find_by(name: 'HELIC3_VISION_MODELO')&.value).to eq('gpt-6-terra')
+      expect(InstallationConfig.find_by(name: 'HELIC3_VISION_MODELO')&.value).to eq('gpt-6.1-terra')
     end
 
     it 'ignora una clave ajena a la pagina (FB_APP_ID)' do

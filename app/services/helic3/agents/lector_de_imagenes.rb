@@ -146,7 +146,7 @@ class Helic3::Agents::LectorDeImagenes
     end
   end
 
-  # Opt-in (LlmRuntime.modelo_vision, p. ej. gpt-6-terra): a diferencia del OCR, el modelo de vision
+  # Opt-in (LlmRuntime.modelo_vision, p. ej. gpt-6.1-terra): a diferencia del OCR, el modelo de vision
   # ENTIENDE la imagen — lee la factura Y describe el dano del producto. Si falla (API caida, modelo
   # sin vision, sin llave) cae al OCR local para no dejar la imagen sin leer.
   def leer_con_vision(ruta, modelo)
