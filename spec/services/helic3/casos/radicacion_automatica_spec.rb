@@ -79,7 +79,7 @@ RSpec.describe Helic3::Casos::RadicacionAutomatica do
     end
   end
 
-  describe 'idempotencia acotada al expediente vigente (respondida_at)' do
+  describe 'idempotencia acotada al expediente vigente (respondida_at), via ExpedienteVigente (ERP-06/T2)' do
     before do
       allow(extractor).to receive(:call).and_return(
         resultado(requiere_pqr: true, tipo_codigo: 'reclamo', motivo_codigo: 'garantia_producto',
@@ -87,13 +87,25 @@ RSpec.describe Helic3::Casos::RadicacionAutomatica do
       )
     end
 
-    it 'con la PQR anterior ya respondida, radica un caso nuevo en el mismo hilo' do
+    def radicar_previa(respondida_at:)
       previa = Helic3::Casos::Radicar.new(account: account, titulo: 'Previa',
                                           conversation_id: conversation.id, tipo: reclamo,
                                           motivo_pqr: motivo_garantia).call
-      previa.update_columns(respondida_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
+      previa.update_columns(respondida_at: respondida_at) # rubocop:disable Rails/SkipsModelValidations
+    end
+
+    it 'con la PQR anterior respondida hace 20 minutos (fuera de la ventana), radica un caso nuevo' do
+      radicar_previa(respondida_at: 20.minutes.ago)
 
       expect { gate.call }.to change { account.tickets.count }.by(1)
+    end
+
+    it 'con la PQR anterior respondida hace 5 minutos (dentro de la ventana), NO radica' do
+      radicar_previa(respondida_at: 5.minutes.ago)
+
+      expect(extractor).not_to receive(:call)
+      expect { gate.call }.not_to(change { account.tickets.count })
+      expect(gate.call).to eq(:ya_existe)
     end
   end
 
@@ -148,6 +160,51 @@ RSpec.describe Helic3::Casos::RadicacionAutomatica do
 
     it 'radica el expediente aunque la conversación no tenga consentimiento registrado' do
       expect { gate.call }.to change { account.tickets.count }.by(1)
+    end
+  end
+
+  # ERP-06/T2, ciclo completo: el agente radica con su herramienta, resuelve con la
+  # suya, y cuando llega otro mensaje y corre la compuerta automatica (el mismo ciclo
+  # que duplicaba expedientes en vivo), debe quedar UN solo expediente -- la regla la
+  # comparten ambos caminos via Helic3::Casos::ExpedienteVigente.
+  describe 'ciclo completo: la herramienta radica, resolver_pqr la responde, llega otro mensaje y corre la compuerta' do
+    let(:chatwoot) { instance_double(Helic3::ChatwootClient) }
+    let(:tool_context) do
+      Agents::ToolContext.new(run_context: Agents::RunContext.new(
+        { account_id: account.id,
+          state: { conversation_id: conversation.display_id, chatwoot_client: chatwoot } }
+      ))
+    end
+
+    before do
+      Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Solucionado', codigo: 'solucionado',
+                                         detiene_reloj: true)
+      Helic3::Catalogo::Resultado.create!(account: account, nombre: 'Resuelta con información',
+                                          codigo: 'resuelta_info', cierra_pqr: true)
+      allow(chatwoot).to receive(:create_message)
+    end
+
+    it 'deja un solo expediente' do
+      Helic3::Agents::Tools::RadicarPqrTool.new.perform(
+        tool_context, tipo_codigo: 'reclamo', motivo_codigo: 'garantia_producto',
+                      resumen: 'Sofá con tela rota', descripcion: 'Llegó con la tela rota'
+      )
+      ticket = account.tickets.sole
+      Helic3::Agents::Tools::ResolverPqrTool.new.perform(
+        tool_context, ticket_display_id: ticket.display_id.to_s, resultado_codigo: 'resuelta_info'
+      )
+      expect(ticket.reload).to be_reloj_detenido # responder! ya corrio
+
+      # llega otro mensaje del cliente en el mismo hilo y corre la compuerta
+      create(:message, account: account, conversation: conversation, message_type: :incoming,
+                       content: 'Ah, ya les cuento otra cosa')
+      allow(extractor).to receive(:call).and_return(
+        resultado(requiere_pqr: true, tipo_codigo: 'reclamo', motivo_codigo: 'garantia_producto',
+                  resumen: 'Otra cosa', descripcion: 'Otra cosa')
+      )
+
+      expect { gate.call }.not_to(change { account.tickets.count })
+      expect(account.tickets.sole).to eq(ticket)
     end
   end
 end

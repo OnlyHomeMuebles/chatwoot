@@ -147,6 +147,11 @@ class Helic3::Catalogo::SeederService
     # ERP-05: meses hacia atras que se traen compras del ERP. Valor de negocio (se amarra al
     # periodo de garantia), editable desde el panel; lo lee el cache por cuenta.
     { clave: 'erp_meses_compras', valor: '12', unidad: 'meses' },
+    # ERP-06/T2: ventana en la que una PQR recien respondida AUN bloquea una nueva
+    # radicacion en el mismo hilo (cubre el doble expediente agente radica ->
+    # resuelve -> radica). No existe la unidad "minutos" en UNIDADES, se usa
+    # "cantidad" igual que erp_cache_horas. La lee Helic3::Casos::ExpedienteVigente.
+    { clave: 'ventana_doble_radicacion_minutos', valor: '10', unidad: 'cantidad' },
     # H3A-12: bandera del runner de agentes editables. Apagada por defecto (L-09).
     # Se siembra aqui para que se pueda PRENDER desde el panel (update del parametro),
     # sin un INSERT por consola. La lee Helic3::Agents::FeatureFlag.
