@@ -416,6 +416,7 @@ describe('PqrDetailPage.vue — resolver la PQR desde el detalle (MAN-03)', () =
       expect.objectContaining({ id: 7 }),
       20,
       {
+        productos: [],
         producto_nombre: 'Sofá Modular',
         producto_referencia: 'SOF-123',
         ciudad_nombre: 'Manizales',
