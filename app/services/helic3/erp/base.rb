@@ -13,11 +13,13 @@ class Helic3::Erp::Base
     raise NotImplementedError, "#{self.class} debe implementar #find_customer(cedula:)"
   end
 
-  # Lista las facturas de un cliente.
+  # Lista las facturas de un cliente desde la fecha `desde` (ISO). La ventana la decide el
+  # cache por cuenta (parametro erp_meses_compras); un adaptador puede ignorarla (el simulado).
   # @param cedula [String]
+  # @param desde [String, nil] fecha ISO desde la que buscar
   # @return [Array<Helic3::Erp::Invoice>]
-  def invoices(cedula:)
-    raise NotImplementedError, "#{self.class} debe implementar #invoices(cedula:)"
+  def invoices(cedula:, desde: nil)
+    raise NotImplementedError, "#{self.class} debe implementar #invoices(cedula:, desde:)"
   end
 
   # Detalle de una factura por su número.

@@ -20,6 +20,15 @@
 #  account_id         :bigint           not null
 #  usuario_id         :bigint
 #
+# Indexes
+#
+#  idx_h3_cargas_account       (account_id)
+#  idx_h3_cargas_account_tipo  (account_id,tipo)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (usuario_id => users.id) ON DELETE => nullify
+#
 class Helic3::Carga < ApplicationRecord
   self.table_name = 'helic3_cargas'
 

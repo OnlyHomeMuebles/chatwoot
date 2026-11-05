@@ -19,6 +19,8 @@ del API con el proveedor (Siesa).
 | `nombre` | texto | Nombre completo |
 | `email` | texto | Correo (opcional) |
 | `telefono` | texto | Teléfono (opcional) |
+| `ciudad` | texto | Ciudad del cliente (opcional); decide si la garantía va a visita técnica |
+| `direccion` | texto | Dirección del cliente (opcional); a donde se visita o se recoge |
 
 ### 2. Facturas del cliente — `invoices(cedula:)`
 - **Entrada:** `cedula` (texto)
@@ -30,12 +32,22 @@ del API con el proveedor (Siesa).
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| `numero` | texto | Número de factura |
+| `numero` | texto | Número de factura (prefijo + consecutivo, formato del Dash CX) |
 | `fecha` | fecha | Fecha de emisión |
 | `total` | número | Valor total (COP) |
 | `saldo` | número | Saldo pendiente (COP) |
 | `estado` | texto | `pagada` / `pendiente` / `vencida` |
-| `items` | lista | Detalle de líneas: `descripcion`, `cantidad`, `valor` (opcional) |
+| `centro_operacion` | texto | Tienda (C.O.) donde se facturó (opcional); cruza con `helic3_facturas_venta` (IND-08) |
+| `items` | lista | Detalle de líneas (`InvoiceItem`, opcional) — ver tabla abajo |
+
+#### Ítem de factura (`InvoiceItem`)
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `referencia` | texto | Código del producto en el ERP (va a la ficha como `producto_referencia`) |
+| `descripcion` | texto | Nombre del producto |
+| `cantidad` | número | Unidades |
+| `valor` | número | Valor de la línea (COP) |
 
 ### 4. Estado de cuenta — `account_statement(cedula:)`
 - **Entrada:** `cedula` (texto)
@@ -51,9 +63,9 @@ del API con el proveedor (Siesa).
 ## Resumen para negociar con el proveedor
 
 El API de Siesa debe permitir, como mínimo:
-1. **Buscar un cliente por cédula** y devolver: cédula, nombre, email, teléfono.
-2. **Listar las facturas de un cliente** con: número, fecha, total, saldo, estado.
-3. **Consultar una factura** por número, con su detalle de líneas (descripción, cantidad, valor).
+1. **Buscar un cliente por cédula** y devolver: cédula, nombre, email, teléfono, ciudad, dirección.
+2. **Listar las facturas de un cliente** con: número, fecha, total, saldo, estado, centro de operación (tienda).
+3. **Consultar una factura** por número, con su detalle de líneas (referencia, descripción, cantidad, valor).
 4. **Obtener el estado de cuenta** (saldo total, número de pendientes, si está al día).
 
 Campos clave de identificación/entrada: **cédula** (cliente) y **número de factura**.

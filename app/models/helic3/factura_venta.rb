@@ -6,15 +6,25 @@
 #
 # Table name: helic3_facturas_venta
 #
-#  id                :bigint           not null, primary key
-#  centro_operacion  :string
-#  fecha             :date             not null
-#  numero_documento  :string           not null
-#  valor_subtotal    :decimal(14, 2)   not null
-#  created_at        :datetime         not null
-#  updated_at        :datetime         not null
-#  account_id        :bigint           not null
-#  carga_id          :bigint           not null
+#  id               :bigint           not null, primary key
+#  centro_operacion :string
+#  fecha            :date             not null
+#  numero_documento :string           not null
+#  valor_subtotal   :decimal(14, 2)   not null
+#  created_at       :datetime         not null
+#  updated_at       :datetime         not null
+#  account_id       :bigint           not null
+#  carga_id         :bigint           not null
+#
+# Indexes
+#
+#  idx_h3_facturas_account         (account_id)
+#  idx_h3_facturas_account_numero  (account_id,numero_documento) UNIQUE
+#  idx_h3_facturas_carga           (carga_id)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (carga_id => helic3_cargas.id)
 #
 class Helic3::FacturaVenta < ApplicationRecord
   self.table_name = 'helic3_facturas_venta'

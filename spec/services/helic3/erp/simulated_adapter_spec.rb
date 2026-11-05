@@ -15,6 +15,12 @@ RSpec.describe Helic3::Erp::SimulatedAdapter do
     expect(adapter.find_customer(cedula: '00000000')).to be_nil
   end
 
+  it 'CA1: find_customer trae ciudad y dirección del cliente' do
+    customer = adapter.find_customer(cedula: '1032456789')
+    expect(customer.ciudad).to be_present
+    expect(customer.direccion).to be_present
+  end
+
   it 'lista las facturas del cliente' do
     expect(adapter.invoices(cedula: known_cedula).map(&:numero)).to include('FV-1001', 'FV-1002')
   end

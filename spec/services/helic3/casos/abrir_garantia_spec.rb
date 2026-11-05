@@ -38,6 +38,18 @@ RSpec.describe Helic3::Casos::AbrirGarantia do
     expect(garantia.ticket).to eq(ticket)
   end
 
+  it 'B3: sin items explicitos, abre un item por cada producto que el ERP dejo en la ficha' do
+    ticket.create_datos!(account: account, productos: [
+                           { 'nombre' => 'Puerta Milano', 'referencia' => 'MIL-200', 'fuente' => 'erp' },
+                           { 'nombre' => 'Cerradura Premium', 'referencia' => 'CER-050', 'fuente' => 'erp' }
+                         ])
+
+    garantia = abrir(ciudad: manizales, items: [])
+
+    expect(garantia.items.pluck(:producto_nombre)).to contain_exactly('Puerta Milano', 'Cerradura Premium')
+    expect(garantia.items.find_by(producto_nombre: 'Puerta Milano').producto_referencia).to eq('MIL-200')
+  end
+
   describe 'el primer proceso sale de la ciudad, no de un if' do
     it 'ciudad con tecnico propio -> visita tecnica' do
       garantia = abrir(ciudad: manizales)

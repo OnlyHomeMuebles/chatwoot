@@ -8,6 +8,7 @@ const push = vi.fn();
 const alert = vi.fn();
 const crearApi = vi.fn();
 const subirApi = vi.fn();
+const consultarErpApi = vi.fn();
 // crear() pasa por store.dispatch('tickets/create'); el mock delega en crearApi
 // (que los tests configuran) y devuelve el ticket como lo hace el store real
 // (response.data). Un rechazo de crearApi se propaga, igual que el store.
@@ -36,6 +37,7 @@ vi.mock('dashboard/api/tickets', () => ({
   default: {
     create: (...args) => crearApi(...args),
     subirDocumento: (...args) => subirApi(...args),
+    consultarErpCliente: (...args) => consultarErpApi(...args),
   },
 }));
 
@@ -77,6 +79,8 @@ beforeEach(() => {
   alert.mockClear();
   crearApi.mockReset();
   subirApi.mockReset().mockResolvedValue();
+  consultarErpApi.mockReset();
+  delete catalogosRef.value.erp_habilitado;
   routeState.query = {};
 });
 
@@ -246,5 +250,128 @@ describe('PqrNuevaPage.vue — crear (MAN-02)', () => {
       name: 'tickets_index',
       params: { accountId: '1' },
     });
+  });
+});
+
+describe('PqrNuevaPage.vue — ERP (ERP-11)', () => {
+  it('CA3: sin erp_habilitado el boton Consultar Siesa no esta disponible', () => {
+    expect(montar().vm.erpHabilitado).toBe(false);
+  });
+
+  it('erpHabilitado es true cuando el catalogo lo trae encendido', () => {
+    catalogosRef.value = { ...catalogosRef.value, erp_habilitado: true };
+    expect(montar().vm.erpHabilitado).toBe(true);
+  });
+
+  it('CA1: consultar llena y marca los campos; al crear envia consultado_erp en true', async () => {
+    catalogosRef.value = { ...catalogosRef.value, erp_habilitado: true };
+    consultarErpApi.mockResolvedValue({
+      data: {
+        encontrado: true,
+        cliente: {
+          cedula: '1032456789',
+          nombre: 'Ana Ruiz',
+          telefono: '3001112233',
+          email: 'ana@correo.com',
+          ciudad: 'Armenia',
+          direccion: 'Cra 14',
+        },
+      },
+    });
+    crearApi.mockResolvedValue({ data: { id: 42, display_id: 7 } });
+    const vm = montar().vm;
+    vm.form.motivo_pqr_id = 10;
+    vm.form.description = 'El sofá llegó roto';
+    vm.form.cedula = '1032456789';
+
+    await vm.erp.consultar();
+
+    expect(vm.form.cliente_nombre).toBe('Ana Ruiz');
+    expect(vm.form.ciudad).toBe('Armenia');
+    expect(vm.erp.tieneBadge('cliente_nombre')).toBe(true);
+
+    await vm.crear();
+    await flushPromises();
+    expect(crearApi.mock.calls[0][0].ticket.consultado_erp).toBe(true);
+  });
+
+  it('CA4: con el ERP caido avisa y NO bloquea el crear (consultado_erp false)', async () => {
+    catalogosRef.value = { ...catalogosRef.value, erp_habilitado: true };
+    consultarErpApi.mockRejectedValue({ response: { status: 503 } });
+    crearApi.mockResolvedValue({ data: { id: 43, display_id: 8 } });
+    const vm = montar().vm;
+    vm.form.motivo_pqr_id = 10;
+    vm.form.description = 'El sofá llegó roto';
+    vm.form.cedula = '1032456789';
+    vm.form.cliente_nombre = 'A mano';
+    vm.form.cliente_telefono = '3001234567';
+
+    await vm.erp.consultar();
+    expect(vm.erp.estado.value).toBe('no_disponible');
+
+    await vm.crear();
+    await flushPromises();
+    expect(crearApi).toHaveBeenCalled();
+    expect(crearApi.mock.calls[0][0].ticket.consultado_erp).toBe(false);
+  });
+
+  it('ERP-15/B1/B3: UNA peticion trae cliente + facturas; multi-seleccion de productos', async () => {
+    catalogosRef.value = { ...catalogosRef.value, erp_habilitado: true };
+    // Una sola peticion (#show) devuelve cliente y facturas juntos.
+    consultarErpApi.mockResolvedValue({
+      data: {
+        encontrado: false,
+        facturas: [
+          {
+            numero: 'FV-1001',
+            fecha: '2026-05-10',
+            centro_operacion: 'Armenia Centro',
+            items: [
+              { referencia: 'MIL-200', descripcion: 'Puerta Milano', cantidad: 2, valor: 900000 },
+              { referencia: 'CER-050', descripcion: 'Cerradura Premium', cantidad: 1, valor: 900000 },
+            ],
+          },
+        ],
+      },
+    });
+    const vm = montar().vm;
+    vm.form.cedula = '26478046';
+
+    await vm.consultarSiesa();
+    await flushPromises();
+
+    expect(consultarErpApi).toHaveBeenCalledTimes(1); // B1: una sola peticion, no dos
+    const facturas = vm.facturasErp.facturas.value;
+    expect(facturas).toHaveLength(1);
+
+    // B3: se eligen DOS productos de la misma factura.
+    vm.facturasErp.alternar(facturas[0], 0);
+    vm.facturasErp.alternar(facturas[0], 1);
+
+    expect(vm.form.numero_orden).toBe('FV-1001');
+    expect(vm.form.factura_fecha).toBe('2026-05-10');
+    expect(vm.facturasErp.productosElegidos()).toEqual([
+      { nombre: 'Puerta Milano', referencia: 'MIL-200' },
+      { nombre: 'Cerradura Premium', referencia: 'CER-050' },
+    ]);
+  });
+
+  it('ERP-14: "Volver a consultar" aparece tras un resultado y reconsulta con refrescar', async () => {
+    catalogosRef.value = { ...catalogosRef.value, erp_habilitado: true };
+    consultarErpApi.mockResolvedValue({
+      data: { encontrado: true, cliente: { nombre: 'Ana' }, facturas: [] },
+    });
+    const vm = montar().vm;
+    vm.form.cedula = '26478046';
+
+    await vm.consultarSiesa();
+    await flushPromises();
+    expect(vm.hayConsultaErp).toBe(true); // ya hay resultado -> se muestra "Volver a consultar"
+
+    consultarErpApi.mockClear();
+    await vm.reconsultarSiesa();
+    await flushPromises();
+
+    expect(consultarErpApi).toHaveBeenCalledWith('26478046', expect.anything(), { refrescar: true });
   });
 });

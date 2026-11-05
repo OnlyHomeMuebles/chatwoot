@@ -7,11 +7,15 @@ require 'rails_helper'
 # (o viceversa), esta prueba falla.
 RSpec.describe 'ERP-07 · Campos requeridos por consulta' do # rubocop:disable RSpec/DescribeClass
   it 'Customer expone exactamente los campos documentados' do
-    expect(Helic3::Erp::Customer.members).to eq(%i[cedula nombre email telefono])
+    expect(Helic3::Erp::Customer.members).to eq(%i[cedula nombre email telefono ciudad direccion])
   end
 
   it 'Invoice expone exactamente los campos documentados' do
-    expect(Helic3::Erp::Invoice.members).to eq(%i[numero fecha total saldo estado items])
+    expect(Helic3::Erp::Invoice.members).to eq(%i[numero fecha total saldo estado centro_operacion items])
+  end
+
+  it 'InvoiceItem expone exactamente los campos documentados' do
+    expect(Helic3::Erp::InvoiceItem.members).to eq(%i[referencia descripcion cantidad valor])
   end
 
   it 'AccountStatement expone exactamente los campos documentados' do
