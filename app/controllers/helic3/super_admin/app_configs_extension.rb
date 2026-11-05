@@ -16,6 +16,14 @@ module Helic3::SuperAdmin::AppConfigsExtension
                        'y la base de conocimiento. El cambio aplica en el ' \
                        'siguiente mensaje, sin reiniciar.',
       'type' => 'secret'
+    },
+    Helic3::Agents::LlmRuntime::CLAVE_MODELO_VISION => {
+      'display_title' => 'Modelo de visión para imágenes',
+      'description' => 'Si lo configuras (p. ej. gpt-6.1-terra), el agente lee las ' \
+                       'imágenes (facturas, fotos del producto) con ese modelo de ' \
+                       'visión en vez del OCR local. Déjalo vacío para usar el OCR. ' \
+                       'El cambio aplica en el siguiente mensaje, sin reiniciar.',
+      'type' => 'text'
     }
   }.freeze
 
