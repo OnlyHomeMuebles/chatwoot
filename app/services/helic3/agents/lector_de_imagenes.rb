@@ -39,6 +39,11 @@ class Helic3::Agents::LectorDeImagenes
   # tesseract corre como proceso externo: sin tope, una imagen compleja o corrupta
   # puede colgar el worker de Sidekiq indefinidamente. Al vencer, se mata el proceso.
   TIMEOUT_OCR = 15
+  # La lectura con vision es una peticion HTTP al API del modelo; sin tope propio podria
+  # colgar el worker de Sidekiq si el proveedor se demora. A diferencia del shell-out de
+  # tesseract, aqui Timeout.timeout SI interrumpe la operacion (es una llamada de red en
+  # Ruby, no un proceso externo), y al vencer cae al OCR por el mismo rescue de leer_con_vision.
+  TIMEOUT_VISION = 25
   # Instruccion para el modelo de vision (cuando esta configurado). Texto plano, sin inventar.
   PROMPT_VISION = <<~TXT.freeze
     Eres el lector de evidencias de atencion al cliente de Only Home. Mira la imagen y responde en
@@ -150,9 +155,11 @@ class Helic3::Agents::LectorDeImagenes
   # ENTIENDE la imagen — lee la factura Y describe el dano del producto. Si falla (API caida, modelo
   # sin vision, sin llave) cae al OCR local para no dejar la imagen sin leer.
   def leer_con_vision(ruta, modelo)
-    Llm::Config.with_api_key(Helic3::Agents::LlmRuntime.api_key, api_base: Helic3::Agents::LlmRuntime.api_base) do |context|
-      context.chat(model: modelo, provider: :openai, assume_model_exists: true)
-             .ask(PROMPT_VISION, with: ruta).content.to_s.strip
+    Timeout.timeout(TIMEOUT_VISION) do
+      Llm::Config.with_api_key(Helic3::Agents::LlmRuntime.api_key, api_base: Helic3::Agents::LlmRuntime.api_base) do |context|
+        context.chat(model: modelo, provider: :openai, assume_model_exists: true)
+               .ask(PROMPT_VISION, with: ruta).content.to_s.strip
+      end
     end
   rescue StandardError => e
     Rails.logger.warn("[Helic3] lector de imagenes con vision (#{modelo}) fallo, cae a OCR: #{e.class}: #{e.message}")

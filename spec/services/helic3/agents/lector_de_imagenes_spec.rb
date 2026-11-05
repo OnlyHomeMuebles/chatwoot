@@ -50,6 +50,18 @@ RSpec.describe Helic3::Agents::LectorDeImagenes do
     expect(described_class.leer([url])).to eq('Factura N.° 8821')
   end
 
+  it 'corta y cae al OCR si la lectura con vision excede TIMEOUT_VISION (no cuelga Sidekiq)' do
+    url = 'https://cdn.chatwoot.test/factura.jpg'
+    responder_con_imagen(url)
+    stub_const("#{described_class}::TIMEOUT_VISION", 0.1)
+    allow(Helic3::Agents::LlmRuntime).to receive(:modelo_vision).and_return('gpt-6.1-terra')
+    allow(Llm::Config).to receive(:with_api_key) { sleep 0.5 } # se demora mas que el tope
+    allow(Rails.logger).to receive(:warn)
+    expect(described_class).to receive(:ocr).and_return('Factura N.° 8821')
+
+    expect(described_class.leer([url])).to eq('Factura N.° 8821')
+  end
+
   it 'concatena el texto de varias imagenes, separado por un delimitador' do
     url1 = 'https://cdn.chatwoot.test/factura.jpg'
     url2 = 'https://cdn.chatwoot.test/cedula.jpg'
