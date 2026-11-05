@@ -42,17 +42,29 @@ class Helic3::Indicadores::Garantias
     }
   end
 
+  # Vive en su propia clase (mismo criterio de DevolucionesCasos, PR #149):
+  # es una responsabilidad aparte de los agregados de #call.
+  def casos(pagina: 1)
+    Helic3::Indicadores::GarantiasCasos
+      .new(account: account, garantias_filtradas: garantias_filtradas)
+      .listar(pagina: pagina)
+  end
+
   private
 
   attr_reader :account, :filtros
 
   def kpis
     base = garantias_filtradas
+    garantias = base.count
+    facturas = facturas_filtradas.count
     {
-      garantias: base.count,
+      garantias: garantias,
       solucionadas: base.where.not(cerrada_at: nil).count,
       en_proceso: base.where(cerrada_at: nil).count,
-      productos: items_filtrados.count
+      productos: items_filtrados.count,
+      facturas: facturas,
+      ratio: ratio_de(garantias, facturas)
     }
   end
 
@@ -70,18 +82,101 @@ class Helic3::Indicadores::Garantias
   # cuya fecha truncada caiga despues de este mes, sin importar el anio filtrado.
   # La fecha agrupada llega sin zona (DATE_TRUNC sobre FECHA_LOCAL ya la resto),
   # asi que el limite tambien se calcula en hora de Bogota, no en UTC.
-  def agrupar_por_fecha(expresion_sql)
+  #
+  # Ajuste visual (mockup v12): ademas del total, cada periodo trae su propio
+  # desglose solucionadas/en_proceso -- la tabla de "detalle mensual" del
+  # Dash CX los muestra como columnas, no solo el total. Dos consultas
+  # agrupadas (total y solucionadas), no una por fila: el numero de consultas
+  # sigue sin crecer con el volumen.
+  def agrupar_por_fecha(expresion_sql, &)
     limite = Time.current.in_time_zone(Helic3::CalendarioHabil::ZONA).to_date.end_of_month
-    garantias_filtradas.group(Arel.sql(expresion_sql)).count
-                       .filter_map { |fecha, cantidad| { clave: yield(fecha), cantidad: cantidad } if fecha.to_date <= limite }
-                       .sort_by { |fila| fila[:clave] }
-                       .map { |fila| { periodo: fila[:clave], cantidad: fila[:cantidad] } }
+    totales = garantias_filtradas.group(Arel.sql(expresion_sql)).count
+    solucionadas = garantias_filtradas.where.not(cerrada_at: nil).group(Arel.sql(expresion_sql)).count
+    filas = totales.filter_map do |fecha, cantidad|
+      fila_de_periodo(fecha, cantidad, solucionadas[fecha] || 0, limite, &)
+    end
+    filas.sort_by { |fila| fila[:periodo] }
   end
 
+  def fila_de_periodo(fecha, cantidad, resueltas, limite)
+    return nil if fecha.to_date > limite
+
+    { periodo: yield(fecha), cantidad: cantidad, solucionadas: resueltas, en_proceso: cantidad - resueltas }
+  end
+
+  # valor (el id del catalogo) viaja ademas de la etiqueta: el mockup permite
+  # hacer click en una tienda para filtrar el resto del tablero por ella, y
+  # el frontend necesita el id (no el nombre) para setear ese filtro.
+  # El comparativo por tienda no tiene sentido con un bulto "sin ciudad": no
+  # es una tienda que se pueda comparar contra las demas, asi que se excluye
+  # en vez de traducirla (a diferencia de por_motivo/por_detalle/por_proceso,
+  # donde "sin dato" si es informacion util).
+  #
+  # IND-03: trae ademas facturas y ratio por ciudad, y recorre TODO el
+  # catalogo (no solo las ciudades con garantias) para que una ciudad sin
+  # garantias pero con facturas tambien aparezca con 0% -- igual que el
+  # Dash CX. cobertura_ciudad (Garantias) es por CIUDAD; el "Desc. C.O." de
+  # las facturas de Siesa es por TIENDA individual (varias por ciudad, p. ej.
+  # "OM Armenia AXM"/"OM Armenia Sala"), sin un catalogo de tiendas propio
+  # hoy. Revision de Jhan (PR #150): comparar por igualdad exacta no sirve
+  # (una tienda nunca se llama igual a su ciudad); se confirmo contra el
+  # nombre real de ~25 tiendas del Dash CX que el nombre de la ciudad
+  # SIEMPRE aparece como substring del nombre de la tienda, sin ambiguedad
+  # entre las ciudades del catalogo -- el cruce normaliza tildes/mayusculas
+  # (ActiveSupport::Inflector.transliterate, sin agregar una gema nueva) y
+  # busca ese substring. Se excluyen las ciudades sin ninguna factura: no hay
+  # con que comparar su ratio.
   def por_ciudad
-    conteos = garantias_filtradas.group(:cobertura_ciudad_id).count
-    nombres = Helic3::Catalogo::CoberturaCiudad.where(id: conteos.keys.compact).pluck(:id, :nombre).to_h
-    ordenar_por_cantidad(conteos) { |id| nombres[id] }
+    conteos = garantias_filtradas.where.not(cobertura_ciudad_id: nil).group(:cobertura_ciudad_id).count
+    conteos_por_tienda = facturas_filtradas.group(:centro_operacion).count
+    Helic3::Catalogo::CoberturaCiudad.where(account: account).activos
+                                     .filter_map { |ciudad| fila_de_ciudad(ciudad, conteos, conteos_por_tienda) }
+                                     .sort_by { |fila| -fila[:ratio] }
+  end
+
+  def fila_de_ciudad(ciudad, conteos, conteos_por_tienda)
+    facturas = conteos_por_tienda.values_at(*tiendas_de(ciudad)).compact.sum
+    return nil unless facturas.positive?
+
+    cantidad = conteos[ciudad.id] || 0
+    { etiqueta: ciudad.nombre, valor: ciudad.id, cantidad: cantidad, facturas: facturas, ratio: ratio_de(cantidad, facturas) }
+  end
+
+  def ratio_de(garantias, facturas)
+    return 0.0 if facturas.zero?
+
+    (garantias.to_f / facturas * 100).round(2)
+  end
+
+  # Nombres de centro_operacion (tiendas de Siesa) cuyo nombre normalizado
+  # contiene el de esta ciudad -- ver comentario de #por_ciudad.
+  def tiendas_de(ciudad)
+    nombre = normalizar(ciudad.nombre)
+    nombres_de_tienda.select { |tienda| normalizar(tienda).include?(nombre) }
+  end
+
+  def nombres_de_tienda
+    @nombres_de_tienda ||= Helic3::FacturaVenta.where(account: account).distinct.pluck(:centro_operacion).compact
+  end
+
+  def normalizar(texto)
+    ActiveSupport::Inflector.transliterate(texto.to_s).upcase
+  end
+
+  def facturas_filtradas
+    scope = Helic3::FacturaVenta.where(account: account)
+    anio = filtro_entero(:anio)
+    mes = filtro_entero(:mes)
+    scope = scope.where('EXTRACT(year FROM fecha) = ?', anio) if anio
+    scope = scope.where('EXTRACT(month FROM fecha) = ?', mes) if mes
+    scope = scope.where(centro_operacion: tiendas_de(ciudad_filtrada)) if ciudad_filtrada
+    scope
+  end
+
+  def ciudad_filtrada
+    return nil if filtros[:cobertura_ciudad_id].blank?
+
+    @ciudad_filtrada ||= Helic3::Catalogo::CoberturaCiudad.find_by(id: filtros[:cobertura_ciudad_id])
   end
 
   def por_motivo

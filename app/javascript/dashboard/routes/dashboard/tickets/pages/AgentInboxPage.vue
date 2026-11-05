@@ -84,10 +84,11 @@ const clasificacionTexto = fila =>
     .filter(Boolean)
     .join(' · ');
 
+// Colores del mockup v12: Nuevo azul, En gestión ámbar, Solucionado verde.
 const etapaTagClass = codigo =>
   ({
-    respondida: 'bg-n-teal-3 text-n-teal-11',
-    cerrada: 'bg-n-slate-3 text-n-slate-11',
+    en_gestion: 'bg-n-amber-3 text-n-amber-11',
+    solucionado: 'bg-n-teal-3 text-n-teal-11',
   })[codigo] || 'bg-n-blue-3 text-n-blue-11';
 
 // Clic en la fila abre la conversacion REAL de Chatwoot (no una pantalla propia

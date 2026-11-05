@@ -30,9 +30,9 @@ RSpec.describe Helic3::Casos::RadicacionAutomatica do
   end
 
   before do
-    # la etapa "nueva" es requisito de Casos::Radicar; se crea aqui (no como let!)
+    # la etapa inicial es requisito de Casos::Radicar; se crea aqui (no como let!)
     # porque el test no la referencia directamente, solo la necesita presente
-    Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nueva', codigo: 'nueva')
+    Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nuevo', codigo: 'nuevo', inicial: true)
     create(:message, account: account, conversation: conversation, message_type: :incoming,
                      content: 'Compré un sofá y me llegó con la tela rota, factura 345670')
   end

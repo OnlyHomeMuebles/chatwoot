@@ -10,7 +10,7 @@ json.motivos_pqr @motivos_pqr do |motivo|
 end
 
 json.etapas_pqr @etapas_pqr do |etapa|
-  json.call(etapa, :id, :codigo, :nombre, :detiene_reloj, :visible_cliente)
+  json.call(etapa, :id, :codigo, :nombre, :detiene_reloj, :visible_cliente, :inicial)
 end
 
 json.resultados @resultados do |resultado|
@@ -40,3 +40,9 @@ end
 # ERP-08: si el modulo ERP esta encendido (ERP-04). El wizard muestra el boton
 # "Consultar Siesa" solo cuando esto es true.
 json.erp_habilitado Helic3::Erp.habilitado?
+
+# IND-06: motivo propio de Devolucion, para el filtro de esa pestaña de
+# Indicadores (detalle/proceso reusan los catalogos de garantia de arriba).
+json.motivos_devolucion @motivos_devolucion do |motivo|
+  json.call(motivo, :id, :codigo, :nombre)
+end

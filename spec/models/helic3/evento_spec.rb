@@ -59,7 +59,7 @@ RSpec.describe Helic3::Evento do
     end
 
     before do
-      Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Respondida', codigo: 'respondida',
+      Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Solucionado', codigo: 'solucionado',
                                          detiene_reloj: true)
     end
 
@@ -96,7 +96,7 @@ RSpec.describe Helic3::Evento do
     end
 
     before do
-      Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Respondida', codigo: 'respondida',
+      Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Solucionado', codigo: 'solucionado',
                                          detiene_reloj: true)
       Helic3::Catalogo::ProcesoGarantia.create!(account: account, nombre: 'Visita técnica',
                                                 codigo: 'visita_tecnica', posicion: 0)
@@ -118,7 +118,7 @@ RSpec.describe Helic3::Evento do
 
   describe 'integracion con Radicar' do
     it 'registra radicada con el creator como actor' do
-      Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nueva', codigo: 'nueva')
+      Helic3::Catalogo::EtapaPqr.create!(account: account, nombre: 'Nuevo', codigo: 'nuevo', inicial: true)
       tipo = Helic3::Catalogo::Tipo.create!(account: account, nombre: 'Reclamo', codigo: 'reclamo',
                                             plazo_dias_habiles: 15)
 

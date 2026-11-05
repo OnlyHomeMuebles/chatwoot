@@ -1,5 +1,5 @@
-# Generates embeddings via RubyLLM using the OPENAI_API_KEY env var
-# (falls back to the Captain installation config key when present).
+# Genera embeddings con la llave de OpenAI de Super Admin
+# (Helic3::Agents::LlmRuntime, CFG-01).
 class Helic3::Knowledge::EmbeddingService
   DEFAULT_MODEL = 'text-embedding-3-small'.freeze
 
@@ -30,12 +30,15 @@ class Helic3::Knowledge::EmbeddingService
   private
 
   def context
+    raise EmbeddingError, Helic3::Agents::LlmRuntime::SIN_LLAVE if api_key.blank?
+
     @context ||= RubyLLM.context do |config|
-      config.openai_api_key = api_key if api_key.present?
+      config.openai_api_key = api_key
+      config.openai_api_base = Helic3::Agents::LlmRuntime.api_base
     end
   end
 
   def api_key
-    ENV['OPENAI_API_KEY'].presence || InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_API_KEY')&.value
+    @api_key ||= Helic3::Agents::LlmRuntime.api_key
   end
 end

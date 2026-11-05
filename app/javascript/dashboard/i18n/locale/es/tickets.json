@@ -81,6 +81,16 @@
         "DESCRIPCION_PH": "Describe qué solicita el cliente y qué ocurrió con el producto.",
         "RESPONSABLE": "Responsable",
         "RESPONSABLE_PH": "Sin asignar",
+        "ETAPA": "Etapa",
+        "ETAPA_PH": "Selecciona una etapa",
+        "EDITAR_ETAPAS": "Editar etapas",
+        "ETAPA_DESCRIPCION": {
+          "NUEVO": "Creado por un agente; pendiente de revisión.",
+          "EN_GESTION": "La solicitud está siendo atendida.",
+          "SOLUCIONADO": "La solicitud ya fue resuelta.",
+          "DEFAULT": "Etapa actual de la solicitud."
+        },
+        "ETAPA_RESUMEN": "{etapa} · {descripcion}",
         "ADJUNTOS": "Adjuntos",
         "ADJUNTOS_CTA": "Agregar fotos o documentos",
         "ADJUNTOS_HINT": "Factura, evidencia del producto o solicitud del cliente",
@@ -203,8 +213,8 @@
       "TABS": {
         "ALL": "Todas",
         "UNANSWERED": "Sin responder",
-        "IN_REVIEW": "En análisis",
-        "ANSWERED": "Respondidas"
+        "IN_REVIEW": "En gestión",
+        "ANSWERED": "Solucionadas"
       },
       "NEW": "Nueva PQR",
       "EXPORT": "Exportar",
@@ -273,6 +283,7 @@
         "DETALLES_TIPIFICADOS": "Detalle tipificado",
         "MOTIVOS_GARANTIA": "Motivos de garantía",
         "PROCESOS_GARANTIA": "Procesos de garantía",
+        "MOTIVOS_DEVOLUCION": "Motivos de devolución",
         "COBERTURAS_CIUDAD": "Cobertura por ciudad",
         "PARAMETROS": "Parámetros",
         "FORMATOS": "Formatos"
@@ -282,7 +293,8 @@
       "INACTIVE": "Inactiva",
       "GROUPS": {
         "PQR": "PQR",
-        "GARANTIA": "Garantía"
+        "GARANTIA": "Garantía",
+        "DEVOLUCION": "Devolución"
       },
       "DESC": {
         "CATEGORIAS": "Clasificación de primer nivel; decide si el caso es una PQR real frente a la SIC.",
@@ -293,6 +305,7 @@
         "DETALLES_TIPIFICADOS": "Catálogo autónomo de detalles; no cuelga del motivo.",
         "MOTIVOS_GARANTIA": "Qué pasó con el producto; puede activar una regla de asignación por fecha.",
         "PROCESOS_GARANTIA": "Hitos dentro del mismo presupuesto de días hábiles; no reinician el reloj.",
+        "MOTIVOS_DEVOLUCION": "El porqué de fondo de la devolución (detalle y proceso se reusan de garantía).",
         "COBERTURAS_CIUDAD": "Con técnico propio la garantía arranca en visita; sin técnico, en recolección.",
         "PARAMETROS": "Tiempos y umbrales de operación del módulo.",
         "FORMATOS": "Plantillas .docx de los formatos de garantía."
