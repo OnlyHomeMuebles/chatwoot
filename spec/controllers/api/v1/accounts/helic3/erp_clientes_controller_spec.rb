@@ -3,15 +3,25 @@
 require 'rails_helper'
 
 # ERP-08 (endpoint): el wizard consulta un cliente por cedula contra el ERP. El modo lo
-# decide HELIC3_ERP_MODO (ERP-04); aqui se prueba contra el adaptador simulado.
+# decide Super Admin (ERP-16); aqui se prueba contra el adaptador simulado.
 RSpec.describe 'ERP clientes API', type: :request do
   let(:account) { create(:account) }
   let(:agent) { create(:user, account: account, role: :agent) }
 
+  # GlobalConfig cachea el modo en Redis: se limpia para que no se filtre a otros specs.
+  around do |ejemplo|
+    GlobalConfig.clear_cache
+    ejemplo.run
+    GlobalConfig.clear_cache
+  end
+
+  def modo_erp(valor)
+    InstallationConfig.create!(name: Helic3::Erp::CLAVE_MODO, value: valor, locked: false)
+  end
+
   def consultar(cedula, modo: 'simulado', headers: agent.create_new_auth_token)
-    with_modified_env HELIC3_ERP_MODO: modo do
-      get "/api/v1/accounts/#{account.id}/helic3/erp/clientes/#{cedula}", headers: headers, as: :json
-    end
+    modo_erp(modo) if modo
+    get "/api/v1/accounts/#{account.id}/helic3/erp/clientes/#{cedula}", headers: headers, as: :json
   end
 
   describe 'GET helic3/erp/clientes/:cedula' do
@@ -71,18 +81,15 @@ RSpec.describe 'ERP clientes API', type: :request do
 
   describe 'GET helic3/catalogos' do
     it 'CA2: incluye erp_habilitado (false cuando el ERP esta desactivado)' do
-      with_modified_env HELIC3_ERP_MODO: nil do
-        get "/api/v1/accounts/#{account.id}/helic3/catalogos", headers: agent.create_new_auth_token, as: :json
-      end
+      get "/api/v1/accounts/#{account.id}/helic3/catalogos", headers: agent.create_new_auth_token, as: :json
 
       expect(response).to have_http_status(:success)
       expect(response.parsed_body['erp_habilitado']).to be(false)
     end
 
     it 'erp_habilitado es true cuando el ERP esta en simulado' do
-      with_modified_env HELIC3_ERP_MODO: 'simulado' do
-        get "/api/v1/accounts/#{account.id}/helic3/catalogos", headers: agent.create_new_auth_token, as: :json
-      end
+      modo_erp('simulado')
+      get "/api/v1/accounts/#{account.id}/helic3/catalogos", headers: agent.create_new_auth_token, as: :json
 
       expect(response.parsed_body['erp_habilitado']).to be(true)
     end
@@ -94,15 +101,14 @@ RSpec.describe 'ERP clientes API', type: :request do
     let(:motivo) { Helic3::Catalogo::MotivoPqr.find_by!(account: account, codigo: 'garantia_producto') }
 
     it 'CA3: radica con consultado_erp y marca erp lo de Siesa, humano lo que el agente corrigio' do
-      with_modified_env HELIC3_ERP_MODO: 'simulado' do
-        post "/api/v1/accounts/#{account.id}/helic3/tickets",
-             params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, consultado_erp: true,
-                                 numero_orden: 'FV-1001',
-                                 datos: { cedula: '1032456789', cliente_nombre: 'Ana Ruiz',
-                                          cliente_telefono: '3001112233', direccion: 'Correccion 1',
-                                          productos: [{ referencia: 'MIL-200' }, { referencia: 'CER-050' }] } } },
-             headers: agent.create_new_auth_token, as: :json
-      end
+      modo_erp('simulado')
+      post "/api/v1/accounts/#{account.id}/helic3/tickets",
+           params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, consultado_erp: true,
+                               numero_orden: 'FV-1001',
+                               datos: { cedula: '1032456789', cliente_nombre: 'Ana Ruiz',
+                                        cliente_telefono: '3001112233', direccion: 'Correccion 1',
+                                        productos: [{ referencia: 'MIL-200' }, { referencia: 'CER-050' }] } } },
+           headers: agent.create_new_auth_token, as: :json
 
       expect(response).to have_http_status(:success)
       ficha = Helic3::Ticket.find(response.parsed_body['id']).datos
@@ -119,15 +125,14 @@ RSpec.describe 'ERP clientes API', type: :request do
     # Jhan 2a vuelta #1: con consultado_erp pero sin producto en el selector, lo que el agente
     # escribe en "Compra" NO se puede perder: queda en la ficha con fuente humano.
     it 'con consultado_erp y productos vacios, el producto escrito a mano queda humano' do
-      with_modified_env HELIC3_ERP_MODO: 'simulado' do
-        post "/api/v1/accounts/#{account.id}/helic3/tickets",
-             params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, consultado_erp: true,
-                                 datos: { cedula: '1032456789', cliente_nombre: 'Ana Ruiz',
-                                          cliente_telefono: '3001112233',
-                                          producto_nombre: 'Producto fuera de Siesa',
-                                          producto_referencia: 'MANUAL-1', productos: [] } } },
-             headers: agent.create_new_auth_token, as: :json
-      end
+      modo_erp('simulado')
+      post "/api/v1/accounts/#{account.id}/helic3/tickets",
+           params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, consultado_erp: true,
+                               datos: { cedula: '1032456789', cliente_nombre: 'Ana Ruiz',
+                                        cliente_telefono: '3001112233',
+                                        producto_nombre: 'Producto fuera de Siesa',
+                                        producto_referencia: 'MANUAL-1', productos: [] } } },
+           headers: agent.create_new_auth_token, as: :json
 
       expect(response).to have_http_status(:success)
       ficha = Helic3::Ticket.find(response.parsed_body['id']).datos

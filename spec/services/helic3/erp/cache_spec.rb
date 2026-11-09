@@ -8,11 +8,15 @@ require 'rails_helper'
 RSpec.describe Helic3::Erp::Cache do
   let(:account) { create(:account) }
 
+  # ERP-16: el modo vive en Super Admin (installation_configs via GlobalConfig, cacheado en
+  # Redis). La cache se limpia antes y despues para que el modo no se filtre a otros specs.
   around do |ejemplo|
-    with_modified_env HELIC3_ERP_MODO: 'simulado' do
-      ejemplo.run
-    end
+    GlobalConfig.clear_cache
+    ejemplo.run
+    GlobalConfig.clear_cache
   end
+
+  before { InstallationConfig.create!(name: Helic3::Erp::CLAVE_MODO, value: 'simulado', locked: false) }
 
   it 'la 1ra consulta llama al adaptador y guarda la fila' do
     expect do
@@ -98,6 +102,8 @@ RSpec.describe Helic3::Erp::Cache do
 
     after do
       Helic3::ErpConsulta.delete_all
+      # sin transaccion, el modo del before de arriba queda guardado: se borra a mano (ERP-16)
+      InstallationConfig.where(name: Helic3::Erp::CLAVE_MODO).delete_all
       cuenta.destroy
     end
 

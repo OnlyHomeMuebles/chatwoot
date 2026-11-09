@@ -27,7 +27,9 @@ class Helic3::Agents::Tools::ResolverPqrTool < Helic3::Agents::Tools::BaseTool
   param :ciudad_codigo, type: 'string', required: false,
                         desc: 'Codigo de la ciudad de cobertura; OBLIGATORIO si el resultado abre garantia.'
   param :producto_nombre, type: 'string', required: false,
-                          desc: 'Nombre del producto en garantia; obligatorio si el resultado abre garantia.'
+                          desc: 'Nombre del producto en garantia; obligatorio si el resultado abre garantia, ' \
+                                'salvo que ya guardaste con registrar_datos_cliente los productos de la ' \
+                                'factura del ERP (entonces la garantia usa esos).'
   param :producto_referencia, type: 'string', required: false,
                               desc: 'Referencia o codigo del producto, si el cliente la da (texto libre).'
   param :motivo_garantia_codigo, type: 'string', required: false,
@@ -53,7 +55,7 @@ class Helic3::Agents::Tools::ResolverPqrTool < Helic3::Agents::Tools::BaseTool
     codigos = { ciudad_codigo: ciudad_codigo, producto_nombre: producto_nombre,
                 producto_referencia: producto_referencia, motivo_garantia_codigo: motivo_garantia_codigo,
                 detalle_tipificado_codigo: detalle_tipificado_codigo }
-    garantia = construir_garantia(account, resultado, codigos)
+    garantia = construir_garantia(account, ticket, resultado, codigos)
     return garantia if garantia.is_a?(String)
 
     resuelto = ejecutar_resolver(account, ticket, resultado, garantia)
@@ -77,7 +79,7 @@ class Helic3::Agents::Tools::ResolverPqrTool < Helic3::Agents::Tools::BaseTool
   # ANTES de tocar el dominio: una ciudad invalida crearia un radicado sin ciudad
   # ni proceso, en silencio. Devuelve: nil (no abre garantia), el hash de garantia,
   # o un String de recuperacion con la lista vigente si un codigo es invalido.
-  def construir_garantia(account, resultado, codigos)
+  def construir_garantia(account, ticket, resultado, codigos)
     return nil unless resultado.abre_garantia?
 
     ciudad = Helic3::Catalogo::CoberturaCiudad.activos.find_by(account: account, codigo: codigos[:ciudad_codigo])
@@ -89,9 +91,19 @@ class Helic3::Agents::Tools::ResolverPqrTool < Helic3::Agents::Tools::BaseTool
     detalle = catalogo_opcional(Helic3::Catalogo::DetalleTipificado, account, codigos[:detalle_tipificado_codigo])
     return detalles_invalidos(account) if invalido?(codigos[:detalle_tipificado_codigo], detalle)
 
-    { cobertura_ciudad: ciudad,
-      items: [{ producto_nombre: codigos[:producto_nombre], producto_referencia: codigos[:producto_referencia],
-                motivo_garantia: motivo, detalle_tipificado: detalle }] }
+    { cobertura_ciudad: ciudad, items: items_de_garantia(ticket, codigos, motivo, detalle) }
+  end
+
+  # ERP-16 (C3): si la ficha ya tiene productos (los que el cliente eligio de su factura del
+  # ERP), la garantia abre un item por cada uno, igual que desde el formulario, y el
+  # producto_nombre del modelo no se manda como item. Si la ficha no tiene productos, se usa
+  # el producto que mando el modelo, como siempre.
+  def items_de_garantia(ticket, codigos, motivo, detalle)
+    productos = Array(ticket.datos&.productos).map do |producto|
+      { producto_nombre: producto['nombre'], producto_referencia: producto['referencia'] }
+    end
+    productos = [{ producto_nombre: codigos[:producto_nombre], producto_referencia: codigos[:producto_referencia] }] if productos.empty?
+    productos.map { |item| item.merge(motivo_garantia: motivo, detalle_tipificado: detalle) }
   end
 
   # el detalle que se guardo en la garantia, para replicarlo en la ficha con ia

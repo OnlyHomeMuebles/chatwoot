@@ -110,6 +110,34 @@ RSpec.describe Helic3::Agents::Tools::ResolverPqrTool do
       expect(garantia.items.first.proceso).to eq(visita)
     end
 
+    # ERP-16 (C3): con productos de la factura en la ficha, la garantia abre un item por cada uno
+    # (igual que el formulario) y no exige ni usa el producto que mande el modelo.
+    it 'con productos de la factura en la ficha, abre un item por cada uno con la clasificacion' do
+      Helic3::TicketDato.create!(account: account, ticket: ticket, productos: [
+                                   { 'nombre' => 'Puerta Milano', 'referencia' => 'MIL-200', 'fuente' => 'erp' },
+                                   { 'nombre' => 'Cerradura Premium', 'referencia' => 'CER-050', 'fuente' => 'erp' }
+                                 ])
+
+      tool.perform(tool_context, ticket_display_id: ticket.display_id.to_s, resultado_codigo: 'procede_garantia',
+                                 ciudad_codigo: 'manizales', motivo_garantia_codigo: 'calidad_producto')
+
+      items = ticket.reload.garantia.items.order(:id)
+      expect(items.map { |i| [i.producto_nombre, i.producto_referencia] })
+        .to eq([['Puerta Milano', 'MIL-200'], ['Cerradura Premium', 'CER-050']])
+      expect(items.map { |i| i.motivo_garantia.codigo }).to all(eq('calidad_producto'))
+    end
+
+    it 'con productos en la ficha, ignora el producto_nombre del modelo como item' do
+      Helic3::TicketDato.create!(account: account, ticket: ticket, productos: [
+                                   { 'nombre' => 'Puerta Milano', 'referencia' => 'MIL-200', 'fuente' => 'erp' }
+                                 ])
+
+      tool.perform(tool_context, ticket_display_id: ticket.display_id.to_s, resultado_codigo: 'procede_garantia',
+                                 ciudad_codigo: 'manizales', producto_nombre: 'puerta')
+
+      expect(ticket.reload.garantia.items.pluck(:producto_nombre)).to eq(['Puerta Milano'])
+    end
+
     it 'guarda el producto que dedujo el agente en la ficha con fuente ia (DAT-01)' do
       tool.perform(tool_context, ticket_display_id: ticket.display_id.to_s,
                                  resultado_codigo: 'procede_garantia',
