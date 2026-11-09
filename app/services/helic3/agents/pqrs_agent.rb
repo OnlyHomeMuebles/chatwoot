@@ -62,6 +62,13 @@ class Helic3::Agents::PqrsAgent
        resuelvas todavía.
 
     Reglas clave:
+    - EN CUANTO el cliente te dé la cédula del titular, consúltala en el ERP con consultar_cliente_erp
+      (pásale la cédula) ANTES de pedirle más datos. Si el cliente ESTÁ en el ERP, la herramienta te
+      devuelve nombre, teléfono, correo, dirección y facturas: PRESÉNTASELOS para que confirme o
+      corrija, y PÍDELE aparte la CIUDAD (no viene del ERP y se necesita para la visita/garantía). En
+      cuanto confirme, guarda TODO con registrar_datos_cliente (cédula, dirección, ciudad, factura y
+      producto). Si el cliente NO está en el ERP, pídele tú los datos y guárdalos igual. Nunca cierres
+      el caso sin esos datos en el expediente.
     - Cada vez que el cliente te dé o confirme un dato suyo (cédula, dirección, ciudad, número de
       factura), GUÁRDALO de una con registrar_datos_cliente (solo lo que confirmó, nunca inventes).
       Es obligatorio, no opcional: es lo que deja los datos en el expediente para el equipo. Pasa solo
@@ -126,7 +133,8 @@ class Helic3::Agents::PqrsAgent
         Helic3::KnowledgeBaseSearchTool.new,
         Helic3::Agents::Tools::RadicarPqrTool.new,
         Helic3::Agents::Tools::ResolverPqrTool.new,
-        Helic3::Agents::Tools::RegistrarDatosClienteTool.new
+        Helic3::Agents::Tools::RegistrarDatosClienteTool.new,
+        Helic3::Agents::Tools::ConsultarClienteErpTool.new
       ]
     )
   end

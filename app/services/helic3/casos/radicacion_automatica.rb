@@ -59,13 +59,13 @@ class Helic3::Casos::RadicacionAutomatica
     [resultado, tipo, motivo]
   end
 
-  # idempotencia acotada al expediente VIGENTE (respondida_at: nil): no se duplica el
-  # caso en curso, pero un caso nuevo en un hilo abierto —una PQR vive hasta 15 dias
-  # habiles y el cliente puede reportar un segundo producto— SI vuelve a ser radicable
-  # una vez respondida la anterior. Eso es lo que exige el modelo legal (evita que el
-  # agente le confirme al cliente un caso que no existe).
+  # idempotencia (ERP-06/T2): regla unica, compartida con RadicarPqrTool (la
+  # herramienta del agente) via Helic3::Casos::ExpedienteVigente -- bloquea un
+  # expediente VIGENTE o uno que se acaba de responder dentro de la ventana. Antes
+  # esta compuerta solo miraba respondida_at: nil (sin ventana), y por eso el ciclo
+  # radica -> resuelve -> un mensaje nuevo volvia a duplicar el expediente.
   def expediente_existente?
-    @account.tickets.exists?(conversation_id: @conversation.id, respondida_at: nil)
+    Helic3::Casos::ExpedienteVigente.para(account: @account, conversation_id: @conversation.id).present?
   end
 
   # El candado serializa dos jobs simultaneos (dos mensajes seguidos) sobre la misma

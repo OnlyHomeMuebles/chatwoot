@@ -41,6 +41,13 @@ RSpec.describe Helic3::Agents::PqrsAgent do
         Helic3::KnowledgeBaseSearchTool
       )
     end
+
+    # ERP-06/T3: el prompt ya le pide al agente usar consultar_cliente_erp, pero en
+    # modo clases (agentes_desde_bd = false, el default) la herramienta nunca llegaba
+    # a la lista -- el agente recibia la instruccion y no tenia con que cumplirla.
+    it 'incluye ConsultarClienteErpTool' do
+      expect(agent.tools.map(&:class)).to include(Helic3::Agents::Tools::ConsultarClienteErpTool)
+    end
   end
 
   describe 'instrucciones sobre fotos adjuntas (AGT-08)' do
