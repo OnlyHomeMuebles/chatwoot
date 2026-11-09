@@ -16,15 +16,24 @@ module Helic3::Erp
   # verdad: agregar un modo a MODOS lo refleja aqui sin tocar habilitado?.
   MODOS_ACTIVOS = (MODOS - %w[desactivado]).freeze
 
-  # Credenciales y datos de conexion de Siesa Hub. Son secretos e infraestructura
-  # (se configuran en Dokploy), NO valores de negocio: por eso van por ENV y nunca a
-  # catalogo ni a Parametro, ni al repositorio.
-  # ERP-05: el adaptador usa DOS consultas: clientes (SIESA_HUB_CONSULTA_CLIENTES, para el
-  # nombre de cualquier cedula) y compras (SIESA_HUB_CONSULTA_COMPRAS, para las facturas). La
-  # ventana de compras NO es variable de entorno: la decide la cuenta (parametro erp_meses_compras).
-  VARIABLES_SIESA = %w[
-    SIESA_HUB_BASE_URL SIESA_HUB_CLIENT_ID SIESA_HUB_CONNI_KEY SIESA_HUB_CONNI_TOKEN
-    SIESA_HUB_ID_COMPANIA SIESA_HUB_CONSULTA_CLIENTES SIESA_HUB_CONSULTA_COMPRAS
+  # ERP-16: el modo y la conexion con Siesa HUB se configuran en Super Admin > Settings >
+  # Helic3 · ERP Siesa (installation_configs, leidos por GlobalConfig, como la llave de
+  # OpenAI de CFG-01). Una sola fuente de verdad: no hay respaldo en variables de entorno.
+  # Son conexion e infraestructura, NO reglas de negocio: erp_meses_compras, erp_cache_horas
+  # y la ventana de doble radicacion siguen en Parametros de la cuenta.
+  CLAVE_MODO = 'HELIC3_ERP_MODO'
+  CLAVE_BASE_URL = 'HELIC3_SIESA_HUB_BASE_URL'
+  CLAVE_CLIENT_ID = 'HELIC3_SIESA_HUB_CLIENT_ID'
+  CLAVE_CONNI_KEY = 'HELIC3_SIESA_HUB_CONNI_KEY'
+  CLAVE_CONNI_TOKEN = 'HELIC3_SIESA_HUB_CONNI_TOKEN'
+  CLAVE_ID_COMPANIA = 'HELIC3_SIESA_HUB_ID_COMPANIA'
+  CLAVE_CONSULTA_CLIENTES = 'HELIC3_SIESA_HUB_CONSULTA_CLIENTES'
+  CLAVE_CONSULTA_COMPRAS = 'HELIC3_SIESA_HUB_CONSULTA_COMPRAS'
+  # ERP-05: dos consultas, clientes (nombre y contacto de cualquier cedula) y compras (una o
+  # varias, separadas por coma).
+  CLAVES_SIESA = [
+    CLAVE_BASE_URL, CLAVE_CLIENT_ID, CLAVE_CONNI_KEY, CLAVE_CONNI_TOKEN,
+    CLAVE_ID_COMPANIA, CLAVE_CONSULTA_CLIENTES, CLAVE_CONSULTA_COMPRAS
   ].freeze
 
   module_function
@@ -45,10 +54,11 @@ module Helic3::Erp
     digitos
   end
 
-  # Modo de operacion, desde HELIC3_ERP_MODO. Por defecto DESACTIVADO: en produccion
-  # nunca puede responder el simulado con clientes inventados; se enciende a proposito.
+  # Modo de operacion, desde Super Admin. Sin fila (o vacio): DESACTIVADO, para que en
+  # produccion nunca responda el simulado con clientes inventados; se enciende a proposito.
+  # GlobalConfig se limpia al guardar la pagina: el cambio aplica en la siguiente consulta.
   def modo
-    ENV['HELIC3_ERP_MODO'].to_s.strip.downcase.presence || 'desactivado'
+    GlobalConfig.get_value(CLAVE_MODO).to_s.strip.downcase.presence || 'desactivado'
   end
 
   # Si el modulo esta encendido (simulado o siesa). El frontend muestra el boton de
@@ -66,18 +76,30 @@ module Helic3::Erp
     when 'simulado' then SimulatedAdapter.new
     when 'siesa' then adaptador_siesa
     when 'desactivado'
-      raise NoDisponible, 'el modulo ERP esta desactivado (HELIC3_ERP_MODO=desactivado)'
+      raise NoDisponible, "el modulo ERP esta desactivado (#{CLAVE_MODO}=desactivado)"
     else
-      raise ConfiguracionInvalida, "HELIC3_ERP_MODO desconocido: '#{modo}' (usa: #{MODOS.join(', ')})"
+      raise ConfiguracionInvalida, "#{CLAVE_MODO} desconocido: '#{modo}' (usa: #{MODOS.join(', ')})"
     end
   end
 
-  # En modo siesa exige TODAS las variables de conexion. Nombra la primera que falta, sin
-  # imprimir ningun valor (son secretos).
+  # En modo siesa exige TODA la conexion. Nombra la primera clave que falta, sin imprimir
+  # ningun valor (son secretos).
   def adaptador_siesa
-    faltante = VARIABLES_SIESA.find { |variable| ENV[variable].to_s.strip.empty? }
-    raise ConfiguracionInvalida, "falta la variable #{faltante} para el ERP Siesa" if faltante
+    conexion = CLAVES_SIESA.index_with { |clave| GlobalConfig.get_value(clave).to_s.strip }
+    faltante = CLAVES_SIESA.find { |clave| conexion[clave].empty? }
+    if faltante
+      raise ConfiguracionInvalida,
+            "falta #{faltante} para el ERP Siesa (Super Admin > Settings > Helic3 · ERP Siesa)"
+    end
 
-    Helic3::Erp::SiesaHubAdapter.new
+    Helic3::Erp::SiesaHubAdapter.new(
+      cliente: Helic3::Erp::SiesaHubCliente.new(
+        base_url: conexion[CLAVE_BASE_URL], client_id: conexion[CLAVE_CLIENT_ID],
+        conni_key: conexion[CLAVE_CONNI_KEY], conni_token: conexion[CLAVE_CONNI_TOKEN],
+        id_compania: conexion[CLAVE_ID_COMPANIA]
+      ),
+      consulta_clientes: conexion[CLAVE_CONSULTA_CLIENTES],
+      consultas_compras: conexion[CLAVE_CONSULTA_COMPRAS].split(',').map(&:strip).reject(&:empty?)
+    )
   end
 end

@@ -9,7 +9,15 @@ RSpec.describe Helic3::Casos::RegistrarCompraErp do
   let(:account) { create(:account) }
   let(:ticket) { create(:ticket, account: account) }
 
-  around { |ejemplo| with_modified_env(HELIC3_ERP_MODO: 'simulado') { ejemplo.run } }
+  # ERP-16: el modo vive en Super Admin (installation_configs via GlobalConfig, cacheado en
+  # Redis). La cache se limpia antes y despues para que el modo no se filtre a otros specs.
+  around do |ejemplo|
+    GlobalConfig.clear_cache
+    ejemplo.run
+    GlobalConfig.clear_cache
+  end
+
+  before { InstallationConfig.create!(name: Helic3::Erp::CLAVE_MODO, value: 'simulado', locked: false) }
 
   it 'cruza la factura y los productos elegidos: fuente erp y lista de productos' do
     described_class.new(ticket: ticket, cedula: '1032456789',
