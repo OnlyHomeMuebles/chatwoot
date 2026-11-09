@@ -54,6 +54,23 @@ module Helic3::Erp
     digitos
   end
 
+  # ERP-16 (C4): dos numeros de factura son la misma aunque vengan con distinto formato
+  # (FV-1102, FV 0001102, fv1102): sin espacios ni guiones, sin ceros a la izquierda. Si uno
+  # no trae prefijo (p. ej. la foto solo dejo leer el numero), se compara solo el numero.
+  def misma_factura?(uno, otro)
+    a = partes_factura(uno)
+    b = partes_factura(otro)
+    return false if a.nil? || b.nil?
+
+    a[:numero] == b[:numero] && (a[:prefijo].empty? || b[:prefijo].empty? || a[:prefijo] == b[:prefijo])
+  end
+
+  # { prefijo: 'FV', numero: '1102' }, o nil si no tiene forma de numero de factura.
+  def partes_factura(valor)
+    coincidencia = valor.to_s.upcase.gsub(/[\s-]/, '').match(/\A([A-Z]*)0*(\d+)\z/)
+    coincidencia && { prefijo: coincidencia[1], numero: coincidencia[2] }
+  end
+
   # Modo de operacion, desde Super Admin. Sin fila (o vacio): DESACTIVADO, para que en
   # produccion nunca responda el simulado con clientes inventados; se enciende a proposito.
   # GlobalConfig se limpia al guardar la pagina: el cambio aplica en la siguiente consulta.

@@ -1,10 +1,11 @@
 # frozen_string_literal: true
 
 # ERP-08: al radicar con consultado_erp, escribe en la ficha lo que trajo el ERP con
-# fuente erp, y del bloque que mando el agente solo lo que CAMBIO (o lo que el ERP no
-# trae) con fuente humano. El backend relee el ERP por el cache (ERP-14), no confia en que
-# el frontend diga que un dato vino de Siesa; y si el ERP falla, deja todo humano: el
-# ERP nunca bloquea una radicacion.
+# fuente erp, y de lo que se mando solo lo que CAMBIO (o lo que el ERP no trae) con la
+# fuente de quien lo escribio: humano desde el formulario, confirmado desde el agente de IA
+# (ERP-16: lo confirmo el cliente en el chat). El backend relee el ERP por el cache (ERP-14),
+# no confia en que el frontend diga que un dato vino de Siesa; y si el ERP falla, deja todo
+# con esa fuente: el ERP nunca bloquea una radicacion.
 class Helic3::Casos::RegistrarClienteErp
   # Customer (ERP) -> campos de la ficha (Helic3::TicketDato).
   CAMPO_POR_ATRIBUTO = {
@@ -12,8 +13,9 @@ class Helic3::Casos::RegistrarClienteErp
     email: :cliente_email, ciudad: :ciudad, direccion: :direccion
   }.freeze
 
-  def initialize(ticket:, datos:)
+  def initialize(ticket:, datos:, fuente: :humano)
     @ticket = ticket
+    @fuente = fuente
     @datos = datos.to_h.symbolize_keys # lo que el agente ve/edita en el wizard
     # La cedula se guarda ya normalizada (sin puntos/guion), igual que la que usa el ERP,
     # para que no se marque como correccion humana solo por el formato que tecleo el agente.
@@ -23,17 +25,17 @@ class Helic3::Casos::RegistrarClienteErp
 
   def call
     cliente = consultar
-    return registrar(@datos, :humano) unless cliente
+    return registrar(@datos, @fuente) unless cliente
 
     campos_erp = campos_desde(cliente)
     registrar(campos_erp, :erp)
-    registrar(diferencias(campos_erp), :humano)
+    registrar(diferencias(campos_erp), @fuente)
   end
 
   private
 
   # El ERP NUNCA bloquea una radicacion: cualquier fallo de la consulta (timeout, red,
-  # config) se trata como "no hay cliente" y se continua a mano (todo humano). Solo se
+  # config) se trata como "no hay cliente" y se continua a mano (todo con @fuente). Solo se
   # rescata la CONSULTA, no la escritura de la ficha (un fallo ahi si debe salir ruidoso).
   def consultar
     cedula = @datos[:cedula]

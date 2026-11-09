@@ -62,7 +62,7 @@ class Helic3::Casos::RadicacionAutomatica
   # idempotencia (ERP-06/T2): regla unica, compartida con RadicarPqrTool (la
   # herramienta del agente) via Helic3::Casos::ExpedienteVigente -- bloquea un
   # expediente VIGENTE o uno que se acaba de responder dentro de la ventana. Antes
-  # esta compuerta solo miraba respondida_at: nil (sin ventana), y por eso el ciclo
+  # esta compuerta solo miraba los expedientes sin responder (sin ventana), y por eso el ciclo
   # radica -> resuelve -> un mensaje nuevo volvia a duplicar el expediente.
   def expediente_existente?
     Helic3::Casos::ExpedienteVigente.para(account: @account, conversation_id: @conversation.id).present?

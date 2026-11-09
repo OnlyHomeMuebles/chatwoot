@@ -75,6 +75,55 @@ RSpec.describe Helic3::Agents::Tools::RegistrarDatosClienteTool do
     end
   end
 
+  # ERP-16 (C2): con el ERP encendido guarda por el camino del formulario (RegistrarDesdeErp):
+  # lo que cruza con Siesa queda erp, lo que el cliente corrigio queda confirmado.
+  describe 'con el ERP encendido (simulado)' do
+    let!(:ticket) { create(:ticket, account: account, conversation_id: conversation.id) }
+
+    around do |ejemplo|
+      GlobalConfig.clear_cache
+      ejemplo.run
+      GlobalConfig.clear_cache
+    end
+
+    before { InstallationConfig.create!(name: Helic3::Erp::CLAVE_MODO, value: 'simulado', locked: false) }
+
+    it 'lo que cruza con Siesa queda erp y lo corregido queda confirmado' do
+      guardar(cedula: '1.032.456.789', cliente_nombre: 'Ana Ruiz', cliente_telefono: '3001112233',
+              direccion: 'Calle nueva 5', ciudad: 'Armenia', factura_numero: 'FV-1001', productos: 'MIL-200')
+
+      ficha = ticket.reload.datos
+      expect(ficha.fuentes).to include('cedula' => 'erp', 'cliente_nombre' => 'erp', 'cliente_telefono' => 'erp',
+                                       'cliente_email' => 'erp', 'factura_numero' => 'erp', 'factura_fecha' => 'erp',
+                                       'direccion' => 'confirmado')
+      expect(ficha.direccion).to eq('Calle nueva 5')
+      expect(ficha.productos).to eq([{ 'nombre' => 'Puerta Milano', 'referencia' => 'MIL-200', 'fuente' => 'erp' }])
+    end
+
+    it 'un producto que no esta en la factura queda confirmado' do
+      guardar(cedula: '1032456789', factura_numero: 'FV-1001', producto_nombre: 'Sofa cama')
+
+      ficha = ticket.reload.datos
+      expect(ficha.productos).to eq([{ 'nombre' => 'Sofa cama', 'referencia' => '', 'fuente' => 'confirmado' }])
+      expect(ficha.fuentes['producto_nombre']).to eq('confirmado')
+    end
+
+    it 'con productos elegidos, el producto_nombre deducido no se suma como otro item' do
+      guardar(cedula: '1032456789', factura_numero: 'FV-1001', productos: 'MIL-200, CER-050', producto_nombre: 'puerta')
+
+      expect(ticket.reload.datos.productos.pluck('referencia')).to eq(%w[MIL-200 CER-050])
+    end
+
+    it 'guardar despues solo la direccion no borra los productos ya guardados' do
+      guardar(cedula: '1032456789', factura_numero: 'FV-1001', productos: 'MIL-200')
+      guardar(direccion: 'Otra 7')
+
+      ficha = ticket.reload.datos
+      expect(ficha.productos.pluck('referencia')).to eq(['MIL-200'])
+      expect(ficha.direccion).to eq('Otra 7')
+    end
+  end
+
   it 'sin expediente vigente no crea ficha y le dice al modelo que radique primero' do
     salida = guardar(direccion: 'Calle 1')
 

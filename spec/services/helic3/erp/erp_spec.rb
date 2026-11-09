@@ -93,6 +93,25 @@ RSpec.describe Helic3::Erp do
     end
   end
 
+  # ERP-16 (C4): el numero de factura leido de una foto o escrito por el cliente cruza con el del ERP.
+  describe '.misma_factura?' do
+    it 'cruza el mismo numero en distintos formatos' do
+      ['FV-1102', 'FV 0001102', 'fv1102', '1102', '0001102'].each do |leido|
+        expect(described_class.misma_factura?('FV-1102', leido)).to be(true), leido
+      end
+    end
+
+    it 'no cruza otro numero ni otro prefijo' do
+      expect(described_class.misma_factura?('FV-1102', 'FV-1103')).to be(false)
+      expect(described_class.misma_factura?('FV-1102', 'FE-1102')).to be(false)
+    end
+
+    it 'no cruza con un valor vacio o sin forma de factura' do
+      expect(described_class.misma_factura?('FV-1102', nil)).to be(false)
+      expect(described_class.misma_factura?('FV-1102', 'sin numero')).to be(false)
+    end
+  end
+
   describe '.adapter' do
     it 'CA2: en modo simulado devuelve un SimulatedAdapter' do
       configurar(described_class::CLAVE_MODO => 'simulado')
