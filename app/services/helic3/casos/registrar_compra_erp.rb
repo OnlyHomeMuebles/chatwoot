@@ -22,9 +22,9 @@ class Helic3::Casos::RegistrarCompraErp
   end
 
   def call
+    ficha = @ticket.datos || @ticket.build_datos(account: @ticket.account)
     factura = factura_del_cache
-    productos = ajustar_manual(cruzar_productos(factura))
-    guardar(factura, productos)
+    guardar(ficha, factura, productos_nuevos(ficha, factura))
   end
 
   private
@@ -86,6 +86,20 @@ class Helic3::Casos::RegistrarCompraErp
     [manual] + productos[1..]
   end
 
+  # ERP-16 (revision #159): la lista se reemplaza solo cuando llegan productos elegidos o un
+  # producto escrito que de verdad la cambie; un guardado parcial (solo factura, solo fecha, o el
+  # mismo producto) no la toca. Desde el agente, si una persona corrigio el producto, la lista
+  # tampoco se toca (humano > confirmado). nil = la lista queda como esta.
+  def productos_nuevos(ficha, factura)
+    elegidos = Array(@datos[:productos]).any?
+    base = elegidos ? cruzar_productos(factura) : Array(ficha.productos)
+    nuevos = ajustar_manual(base)
+    return nil if !elegidos && nuevos.equal?(base)
+    return nil if @fuente != 'humano' && ficha.fuentes['producto_nombre'] == 'humano'
+
+    nuevos
+  end
+
   def mismo?(uno, otro)
     normal(uno['nombre']) == normal(otro['nombre']) && normal(uno['referencia']) == normal(otro['referencia'])
   end
@@ -94,9 +108,7 @@ class Helic3::Casos::RegistrarCompraErp
     valor.to_s.strip.downcase.gsub(/\s+/, ' ')
   end
 
-  def guardar(factura, productos)
-    ficha = @ticket.datos || @ticket.build_datos(account: @ticket.account)
-
+  def guardar(ficha, factura, productos)
     if factura
       # Cruza contra el cache: es de Siesa -> erp. factura_numero se sella aqui aunque Radicar
       # lo haya puesto provisional (el cruce verifica el origen; no es una edicion humana).
@@ -109,10 +121,12 @@ class Helic3::Casos::RegistrarCompraErp
       sellar(ficha, 'factura_fecha', @datos[:factura_fecha], @fuente)
     end
 
-    ficha.productos = productos
-    if (primero = productos.first)
-      sellar(ficha, 'producto_nombre', primero['nombre'], primero['fuente'])
-      sellar(ficha, 'producto_referencia', primero['referencia'], primero['fuente'])
+    unless productos.nil?
+      ficha.productos = productos
+      if (primero = productos.first)
+        sellar(ficha, 'producto_nombre', primero['nombre'], primero['fuente'])
+        sellar(ficha, 'producto_referencia', primero['referencia'], primero['fuente'])
+      end
     end
 
     ficha.save!
@@ -121,9 +135,23 @@ class Helic3::Casos::RegistrarCompraErp
   # Escritura directa de la compra (no pasa por RegistrarDatos): este servicio es la autoridad
   # de la compra en el flujo ERP y ademas guarda la lista de productos, que no es un campo suelto.
   def sellar(ficha, campo, valor, fuente)
-    return if valor.blank?
+    return if valor.blank? || protegido?(ficha, campo, valor, fuente)
 
     ficha[campo] = valor
     ficha.fuentes = ficha.fuentes.merge(campo => fuente)
+  end
+
+  # ERP-16 (revision #159): desde el agente (@fuente no es humano) la compra respeta la precedencia
+  # de RegistrarDatos (humano > confirmado > erp > ia): no pisa un campo de mayor rango. Unica
+  # excepcion: el cruce con Siesa de un valor IGUAL al que ya confirmo el cliente lo marca erp,
+  # porque verifica el origen sin cambiar el dato (igual que en el formulario).
+  def protegido?(ficha, campo, valor, fuente)
+    return false if @fuente == 'humano'
+
+    rango = Helic3::Casos::RegistrarDatos::RANGO
+    actual = ficha.fuentes[campo]
+    return false if rango.fetch(fuente) >= (rango[actual] || 0)
+
+    !(fuente == 'erp' && actual == 'confirmado' && normal(ficha[campo]) == normal(valor))
   end
 end

@@ -114,6 +114,27 @@ RSpec.describe Helic3::Agents::Tools::RegistrarDatosClienteTool do
       expect(ticket.reload.datos.productos.pluck('referencia')).to eq(%w[MIL-200 CER-050])
     end
 
+    # Revision #159: un guardado parcial de la compra no reemplaza la lista de productos.
+    it 'guardar factura + productos y luego solo factura_numero mantiene los productos' do
+      guardar(cedula: '1032456789', factura_numero: 'FV-1001', productos: 'MIL-200, CER-050')
+      guardar(cedula: '1032456789', factura_numero: 'FV-1001')
+
+      expect(ticket.reload.datos.productos.pluck('referencia')).to eq(%w[MIL-200 CER-050])
+    end
+
+    # Revision #159: con ERP, la compra respeta humano > confirmado > erp igual que sin ERP.
+    it 'si el operador corrigio el producto (humano), el agente no lo pisa al guardar la compra' do
+      Helic3::Casos::RegistrarDatos.new(ticket: ticket, campos: { producto_nombre: 'Puerta corregida' },
+                                        fuente: :humano).call
+
+      guardar(cedula: '1032456789', factura_numero: 'FV-1001', productos: 'MIL-200')
+
+      ficha = ticket.reload.datos
+      expect(ficha.producto_nombre).to eq('Puerta corregida')
+      expect(ficha.fuentes['producto_nombre']).to eq('humano')
+      expect(ficha.productos).to be_blank
+    end
+
     it 'guardar despues solo la direccion no borra los productos ya guardados' do
       guardar(cedula: '1032456789', factura_numero: 'FV-1001', productos: 'MIL-200')
       guardar(direccion: 'Otra 7')
