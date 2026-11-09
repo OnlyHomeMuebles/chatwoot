@@ -16,6 +16,10 @@ fuentes = resource&.fuentes || {}
   end
 end
 
+# ERP-15 (B3): los productos de la compra (uno o varios), cada uno con su procedencia. El
+# panel los usa para precargar el dialogo de garantia con una fila por producto.
+json.productos(resource&.productos || [])
+
 # el detalle es catalogo: el valor va como objeto id/codigo/nombre para que el
 # panel muestre el nombre sin otra consulta.
 detalle = resource&.detalle_tipificado

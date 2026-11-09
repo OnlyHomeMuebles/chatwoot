@@ -46,6 +46,17 @@ class TicketsAPI extends ApiClient {
     return axios.get(this.url.replace(/tickets$/, 'catalogos'));
   }
 
+  // ERP-08/11: consulta un cliente por cedula para autocompletar el wizard de PQR
+  // manual. Acepta un AbortSignal para que una consulta nueva cancele la anterior
+  // (useAbortableRequest). Cuelga del mismo namespace helic3.
+  // En una sola consulta trae el cliente y sus facturas+productos (ERP-08/15). refrescar:
+  // true manda ?refrescar=1 para saltar el cache (ERP-14, "Volver a consultar").
+  consultarErpCliente(cedula, signal, { refrescar = false } = {}) {
+    const base = this.url.replace(/tickets$/, 'erp/clientes');
+    const params = refrescar ? { refrescar: 1 } : {};
+    return axios.get(`${base}/${encodeURIComponent(cedula)}`, { signal, params });
+  }
+
   // Archivo documental del expediente (EVI-02/EVI-03): evidencias del cliente
   // (referenciadas, no copiadas) y cargas manuales del operador.
   documentos(ticketId) {

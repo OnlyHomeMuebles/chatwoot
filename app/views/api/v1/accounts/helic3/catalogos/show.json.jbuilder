@@ -37,6 +37,10 @@ json.procesos_garantia @procesos_garantia do |proceso|
   json.call(proceso, :id, :codigo, :nombre)
 end
 
+# ERP-08: si el modulo ERP esta encendido (ERP-04). El wizard muestra el boton
+# "Consultar Siesa" solo cuando esto es true.
+json.erp_habilitado Helic3::Erp.habilitado?
+
 # IND-06: motivo propio de Devolucion, para el filtro de esa pestaña de
 # Indicadores (detalle/proceso reusan los catalogos de garantia de arriba).
 json.motivos_devolucion @motivos_devolucion do |motivo|

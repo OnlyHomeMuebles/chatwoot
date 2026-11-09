@@ -83,13 +83,22 @@ const open = (elTicket, elResultadoId, prefill = {}) => {
     c => normalizar(c.nombre) === ciudadBuscada
   );
   ciudadId.value = ciudad?.id || '';
-  productos.value = [
-    {
-      ...productoVacio(),
-      producto_nombre: prefill.producto_nombre || '',
-      producto_referencia: prefill.producto_referencia || '',
-    },
-  ];
+  // ERP-15: una fila por producto de la ficha (prefill.productos). Fallback al producto unico
+  // (chat / MAN-03) para no cambiar el comportamiento de quien llama con producto_nombre suelto.
+  const lista = Array.isArray(prefill.productos) ? prefill.productos : [];
+  productos.value = lista.length
+    ? lista.map(p => ({
+        ...productoVacio(),
+        producto_nombre: p.nombre || '',
+        producto_referencia: p.referencia || '',
+      }))
+    : [
+        {
+          ...productoVacio(),
+          producto_nombre: prefill.producto_nombre || '',
+          producto_referencia: prefill.producto_referencia || '',
+        },
+      ];
   error.value = '';
   dialogRef.value.open();
 };
@@ -125,7 +134,8 @@ const abrirGarantia = async () => {
   }
 };
 
-defineExpose({ open });
+// `productos` y `ciudadId` se exponen para las pruebas de precarga (una fila por producto).
+defineExpose({ open, productos, ciudadId });
 </script>
 
 <template>

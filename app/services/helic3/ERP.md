@@ -22,7 +22,7 @@ El código que consume el ERP depende de `Base`, nunca de una implementación co
 
 | Objeto | Campos |
 |---|---|
-| `Customer` | `cedula`, `nombre`, `email`, `telefono` |
+| `Customer` | `cedula`, `nombre`, `email`, `telefono`, `ciudad`, `direccion` |
 | `Invoice` | `numero`, `fecha`, `total`, `saldo`, `estado` (`pagada`/`pendiente`/`vencida`), `items` |
 | `AccountStatement` | `cedula`, `saldo_total`, `facturas_pendientes`, `al_dia` |
 
@@ -37,6 +37,34 @@ let(:known_cedula) { '...' }
 let(:known_invoice_number) { '...' }
 it_behaves_like 'un adaptador de ERP'
 ```
+
+## Configuración (ERP-04)
+
+`Helic3::Erp.adapter` es el interruptor del módulo; `HELIC3_ERP_MODO` decide con quién se habla:
+
+| `HELIC3_ERP_MODO` | Qué hace |
+|---|---|
+| `desactivado` (por defecto) | El ERP no responde; `habilitado?` es `false`. En producción nunca puede responder el simulado con clientes inventados: hay que encenderlo a propósito. |
+| `simulado` | Usa `SimulatedAdapter` (datos de prueba). |
+| `siesa` | Usa el adaptador real (ERP-05); exige las variables de conexión. |
+
+Un valor desconocido levanta `Helic3::Erp::ConfiguracionInvalida`.
+
+**Variables de Siesa Hub** (solo en modo `siesa`). Son secretos e infraestructura: se configuran en Dokploy, **nunca** en el repo, en un PR ni en el chat del equipo.
+
+| Variable | Uso |
+|---|---|
+| `SIESA_HUB_BASE_URL` | Dirección base real de la API |
+| `SIESA_HUB_CLIENT_ID` | Credencial (Apigee) |
+| `SIESA_HUB_CONNI_KEY` | Credencial |
+| `SIESA_HUB_CONNI_TOKEN` | Credencial |
+| `SIESA_HUB_ID_COMPANIA` | Compañía donde se consulta |
+| `SIESA_HUB_CONSULTA_COMPRAS` | Nombre(s) de la(s) consulta(s) de facturas/compras (separadas por coma si son varias) |
+| `SIESA_HUB_CONSULTA_CLIENTES` | Nombre de la consulta del maestro de clientes (p. ej. `enterprise_mm_terceros_clie_v1`). Trae nombre y contacto del cliente por cédula. |
+
+> `find_customer` consulta el **maestro de clientes** (`SIESA_HUB_CONSULTA_CLIENTES`, filtro por cédula) y trae **nombre, teléfono, correo y dirección** de cualquier cédula, tenga compras o no. La **ciudad** llega como código (`idCiudad`/`idDepto` DANE), no como nombre, así que queda en blanco hasta agregar el catálogo DANE (follow-up). La **ventana de compras** la fija el parámetro administrable `erp_meses_compras` (no una fecha de entorno).
+
+En modo `siesa`, si falta alguna variable, `Helic3::Erp.adapter` levanta `ConfiguracionInvalida` nombrando la que falta (sin imprimir su valor). Errores del módulo: `ConfiguracionInvalida` (configuración) y `NoDisponible` (desactivado, o Siesa caído).
 
 ## Hoja de ruta (épica 4B)
 
