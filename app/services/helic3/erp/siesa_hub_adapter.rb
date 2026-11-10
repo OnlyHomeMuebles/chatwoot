@@ -7,11 +7,14 @@
 # fuentes) por cedula+fecha; la ventana (`desde`) la decide el cache por cuenta (parametro
 # erp_meses_compras), no una constante ni una variable de entorno. `invoice`/`account_statement`
 # no los usa ningun consumidor y heredan el NotImplementedError de Base.
+#
+# ERP-16: no lee configuracion por su cuenta. Helic3::Erp.adaptador_siesa le entrega el
+# cliente HTTP y los nombres de consulta, leidos de Super Admin.
 class Helic3::Erp::SiesaHubAdapter < Helic3::Erp::Base
-  def initialize(cliente: nil, consultas_compras: nil, consulta_clientes: nil)
-    @cliente = cliente || cliente_desde_env
-    @consultas_compras = consultas_compras || fuentes_desde_env
-    @consulta_clientes = consulta_clientes || ENV.fetch('SIESA_HUB_CONSULTA_CLIENTES')
+  def initialize(cliente:, consultas_compras:, consulta_clientes:)
+    @cliente = cliente
+    @consultas_compras = consultas_compras
+    @consulta_clientes = consulta_clientes
   end
 
   # Facturas por cedula desde la fecha `desde` (ISO). Concatena las fuentes; si una responde
@@ -46,19 +49,5 @@ class Helic3::Erp::SiesaHubAdapter < Helic3::Erp::Base
 
   def solo_digitos(cedula)
     cedula.to_s.gsub(/\D/, '')
-  end
-
-  def cliente_desde_env
-    Helic3::Erp::SiesaHubCliente.new(
-      base_url: ENV.fetch('SIESA_HUB_BASE_URL'),
-      client_id: ENV.fetch('SIESA_HUB_CLIENT_ID'),
-      conni_key: ENV.fetch('SIESA_HUB_CONNI_KEY'),
-      conni_token: ENV.fetch('SIESA_HUB_CONNI_TOKEN'),
-      id_compania: ENV.fetch('SIESA_HUB_ID_COMPANIA')
-    )
-  end
-
-  def fuentes_desde_env
-    ENV.fetch('SIESA_HUB_CONSULTA_COMPRAS').split(',').map(&:strip)
   end
 end

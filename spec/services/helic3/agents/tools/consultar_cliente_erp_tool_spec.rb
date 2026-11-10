@@ -94,6 +94,57 @@ RSpec.describe Helic3::Agents::Tools::ConsultarClienteErpTool do
     expect(consultar('26478046')).to match(/no.*respond|a mano|intenta/i)
   end
 
+  # ERP-16 (C1/C4): productos por factura y factura identificada por su numero.
+  describe 'productos y factura del caso' do
+    let(:con_dos) do
+      Helic3::Erp::Invoice.new(
+        numero: 'FV-1102', fecha: '2026-09-01', total: 900_000, saldo: 0, estado: '', centro_operacion: '012',
+        items: [Helic3::Erp::InvoiceItem.new(referencia: 'MIL-200', descripcion: 'Puerta Milano', cantidad: 1, valor: 500_000),
+                Helic3::Erp::InvoiceItem.new(referencia: 'CER-050', descripcion: 'Cerradura', cantidad: 1, valor: 400_000)]
+      )
+    end
+    let(:con_uno) do
+      Helic3::Erp::Invoice.new(
+        numero: 'FV-2001', fecha: '2026-10-01', total: 300_000, saldo: 0, estado: '', centro_operacion: '012',
+        items: [Helic3::Erp::InvoiceItem.new(referencia: 'SIL-010', descripcion: 'Silla Eames', cantidad: 1, valor: 300_000)]
+      )
+    end
+
+    before do
+      allow(Helic3::Erp::Cache).to receive(:consultar)
+        .and_return(Helic3::Erp::Cache::Resultado.new(cliente: cliente, compras: [con_dos, con_uno]))
+    end
+
+    it 'C1: lista los productos de cada factura con descripcion y referencia' do
+      texto = consultar('26478046')
+
+      expect(texto).to include('Puerta Milano (referencia MIL-200)', 'Cerradura (referencia CER-050)',
+                               'Silla Eames (referencia SIL-010)')
+    end
+
+    it 'C4: el numero leido en tres formatos cruza con la misma factura y va de primero' do
+      ['FV-1102', 'FV 0001102', '1102'].each do |leido|
+        texto = tool.perform(tool_context, cedula: '26478046', factura_numero: leido)
+
+        expect(texto).to start_with("La factura que mencionó o adjuntó el cliente (#{leido}) es la FV-1102")
+        expect(texto).to include('varios productos')
+      end
+    end
+
+    it 'C4: con un solo producto, ese es el del caso' do
+      texto = tool.perform(tool_context, cedula: '26478046', factura_numero: 'fv-2001')
+
+      expect(texto).to include('es la FV-2001', 'Tiene un solo producto')
+    end
+
+    it 'C4: un numero que no cruza lo dice y deja la lista para elegir' do
+      texto = tool.perform(tool_context, cedula: '26478046', factura_numero: 'FV-9999')
+
+      expect(texto).to start_with('La factura FV-9999 no aparece')
+      expect(texto).to include('FV-1102', 'FV-2001')
+    end
+  end
+
   it 'normaliza la cedula (puntos/espacios) antes de consultar' do
     resultado = Helic3::Erp::Cache::Resultado.new(cliente: cliente, compras: [])
     expect(Helic3::Erp::Cache).to receive(:consultar).with(account: account, cedula: '26478046').and_return(resultado)

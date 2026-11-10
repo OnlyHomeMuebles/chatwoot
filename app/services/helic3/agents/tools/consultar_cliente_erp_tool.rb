@@ -17,24 +17,29 @@ class Helic3::Agents::Tools::ConsultarClienteErpTool < Helic3::Agents::Tools::Ba
               'y guárdalos con registrar_datos_cliente.'
 
   description 'Consulta el ERP (Siesa) por la cédula del cliente y trae sus datos (nombre, teléfono, ' \
-              'correo, dirección) y sus facturas. Úsala cuando el cliente te dé la cédula. Después ' \
-              'muéstrale los datos y pídele que los confirme o corrija ANTES de guardarlos con ' \
+              'correo, dirección) y sus facturas con sus productos. Úsala cuando tengas la cédula (del ' \
+              'chat o de la foto de la factura). Si tienes el número de factura (del chat o leído de la ' \
+              'foto), pásalo para identificar la factura del caso. Después muéstrale los datos y la ' \
+              'factura al cliente y pídele que los confirme o corrija ANTES de guardarlos con ' \
               'registrar_datos_cliente. Nunca inventes datos.'
 
   param :cedula, type: 'string', required: true,
-                 desc: 'Cédula del titular tal como la dio el cliente (se normaliza sola).'
+                 desc: 'Cédula del titular tal como la dio el cliente o se leyó de la foto (se normaliza sola).'
+  param :factura_numero, type: 'string', required: false,
+                         desc: 'Número de factura del caso, si el cliente lo dio o se leyó de la foto, en ' \
+                               'cualquier formato (FV-1102, FV 0001102, 1102).'
 
-  def perform(_tool_context, cedula:)
+  def perform(tool_context, cedula:, factura_numero: nil)
     return ERP_APAGADO unless Helic3::Erp.habilitado?
 
     normalizada = Helic3::Erp.normalizar_cedula(cedula)
     return CEDULA_INVALIDA if normalizada.blank?
 
-    account = resolve_account(_tool_context)
+    account = resolve_account(tool_context)
     return SIN_CUENTA if account.blank?
 
     resultado = Helic3::Erp::Cache.consultar(account: account, cedula: normalizada)
-    presentar(resultado, normalizada)
+    presentar(resultado, normalizada, factura_numero)
   rescue Helic3::Erp::NoDisponible
     ERP_CAIDO
   end
@@ -46,17 +51,45 @@ class Helic3::Agents::Tools::ConsultarClienteErpTool < Helic3::Agents::Tools::Ba
     account_id.present? ? Account.find_by(id: account_id) : nil
   end
 
-  def presentar(resultado, cedula)
+  def presentar(resultado, cedula, factura_numero)
     cliente = resultado.cliente
     if cliente.nil?
       return "No encontré a nadie con la cédula #{cedula} en el ERP. Pídele los datos al cliente " \
              'y guárdalos a mano con registrar_datos_cliente.'
     end
 
-    [datos_cliente(cliente, cedula),
+    [factura_adjunta(resultado.compras, factura_numero),
+     datos_cliente(cliente, cedula),
      facturas(resultado.compras),
-     'Muéstrale estos datos al cliente y pídele que los confirme o corrija antes de guardarlos ' \
-     'con registrar_datos_cliente.'].join("\n\n")
+     'Muéstrale estos datos (nombre, teléfono, correo, dirección y la factura con sus productos) al ' \
+     'cliente y pídele que los confirme o corrija. Pregúntale la ciudad (el ERP no la trae). Luego ' \
+     'guárdalos con registrar_datos_cliente, con las referencias de los productos del caso.'].compact.join("\n\n")
+  end
+
+  # ERP-16 (C4): si llego un numero de factura (del chat o leido de la foto), se busca entre las
+  # facturas del cliente sin dejarselo al modelo. Va de primero en la respuesta. nil si no llego.
+  def factura_adjunta(compras, factura_numero)
+    return nil if factura_numero.blank?
+
+    candidatas = Array(compras).select { |f| Helic3::Erp.misma_factura?(f.numero, factura_numero) }
+    return factura_no_cruza(factura_numero) unless candidatas.one?
+
+    factura = candidatas.first
+    detalle = ["La factura que mencionó o adjuntó el cliente (#{factura_numero}) es la #{factura.numero} " \
+               "del #{factura.fecha}.", *productos(factura)]
+    detalle << if factura.items.one?
+                 'Tiene un solo producto: ese es el del caso. Confírmaselo al cliente.'
+               else
+                 'Tiene varios productos: propón el que coincide con lo que describió el cliente y ' \
+                   'confírmaselo antes de guardarlo.'
+               end
+    detalle.join("\n")
+  end
+
+  def factura_no_cruza(factura_numero)
+    "La factura #{factura_numero} no aparece entre las facturas de esta cédula en el ERP (puede estar a " \
+      'nombre de otra cédula, ser más vieja que el periodo que se consulta o no haber cabido en la ' \
+      'consulta). Muéstrale al cliente la lista de abajo para que elija sobre cuál es el caso.'
   end
 
   def datos_cliente(cliente, cedula)
@@ -73,12 +106,17 @@ class Helic3::Agents::Tools::ConsultarClienteErpTool < Helic3::Agents::Tools::Ba
   def facturas(compras)
     return 'Sin facturas en el ERP para esta cédula.' if compras.blank?
 
-    lineas = compras.map do |f|
+    lineas = compras.flat_map do |f|
       partes = ["- #{f.numero} del #{f.fecha}", "total #{formato_pesos(f.total)}"]
       partes << "estado #{f.estado}" if f.estado.present? # algunas facturas de Siesa no traen estado
-      partes.join(' · ')
+      [partes.join(' · '), *productos(f).map { |linea| "  #{linea}" }]
     end
     (["Facturas (#{compras.size}):"] + lineas).join("\n")
+  end
+
+  # ERP-16 (C1): los productos de cada factura, para que el cliente diga sobre cual es el caso.
+  def productos(factura)
+    Array(factura.items).map { |item| "- #{item.descripcion} (referencia #{item.referencia})" }
   end
 
   # Pesos colombianos con separador de miles, sin decimales (lo que el cliente espera leer).

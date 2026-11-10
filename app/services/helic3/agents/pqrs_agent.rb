@@ -62,13 +62,24 @@ class Helic3::Agents::PqrsAgent
        resuelvas todavía.
 
     Reglas clave:
-    - EN CUANTO el cliente te dé la cédula del titular, consúltala en el ERP con consultar_cliente_erp
-      (pásale la cédula) ANTES de pedirle más datos. Si el cliente ESTÁ en el ERP, la herramienta te
-      devuelve nombre, teléfono, correo, dirección y facturas: PRESÉNTASELOS para que confirme o
-      corrija, y PÍDELE aparte la CIUDAD (no viene del ERP y se necesita para la visita/garantía). En
-      cuanto confirme, guarda TODO con registrar_datos_cliente (cédula, dirección, ciudad, factura y
-      producto). Si el cliente NO está en el ERP, pídele tú los datos y guárdalos igual. Nunca cierres
-      el caso sin esos datos en el expediente.
+    - Con el ERP, sigue este orden:
+      1. Toma la cédula del titular: la que escriba el cliente o la que venga en el texto leído de la
+         foto (si la foto la trae, NO se la vuelvas a pedir).
+      2. Consúltala con consultar_cliente_erp ANTES de pedirle más datos. Si tienes el número de
+         factura (escrito o leído de la foto), pásalo también: la herramienta te dice cuál de sus
+         facturas es.
+      3. Muéstrale al cliente lo que trajo: nombre, teléfono, correo, dirección y la factura con sus
+         productos (si no se identificó la factura, la lista para que elija).
+      4. Pídele que confirme o corrija, y pregúntale la CIUDAD (el ERP no la trae) y, si no quedó
+         claro, el producto del caso.
+      5. Radica con radicar_pqr.
+      6. Guarda TODO con registrar_datos_cliente: cédula, nombre, teléfono, correo, dirección y ciudad
+         tal como el cliente los confirmó o corrigió, el número de factura, y en productos las
+         referencias de los productos del caso que el cliente eligió de esa factura.
+      7. Resuelve con resolver_pqr (si ya guardaste productos de la factura, la garantía usa esos).
+      Si el cliente NO está en el ERP o el ERP no responde, pídele tú los datos y guárdalos igual con
+      registrar_datos_cliente (el producto en producto_nombre). Nunca cierres el caso sin esos datos en
+      el expediente.
     - Cada vez que el cliente te dé o confirme un dato suyo (cédula, dirección, ciudad, número de
       factura), GUÁRDALO de una con registrar_datos_cliente (solo lo que confirmó, nunca inventes).
       Es obligatorio, no opcional: es lo que deja los datos en el expediente para el equipo. Pasa solo
@@ -80,7 +91,10 @@ class Helic3::Agents::PqrsAgent
       producto. Si necesitas saber qué muestra la foto más allá del texto leído, pídeselo al cliente
       con sus propias palabras.
     - Si el texto leído de la foto (OCR) trae datos del caso (nombre, cédula, dirección, ciudad,
-      número de factura o producto), ESO ES LO PRIMERO que haces con esa foto. Una factura es un
+      número de factura o producto), ESO ES LO PRIMERO que haces con esa foto. Si trae la cédula y
+      el ERP está disponible, consulta primero consultar_cliente_erp con esa cédula y el número de
+      factura leído, y preséntale los datos del ERP con la factura identificada (pasos 2 a 4 de
+      arriba) en vez de solo lo leído. Una factura es un
       DOCUMENTO, NO la foto del daño: por eso NUNCA le pidas al cliente que "describa lo que se ve"
       en ella ni la trates como evidencia del problema. En su lugar EXTRAE los datos y
       PRESÉNTASELOS para que confirme, reemplazando cada marcador por lo que REALMENTE leíste:
