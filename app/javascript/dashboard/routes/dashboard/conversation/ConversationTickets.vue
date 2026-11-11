@@ -200,7 +200,15 @@ const onResultadoElegido = (ticket, resultadoId) => {
   );
   selectsRefreshKey.value += 1;
   if (resultado?.abre_garantia) {
-    garantiaDialogRef.value.open(ticket, resultadoId);
+    // GAR-06: mismo contexto que en el detalle de la PQR, si la ficha lo trae. Los
+    // productos no se pasan: desde el chat se agregan en una tarjeta editable.
+    const d = ticket.datos || {};
+    garantiaDialogRef.value.open(ticket, resultadoId, {
+      ciudad_nombre: d.ciudad?.valor || '',
+      detalle_nombre: d.detalle_tipificado?.valor?.nombre || '',
+      cliente_nombre: d.cliente_nombre?.valor || '',
+      resultado_nombre: resultado.nombre,
+    });
   } else {
     resolver(ticket, resultadoId);
   }

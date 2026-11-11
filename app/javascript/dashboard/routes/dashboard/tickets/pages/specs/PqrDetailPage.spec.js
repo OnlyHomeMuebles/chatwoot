@@ -420,6 +420,10 @@ describe('PqrDetailPage.vue — resolver la PQR desde el detalle (MAN-03)', () =
         producto_nombre: 'Sofá Modular',
         producto_referencia: 'SOF-123',
         ciudad_nombre: 'Manizales',
+        detalle_nombre: '',
+        radicado: '#3',
+        cliente_nombre: '',
+        resultado_nombre: 'Procede garantía',
       }
     );
   });

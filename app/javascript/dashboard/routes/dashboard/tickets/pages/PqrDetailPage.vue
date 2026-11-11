@@ -285,6 +285,11 @@ const onResultadoElegido = resultadoId => {
       producto_nombre: d.producto_nombre?.valor || '',
       producto_referencia: d.producto_referencia?.valor || '',
       ciudad_nombre: d.ciudad?.valor || '',
+      // GAR-06: contexto de solo lectura; el detalle ya no se pide en el modal.
+      detalle_nombre: d.detalle_tipificado?.valor?.nombre || '',
+      radicado: expediente.value?.numero_radicado || '',
+      cliente_nombre: d.cliente_nombre?.valor || '',
+      resultado_nombre: resultado.nombre,
     });
   } else {
     resolver(resultadoId);

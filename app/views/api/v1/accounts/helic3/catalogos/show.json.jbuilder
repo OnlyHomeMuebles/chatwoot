@@ -20,8 +20,12 @@ end
 # GAR-05: las tres listas del formulario de apertura de garantia. La ciudad
 # decide la cobertura (y con ella el proceso inicial); motivo y detalle
 # clasifican cada producto.
+# GAR-06: proceso_inicial_nombre es el proceso con el que arranca la garantia en esa ciudad
+# (origen_ruta es su codigo). El modal lo muestra como ayuda; el nombre sale del catalogo.
+procesos_por_codigo = @procesos_garantia.index_by(&:codigo)
 json.coberturas_ciudad @coberturas_ciudad do |ciudad|
   json.call(ciudad, :id, :codigo, :nombre, :tecnico_propio)
+  json.proceso_inicial_nombre procesos_por_codigo[ciudad.origen_ruta]&.nombre
 end
 
 json.motivos_garantia @motivos_garantia do |motivo|
