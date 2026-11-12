@@ -492,7 +492,7 @@ defineExpose({
                   @click="editarEtapas"
                 />
               </div>
-              <div class="flex flex-col">
+              <div class="grid items-start gap-5 sm:grid-cols-2">
                 <div class="flex flex-col gap-1">
                   <span class="text-sm font-medium text-n-slate-12">
                     {{ t('TICKETS.NUEVA.CASO.MOTIVO') }}
@@ -515,17 +515,17 @@ defineExpose({
                     }}
                   </span>
                 </div>
-              </div>
-              <div class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-n-slate-12">
-                  {{ t('TICKETS.NUEVA.CASO.RESPONSABLE') }}
-                </span>
-                <Select
-                  v-model="form.assignee_id"
-                  :options="responsableOptions"
-                  :placeholder="t('TICKETS.NUEVA.CASO.RESPONSABLE_PH')"
-                  class="w-full [&_select]:w-full"
-                />
+                <div class="flex flex-col gap-1">
+                  <span class="text-sm font-medium text-n-slate-12">
+                    {{ t('TICKETS.NUEVA.CASO.RESPONSABLE') }}
+                  </span>
+                  <Select
+                    v-model="form.assignee_id"
+                    :options="responsableOptions"
+                    :placeholder="t('TICKETS.NUEVA.CASO.RESPONSABLE_PH')"
+                    class="w-full [&_select]:w-full"
+                  />
+                </div>
               </div>
               <div class="flex flex-col gap-2">
                 <span class="text-sm font-medium text-n-slate-12">
