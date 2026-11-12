@@ -467,6 +467,7 @@
       "ADVANCED": "Proceso actualizado",
       "ERROR": "Hubo un error al avanzar el proceso",
       "PROCESS_PLACEHOLDER": "Cambiar proceso",
+      "PROCESS_LABEL": "Proceso de garantía",
       "FORM": {
         "TITLE": "Abrir garantía",
         "CONFIRM": "Abrir garantía",

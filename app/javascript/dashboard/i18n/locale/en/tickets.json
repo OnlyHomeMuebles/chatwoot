@@ -467,6 +467,7 @@
       "ADVANCED": "Process updated",
       "ERROR": "There was an error advancing the process",
       "PROCESS_PLACEHOLDER": "Change process",
+      "PROCESS_LABEL": "Warranty process",
       "FORM": {
         "TITLE": "Open warranty",
         "CONFIRM": "Open warranty",
