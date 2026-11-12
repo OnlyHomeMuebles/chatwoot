@@ -75,8 +75,6 @@
         "TIPO_PH": "Select a type",
         "MOTIVO": "Reason",
         "MOTIVO_PH": "Select a reason",
-        "DETALLE": "Typified detail",
-        "DETALLE_PH": "Select a detail",
         "DESCRIPCION": "Request description",
         "DESCRIPCION_PH": "Describe what the customer requests and what happened with the product.",
         "RESPONSABLE": "Assignee",
