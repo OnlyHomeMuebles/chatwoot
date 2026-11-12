@@ -29,6 +29,50 @@ RSpec.describe Helic3::Casos::AbrirGarantia do
     described_class.new(ticket: expediente, cobertura_ciudad: ciudad, items: items).call
   end
 
+  # GAR-06: el detalle se pide una sola vez (al radicar, en la ficha) y el item lo hereda.
+  describe 'detalle tipificado heredado de la ficha' do
+    let(:mal_pintado) do
+      Helic3::Catalogo::DetalleTipificado.create!(account: account, nombre: 'Producto mal pintado',
+                                                  codigo: 'mal_pintado')
+    end
+    let(:rayado) do
+      Helic3::Catalogo::DetalleTipificado.create!(account: account, nombre: 'Rayado', codigo: 'rayado')
+    end
+
+    it 'un item sin detalle hereda el de la ficha' do
+      Helic3::TicketDato.create!(account: account, ticket: ticket, detalle_tipificado: mal_pintado)
+
+      expect(abrir(ciudad: manizales).items.first.detalle_tipificado).to eq(mal_pintado)
+    end
+
+    it 'un item con detalle explicito (el del agente) lo conserva' do
+      Helic3::TicketDato.create!(account: account, ticket: ticket, detalle_tipificado: mal_pintado)
+
+      garantia = abrir(ciudad: manizales, items: [{ producto_nombre: 'Sofá', detalle_tipificado: rayado }])
+
+      expect(garantia.items.first.detalle_tipificado).to eq(rayado)
+    end
+
+    it 'con la ficha sin detalle, el item queda sin detalle y la garantia se abre igual' do
+      Helic3::TicketDato.create!(account: account, ticket: ticket, producto_nombre: 'Sofá')
+
+      garantia = abrir(ciudad: manizales)
+
+      expect(garantia).to be_persisted
+      expect(garantia.items.first.detalle_tipificado).to be_nil
+    end
+
+    it 'los productos tomados de la ficha (ERP-15) tambien heredan el detalle' do
+      Helic3::TicketDato.create!(account: account, ticket: ticket, detalle_tipificado: mal_pintado,
+                                 productos: [{ 'nombre' => 'Puerta', 'referencia' => 'P-1' },
+                                             { 'nombre' => 'Cerradura', 'referencia' => 'C-1' }])
+
+      garantia = abrir(ciudad: manizales, items: [])
+
+      expect(garantia.items.map(&:detalle_tipificado)).to eq([mal_pintado, mal_pintado])
+    end
+  end
+
   it 'crea la garantia con su display_id y su primer item' do
     garantia = abrir(ciudad: manizales)
 

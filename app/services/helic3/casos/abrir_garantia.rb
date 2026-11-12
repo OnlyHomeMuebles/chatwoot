@@ -67,13 +67,17 @@ class Helic3::Casos::AbrirGarantia
           "el motivo '#{motivo.codigo}' tiene abre_garantia: nunca, pero el resultado abre garantia"
   end
 
+  # GAR-06: el detalle tipificado se pide una sola vez, al radicar (queda en la ficha). Si el
+  # item no trae uno explicito (el modal ya no lo pide), hereda el de la ficha, porque los
+  # indicadores de garantias y el formato PDF ([DETALLE]) lo leen del item. Un detalle
+  # explicito (el del agente) gana. Sin detalle en la ficha, el item queda sin detalle.
   def crear_item(garantia, datos)
     garantia.items.create!(
       account: @ticket.account,
       producto_nombre: datos[:producto_nombre],
       producto_referencia: datos[:producto_referencia],
       motivo_garantia: datos[:motivo_garantia],
-      detalle_tipificado: datos[:detalle_tipificado],
+      detalle_tipificado: datos[:detalle_tipificado] || @ticket.datos&.detalle_tipificado,
       proceso: proceso_inicial
     )
   end

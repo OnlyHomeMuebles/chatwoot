@@ -200,7 +200,15 @@ const onResultadoElegido = (ticket, resultadoId) => {
   );
   selectsRefreshKey.value += 1;
   if (resultado?.abre_garantia) {
-    garantiaDialogRef.value.open(ticket, resultadoId);
+    // GAR-06: mismo contexto que en el detalle de la PQR, si la ficha lo trae. Los
+    // productos no se pasan: desde el chat se agregan en una tarjeta editable.
+    const d = ticket.datos || {};
+    garantiaDialogRef.value.open(ticket, resultadoId, {
+      ciudad_nombre: d.ciudad?.valor || '',
+      detalle_nombre: d.detalle_tipificado?.valor?.nombre || '',
+      cliente_nombre: d.cliente_nombre?.valor || '',
+      resultado_nombre: resultado.nombre,
+    });
   } else {
     resolver(ticket, resultadoId);
   }
@@ -253,9 +261,7 @@ const abrirExpediente = ticket =>
 
 // al guardar, la fuente de ese campo pasa a humano (lo fija el backend). Un
 // valor vacio no se manda: no borra el que habia, misma regla del servicio.
-const guardarDato = async (ticket, campo, event) => {
-  const valor = event.target.value?.trim();
-  if (!valor) return;
+const registrarDato = async (ticket, campo, valor) => {
   try {
     await store.dispatch('tickets/registrarDatos', {
       id: ticket.id,
@@ -271,6 +277,21 @@ const guardarDato = async (ticket, campo, event) => {
     );
   }
 };
+
+const guardarDato = (ticket, campo, event) => {
+  const valor = event.target.value?.trim();
+  if (!valor) return;
+  registrarDato(ticket, campo, valor);
+};
+
+// GAR-06: el detalle tipificado se elige aqui (catalogo) porque la garantia no se
+// abre sin el; asi se completa desde el chat sin ir al expediente.
+const detalleOptions = computed(() =>
+  (catalogos.value.detalles_tipificados || []).map(d => ({
+    value: d.id,
+    label: d.nombre,
+  }))
+);
 </script>
 
 <template>
@@ -445,7 +466,7 @@ const guardarDato = async (ticket, campo, event) => {
 
       <!-- Datos del caso (DAT-01): cada campo con su badge de procedencia
            (IA/ERP/Manual). Editar un campo lo deja con fuente manual. Vacio se
-           muestra como "Pendiente". El detalle tipificado va de solo lectura. -->
+           muestra como "Pendiente". El detalle tipificado se elige del catalogo (GAR-06). -->
       <div
         v-if="ticket.datos"
         class="flex flex-col gap-1 p-2 rounded-lg bg-n-alpha-2"
@@ -474,17 +495,25 @@ const guardarDato = async (ticket, campo, event) => {
           />
         </div>
 
-        <div
-          v-if="ticket.datos.detalle_tipificado"
-          class="flex items-center gap-1.5"
-        >
+        <div class="flex items-center gap-1.5">
           <span class="w-16 text-xs shrink-0 text-n-slate-10">
             {{ t('TICKETS.DATA.FIELDS.DETALLE') }}
           </span>
-          <span class="flex-1 min-w-0 text-xs text-n-slate-12">
-            {{ ticket.datos.detalle_tipificado.valor.nombre }}
-          </span>
-          <Helic3SourceBadge :fuente="ticket.datos.detalle_tipificado.fuente" />
+          <Select
+            :key="`detalle-${ticket.id}-${selectsRefreshKey}`"
+            class="flex-1 min-w-0"
+            data-testid="select-detalle-ficha"
+            :options="detalleOptions"
+            :model-value="ticket.datos.detalle_tipificado?.valor?.id"
+            :placeholder="t('TICKETS.FIELDS.PENDING')"
+            @update:model-value="
+              id => id && registrarDato(ticket, 'detalle_tipificado_id', id)
+            "
+          />
+          <Helic3SourceBadge
+            v-if="ticket.datos.detalle_tipificado"
+            :fuente="ticket.datos.detalle_tipificado.fuente"
+          />
         </div>
       </div>
 

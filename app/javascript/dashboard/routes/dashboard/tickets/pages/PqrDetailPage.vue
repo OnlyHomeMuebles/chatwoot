@@ -285,6 +285,11 @@ const onResultadoElegido = resultadoId => {
       producto_nombre: d.producto_nombre?.valor || '',
       producto_referencia: d.producto_referencia?.valor || '',
       ciudad_nombre: d.ciudad?.valor || '',
+      // GAR-06: contexto de solo lectura; el detalle ya no se pide en el modal.
+      detalle_nombre: d.detalle_tipificado?.valor?.nombre || '',
+      radicado: expediente.value?.numero_radicado || '',
+      cliente_nombre: d.cliente_nombre?.valor || '',
+      resultado_nombre: resultado.nombre,
     });
   } else {
     resolver(resultadoId);
@@ -349,15 +354,25 @@ const CAMPOS_FICHA = [
 const camposFichaEdit = computed(() =>
   CAMPOS_FICHA.map(c => ({ ...c, label: t(c.label) }))
 );
+// GAR-06: la garantia no se abre sin detalle tipificado, asi que se puede elegir aqui.
+const detalleOptions = computed(() =>
+  (catalogos.value.detalles_tipificados || []).map(d => ({
+    value: d.id,
+    label: d.nombre,
+  }))
+);
 const editandoFicha = ref(false);
 const guardandoFicha = ref(false); // la accion vive en el store tickets, no en pqrInbox
 const fichaEdit = ref({});
 const fichaOriginal = ref({}); // snapshot al abrir, para mandar SOLO lo que cambió
 const abrirEdicionFicha = () => {
   const d = expediente.value?.datos || {};
-  const snapshot = Object.fromEntries(
-    CAMPOS_FICHA.map(c => [c.key, d[c.key]?.valor || ''])
-  );
+  const snapshot = {
+    ...Object.fromEntries(
+      CAMPOS_FICHA.map(c => [c.key, d[c.key]?.valor || ''])
+    ),
+    detalle_tipificado_id: d.detalle_tipificado?.valor?.id || '',
+  };
   fichaEdit.value = { ...snapshot };
   fichaOriginal.value = snapshot;
   editandoFicha.value = true;
@@ -374,6 +389,11 @@ const guardarFicha = async () => {
       .map(k => [k, (fichaEdit.value[k] ?? '').trim()])
       .filter(([k, v]) => v && v !== fichaOriginal.value[k])
   );
+  // GAR-06: el detalle es catalogo (id, no texto): se manda solo si se eligio otro.
+  const detalleId = fichaEdit.value.detalle_tipificado_id;
+  if (detalleId && detalleId !== fichaOriginal.value.detalle_tipificado_id) {
+    datos.detalle_tipificado_id = detalleId;
+  }
   if (!Object.keys(datos).length) {
     editandoFicha.value = false; // no cambió nada: no molestamos al backend
     return;
@@ -1188,6 +1208,18 @@ const formatFecha = valor =>
                 :max="campo.type === 'date' ? hoyISO : ''"
                 size="sm"
               />
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-n-slate-12">
+                  {{ t('TICKETS.DATA.FIELDS.DETALLE') }}
+                </span>
+                <Select
+                  v-model="fichaEdit.detalle_tipificado_id"
+                  data-testid="select-detalle-ficha"
+                  class="!w-full [&>select]:w-full"
+                  :options="detalleOptions"
+                  :placeholder="t('TICKETS.DATA.DETAIL_PLACEHOLDER')"
+                />
+              </label>
               <div class="flex justify-end gap-2">
                 <Button
                   :label="t('TICKETS.DATA.CANCEL')"
