@@ -27,7 +27,7 @@ RSpec.describe 'Helic3 Catalogos API', type: :request do
         expect(body.keys).to include('tipos', 'motivos_pqr', 'etapas_pqr', 'resultados', 'coberturas_ciudad',
                                      'motivos_garantia', 'detalles_tipificados', 'procesos_garantia')
         expect(body['tipos'].first.keys).to match_array(%w[id codigo nombre plazo_dias_habiles])
-        expect(body['etapas_pqr'].first.keys).to match_array(%w[id codigo nombre detiene_reloj visible_cliente])
+        expect(body['etapas_pqr'].first.keys).to match_array(%w[id codigo nombre detiene_reloj visible_cliente inicial])
         expect(body['resultados'].first.keys).to match_array(%w[id codigo nombre cierra_pqr abre_garantia aprobacion_humana requiere_admin])
       end
 
@@ -39,6 +39,19 @@ RSpec.describe 'Helic3 Catalogos API', type: :request do
         esperado = Helic3::Catalogo::ProcesoGarantia.where(account: account).activos.pluck(:codigo)
         expect(response.parsed_body['procesos_garantia'].map { |proceso| proceso['codigo'] }).to eq(esperado)
         expect(response.parsed_body['procesos_garantia'].first.keys).to match_array(%w[id codigo nombre])
+      end
+
+      # GAR-06: el modal de garantia explica con que proceso arranca la garantia en cada ciudad.
+      it 'cada ciudad trae el nombre del proceso con el que arranca la garantia (GAR-06)' do
+        get "/api/v1/accounts/#{account.id}/helic3/catalogos",
+            headers: agent.create_new_auth_token, as: :json
+
+        response.parsed_body['coberturas_ciudad'].each do |ciudad|
+          cobertura = Helic3::Catalogo::CoberturaCiudad.find(ciudad['id'])
+          esperado = Helic3::Catalogo::ProcesoGarantia.find_by(account: account, codigo: cobertura.origen_ruta)&.nombre
+          expect(ciudad['proceso_inicial_nombre']).to eq(esperado)
+        end
+        expect(response.parsed_body['coberturas_ciudad'].pluck('proceso_inicial_nombre').compact).not_to be_empty
       end
 
       it 'devuelve cada catalogo en el orden de posicion' do

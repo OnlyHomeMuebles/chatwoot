@@ -1,9 +1,14 @@
 <script setup>
 // GAR-05: formulario con el que un OPERADOR HUMANO abre una garantia desde el
 // panel, sin pasar por el agente. Captura la ciudad (una) y uno o varios
-// productos (nombre, referencia, motivo y detalle). Al confirmar, llama al MISMO
-// endpoint de resolucion que ya existe, con el bloque garantia adjunto. Si el
-// backend rechaza, el error se muestra AQUI, en el modal, no como un 422 mudo.
+// productos (nombre, referencia y motivo). Al confirmar, llama al MISMO endpoint
+// de resolucion que ya existe, con el bloque garantia adjunto. Si el backend
+// rechaza, el error se muestra AQUI, en el modal, no como un 422 mudo.
+//
+// GAR-06: el detalle tipificado ya no se pide aqui. Se pide una sola vez al radicar
+// (queda en la ficha) y el backend lo hereda en cada producto; el modal solo lo
+// muestra. Cada campo tiene label, el encabezado dice de que PQR viene, y no se
+// puede abrir sin ciudad ni sin motivo en cada producto: el modal dice que falta.
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
@@ -26,16 +31,17 @@ const ticket = ref(null);
 const resultadoId = ref(null);
 const ciudadId = ref('');
 const productos = ref([]);
+const contexto = ref({});
 const error = ref('');
 
+// desdePqr: el producto viene de la ficha (o del ERP) y se muestra de solo lectura.
 const productoVacio = () => ({
   producto_nombre: '',
   producto_referencia: '',
   motivo_garantia_id: '',
-  detalle_tipificado_id: '',
+  desdePqr: false,
 });
 
-// las tres listas del formulario salen del catalogo del panel (GAR-05 las expuso)
 const ciudadOptions = computed(() =>
   (catalogos.value.coberturas_ciudad || []).map(c => ({
     value: c.id,
@@ -48,19 +54,56 @@ const motivoOptions = computed(() =>
     label: m.nombre,
   }))
 );
-const detalleOptions = computed(() =>
-  (catalogos.value.detalles_tipificados || []).map(d => ({
-    value: d.id,
-    label: d.nombre,
-  }))
+
+// Ayuda bajo la ciudad: con que proceso arranca la garantia (el nombre sale del catalogo).
+const ayudaCiudad = computed(() => {
+  const ciudad = (catalogos.value.coberturas_ciudad || []).find(
+    c => c.id === ciudadId.value
+  );
+  if (!ciudad?.proceso_inicial_nombre) return '';
+  const proceso = ciudad.proceso_inicial_nombre;
+  return ciudad.tecnico_propio
+    ? t('TICKETS.WARRANTY.FORM.CITY_HELP_TECH', { proceso })
+    : t('TICKETS.WARRANTY.FORM.CITY_HELP_NO_TECH', { proceso });
+});
+
+// "PQR #11 · cliente · resultado elegido": solo las partes que se conocen.
+const subtitulo = computed(() => {
+  const { radicado, cliente, resultado } = contexto.value;
+  return [
+    radicado && t('TICKETS.WARRANTY.FORM.HEADER_PQR', { radicado }),
+    cliente,
+    resultado,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+});
+
+// Lo primero que falta, para deshabilitar el boton y decirlo debajo.
+// El detalle va primero: es del caso (se completa en Datos del caso), no de cada
+// producto, y sin el la garantia quedaria sin [DETALLE] en el PDF ni en Indicadores.
+const faltante = computed(() => {
+  if (!contexto.value.detalle) return t('TICKETS.WARRANTY.FORM.MISSING_DETAIL');
+  if (!ciudadId.value) return t('TICKETS.WARRANTY.FORM.MISSING_CITY');
+  const idxNombre = productos.value.findIndex(p => !p.producto_nombre.trim());
+  if (idxNombre >= 0) {
+    return t('TICKETS.WARRANTY.FORM.MISSING_NAME', { n: idxNombre + 1 });
+  }
+  const idxMotivo = productos.value.findIndex(p => !p.motivo_garantia_id);
+  if (idxMotivo >= 0) {
+    return t('TICKETS.WARRANTY.FORM.MISSING_MOTIVE', { n: idxMotivo + 1 });
+  }
+  return '';
+});
+
+const puedeConfirmar = computed(
+  () => productos.value.length > 0 && !faltante.value
 );
 
-// sin ciudad o con un producto sin nombre no se puede abrir
-const puedeConfirmar = computed(
-  () =>
-    !!ciudadId.value &&
-    productos.value.length > 0 &&
-    productos.value.every(p => p.producto_nombre)
+const resumen = computed(() =>
+  productos.value.length === 1
+    ? t('TICKETS.WARRANTY.FORM.SUMMARY_ONE')
+    : t('TICKETS.WARRANTY.FORM.SUMMARY_OTHER', { n: productos.value.length })
 );
 
 // Normaliza para cruzar la ciudad de la ficha (texto libre: "armenia", "Armenía")
@@ -69,12 +112,22 @@ const puedeConfirmar = computed(
 const normalizar = s =>
   (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
 
-// MAN-03: tercer argumento opcional para precargar producto/ciudad desde la ficha
-// del expediente (el detalle lo usa). ConversationTickets lo sigue llamando con
-// dos args, asi que prefill cae a {} y el comportamiento previo no cambia.
+// Tercer argumento opcional (MAN-03/GAR-06): precarga y contexto desde el expediente.
+// { productos, producto_nombre, producto_referencia, ciudad_nombre, detalle_nombre,
+//   radicado, cliente_nombre, resultado_nombre }. Quien llame con dos argumentos (el
+// chat sin datos) obtiene una tarjeta editable y el comportamiento de siempre.
 const open = (elTicket, elResultadoId, prefill = {}) => {
   ticket.value = elTicket;
   resultadoId.value = elResultadoId;
+  const resultado = (catalogos.value.resultados || []).find(
+    r => r.id === elResultadoId
+  );
+  contexto.value = {
+    radicado: prefill.radicado || elTicket?.numero_radicado || '',
+    cliente: prefill.cliente_nombre || '',
+    resultado: prefill.resultado_nombre || resultado?.nombre || '',
+    detalle: prefill.detalle_nombre || '',
+  };
   // La ficha guarda la ciudad como texto; el form usa el id del catalogo. Se
   // traduce por nombre normalizado; si no hay cobertura equivalente, queda vacia y
   // la elige el operador (nunca se envia un id inventado).
@@ -83,22 +136,28 @@ const open = (elTicket, elResultadoId, prefill = {}) => {
     c => normalizar(c.nombre) === ciudadBuscada
   );
   ciudadId.value = ciudad?.id || '';
-  // ERP-15: una fila por producto de la ficha (prefill.productos). Fallback al producto unico
-  // (chat / MAN-03) para no cambiar el comportamiento de quien llama con producto_nombre suelto.
+  // ERP-15: una tarjeta por producto de la ficha; si no hay lista, el producto unico de la
+  // ficha; si tampoco hay, una tarjeta editable vacia (el caso del chat).
   const lista = Array.isArray(prefill.productos) ? prefill.productos : [];
-  productos.value = lista.length
-    ? lista.map(p => ({
+  if (lista.length) {
+    productos.value = lista.map(p => ({
+      ...productoVacio(),
+      producto_nombre: p.nombre || '',
+      producto_referencia: p.referencia || '',
+      desdePqr: true,
+    }));
+  } else if (prefill.producto_nombre) {
+    productos.value = [
+      {
         ...productoVacio(),
-        producto_nombre: p.nombre || '',
-        producto_referencia: p.referencia || '',
-      }))
-    : [
-        {
-          ...productoVacio(),
-          producto_nombre: prefill.producto_nombre || '',
-          producto_referencia: prefill.producto_referencia || '',
-        },
-      ];
+        producto_nombre: prefill.producto_nombre,
+        producto_referencia: prefill.producto_referencia || '',
+        desdePqr: true,
+      },
+    ];
+  } else {
+    productos.value = [productoVacio()];
+  }
   error.value = '';
   dialogRef.value.open();
 };
@@ -107,14 +166,15 @@ const agregarProducto = () => productos.value.push(productoVacio());
 const quitarProducto = idx => productos.value.splice(idx, 1);
 
 const abrirGarantia = async () => {
+  // el form del Dialog tambien envia con Enter: no se abre si falta algo
+  if (!puedeConfirmar.value) return;
   error.value = '';
   const garantia = {
     cobertura_ciudad_id: ciudadId.value,
     items: productos.value.map(p => ({
-      producto_nombre: p.producto_nombre,
+      producto_nombre: p.producto_nombre.trim(),
       producto_referencia: p.producto_referencia,
       motivo_garantia_id: p.motivo_garantia_id,
-      detalle_tipificado_id: p.detalle_tipificado_id,
     })),
   };
   try {
@@ -134,20 +194,23 @@ const abrirGarantia = async () => {
   }
 };
 
-// `productos` y `ciudadId` se exponen para las pruebas de precarga (una fila por producto).
-defineExpose({ open, productos, ciudadId });
+// `productos`, `ciudadId`, `faltante` y `puedeConfirmar` se exponen para las pruebas.
+defineExpose({ open, productos, ciudadId, faltante, puedeConfirmar });
 </script>
 
 <template>
   <Dialog
     ref="dialogRef"
+    width="xl"
+    overflow-y-auto
     :title="t('TICKETS.WARRANTY.FORM.TITLE')"
+    :description="subtitulo"
     :confirm-button-label="t('TICKETS.WARRANTY.FORM.CONFIRM')"
     :is-loading="uiFlags.isUpdating"
     :disable-confirm-button="!puedeConfirmar"
     @confirm="abrirGarantia"
   >
-    <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-6">
       <p
         v-if="error"
         class="p-2 mb-0 text-sm rounded-lg text-n-ruby-11 bg-n-ruby-3"
@@ -155,61 +218,152 @@ defineExpose({ open, productos, ciudadId });
         {{ error }}
       </p>
 
-      <div class="flex flex-col gap-1">
-        <span class="text-sm font-medium text-n-slate-12">
-          {{ t('TICKETS.WARRANTY.FORM.CITY') }}
-        </span>
-        <Select
-          v-model="ciudadId"
-          :options="ciudadOptions"
-          :placeholder="t('TICKETS.WARRANTY.FORM.CITY_PLACEHOLDER')"
-        />
-      </div>
-
-      <div
-        v-for="(producto, idx) in productos"
-        :key="idx"
-        class="flex flex-col gap-2 p-3 rounded-lg bg-n-alpha-1"
-      >
-        <div class="flex items-center justify-between">
+      <!-- Cobertura -->
+      <section class="flex flex-col gap-3">
+        <h4 class="mb-0 text-sm font-semibold text-n-slate-12">
+          {{ t('TICKETS.WARRANTY.FORM.SECTION_COVERAGE') }}
+        </h4>
+        <label class="flex flex-col gap-1">
           <span class="text-sm font-medium text-n-slate-12">
-            {{ t('TICKETS.WARRANTY.FORM.PRODUCT', { n: idx + 1 }) }}
+            {{ t('TICKETS.WARRANTY.FORM.CITY') }}
           </span>
-          <Button
-            v-if="productos.length > 1"
-            icon="i-lucide-x"
-            xs
-            faded
-            @click="quitarProducto(idx)"
+          <Select
+            v-model="ciudadId"
+            data-testid="select-ciudad"
+            class="!w-full [&>select]:w-full"
+            :options="ciudadOptions"
+            :placeholder="t('TICKETS.WARRANTY.FORM.CITY_PLACEHOLDER')"
           />
-        </div>
-        <Input
-          v-model="producto.producto_nombre"
-          :placeholder="t('TICKETS.WARRANTY.FORM.PRODUCT_NAME')"
-        />
-        <Input
-          v-model="producto.producto_referencia"
-          :placeholder="t('TICKETS.WARRANTY.FORM.PRODUCT_REF')"
-        />
-        <Select
-          v-model="producto.motivo_garantia_id"
-          :options="motivoOptions"
-          :placeholder="t('TICKETS.WARRANTY.FORM.MOTIVE')"
-        />
-        <Select
-          v-model="producto.detalle_tipificado_id"
-          :options="detalleOptions"
-          :placeholder="t('TICKETS.WARRANTY.FORM.DETAIL')"
-        />
-      </div>
+          <span v-if="ayudaCiudad" class="text-xs text-n-slate-11">
+            {{ ayudaCiudad }}
+          </span>
+        </label>
+      </section>
 
-      <Button
-        :label="t('TICKETS.WARRANTY.FORM.ADD_PRODUCT')"
-        icon="i-lucide-plus"
-        sm
-        faded
-        @click="agregarProducto"
-      />
+      <!-- Productos en garantia -->
+      <section class="flex flex-col gap-3">
+        <h4 class="mb-0 text-sm font-semibold text-n-slate-12">
+          {{
+            t('TICKETS.WARRANTY.FORM.SECTION_PRODUCTS', { n: productos.length })
+          }}
+        </h4>
+
+        <div
+          v-for="(producto, idx) in productos"
+          :key="idx"
+          data-testid="tarjeta-producto"
+          class="flex flex-col gap-3 p-3 border rounded-lg border-n-weak bg-n-alpha-1"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex flex-col min-w-0 gap-0.5">
+              <template v-if="producto.desdePqr">
+                <span
+                  data-testid="producto-nombre"
+                  class="text-sm font-semibold truncate text-n-slate-12"
+                >
+                  {{ producto.producto_nombre }}
+                </span>
+                <span
+                  v-if="producto.producto_referencia"
+                  class="text-xs text-n-slate-11"
+                >
+                  {{
+                    t('TICKETS.WARRANTY.FORM.REF', {
+                      ref: producto.producto_referencia,
+                    })
+                  }}
+                </span>
+              </template>
+              <span
+                class="self-start px-1.5 py-0.5 mt-1 text-xs rounded"
+                :class="
+                  producto.desdePqr
+                    ? 'bg-n-teal-3 text-n-teal-11'
+                    : 'bg-n-slate-3 text-n-slate-11'
+                "
+              >
+                {{
+                  producto.desdePqr
+                    ? t('TICKETS.WARRANTY.FORM.FROM_PQR')
+                    : t('TICKETS.WARRANTY.FORM.MANUAL')
+                }}
+              </span>
+            </div>
+            <Button
+              v-if="productos.length > 1"
+              data-testid="btn-quitar"
+              icon="i-lucide-trash-2"
+              :label="t('TICKETS.WARRANTY.FORM.REMOVE')"
+              xs
+              faded
+              slate
+              @click="quitarProducto(idx)"
+            />
+          </div>
+
+          <template v-if="!producto.desdePqr">
+            <Input
+              v-model="producto.producto_nombre"
+              data-testid="input-nombre"
+              :label="t('TICKETS.WARRANTY.FORM.PRODUCT_NAME')"
+              :placeholder="t('TICKETS.WARRANTY.FORM.PRODUCT_NAME_PLACEHOLDER')"
+            />
+            <Input
+              v-model="producto.producto_referencia"
+              :label="t('TICKETS.WARRANTY.FORM.PRODUCT_REF')"
+            />
+          </template>
+
+          <label class="flex flex-col gap-1">
+            <span class="text-sm font-medium text-n-slate-12">
+              {{ t('TICKETS.WARRANTY.FORM.MOTIVE') }}
+            </span>
+            <Select
+              v-model="producto.motivo_garantia_id"
+              data-testid="select-motivo"
+              class="!w-full [&>select]:w-full"
+              :options="motivoOptions"
+              :placeholder="t('TICKETS.WARRANTY.FORM.MOTIVE_PLACEHOLDER')"
+            />
+          </label>
+
+          <p
+            data-testid="detalle-reportado"
+            class="mb-0 text-xs text-n-slate-11"
+          >
+            {{
+              contexto.detalle
+                ? t('TICKETS.WARRANTY.FORM.DETAIL_REPORTED', {
+                    detalle: contexto.detalle,
+                  })
+                : t('TICKETS.WARRANTY.FORM.DETAIL_MISSING')
+            }}
+          </p>
+        </div>
+
+        <Button
+          class="self-start"
+          :label="t('TICKETS.WARRANTY.FORM.ADD_PRODUCT')"
+          icon="i-lucide-plus"
+          sm
+          faded
+          @click="agregarProducto"
+        />
+      </section>
+
+      <!-- Resumen y lo que falta, justo encima de los botones del pie -->
+      <div class="flex flex-col gap-1 pt-3 border-t border-n-weak">
+        <p data-testid="resumen" class="mb-0 text-sm text-n-slate-12">
+          {{ resumen }}
+        </p>
+        <p
+          v-if="faltante"
+          data-testid="faltante"
+          class="mb-0 text-xs text-n-ruby-11"
+        >
+          {{ faltante }}
+        </p>
+      </div>
     </div>
   </Dialog>
 </template>

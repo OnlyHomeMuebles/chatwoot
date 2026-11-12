@@ -420,6 +420,10 @@ describe('PqrDetailPage.vue — resolver la PQR desde el detalle (MAN-03)', () =
         producto_nombre: 'Sofá Modular',
         producto_referencia: 'SOF-123',
         ciudad_nombre: 'Manizales',
+        detalle_nombre: '',
+        radicado: '#3',
+        cliente_nombre: '',
+        resultado_nombre: 'Procede garantía',
       }
     );
   });
@@ -554,5 +558,29 @@ describe('PqrDetailPage.vue — ficha editable (MAN-03)', () => {
       'tickets/registrarDatos',
       expect.anything()
     );
+  });
+
+  // GAR-06: la garantia no se abre sin detalle, asi que se completa aqui.
+  it('guarda el detalle tipificado elegido del catalogo (GAR-06)', async () => {
+    catalogosRef.value = {
+      resultados: [],
+      detalles_tipificados: [{ id: 3, nombre: 'Producto mal pintado' }],
+    };
+    expedienteRef.value = { ...expedienteBase, garantia: null, datos: {} };
+
+    const wrapper = montar();
+    await abrirYCampo(wrapper, 'TICKETS.DATA.FIELDS.CEDULA');
+    const selectDetalle = wrapper.find('[data-testid="select-detalle-ficha"]');
+    await wrapper
+      .findAllComponents(Select)
+      .find(s => s.element === selectDetalle.element)
+      .vm.$emit('update:modelValue', 3);
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(dispatch).toHaveBeenCalledWith('tickets/registrarDatos', {
+      id: 7,
+      datos: { detalle_tipificado_id: 3 },
+    });
   });
 });
