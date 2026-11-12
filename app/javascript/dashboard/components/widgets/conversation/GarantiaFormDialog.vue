@@ -80,7 +80,10 @@ const subtitulo = computed(() => {
 });
 
 // Lo primero que falta, para deshabilitar el boton y decirlo debajo.
+// El detalle va primero: es del caso (se completa en Datos del caso), no de cada
+// producto, y sin el la garantia quedaria sin [DETALLE] en el PDF ni en Indicadores.
 const faltante = computed(() => {
+  if (!contexto.value.detalle) return t('TICKETS.WARRANTY.FORM.MISSING_DETAIL');
   if (!ciudadId.value) return t('TICKETS.WARRANTY.FORM.MISSING_CITY');
   const idxNombre = productos.value.findIndex(p => !p.producto_nombre.trim());
   if (idxNombre >= 0) {

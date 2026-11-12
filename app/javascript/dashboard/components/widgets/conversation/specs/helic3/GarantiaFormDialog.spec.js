@@ -99,6 +99,7 @@ describe('GarantiaFormDialog (GAR-06)', () => {
     wrapper.vm.open({ id: 5 }, 10, {
       producto_nombre: 'Mesa',
       ciudad_nombre: 'Armenia',
+      detalle_nombre: 'Producto mal pintado',
     });
     wrapper.vm.productos[0].motivo_garantia_id = 7;
     await nextTick();
@@ -127,6 +128,7 @@ describe('GarantiaFormDialog (GAR-06)', () => {
     wrapper.vm.open({ id: 1 }, 10, {
       producto_nombre: 'Mesa',
       ciudad_nombre: 'Armenia',
+      detalle_nombre: 'Producto mal pintado',
     });
     await nextTick();
 
@@ -153,13 +155,55 @@ describe('GarantiaFormDialog (GAR-06)', () => {
     expect(wrapper.find('[data-testid="input-nombre"]').exists()).toBe(false);
   });
 
-  it('desde el chat sin datos abre una tarjeta editable vacia', async () => {
+  it('desde el chat sin productos abre una tarjeta editable vacia', async () => {
     const wrapper = montar();
-    wrapper.vm.open({ id: 1 }, 10);
+    wrapper.vm.open({ id: 1 }, 10, { detalle_nombre: 'Producto mal pintado' });
     await nextTick();
 
     expect(wrapper.vm.productos).toHaveLength(1);
     expect(wrapper.find('[data-testid="input-nombre"]').exists()).toBe(true);
     expect(wrapper.vm.faltante).toBe('TICKETS.WARRANTY.FORM.MISSING_CITY');
+  });
+
+  it('sin detalle tipificado en la ficha no deja confirmar y dice que falta', async () => {
+    const wrapper = montar();
+    wrapper.vm.open({ id: 1 }, 10, {
+      producto_nombre: 'Mesa',
+      ciudad_nombre: 'Armenia',
+    });
+    wrapper.vm.productos[0].motivo_garantia_id = 7;
+    await nextTick();
+
+    expect(wrapper.vm.puedeConfirmar).toBe(false);
+    expect(wrapper.find('[data-testid="faltante"]').text()).toBe(
+      'TICKETS.WARRANTY.FORM.MISSING_DETAIL'
+    );
+    expect(wrapper.find('[data-testid="detalle-reportado"]').text()).toBe(
+      'TICKETS.WARRANTY.FORM.DETAIL_MISSING'
+    );
+    expect(
+      wrapper.findComponent(DialogStub).props('disableConfirmButton')
+    ).toBe(true);
+
+    wrapper.findComponent(DialogStub).vm.$emit('confirm');
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it('al reabrir con el detalle ya completado, deja confirmar', async () => {
+    const wrapper = montar();
+    wrapper.vm.open({ id: 1 }, 10, {
+      producto_nombre: 'Mesa',
+      ciudad_nombre: 'Armenia',
+    });
+    wrapper.vm.open({ id: 1 }, 10, {
+      producto_nombre: 'Mesa',
+      ciudad_nombre: 'Armenia',
+      detalle_nombre: 'Producto mal pintado',
+    });
+    wrapper.vm.productos[0].motivo_garantia_id = 7;
+    await nextTick();
+
+    expect(wrapper.vm.faltante).toBe('');
+    expect(wrapper.vm.puedeConfirmar).toBe(true);
   });
 });
