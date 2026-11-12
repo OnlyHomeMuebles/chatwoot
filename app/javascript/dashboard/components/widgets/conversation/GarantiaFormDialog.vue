@@ -5,10 +5,11 @@
 // de resolucion que ya existe, con el bloque garantia adjunto. Si el backend
 // rechaza, el error se muestra AQUI, en el modal, no como un 422 mudo.
 //
-// GAR-06: el detalle tipificado ya no se pide aqui. Se pide una sola vez al radicar
-// (queda en la ficha) y el backend lo hereda en cada producto; el modal solo lo
-// muestra. Cada campo tiene label, el encabezado dice de que PQR viene, y no se
-// puede abrir sin ciudad ni sin motivo en cada producto: el modal dice que falta.
+// GAR-07: a pedido de Karen, el detalle tipificado se vuelve a pedir aqui, por
+// producto (GAR-06 lo habia quitado). Es un catalogo AUTONOMO (CAT-02): sale de la
+// descripcion y las fotos, no del motivo (la misma falla puede darse bajo motivos
+// distintos), asi que se ofrecen TODOS, sin filtrar. El backend ya lo acepta por item
+// (si no viene, hereda el de la ficha). No se abre sin ciudad, sin motivo ni sin detalle.
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
@@ -39,6 +40,7 @@ const productoVacio = () => ({
   producto_nombre: '',
   producto_referencia: '',
   motivo_garantia_id: '',
+  detalle_tipificado_id: '',
   desdePqr: false,
 });
 
@@ -52,6 +54,15 @@ const motivoOptions = computed(() =>
   (catalogos.value.motivos_garantia || []).map(m => ({
     value: m.id,
     label: m.nombre,
+  }))
+);
+
+// GAR-07: catalogo autonomo (CAT-02), se ofrecen todos los detalles (sin filtrar
+// por motivo: la asociacion es opcional y de apoyo, nunca una pertenencia).
+const detalleOptions = computed(() =>
+  (catalogos.value.detalles_tipificados || []).map(d => ({
+    value: d.id,
+    label: d.nombre,
   }))
 );
 
@@ -80,10 +91,7 @@ const subtitulo = computed(() => {
 });
 
 // Lo primero que falta, para deshabilitar el boton y decirlo debajo.
-// El detalle va primero: es del caso (se completa en Datos del caso), no de cada
-// producto, y sin el la garantia quedaria sin [DETALLE] en el PDF ni en Indicadores.
 const faltante = computed(() => {
-  if (!contexto.value.detalle) return t('TICKETS.WARRANTY.FORM.MISSING_DETAIL');
   if (!ciudadId.value) return t('TICKETS.WARRANTY.FORM.MISSING_CITY');
   const idxNombre = productos.value.findIndex(p => !p.producto_nombre.trim());
   if (idxNombre >= 0) {
@@ -92,6 +100,12 @@ const faltante = computed(() => {
   const idxMotivo = productos.value.findIndex(p => !p.motivo_garantia_id);
   if (idxMotivo >= 0) {
     return t('TICKETS.WARRANTY.FORM.MISSING_MOTIVE', { n: idxMotivo + 1 });
+  }
+  // GAR-07: el detalle se pide por producto; sin el, la garantia quedaria sin
+  // [DETALLE] en el PDF ni en Indicadores.
+  const idxDetalle = productos.value.findIndex(p => !p.detalle_tipificado_id);
+  if (idxDetalle >= 0) {
+    return t('TICKETS.WARRANTY.FORM.MISSING_DETAIL', { n: idxDetalle + 1 });
   }
   return '';
 });
@@ -126,7 +140,6 @@ const open = (elTicket, elResultadoId, prefill = {}) => {
     radicado: prefill.radicado || elTicket?.numero_radicado || '',
     cliente: prefill.cliente_nombre || '',
     resultado: prefill.resultado_nombre || resultado?.nombre || '',
-    detalle: prefill.detalle_nombre || '',
   };
   // La ficha guarda la ciudad como texto; el form usa el id del catalogo. Se
   // traduce por nombre normalizado; si no hay cobertura equivalente, queda vacia y
@@ -175,6 +188,7 @@ const abrirGarantia = async () => {
       producto_nombre: p.producto_nombre.trim(),
       producto_referencia: p.producto_referencia,
       motivo_garantia_id: p.motivo_garantia_id,
+      detalle_tipificado_id: p.detalle_tipificado_id,
     })),
   };
   try {
@@ -195,7 +209,14 @@ const abrirGarantia = async () => {
 };
 
 // `productos`, `ciudadId`, `faltante` y `puedeConfirmar` se exponen para las pruebas.
-defineExpose({ open, productos, ciudadId, faltante, puedeConfirmar });
+defineExpose({
+  open,
+  productos,
+  ciudadId,
+  faltante,
+  puedeConfirmar,
+  detalleOptions,
+});
 </script>
 
 <template>
@@ -327,18 +348,18 @@ defineExpose({ open, productos, ciudadId, faltante, puedeConfirmar });
             />
           </label>
 
-          <p
-            data-testid="detalle-reportado"
-            class="mb-0 text-xs text-n-slate-11"
-          >
-            {{
-              contexto.detalle
-                ? t('TICKETS.WARRANTY.FORM.DETAIL_REPORTED', {
-                    detalle: contexto.detalle,
-                  })
-                : t('TICKETS.WARRANTY.FORM.DETAIL_MISSING')
-            }}
-          </p>
+          <label class="flex flex-col gap-1">
+            <span class="text-sm font-medium text-n-slate-12">
+              {{ t('TICKETS.WARRANTY.FORM.DETAIL') }}
+            </span>
+            <Select
+              v-model="producto.detalle_tipificado_id"
+              data-testid="select-detalle"
+              class="!w-full [&>select]:w-full"
+              :options="detalleOptions"
+              :placeholder="t('TICKETS.WARRANTY.FORM.DETAIL_PLACEHOLDER')"
+            />
+          </label>
         </div>
 
         <Button
