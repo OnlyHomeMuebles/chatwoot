@@ -75,8 +75,6 @@
         "TIPO_PH": "Selecciona un tipo",
         "MOTIVO": "Motivo",
         "MOTIVO_PH": "Selecciona un motivo",
-        "DETALLE": "Detalle tipificado",
-        "DETALLE_PH": "Selecciona un detalle",
         "DESCRIPCION": "Descripción de la solicitud",
         "DESCRIPCION_PH": "Describe qué solicita el cliente y qué ocurrió con el producto.",
         "RESPONSABLE": "Responsable",
