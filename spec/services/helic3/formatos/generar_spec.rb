@@ -21,11 +21,12 @@ RSpec.describe Helic3::Formatos::Generar do
   # probar la logica de Generar, no la conversion (eso lo cubre VistaPrevia_spec).
   before do
     allow(Helic3::Formatos::VistaPrevia).to receive(:call).and_return(
-      { bytes: '%PDF-1.4 demo', tipo_mime: 'application/pdf', extension: 'pdf' }
+      { bytes: 'PK demo', extension: 'docx',
+        tipo_mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
     )
   end
 
-  it 'crea un Documento clase formato, origen operador, con el PDF adjunto [CA1]' do
+  it 'crea un Documento clase formato, origen operador, con el DOCX adjunto [CA1]' do
     plantilla_activa
     documento = described_class.call(ticket: ticket, item: item, formato: formato, user: user)
 
@@ -35,6 +36,10 @@ RSpec.describe Helic3::Formatos::Generar do
     expect(documento.garantia).to eq(garantia)
     expect(documento.remitente_nombre).to eq(user.name)
     expect(documento.archivo).to be_attached
+    expect(Helic3::Formatos::VistaPrevia).to have_received(:call).with(hash_including(formato: :docx))
+    expect(documento.archivo.filename.to_s).to end_with('.docx')
+    expect(documento.archivo.content_type)
+      .to eq('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
   end
 
   it 'generar dos veces deja generación 1 y 2 con títulos distintos [CA2]' do

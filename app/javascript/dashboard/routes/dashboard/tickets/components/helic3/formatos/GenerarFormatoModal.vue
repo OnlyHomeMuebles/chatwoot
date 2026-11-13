@@ -122,7 +122,7 @@ const confirmar = async () => {
       formatoId: formatoId.value,
       itemId: itemId.value,
     });
-    // refresca «Documentos del caso» para que aparezca el PDF recien generado.
+    // refresca «Documentos del caso» para que aparezca el formato (.docx) recien generado.
     await store.dispatch('pqrInbox/fetchDocumentos', props.ticketId);
     useAlert(t('TICKETS.GENERAR_FORMATO.GUARDADO'));
     cerrar();

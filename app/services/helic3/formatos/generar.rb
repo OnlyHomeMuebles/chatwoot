@@ -2,8 +2,9 @@
 
 # FMT-04: genera un formato desde el expediente. Exige garantia, un item de esa
 # garantia y una plantilla ACTIVA del formato; llena con los datos reales del
-# caso, convierte a PDF con la MISMA VistaPrevia de FMT-02 (lo que se ve es lo
-# que se guarda) y deja un Helic3::Documento clase 'formato' en el expediente.
+# caso y, con la MISMA VistaPrevia de FMT-02, lo convierte a Word (.docx) para que
+# Karen pueda corregirlo si hay un error (decision de negocio). La vista previa
+# sigue en PDF (se ve en el navegador). Deja un Helic3::Documento clase 'formato'.
 # Nada se sobrescribe: cada llamada es una generacion nueva, numerada por
 # (garantia, formato, item), porque la anterior puede estar firmada en papel.
 class Helic3::Formatos::Generar
@@ -25,7 +26,7 @@ class Helic3::Formatos::Generar
     validar!
     # el PDF se arma FUERA del lock: LibreOffice es lento y no debe bloquear la
     # garantia durante la conversion.
-    salida = Helic3::Formatos::VistaPrevia.call(plantilla: plantilla, item: @item, user: @user, formato: :pdf)
+    salida = Helic3::Formatos::VistaPrevia.call(plantilla: plantilla, item: @item, user: @user, formato: :docx)
     # N2 (revision Jhan #116): el numero de generacion (count + 1) y el guardado van
     # DENTRO de un lock sobre la garantia (SELECT ... FOR UPDATE). Asi dos clics
     # rapidos se serializan y no repiten el numero (1, 2, ...), no dos veces 1.
@@ -34,7 +35,7 @@ class Helic3::Formatos::Generar
     garantia.reload
     garantia.with_lock do
       numero = generacion
-      documento = crear_documento(salida[:bytes], numero)
+      documento = crear_documento(salida, numero)
       registrar_evento(documento, numero)
       documento
     end
@@ -69,7 +70,7 @@ class Helic3::Formatos::Generar
     previos.count + 1
   end
 
-  def crear_documento(bytes, numero)
+  def crear_documento(salida, numero)
     documento = @ticket.documentos.build(
       account: @ticket.account, garantia: garantia, clase: 'formato', origen: 'operador',
       remitente_user: @user, remitente_nombre: @user&.name, ocurrido_at: Time.current,
@@ -77,8 +78,10 @@ class Helic3::Formatos::Generar
     )
     # el archivo se adjunta ANTES de guardar: el modelo exige exactamente una
     # procedencia (validate_una_procedencia) y sin archivo attached? fallaria.
-    documento.archivo.attach(io: StringIO.new(bytes), filename: nombre_archivo(numero),
-                             content_type: 'application/pdf')
+    # el tipo (mime/extension) lo dicta VistaPrevia, hoy .docx.
+    documento.archivo.attach(io: StringIO.new(salida[:bytes]),
+                             filename: nombre_archivo(numero, salida[:extension]),
+                             content_type: salida[:tipo_mime])
     documento.save!
     documento
   end
@@ -87,8 +90,8 @@ class Helic3::Formatos::Generar
     "#{@formato.nombre} · #{garantia.numero_radicado} · #{@item.producto_nombre} · generación #{numero}"
   end
 
-  def nombre_archivo(numero)
-    "formato-#{@formato.codigo}-#{garantia.numero_radicado}-#{numero}.pdf"
+  def nombre_archivo(numero, extension)
+    "formato-#{@formato.codigo}-#{garantia.numero_radicado}-#{numero}.#{extension}"
   end
 
   # metadata sostiene ante la SIC QUE se imprimio y con QUE version; los valores
