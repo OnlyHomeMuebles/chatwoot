@@ -1058,16 +1058,23 @@ const formatFecha = valor =>
                 </div>
                 <!-- Avanzar de proceso: misma llamada del panel (GAR-03). Solo si
                      la garantia no esta cerrada. -->
-                <Select
+                <label
                   v-if="!garantiaCerrada && procesoOptions.length"
-                  :key="`proc-${item.id}-${refreshKey}`"
-                  :options="procesoOptions"
-                  :model-value="item.proceso?.id ?? ''"
-                  :placeholder="t('TICKETS.WARRANTY.PROCESS_PLACEHOLDER')"
-                  @update:model-value="
-                    procesoId => avanzarItem(item, procesoId)
-                  "
-                />
+                  class="flex flex-col gap-1"
+                >
+                  <span class="text-sm font-semibold text-n-slate-12">
+                    {{ t('TICKETS.WARRANTY.PROCESS_LABEL') }}
+                  </span>
+                  <Select
+                    :key="`proc-${item.id}-${refreshKey}`"
+                    :options="procesoOptions"
+                    :model-value="item.proceso?.id ?? ''"
+                    :placeholder="t('TICKETS.WARRANTY.PROCESS_PLACEHOLDER')"
+                    @update:model-value="
+                      procesoId => avanzarItem(item, procesoId)
+                    "
+                  />
+                </label>
               </div>
               <p v-if="!garantiaCerrada" class="mb-0 text-xs text-n-amber-11">
                 {{ t('TICKETS.DETAIL.BUDGET_NO_RESET') }}

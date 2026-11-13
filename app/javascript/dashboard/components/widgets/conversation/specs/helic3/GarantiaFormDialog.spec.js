@@ -12,7 +12,10 @@ const catalogosRef = ref({
     },
   ],
   motivos_garantia: [{ id: 7, nombre: 'Defecto de fabricación' }],
-  detalles_tipificados: [{ id: 3, nombre: 'Producto mal pintado' }],
+  detalles_tipificados: [
+    { id: 3, nombre: 'Producto mal pintado' },
+    { id: 4, nombre: 'Rayón en superficie' },
+  ],
   resultados: [{ id: 10, nombre: 'Aplica garantía', abre_garantia: true }],
 });
 const uiFlagsRef = ref({ isUpdating: false });
@@ -78,30 +81,37 @@ describe('GarantiaFormDialog (ERP-15)', () => {
   });
 });
 
-describe('GarantiaFormDialog (GAR-06)', () => {
-  it('no pide el detalle tipificado: solo lo muestra', async () => {
+describe('GarantiaFormDialog (GAR-07: detalle por producto)', () => {
+  it('pide el detalle tipificado por producto (hay selector, no read-only)', async () => {
     const wrapper = montar();
 
-    wrapper.vm.open({ id: 1 }, 10, {
-      producto_nombre: 'Mesa',
-      detalle_nombre: 'Producto mal pintado',
-    });
+    wrapper.vm.open({ id: 1 }, 10, { producto_nombre: 'Mesa' });
     await nextTick();
 
-    expect(wrapper.find('[data-testid="select-detalle"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="select-detalle"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="detalle-reportado"]').exists()).toBe(
-      true
+      false
     );
   });
 
-  it('el payload no envia detalle_tipificado_id', async () => {
+  it('ofrece todos los detalles del catálogo (autónomo, no filtra por motivo)', () => {
+    const vm = montar().vm;
+    vm.open({ id: 1 }, 10, { producto_nombre: 'Mesa' });
+
+    expect(vm.detalleOptions).toEqual([
+      { value: 3, label: 'Producto mal pintado' },
+      { value: 4, label: 'Rayón en superficie' },
+    ]);
+  });
+
+  it('el payload envia detalle_tipificado_id por producto', async () => {
     const wrapper = montar();
     wrapper.vm.open({ id: 5 }, 10, {
       producto_nombre: 'Mesa',
       ciudad_nombre: 'Armenia',
-      detalle_nombre: 'Producto mal pintado',
     });
     wrapper.vm.productos[0].motivo_garantia_id = 7;
+    wrapper.vm.productos[0].detalle_tipificado_id = 3;
     await nextTick();
 
     wrapper.findComponent(DialogStub).vm.$emit('confirm');
@@ -117,6 +127,7 @@ describe('GarantiaFormDialog (GAR-06)', () => {
             producto_nombre: 'Mesa',
             producto_referencia: '',
             motivo_garantia_id: 7,
+            detalle_tipificado_id: 3,
           },
         ],
       },
@@ -165,7 +176,7 @@ describe('GarantiaFormDialog (GAR-06)', () => {
     expect(wrapper.vm.faltante).toBe('TICKETS.WARRANTY.FORM.MISSING_CITY');
   });
 
-  it('sin detalle tipificado en la ficha no deja confirmar y dice que falta', async () => {
+  it('sin detalle en el producto no deja confirmar y dice que falta', async () => {
     const wrapper = montar();
     wrapper.vm.open({ id: 1 }, 10, {
       producto_nombre: 'Mesa',
@@ -178,9 +189,6 @@ describe('GarantiaFormDialog (GAR-06)', () => {
     expect(wrapper.find('[data-testid="faltante"]').text()).toBe(
       'TICKETS.WARRANTY.FORM.MISSING_DETAIL'
     );
-    expect(wrapper.find('[data-testid="detalle-reportado"]').text()).toBe(
-      'TICKETS.WARRANTY.FORM.DETAIL_MISSING'
-    );
     expect(
       wrapper.findComponent(DialogStub).props('disableConfirmButton')
     ).toBe(true);
@@ -189,18 +197,14 @@ describe('GarantiaFormDialog (GAR-06)', () => {
     expect(dispatch).not.toHaveBeenCalled();
   });
 
-  it('al reabrir con el detalle ya completado, deja confirmar', async () => {
+  it('con ciudad, motivo y detalle deja confirmar', async () => {
     const wrapper = montar();
     wrapper.vm.open({ id: 1 }, 10, {
       producto_nombre: 'Mesa',
       ciudad_nombre: 'Armenia',
     });
-    wrapper.vm.open({ id: 1 }, 10, {
-      producto_nombre: 'Mesa',
-      ciudad_nombre: 'Armenia',
-      detalle_nombre: 'Producto mal pintado',
-    });
     wrapper.vm.productos[0].motivo_garantia_id = 7;
+    wrapper.vm.productos[0].detalle_tipificado_id = 3;
     await nextTick();
 
     expect(wrapper.vm.faltante).toBe('');

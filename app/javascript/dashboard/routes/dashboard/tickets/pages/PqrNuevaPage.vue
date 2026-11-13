@@ -43,7 +43,6 @@ const hoyISO = new Date().toISOString().slice(0, 10); // tope del selector de fe
 const form = reactive({
   tipo_id: null,
   motivo_pqr_id: null,
-  detalle_tipificado_id: null,
   description: '',
   assignee_id: null,
   etapa_id: null,
@@ -112,9 +111,6 @@ const opciones = (lista, label = 'nombre') =>
 
 const tipoOptions = computed(() => opciones(catalogos.value.tipos));
 const motivoOptions = computed(() => opciones(catalogos.value.motivos_pqr));
-const detalleOptions = computed(() =>
-  opciones(catalogos.value.detalles_tipificados)
-);
 const responsableOptions = computed(() =>
   (agents.value || []).map(a => ({ value: a.id, label: a.name }))
 );
@@ -295,7 +291,6 @@ const crear = async () => {
         description: form.description,
         tipo_id: form.tipo_id,
         motivo_pqr_id: form.motivo_pqr_id,
-        detalle_tipificado_id: form.detalle_tipificado_id,
         assignee_id: form.assignee_id,
         etapa_id: form.etapa_id,
         numero_orden: form.numero_orden || null,
@@ -497,7 +492,7 @@ defineExpose({
                   @click="editarEtapas"
                 />
               </div>
-              <div class="grid gap-5 sm:grid-cols-2">
+              <div class="grid items-start gap-5 sm:grid-cols-2">
                 <div class="flex flex-col gap-1">
                   <span class="text-sm font-medium text-n-slate-12">
                     {{ t('TICKETS.NUEVA.CASO.MOTIVO') }}
@@ -522,26 +517,15 @@ defineExpose({
                 </div>
                 <div class="flex flex-col gap-1">
                   <span class="text-sm font-medium text-n-slate-12">
-                    {{ t('TICKETS.NUEVA.CASO.DETALLE') }}
+                    {{ t('TICKETS.NUEVA.CASO.RESPONSABLE') }}
                   </span>
                   <Select
-                    v-model="form.detalle_tipificado_id"
-                    :options="detalleOptions"
-                    :placeholder="t('TICKETS.NUEVA.CASO.DETALLE_PH')"
+                    v-model="form.assignee_id"
+                    :options="responsableOptions"
+                    :placeholder="t('TICKETS.NUEVA.CASO.RESPONSABLE_PH')"
                     class="w-full [&_select]:w-full"
                   />
                 </div>
-              </div>
-              <div class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-n-slate-12">
-                  {{ t('TICKETS.NUEVA.CASO.RESPONSABLE') }}
-                </span>
-                <Select
-                  v-model="form.assignee_id"
-                  :options="responsableOptions"
-                  :placeholder="t('TICKETS.NUEVA.CASO.RESPONSABLE_PH')"
-                  class="w-full [&_select]:w-full"
-                />
               </div>
               <div class="flex flex-col gap-2">
                 <span class="text-sm font-medium text-n-slate-12">

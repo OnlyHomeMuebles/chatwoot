@@ -137,6 +137,21 @@ describe('PqrNuevaPage.vue — crear (MAN-02)', () => {
     expect(payload.datos.cedula).toBe('123');
   });
 
+  // GAR-07: el detalle tipificado ya no se pide al radicar; se completa en Datos del caso.
+  it('no pide ni envía el detalle tipificado', async () => {
+    crearApi.mockResolvedValue({ data: { id: 42, display_id: 7 } });
+    const wrapper = montar();
+    llenarMinimo(wrapper.vm);
+
+    expect(wrapper.html()).not.toContain('TICKETS.NUEVA.CASO.DETALLE');
+    await wrapper.vm.crear();
+    await flushPromises();
+
+    expect(crearApi.mock.calls[0][0].ticket).not.toHaveProperty(
+      'detalle_tipificado_id'
+    );
+  });
+
   it('tras crear, navega al detalle del expediente nuevo', async () => {
     crearApi.mockResolvedValue({ data: { id: 42, display_id: 7 } });
     const wrapper = montar();
@@ -327,8 +342,18 @@ describe('PqrNuevaPage.vue — ERP (ERP-11)', () => {
             fecha: '2026-05-10',
             centro_operacion: 'Armenia Centro',
             items: [
-              { referencia: 'MIL-200', descripcion: 'Puerta Milano', cantidad: 2, valor: 900000 },
-              { referencia: 'CER-050', descripcion: 'Cerradura Premium', cantidad: 1, valor: 900000 },
+              {
+                referencia: 'MIL-200',
+                descripcion: 'Puerta Milano',
+                cantidad: 2,
+                valor: 900000,
+              },
+              {
+                referencia: 'CER-050',
+                descripcion: 'Cerradura Premium',
+                cantidad: 1,
+                valor: 900000,
+              },
             ],
           },
         ],
@@ -372,6 +397,10 @@ describe('PqrNuevaPage.vue — ERP (ERP-11)', () => {
     await vm.reconsultarSiesa();
     await flushPromises();
 
-    expect(consultarErpApi).toHaveBeenCalledWith('26478046', expect.anything(), { refrescar: true });
+    expect(consultarErpApi).toHaveBeenCalledWith(
+      '26478046',
+      expect.anything(),
+      { refrescar: true }
+    );
   });
 });
