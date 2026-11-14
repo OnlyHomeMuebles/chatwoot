@@ -11,22 +11,24 @@ class Helic3::Formatos::Generar
   # el controller la traduce a 422: el caso no esta listo para generar.
   Error = Class.new(StandardError)
 
-  def self.call(ticket:, item:, formato:, user:)
-    new(ticket, item, formato, user).call
+  def self.call(ticket:, item:, formato:, user:, valores_producto: {})
+    new(ticket, item, formato, user, valores_producto).call
   end
 
-  def initialize(ticket, item, formato, user)
+  def initialize(ticket, item, formato, user, valores_producto = {})
     @ticket = ticket
     @item = item
     @formato = formato
     @user = user
+    @valores_producto = valores_producto || {}
   end
 
   def call
     validar!
-    # el PDF se arma FUERA del lock: LibreOffice es lento y no debe bloquear la
-    # garantia durante la conversion.
-    salida = Helic3::Formatos::VistaPrevia.call(plantilla: plantilla, item: @item, user: @user, formato: :docx)
+    # el documento se arma FUERA del lock: LibreOffice es lento y no debe bloquear la
+    # garantia durante la conversion. Se le pasa lo que el operador escribio en el modal.
+    salida = Helic3::Formatos::VistaPrevia.call(plantilla: plantilla, item: @item, user: @user,
+                                                formato: :docx, valores_producto: @valores_producto)
     # N2 (revision Jhan #116): el numero de generacion (count + 1) y el guardado van
     # DENTRO de un lock sobre la garantia (SELECT ... FOR UPDATE). Asi dos clics
     # rapidos se serializan y no repiten el numero (1, 2, ...), no dos veces 1.
@@ -59,6 +61,36 @@ class Helic3::Formatos::Generar
     raise Error, 'el formato esta desactivado' unless @formato.activo
     raise Error, 'el item no pertenece a una garantia de este expediente' if garantia.nil? || garantia.ticket_id != @ticket.id
     raise Error, 'el formato no tiene una plantilla activa' if plantilla.nil?
+
+    # FMT-07: si la plantilla pide un campo que el operador debe llenar (p. ej.
+    # el producto nuevo) y quedo vacio, no se genera. La vista previa si lo permite.
+    faltan = editables_vacios
+    raise Error, "falta completar: #{faltan.join(', ')}" if faltan.any?
+  end
+
+  # datos resueltos CON lo que el operador escribio: es lo que sale en el documento,
+  # y lo mismo que se guarda en la metadata (un solo calculo, no dos distintos).
+  def datos
+    @datos ||= Helic3::Formatos::DatosDelFormato.call(item: @item, user: @user,
+                                                      valores_producto: @valores_producto)
+  end
+
+  # etiquetas de los marcadores editables que la plantilla usa y quedaron vacios.
+  def editables_vacios
+    Array(plantilla.marcadores).filter_map do |marcador|
+      next unless Helic3::Formatos::Marcadores.editable?(marcador)
+      next unless datos[marcador].to_s.strip.empty?
+
+      Helic3::Formatos::Marcadores.editables.dig(marcador, :etiqueta) || marcador
+    end
+  end
+
+  # solo las claves editables que el operador escribio: para saber despues que vino
+  # del modal y que de la PQR (metadata.valores_editados).
+  def valores_editados
+    @valores_producto.to_h.transform_keys(&:to_s)
+                     .select { |clave, _valor| Helic3::Formatos::Marcadores.editable?(clave) }
+                     .transform_values(&:to_s)
   end
 
   # numero de generacion por garantia + formato + item: cada documento es nuevo,
@@ -87,7 +119,8 @@ class Helic3::Formatos::Generar
   end
 
   def titulo(numero)
-    "#{@formato.nombre} · #{garantia.numero_radicado} · #{@item.producto_nombre} · generación #{numero}"
+    # el titulo usa el nombre que SALIO en el documento (puede venir del modal).
+    "#{@formato.nombre} · #{garantia.numero_radicado} · #{datos['PRODUCTO']} · generación #{numero}"
   end
 
   def nombre_archivo(numero, extension)
@@ -103,7 +136,9 @@ class Helic3::Formatos::Generar
       plantilla_version: plantilla.version,
       item_id: @item.id,
       generacion: numero,
-      valores: Helic3::Formatos::DatosDelFormato.call(item: @item, user: @user)
+      valores: datos,
+      # que escribio el operador en el modal (vs lo que salio de la PQR).
+      valores_editados: valores_editados
     }
   end
 
