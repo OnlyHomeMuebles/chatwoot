@@ -7,6 +7,12 @@ class Api::V1::Accounts::Helic3::ResolucionesController < Api::V1::Accounts::Bas
   # HTTP) y aqui se traduce a 422 comprensible.
   rescue_from ArgumentError, with: :render_argument_error
 
+  # Contradiccion de catalogo: el resultado abre garantia pero el motivo de la PQR
+  # tiene abre_garantia: nunca (p. ej. "Retracto de compra"). AbrirGarantia lo
+  # rechaza a proposito; aqui se traduce a 422 con un mensaje para la operadora en
+  # vez de dejarlo salir como 500.
+  rescue_from Helic3::Casos::AbrirGarantia::MotivoNoAbreGarantia, with: :render_motivo_no_abre
+
   # POST /api/v1/accounts/:account_id/helic3/tickets/:ticket_id/resolucion
   #
   # La UNICA puerta para registrar el resultado de una PQR. Delega en
@@ -67,6 +73,13 @@ class Api::V1::Accounts::Helic3::ResolucionesController < Api::V1::Accounts::Bas
 
   def render_argument_error(error)
     render json: { error: error.message }, status: :unprocessable_entity
+  end
+
+  # mensaje para la operadora: el caso no deberia abrir garantia por su motivo.
+  def render_motivo_no_abre(_error)
+    render json: { error: 'El motivo de la PQR no abre garantía (por ejemplo «Retracto de compra»). ' \
+                          'Revisa el motivo del caso o elige un resultado que no abra garantía.' },
+           status: :unprocessable_entity
   end
 
   # puerta general: quien puede tocar este expediente (TicketPolicy#resolver? =
