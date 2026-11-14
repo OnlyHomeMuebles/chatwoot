@@ -10,8 +10,10 @@ class Helic3::Formatos::DatosDelFormato
   DATOS_DE_EJEMPLO = Helic3::Formatos::Marcadores::DICCIONARIO
                      .transform_values { |meta| meta[:ejemplo].to_s }.freeze
 
-  def self.call(item:, user:)
-    new(item, user).call
+  # valores_producto (FMT-07): lo que el operador escribio en el modal. Se mezcla
+  # ENCIMA de lo resuelto, solo para este documento; nunca toca la base.
+  def self.call(item:, user:, valores_producto: {})
+    new(item, user, valores_producto).call
   end
 
   # marcadores de la plantilla cuyo valor resuelto quedo vacio (para avisar al generar).
@@ -20,9 +22,10 @@ class Helic3::Formatos::DatosDelFormato
     Array(plantilla.marcadores).select { |marcador| datos[marcador].to_s.strip.empty? }
   end
 
-  def initialize(item, user)
+  def initialize(item, user, valores_producto = {})
     @item = item
     @user = user
+    @valores_producto = valores_producto || {}
     @garantia = item.garantia
     @ticket = @garantia.ticket
     @ficha = @ticket.datos
@@ -30,9 +33,9 @@ class Helic3::Formatos::DatosDelFormato
   end
 
   # se arma por grupos (expediente, contacto, ficha, item) para mantener cada metodo
-  # simple; el resultado es un solo hash marcador -> texto.
+  # simple; al final se mezclan los valores del modal ENCIMA (solo para el documento).
   def call
-    datos_generales.merge(datos_contacto, datos_ficha, datos_item)
+    datos_generales.merge(datos_contacto, datos_ficha, datos_item, valores_producto_validos)
   end
 
   private
@@ -69,10 +72,22 @@ class Helic3::Formatos::DatosDelFormato
     {
       'PRODUCTO' => @item.producto_nombre.to_s,
       'PRODUCTO_REFERENCIA' => @item.producto_referencia.to_s,
+      # PRODUCTO_DESCRIPCION y PRODUCTO_NUEVO no tienen fuente en la base: nacen
+      # vacios y solo los llena el operador en el modal (valores_producto).
+      'PRODUCTO_DESCRIPCION' => '',
+      'PRODUCTO_NUEVO' => '',
       'MOTIVO_GARANTIA' => @item.motivo_garantia&.nombre.to_s,
       'DETALLE' => @item.detalle_tipificado&.nombre.to_s,
       'DECISION' => @item.decision.to_s
     }
+  end
+
+  # solo las claves que son marcadores editables; cualquier otra se descarta (para
+  # que un valor colado no pise un dato del expediente). Todo sale como texto.
+  def valores_producto_validos
+    @valores_producto.to_h.transform_keys(&:to_s)
+                     .select { |clave, _valor| Helic3::Formatos::Marcadores.editable?(clave) }
+                     .transform_values(&:to_s)
   end
 
   # MAN-01: la fecha de compra sale de la ficha (factura_fecha), en dd/mm/aaaa.

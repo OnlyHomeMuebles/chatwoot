@@ -95,4 +95,47 @@ RSpec.describe Helic3::Formatos::DatosDelFormato do
       expect(datos['FECHA_COMPRA']).to eq('')
     end
   end
+
+  # FMT-07: el operador puede escribir valores de producto en el modal; se mezclan
+  # ENCIMA de lo resuelto, solo para ese documento (no tocan la base).
+  describe 'valores_producto (FMT-07)' do
+    def item_simple(producto: 'Silla')
+      ticket = instance_double(Helic3::Ticket, display_id: 1, datos: nil, conversation: nil)
+      garantia = instance_double(Helic3::Garantia, numero_radicado: 'G', ticket: ticket)
+      instance_double(Helic3::GarantiaItem, garantia: garantia, producto_nombre: producto,
+                                            producto_referencia: nil, motivo_garantia: nil,
+                                            detalle_tipificado: nil, decision: nil)
+    end
+
+    it 'sin valores_producto, PRODUCTO sale del item (como hoy)' do
+      datos = described_class.call(item: item_simple(producto: 'Silla'), user: nil)
+      expect(datos['PRODUCTO']).to eq('Silla')
+    end
+
+    it 'un valor editable pisa el resuelto (solo para el documento)' do
+      datos = described_class.call(item: item_simple(producto: 'Silla'), user: nil,
+                                   valores_producto: { 'PRODUCTO' => 'Mueble' })
+      expect(datos['PRODUCTO']).to eq('Mueble')
+    end
+
+    it 'llena los marcadores nuevos que no tienen fuente en la base' do
+      datos = described_class.call(item: item_simple, user: nil,
+                                   valores_producto: { 'PRODUCTO_DESCRIPCION' => 'Tela gris',
+                                                       'PRODUCTO_NUEVO' => 'Sofá Turín' })
+      expect(datos['PRODUCTO_DESCRIPCION']).to eq('Tela gris')
+      expect(datos['PRODUCTO_NUEVO']).to eq('Sofá Turín')
+    end
+
+    it 'sin llenar, los marcadores nuevos salen vacíos (no nil)' do
+      datos = described_class.call(item: item_simple, user: nil)
+      expect(datos['PRODUCTO_DESCRIPCION']).to eq('')
+      expect(datos['PRODUCTO_NUEVO']).to eq('')
+    end
+
+    it 'ignora una clave que no es editable (no pisa CLIENTE)' do
+      datos = described_class.call(item: item_simple, user: nil,
+                                   valores_producto: { 'CLIENTE' => 'HACKER' })
+      expect(datos['CLIENTE']).to eq('')
+    end
+  end
 end
