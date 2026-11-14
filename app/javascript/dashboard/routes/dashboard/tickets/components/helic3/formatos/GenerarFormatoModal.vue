@@ -32,9 +32,6 @@ const urlPrevia = ref(null);
 const marcadoresEditables = ref({});
 const valores = ref({});
 
-// orden fijo de las casillas de producto en el modal.
-const ORDEN_CAMPOS = ['PRODUCTO', 'PRODUCTO_DESCRIPCION', 'PRODUCTO_NUEVO'];
-
 const itemActual = computed(
   () => items.value.find(it => it.id === itemId.value) || null
 );
@@ -52,21 +49,23 @@ const etiquetaDe = (clave, usaNuevo) => {
   }
   if (clave === 'PRODUCTO_DESCRIPCION') return t('TICKETS.GENERAR_FORMATO.DESCRIPCION_LABEL');
   if (clave === 'PRODUCTO_NUEVO') return t('TICKETS.GENERAR_FORMATO.PRODUCTO_NUEVO_LABEL');
-  return clave;
+  // marcador editable nuevo que el front aun no traduce: usa la etiqueta del backend.
+  return marcadoresEditables.value[clave]?.etiqueta || clave;
 };
 
 // campos que la operadora llena para el formato elegido: los marcadores editables
-// que USA su plantilla activa, en orden. input para nombres, textarea para descripcion.
+// (los declara el backend) que USA su plantilla activa, en el orden del backend.
+// input para nombres, textarea para la descripcion.
 const camposEditables = computed(() => {
   const usados = formatoActual.value?.plantilla_activa?.marcadores || [];
   const usaNuevo = usados.includes('PRODUCTO_NUEVO');
-  return ORDEN_CAMPOS.filter(
-    clave => usados.includes(clave) && marcadoresEditables.value[clave]
-  ).map(clave => ({
-    clave,
-    tipo: marcadoresEditables.value[clave].tipo,
-    etiqueta: etiquetaDe(clave, usaNuevo),
-  }));
+  return Object.keys(marcadoresEditables.value)
+    .filter(clave => usados.includes(clave))
+    .map(clave => ({
+      clave,
+      tipo: marcadoresEditables.value[clave].tipo,
+      etiqueta: etiquetaDe(clave, usaNuevo),
+    }));
 });
 
 // todas las casillas editables de la plantilla deben estar llenas para generar.
@@ -76,12 +75,15 @@ const camposCompletos = computed(() =>
   )
 );
 
-// se genera con plantilla activa, un item elegido y las casillas obligatorias llenas.
+// previsualizar solo necesita plantilla activa y un item: la vista previa SI
+// permite casillas vacias (es solo para mirar), como define el backend.
+const puedePrevia = computed(
+  () => Boolean(formatoActual.value?.plantilla_activa) && Boolean(itemId.value)
+);
+
+// generar ademas exige que las casillas obligatorias esten llenas.
 const puedeGenerar = computed(
-  () =>
-    Boolean(formatoActual.value?.plantilla_activa) &&
-    Boolean(itemId.value) &&
-    camposCompletos.value
+  () => puedePrevia.value && camposCompletos.value
 );
 
 // aviso amarillo: SOLO los marcadores que NO se editan aqui (cedula, ciudad...);
@@ -163,7 +165,7 @@ const elegirFormato = formato => {
 };
 
 const previsualizar = async () => {
-  if (!puedeGenerar.value) return;
+  if (!puedePrevia.value) return;
   try {
     const { data } = await GenerarFormatoAPI.vistaPrevia(props.ticketId, {
       formatoId: formatoId.value,
@@ -338,7 +340,7 @@ defineExpose({ open });
 
       <!-- Datos que faltan para el formato elegido -->
       <div
-        v-if="puedeGenerar && faltantes.length"
+        v-if="puedePrevia && faltantes.length"
         data-testid="faltantes"
         class="p-2 text-sm border rounded border-n-amber-6 bg-n-amber-2 text-n-amber-11"
       >
@@ -348,7 +350,7 @@ defineExpose({ open });
         <p>{{ faltantes.join(', ') }}</p>
       </div>
 
-      <div v-if="puedeGenerar" class="flex items-center gap-2">
+      <div v-if="puedePrevia" class="flex items-center gap-2">
         <Button
           sm
           faded

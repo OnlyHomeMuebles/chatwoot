@@ -186,6 +186,16 @@ describe('GenerarFormatoModal.vue (FMT-04)', () => {
     expect(wrapper.findComponent(Dialog).props('disableConfirmButton')).toBe(false);
   });
 
+  it('deja previsualizar aunque falte una casilla obligatoria [FMT-07]', async () => {
+    const wrapper = await montarYAbrir();
+    await wrapper.find('[data-testid="formato-3"]').trigger('click');
+    await flushPromises();
+
+    // PRODUCTO_NUEVO vacío: generar bloqueado, pero la vista previa SÍ disponible
+    expect(wrapper.findComponent(Dialog).props('disableConfirmButton')).toBe(true);
+    expect(wrapper.find('[data-testid="btn-previa"]').exists()).toBe(true);
+  });
+
   it('envía lo escrito en las casillas al generar [FMT-07]', async () => {
     const wrapper = await montarYAbrir();
     await wrapper.find('[data-testid="formato-3"]').trigger('click');
