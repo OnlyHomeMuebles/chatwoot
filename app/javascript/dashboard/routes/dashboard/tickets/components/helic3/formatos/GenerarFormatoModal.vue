@@ -354,6 +354,7 @@ defineExpose({ open });
         <Button
           sm
           faded
+          type="button"
           :label="t('TICKETS.GENERAR_FORMATO.PREVIEW')"
           data-testid="btn-previa"
           @click="previsualizar"

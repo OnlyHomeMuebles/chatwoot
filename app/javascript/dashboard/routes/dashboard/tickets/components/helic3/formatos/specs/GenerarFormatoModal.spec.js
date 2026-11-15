@@ -193,7 +193,10 @@ describe('GenerarFormatoModal.vue (FMT-04)', () => {
 
     // PRODUCTO_NUEVO vacío: generar bloqueado, pero la vista previa SÍ disponible
     expect(wrapper.findComponent(Dialog).props('disableConfirmButton')).toBe(true);
-    expect(wrapper.find('[data-testid="btn-previa"]').exists()).toBe(true);
+    const btnPrevia = wrapper.find('[data-testid="btn-previa"]');
+    expect(btnPrevia.exists()).toBe(true);
+    // type="button": si fuera submit, enviaría el form del Dialog y generaría en vez de previsualizar
+    expect(btnPrevia.attributes('type')).toBe('button');
   });
 
   it('envía lo escrito en las casillas al generar [FMT-07]', async () => {
