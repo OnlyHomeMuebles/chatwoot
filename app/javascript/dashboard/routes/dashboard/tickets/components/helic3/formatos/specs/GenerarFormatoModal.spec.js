@@ -28,8 +28,15 @@ vi.mock('dashboard/api/helic3/generarFormato', () => ({
   },
 }));
 
+const MARCADORES_EDITABLES = {
+  PRODUCTO: { etiqueta: 'Nombre del producto', tipo: 'texto' },
+  PRODUCTO_DESCRIPCION: { etiqueta: 'Descripción', tipo: 'area' },
+  PRODUCTO_NUEVO: { etiqueta: 'Producto nuevo', tipo: 'texto' },
+};
+
 const respuestaListar = {
   data: {
+    marcadores_editables: MARCADORES_EDITABLES,
     formatos: [
       {
         id: 1,
@@ -47,6 +54,16 @@ const respuestaListar = {
         nombre: 'No. 5 · Recolección',
         plantilla_activa: null,
       },
+      {
+        id: 3,
+        codigo: 'cambio_producto',
+        nombre: 'No. 4 · Cambio de producto',
+        plantilla_activa: {
+          id: 11,
+          version: 1,
+          marcadores: ['PRODUCTO', 'PRODUCTO_NUEVO'],
+        },
+      },
     ],
     items: [
       {
@@ -55,13 +72,14 @@ const respuestaListar = {
         proceso_codigo: 'visita_tecnica',
         formato_sugerido_id: 1,
         marcadores_vacios: ['CEDULA'],
+        ultimos_valores: {},
       },
     ],
   },
 };
 
-const montarYAbrir = async () => {
-  GenerarFormatoAPI.listar.mockResolvedValue(respuestaListar);
+const montarYAbrir = async (data = respuestaListar.data) => {
+  GenerarFormatoAPI.listar.mockResolvedValue({ data });
   const wrapper = shallowMount(GenerarFormatoModal, {
     props: { ticketId: 7 },
     // el contenido del formulario vive en el slot del Dialog (stub); sin esto
@@ -115,8 +133,86 @@ describe('GenerarFormatoModal.vue (FMT-04)', () => {
     expect(GenerarFormatoAPI.generar).toHaveBeenCalledWith(7, {
       formatoId: 1,
       itemId: 9,
+      valoresProducto: {},
     });
     expect(dispatch).toHaveBeenCalledWith('pqrInbox/fetchDocumentos', 7);
+  });
+
+  it('pinta una casilla por cada marcador editable que usa la plantilla [FMT-07]', async () => {
+    const wrapper = await montarYAbrir();
+    await wrapper.find('[data-testid="formato-3"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="campo-PRODUCTO"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="campo-PRODUCTO_NUEVO"]').exists()).toBe(true);
+    // la plantilla de cambio no usa descripción, así que esa casilla no aparece
+    expect(wrapper.find('[data-testid="campo-PRODUCTO_DESCRIPCION"]').exists()).toBe(false);
+  });
+
+  it('prellena el producto original con el nombre del ítem [FMT-07]', async () => {
+    const wrapper = await montarYAbrir();
+    await wrapper.find('[data-testid="formato-3"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="campo-PRODUCTO"]').element.value).toBe('Sofá');
+  });
+
+  it('prellena con los últimos valores de una generación previa [FMT-07]', async () => {
+    const wrapper = await montarYAbrir({
+      ...respuestaListar.data,
+      items: [
+        {
+          ...respuestaListar.data.items[0],
+          ultimos_valores: { cambio_producto: { PRODUCTO: 'Mesa', PRODUCTO_NUEVO: 'Mesa XL' } },
+        },
+      ],
+    });
+    await wrapper.find('[data-testid="formato-3"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="campo-PRODUCTO"]').element.value).toBe('Mesa');
+    expect(wrapper.find('[data-testid="campo-PRODUCTO_NUEVO"]').element.value).toBe('Mesa XL');
+  });
+
+  it('deshabilita generar mientras una casilla obligatoria esté vacía [FMT-07]', async () => {
+    const wrapper = await montarYAbrir();
+    await wrapper.find('[data-testid="formato-3"]').trigger('click');
+    await flushPromises();
+
+    // PRODUCTO prellenado pero PRODUCTO_NUEVO vacío -> no se puede generar
+    expect(wrapper.findComponent(Dialog).props('disableConfirmButton')).toBe(true);
+
+    await wrapper.find('[data-testid="campo-PRODUCTO_NUEVO"]').setValue('Sofá Turín');
+    expect(wrapper.findComponent(Dialog).props('disableConfirmButton')).toBe(false);
+  });
+
+  it('deja previsualizar aunque falte una casilla obligatoria [FMT-07]', async () => {
+    const wrapper = await montarYAbrir();
+    await wrapper.find('[data-testid="formato-3"]').trigger('click');
+    await flushPromises();
+
+    // PRODUCTO_NUEVO vacío: generar bloqueado, pero la vista previa SÍ disponible
+    expect(wrapper.findComponent(Dialog).props('disableConfirmButton')).toBe(true);
+    const btnPrevia = wrapper.find('[data-testid="btn-previa"]');
+    expect(btnPrevia.exists()).toBe(true);
+    // type="button": si fuera submit, enviaría el form del Dialog y generaría en vez de previsualizar
+    expect(btnPrevia.attributes('type')).toBe('button');
+  });
+
+  it('envía lo escrito en las casillas al generar [FMT-07]', async () => {
+    const wrapper = await montarYAbrir();
+    await wrapper.find('[data-testid="formato-3"]').trigger('click');
+    await flushPromises();
+    await wrapper.find('[data-testid="campo-PRODUCTO_NUEVO"]').setValue('Sofá Turín');
+
+    await wrapper.findComponent(Dialog).vm.$emit('confirm');
+    await flushPromises();
+
+    expect(GenerarFormatoAPI.generar).toHaveBeenCalledWith(7, {
+      formatoId: 3,
+      itemId: 9,
+      valoresProducto: { PRODUCTO: 'Sofá', PRODUCTO_NUEVO: 'Sofá Turín' },
+    });
   });
 
   it('al fallar la generación muestra el mensaje del servidor [N3]', async () => {

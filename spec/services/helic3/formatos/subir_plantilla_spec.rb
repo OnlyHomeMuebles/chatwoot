@@ -26,6 +26,17 @@ RSpec.describe Helic3::Formatos::SubirPlantilla do
     expect(resultado.plantilla.marcadores).to eq(%w[CLIENTE RADICADO])
   end
 
+  it 'acepta una plantilla con los marcadores nuevos de producto [FMT-07]' do
+    allow(Helic3::Formatos::Conversor).to receive(:a_fodt).and_return('<office/>')
+    allow(Helic3::Formatos::LlenarPlantilla).to receive(:marcadores_de)
+      .and_return(%w[PRODUCTO PRODUCTO_DESCRIPCION PRODUCTO_NUEVO])
+
+    resultado = described_class.call(formato: formato, archivo: docx, user: nil)
+
+    expect(resultado.ok?).to be(true)
+    expect(resultado.plantilla.marcadores).to contain_exactly('PRODUCTO', 'PRODUCTO_DESCRIPCION', 'PRODUCTO_NUEVO')
+  end
+
   it 'rechaza un marcador desconocido, sugiere el cercano y no guarda nada [CA2]' do
     allow(Helic3::Formatos::Conversor).to receive(:a_fodt).and_return('<office/>')
     allow(Helic3::Formatos::LlenarPlantilla).to receive(:marcadores_de).and_return(%w[CLEINTE])

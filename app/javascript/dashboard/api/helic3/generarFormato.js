@@ -20,20 +20,22 @@ class GenerarFormatoAPI extends ApiClient {
   }
 
   // vista previa en PDF (blob): la auth va en headers, por eso no se abre la URL
-  // directa; el componente arma el objectURL desde el blob.
-  vistaPrevia(ticketId, { formatoId, itemId }) {
+  // directa; el componente arma el objectURL desde el blob. valores_producto es lo
+  // que el operador escribio en el modal (FMT-07), solo para ese documento.
+  vistaPrevia(ticketId, { formatoId, itemId, valoresProducto = {} }) {
     return axios.post(
       `${this.rutaFormatos(ticketId)}/vista_previa`,
-      { formato_id: formatoId, item_id: itemId },
+      { formato_id: formatoId, item_id: itemId, valores_producto: valoresProducto },
       { responseType: 'blob' }
     );
   }
 
   // genera y deja el documento en el expediente; devuelve el documento creado.
-  generar(ticketId, { formatoId, itemId }) {
+  generar(ticketId, { formatoId, itemId, valoresProducto = {} }) {
     return axios.post(this.rutaFormatos(ticketId), {
       formato_id: formatoId,
       item_id: itemId,
+      valores_producto: valoresProducto,
     });
   }
 }

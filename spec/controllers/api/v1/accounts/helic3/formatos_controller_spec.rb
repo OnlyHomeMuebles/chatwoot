@@ -68,9 +68,39 @@ RSpec.describe 'Helic3 formatos desde el expediente (FMT-04)', type: :request do
       codigos = response.parsed_body['formatos'].map { |f| f['codigo'] }
       expect(codigos).not_to include('visita_tecnica')
     end
+
+    it 'expone los marcadores editables con su etiqueta [FMT-07 4.1]' do
+      get url, headers: admin.create_new_auth_token, as: :json
+
+      editables = response.parsed_body['marcadores_editables']
+      expect(editables.keys).to include('PRODUCTO', 'PRODUCTO_DESCRIPCION', 'PRODUCTO_NUEVO')
+      expect(editables['PRODUCTO_NUEVO']['etiqueta']).to eq('Producto nuevo')
+    end
+
+    it 'entrega los últimos valores editados por ítem y formato [FMT-07 4.3]' do
+      formato.plantillas.create!(account: account, version: 1, estado: 'activa', marcadores: %w[PRODUCTO])
+      post url, params: { formato_id: formato.id, item_id: item.id, valores_producto: { PRODUCTO: 'Mueble' } },
+                headers: admin.create_new_auth_token, as: :json
+
+      get url, headers: admin.create_new_auth_token, as: :json
+      item_json = response.parsed_body['items'].find { |i| i['id'] == item.id }
+      expect(item_json['ultimos_valores']['visita_tecnica']['PRODUCTO']).to eq('Mueble')
+    end
   end
 
   describe 'POST create' do
+    it 'guarda lo escrito en el modal y descarta claves no permitidas [FMT-07 4.2]' do
+      formato.plantillas.create!(account: account, version: 1, estado: 'activa', marcadores: %w[PRODUCTO])
+      post url, params: { formato_id: formato.id, item_id: item.id,
+                          valores_producto: { PRODUCTO: 'Mueble', CLIENTE: 'HACKER' } },
+                headers: admin.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:created)
+      doc = ticket.documentos.where(clase: 'formato').last
+      expect(doc.metadata['valores_editados']).to eq({ 'PRODUCTO' => 'Mueble' })
+      expect(doc.metadata['valores']['PRODUCTO']).to eq('Mueble')
+    end
+
     it 'genera el formato y devuelve 201 con el documento [CA1]' do
       plantilla_activa
       expect do

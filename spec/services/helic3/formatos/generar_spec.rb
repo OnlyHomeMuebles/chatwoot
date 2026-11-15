@@ -21,11 +21,12 @@ RSpec.describe Helic3::Formatos::Generar do
   # probar la logica de Generar, no la conversion (eso lo cubre VistaPrevia_spec).
   before do
     allow(Helic3::Formatos::VistaPrevia).to receive(:call).and_return(
-      { bytes: '%PDF-1.4 demo', tipo_mime: 'application/pdf', extension: 'pdf' }
+      { bytes: 'PK demo', extension: 'docx',
+        tipo_mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
     )
   end
 
-  it 'crea un Documento clase formato, origen operador, con el PDF adjunto [CA1]' do
+  it 'crea un Documento clase formato, origen operador, con el DOCX adjunto [CA1]' do
     plantilla_activa
     documento = described_class.call(ticket: ticket, item: item, formato: formato, user: user)
 
@@ -35,6 +36,10 @@ RSpec.describe Helic3::Formatos::Generar do
     expect(documento.garantia).to eq(garantia)
     expect(documento.remitente_nombre).to eq(user.name)
     expect(documento.archivo).to be_attached
+    expect(Helic3::Formatos::VistaPrevia).to have_received(:call).with(hash_including(formato: :docx))
+    expect(documento.archivo.filename.to_s).to end_with('.docx')
+    expect(documento.archivo.content_type)
+      .to eq('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
   end
 
   it 'generar dos veces deja generación 1 y 2 con títulos distintos [CA2]' do
@@ -93,5 +98,40 @@ RSpec.describe Helic3::Formatos::Generar do
     expect do
       described_class.call(ticket: ticket, item: item, formato: formato, user: user)
     end.to raise_error(described_class::Error, /desactivado/)
+  end
+
+  # FMT-07: lo que el operador escribe en el modal viaja al documento y a la metadata,
+  # pero no toca la base; y faltan los editables obligatorios bloquea la generacion.
+  describe 'valores_producto (FMT-07)' do
+    it 'lleva lo escrito en el modal al documento, a la metadata y al título' do
+      formato.plantillas.create!(account: account, version: 1, estado: 'activa', marcadores: %w[PRODUCTO])
+
+      documento = described_class.call(ticket: ticket, item: item, formato: formato, user: user,
+                                       valores_producto: { 'PRODUCTO' => 'Mueble' })
+
+      expect(Helic3::Formatos::VistaPrevia).to have_received(:call)
+        .with(hash_including(valores_producto: { 'PRODUCTO' => 'Mueble' }))
+      expect(documento.metadata['valores']['PRODUCTO']).to eq('Mueble')
+      expect(documento.metadata['valores_editados']).to eq({ 'PRODUCTO' => 'Mueble' })
+      expect(documento.titulo).to include('Mueble')
+      expect(item.reload.producto_nombre).to eq('Sofá') # la base NO cambia
+    end
+
+    it 'responde 422 si la plantilla usa un marcador editable y queda vacío' do
+      formato.plantillas.create!(account: account, version: 1, estado: 'activa',
+                                 marcadores: %w[PRODUCTO PRODUCTO_NUEVO])
+
+      expect do
+        described_class.call(ticket: ticket, item: item, formato: formato, user: user)
+      end.to raise_error(described_class::Error, /Producto nuevo/)
+    end
+
+    it 'genera si la plantilla NO usa el marcador editable vacío' do
+      formato.plantillas.create!(account: account, version: 1, estado: 'activa', marcadores: %w[PRODUCTO])
+
+      documento = described_class.call(ticket: ticket, item: item, formato: formato, user: user)
+
+      expect(documento).to be_persisted
+    end
   end
 end

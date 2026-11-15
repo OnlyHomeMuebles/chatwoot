@@ -9,16 +9,18 @@ class Helic3::Formatos::VistaPrevia
     docx: { mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', ext: 'docx' }
   }.freeze
 
-  def self.call(plantilla:, item: nil, user: nil, formato: :pdf)
+  def self.call(plantilla:, item: nil, user: nil, formato: :pdf, valores_producto: {})
     salida = SALIDAS.fetch(formato.to_sym) { raise ArgumentError, "formato no soportado: #{formato}" }
-    valores = valores_para(item, user)
+    valores = valores_para(item, user, valores_producto)
     lleno = Helic3::Formatos::LlenarPlantilla.call(plantilla.fodt.download, valores)
     { bytes: convertir(lleno, formato.to_sym), tipo_mime: salida[:mime], extension: salida[:ext] }
   end
 
-  def self.valores_para(item, user)
+  # valores_producto (FMT-07): lo que el operador escribio en el modal; se mezcla
+  # sobre los datos reales del item. En la previa del admin (sin item) no aplica.
+  def self.valores_para(item, user, valores_producto = {})
     if item
-      Helic3::Formatos::DatosDelFormato.call(item: item, user: user)
+      Helic3::Formatos::DatosDelFormato.call(item: item, user: user, valores_producto: valores_producto)
     else
       Helic3::Formatos::DatosDelFormato::DATOS_DE_EJEMPLO
     end
