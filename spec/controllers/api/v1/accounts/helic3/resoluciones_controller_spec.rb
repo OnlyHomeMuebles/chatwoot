@@ -124,6 +124,25 @@ RSpec.describe 'Resoluciones API', type: :request do
         expect(response).to have_http_status(:unprocessable_entity)
         expect(ticket.reload.garantia).to be_nil
       end
+
+      it 'un motivo de PQR que nunca abre garantia responde 422, no un 500 crudo' do
+        categoria = Helic3::Catalogo::Categoria.create!(account: account, nombre: 'Retracto',
+                                                        codigo: 'retracto')
+        retracto = Helic3::Catalogo::MotivoPqr.create!(account: account, categoria: categoria,
+                                                       nombre: 'Retracto de compra',
+                                                       codigo: 'retracto_compra', abre_garantia: :nunca)
+        ticket.update!(motivo_pqr: retracto)
+
+        post "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}/resolucion",
+             params: { resultado_id: procede.id,
+                       garantia: { cobertura_ciudad_id: manizales.id,
+                                   items: [{ producto_nombre: 'Sofá' }] } },
+             headers: administrator.create_new_auth_token,
+             as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(ticket.reload.garantia).to be_nil
+      end
     end
 
     context 'when the resultado requires admin (the seeded default)' do
