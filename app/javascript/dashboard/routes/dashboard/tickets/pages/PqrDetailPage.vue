@@ -13,6 +13,7 @@ import Helic3BudgetBar from 'dashboard/components-next/helic3/Helic3BudgetBar.vu
 import Helic3SourceBadge from 'dashboard/components-next/helic3/Helic3SourceBadge.vue';
 // FMT-04: modal para generar formatos desde la garantia del expediente.
 import GenerarFormatoModal from '../components/helic3/formatos/GenerarFormatoModal.vue';
+import NuevaActividadModal from '../components/helic3/NuevaActividadModal.vue';
 // MAN-03: mismo dialogo de garantia del panel del chat, reusado en el detalle.
 import GarantiaFormDialog from 'dashboard/components/widgets/conversation/GarantiaFormDialog.vue';
 
@@ -552,23 +553,64 @@ const TITULOS_EVENTO = {
   proceso_avanzado: 'TICKETS.DETAIL.ACT_PROCESO_AVANZADO',
   respondida: 'TICKETS.DETAIL.ACT_ANSWERED',
   evidencia_adjuntada: 'TICKETS.DETAIL.ACT_EVIDENCIA_ADJUNTADA',
+  formato_generado: 'TICKETS.DETAIL.ACT_FORMATO_GENERADO',
+  etapa_cambiada: 'TICKETS.DETAIL.ACT_ETAPA_CAMBIADA',
 };
 
+// ACT-01: un solo historial con los eventos del sistema y las actividades de
+// seguimiento que registran las personas, del mas nuevo al mas antiguo. La key
+// es tipo + id: dos filas con el mismo titulo (dos "Resultado aplicado", dos
+// llamadas) son filas distintas.
 const actividad = computed(() => {
-  const eventos = expediente.value?.eventos ?? [];
-  return eventos.map((evento, indice) => ({
+  const eventos = (expediente.value?.eventos ?? []).map(evento => ({
+    key: `evento-${evento.id}`,
+    id: evento.id,
     titulo: t(TITULOS_EVENTO[evento.tipo] || evento.tipo),
     autor:
       evento.actor?.name ||
+      evento.payload?.actor_nombre ||
       t(
         evento.origen === 'agente'
           ? 'TICKETS.DETAIL.ACT_BY_AGENT'
           : 'TICKETS.DETAIL.ACT_BY_TEAM'
       ),
     at: evento.created_at,
-    ultimo: indice === eventos.length - 1,
+    seguimiento: false,
   }));
+  const seguimientos = (expediente.value?.actividades ?? []).map(act => ({
+    key: `actividad-${act.id}`,
+    id: act.id,
+    titulo: act.titulo,
+    detalle: act.detalle,
+    autor: act.autor_nombre || t('TICKETS.DETAIL.ACT_BY_TEAM'),
+    at: act.created_at,
+    seguimiento: true,
+  }));
+  return [...eventos, ...seguimientos].sort(
+    (a, b) => new Date(b.at) - new Date(a.at) || b.id - a.id
+  );
 });
+
+// Cerrada muestra las mas recientes; clic en el titulo (o en "Ver las N") despliega todas.
+const ACTIVIDAD_VISIBLES = 4;
+const actividadAbierta = ref(false);
+const actividadVisible = computed(() =>
+  actividadAbierta.value
+    ? actividad.value
+    : actividad.value.slice(0, ACTIVIDAD_VISIBLES)
+);
+const alternarActividad = () => {
+  actividadAbierta.value = !actividadAbierta.value;
+};
+// el detalle de un seguimiento va cortado a dos lineas; clic en la fila lo muestra completo
+const detallesAbiertos = ref(new Set());
+const alternarDetalle = key => {
+  const abiertos = new Set(detallesAbiertos.value);
+  if (abiertos.has(key)) abiertos.delete(key);
+  else abiertos.add(key);
+  detallesAbiertos.value = abiertos;
+};
+const nuevaActividadRef = ref(null);
 
 // Documentos (EVI-03, 7.1): el formato de garantia sigue siendo un renglon
 // derivado y deshabilitado (su generacion es la Semana 3); los documentos
@@ -640,6 +682,15 @@ const subirArchivo = async event => {
 
 const formatFecha = valor =>
   valor ? new Date(valor).toLocaleDateString() : '—';
+
+// el historial muestra fecha y hora: dos gestiones del mismo dia se distinguen
+const formatFechaHora = valor =>
+  valor
+    ? new Date(valor).toLocaleString(undefined, {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      })
+    : '—';
 </script>
 
 <template>
@@ -1245,34 +1296,113 @@ const formatFecha = valor =>
             </form>
           </section>
 
-          <!-- Actividad: sellos reales (EVT-01, de esta entrega, la reemplaza) -->
+          <!-- Actividad (EVT-01 + ACT-01): eventos del sistema y seguimiento de las
+               personas en un solo historial. Siempre visible: es donde vive el +. -->
           <section
-            v-if="actividad.length"
+            data-testid="seccion-actividad"
             class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-1"
           >
-            <h3
-              class="mb-0 text-sm font-semibold text-n-slate-12 pb-3 -mx-4 px-4 border-b border-n-weak"
+            <div
+              class="flex items-center justify-between gap-2 pb-3 -mx-4 px-4 border-b border-n-weak"
             >
-              {{ t('TICKETS.DETAIL.ACTIVITY') }}
-            </h3>
-            <ol class="flex flex-col gap-3">
+              <button
+                type="button"
+                data-testid="titulo-actividad"
+                class="flex items-center gap-1.5 p-0 text-sm font-semibold bg-transparent border-0 text-n-slate-12"
+                :aria-expanded="actividadAbierta"
+                @click="alternarActividad"
+              >
+                {{ t('TICKETS.DETAIL.ACTIVITY') }}
+                <span
+                  v-if="actividad.length"
+                  class="font-normal text-n-slate-10 tabular-nums"
+                >
+                  {{
+                    t('TICKETS.DETAIL.ACTIVITY_COUNT', { n: actividad.length })
+                  }}
+                </span>
+                <Icon
+                  v-if="actividad.length > ACTIVIDAD_VISIBLES"
+                  icon="i-lucide-chevron-down"
+                  class="transition-transform size-4 text-n-slate-10"
+                  :class="{ 'rotate-180': actividadAbierta }"
+                />
+              </button>
+              <Button
+                data-testid="btn-nueva-actividad"
+                icon="i-lucide-plus"
+                color="blue"
+                faded
+                sm
+                :aria-label="t('TICKETS.ACTIVIDAD.NEW_TITLE')"
+                @click="nuevaActividadRef.open()"
+              />
+            </div>
+
+            <p v-if="!actividad.length" class="mb-0 text-sm text-n-slate-11">
+              {{ t('TICKETS.DETAIL.ACTIVITY_EMPTY') }}
+            </p>
+            <ol v-else class="flex flex-col gap-3 mb-0">
               <li
-                v-for="hito in actividad"
-                :key="hito.titulo"
+                v-for="hito in actividadVisible"
+                :key="hito.key"
+                data-testid="hito"
                 class="flex gap-2.5"
               >
                 <span
-                  class="mt-1 rounded-full size-2 shrink-0"
-                  :class="hito.ultimo ? 'bg-n-brand' : 'bg-n-teal-9'"
+                  class="mt-1.5 rounded-full size-2 shrink-0"
+                  :class="hito.seguimiento ? 'bg-n-blue-9' : 'bg-n-teal-9'"
                 />
-                <div class="flex flex-col gap-0.5 min-w-0">
-                  <span class="text-sm text-n-slate-12">{{ hito.titulo }}</span>
-                  <span class="text-xs text-n-slate-11">
-                    {{ hito.autor }} · {{ formatFecha(hito.at) }}
+                <div
+                  class="flex flex-col gap-0.5 min-w-0"
+                  :class="{ 'cursor-pointer': hito.seguimiento }"
+                  @click="hito.seguimiento && alternarDetalle(hito.key)"
+                >
+                  <span
+                    class="flex flex-wrap items-center gap-1.5 text-sm text-n-slate-12"
+                  >
+                    <span class="min-w-0 break-words">{{ hito.titulo }}</span>
+                    <span
+                      v-if="hito.seguimiento"
+                      class="px-1.5 py-0.5 text-xs rounded-md bg-n-blue-3 text-n-blue-11"
+                    >
+                      {{ t('TICKETS.DETAIL.ACTIVITY_FOLLOW_UP') }}
+                    </span>
+                  </span>
+                  <span
+                    v-if="hito.detalle"
+                    data-testid="hito-detalle"
+                    class="text-sm whitespace-pre-line break-words text-n-slate-11"
+                    :class="{ 'line-clamp-2': !detallesAbiertos.has(hito.key) }"
+                  >
+                    {{ hito.detalle }}
+                  </span>
+                  <span class="text-xs text-n-slate-10">
+                    {{ hito.autor }} · {{ formatFechaHora(hito.at) }}
                   </span>
                 </div>
               </li>
             </ol>
+            <Button
+              v-if="actividad.length > ACTIVIDAD_VISIBLES"
+              data-testid="ver-todas-actividad"
+              link
+              sm
+              color="blue"
+              class="self-start"
+              :label="
+                actividadAbierta
+                  ? t('TICKETS.DETAIL.ACTIVITY_SHOW_LESS')
+                  : t('TICKETS.DETAIL.ACTIVITY_SHOW_ALL', {
+                      n: actividad.length,
+                    })
+              "
+              @click="alternarActividad"
+            />
+            <NuevaActividadModal
+              ref="nuevaActividadRef"
+              :ticket-id="props.id"
+            />
           </section>
 
           <!-- Documentos (EVI-03): evidencias del cliente + cargas del operador,

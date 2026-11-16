@@ -344,6 +344,19 @@
       "REACTIVADO": "Format reactivated",
       "DESACTIVADO_BADGE": "Deactivated"
     },
+    "ACTIVIDAD": {
+      "NEW_TITLE": "New activity",
+      "ADD": "Add",
+      "CHAR_COUNT": "{n} / {max}",
+      "TITLE_LABEL": "Title *",
+      "TITLE_PLACEHOLDER": "E.g. Call the customer to schedule a visit",
+      "TITLE_TOO_LONG": "The title can't exceed 120 characters",
+      "DETAIL_LABEL": "Detail *",
+      "DETAIL_PLACEHOLDER": "What was done or agreed with the customer",
+      "AUTHOR_NOTE": "It's logged with your name and the current date and time.",
+      "SAVED": "Activity added",
+      "ERROR": "The activity could not be added"
+    },
     "DETAIL": {
       "TITLE": "Case detail",
       "NOT_FOUND": "Case not found",
@@ -392,6 +405,13 @@
       "ACT_EVIDENCIA_ADJUNTADA": "Evidence attached",
       "ACT_BY_AGENT": "AI agent",
       "ACT_BY_TEAM": "Only Home team",
+      "ACT_FORMATO_GENERADO": "Form generated",
+      "ACT_ETAPA_CAMBIADA": "Stage changed",
+      "ACTIVITY_COUNT": "· {n}",
+      "ACTIVITY_EMPTY": "No activity yet. Use + to log a follow-up.",
+      "ACTIVITY_FOLLOW_UP": "Follow-up",
+      "ACTIVITY_SHOW_ALL": "See all {n} activities",
+      "ACTIVITY_SHOW_LESS": "See less",
       "PRODUCTS": "Products",
       "TIMELINE": "Process line",
       "STEP_TERMINAL": "Closes",

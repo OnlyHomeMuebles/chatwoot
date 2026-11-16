@@ -79,6 +79,11 @@ if local_assigns.fetch(:detallado, true)
       json.actor nil
     end
   end
+
+  # Seguimiento de las personas (ACT-01). El panel lo mezcla con los eventos por fecha.
+  json.actividades resource.actividades.recientes do |actividad|
+    json.call(actividad, :id, :titulo, :detalle, :autor_nombre, :created_at)
+  end
 end
 
 if resource.assignee.present?

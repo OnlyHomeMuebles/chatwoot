@@ -12,6 +12,39 @@ describe('#actions', () => {
     commit.mockClear();
   });
 
+  describe('#crearActividad', () => {
+    it('postea la actividad y pinta el expediente que responde (ACT-01)', async () => {
+      axios.post.mockResolvedValue({ data: ticketDetalle });
+      await actions.crearActividad(
+        { commit },
+        { ticketId: 7, actividad: { titulo: 'Llamada', detalle: 'x' } }
+      );
+      expect(axios.post).toHaveBeenCalledWith(
+        expect.stringMatching(/helic3\/tickets\/7\/actividades$/),
+        { actividad: { titulo: 'Llamada', detalle: 'x' } }
+      );
+      expect(commit.mock.calls).toEqual([
+        [types.SET_TICKET_UI_FLAG, { isUpdating: true }],
+        [types.EDIT_TICKET, ticketDetalle],
+        [types.SET_TICKET_UI_FLAG, { isUpdating: false }],
+      ]);
+    });
+
+    it('relanza el error y apaga el flag', async () => {
+      axios.post.mockRejectedValue({ response: { status: 422 } });
+      await expect(
+        actions.crearActividad(
+          { commit },
+          { ticketId: 7, actividad: { titulo: '', detalle: '' } }
+        )
+      ).rejects.toEqual({ response: { status: 422 } });
+      expect(commit.mock.calls).toEqual([
+        [types.SET_TICKET_UI_FLAG, { isUpdating: true }],
+        [types.SET_TICKET_UI_FLAG, { isUpdating: false }],
+      ]);
+    });
+  });
+
   describe('#show', () => {
     it('pinta el detalle (semaforo/dias) sobre la fila via EDIT_TICKET', async () => {
       axios.get.mockResolvedValue({ data: ticketDetalle });
