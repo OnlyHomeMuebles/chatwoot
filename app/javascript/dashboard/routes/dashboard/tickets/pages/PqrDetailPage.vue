@@ -1355,8 +1355,24 @@ const formatFechaHora = valor =>
                 />
                 <div
                   class="flex flex-col gap-0.5 min-w-0"
-                  :class="{ 'cursor-pointer': hito.seguimiento }"
+                  :class="{
+                    'cursor-pointer rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-n-brand':
+                      hito.seguimiento,
+                  }"
+                  :role="hito.seguimiento ? 'button' : undefined"
+                  :tabindex="hito.seguimiento ? 0 : undefined"
+                  :aria-expanded="
+                    hito.seguimiento
+                      ? detallesAbiertos.has(hito.key)
+                      : undefined
+                  "
                   @click="hito.seguimiento && alternarDetalle(hito.key)"
+                  @keydown.enter.prevent="
+                    hito.seguimiento && alternarDetalle(hito.key)
+                  "
+                  @keydown.space.prevent="
+                    hito.seguimiento && alternarDetalle(hito.key)
+                  "
                 >
                   <span
                     class="flex flex-wrap items-center gap-1.5 text-sm text-n-slate-12"

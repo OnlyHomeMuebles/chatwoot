@@ -415,6 +415,27 @@ describe('PqrDetailPage.vue — actividades de seguimiento (ACT-01)', () => {
     await detalle().trigger('click');
     expect(detalle().classes()).not.toContain('line-clamp-2');
   });
+
+  it('el detalle tambien se despliega con el teclado', async () => {
+    expedienteRef.value = {
+      ...expedienteBase,
+      garantia: null,
+      eventos: [],
+      actividades: [seguimiento(1, 'Llamada', '2026-11-11T09:00:00Z')],
+    };
+
+    const wrapper = montar();
+    const fila = wrapper.find('[data-testid="hito"] [role="button"]');
+    expect(fila.attributes('tabindex')).toBe('0');
+    expect(fila.attributes('aria-expanded')).toBe('false');
+
+    await fila.trigger('keydown', { key: 'Enter' });
+
+    expect(fila.attributes('aria-expanded')).toBe('true');
+    expect(
+      wrapper.find('[data-testid="hito-detalle"]').classes()
+    ).not.toContain('line-clamp-2');
+  });
 });
 
 describe('PqrDetailPage.vue — resolver la PQR desde el detalle (MAN-03)', () => {
