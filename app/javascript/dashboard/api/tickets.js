@@ -31,6 +31,12 @@ class TicketsAPI extends ApiClient {
     return axios.patch(`${this.url}/${ticketId}/datos`, { datos });
   }
 
+  // Registra una actividad de seguimiento (ACT-01). El autor y la fecha los pone
+  // el servidor; responde el expediente.
+  crearActividad(ticketId, actividad) {
+    return axios.post(`${this.url}/${ticketId}/actividades`, { actividad });
+  }
+
   // Avanza un producto de la garantia de proceso (GAR-03). El radicado cierra
   // solo cuando todos los productos resuelven; eso lo decide el backend.
   avanzarGarantia(garantiaId, itemId, procesoId) {
@@ -54,7 +60,10 @@ class TicketsAPI extends ApiClient {
   consultarErpCliente(cedula, signal, { refrescar = false } = {}) {
     const base = this.url.replace(/tickets$/, 'erp/clientes');
     const params = refrescar ? { refrescar: 1 } : {};
-    return axios.get(`${base}/${encodeURIComponent(cedula)}`, { signal, params });
+    return axios.get(`${base}/${encodeURIComponent(cedula)}`, {
+      signal,
+      params,
+    });
   }
 
   // Archivo documental del expediente (EVI-02/EVI-03): evidencias del cliente

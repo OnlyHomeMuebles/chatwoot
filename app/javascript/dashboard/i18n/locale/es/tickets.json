@@ -344,6 +344,19 @@
       "REACTIVADO": "Formato reactivado",
       "DESACTIVADO_BADGE": "Desactivado"
     },
+    "ACTIVIDAD": {
+      "NEW_TITLE": "Nueva actividad",
+      "ADD": "Agregar",
+      "CHAR_COUNT": "{n} / {max}",
+      "TITLE_LABEL": "Título *",
+      "TITLE_PLACEHOLDER": "Ej. Llamada al cliente para agendar visita",
+      "TITLE_TOO_LONG": "El título no puede pasar de 120 caracteres",
+      "DETAIL_LABEL": "Detalle *",
+      "DETAIL_PLACEHOLDER": "Qué se hizo o se acordó con el cliente",
+      "AUTHOR_NOTE": "Se registra con tu nombre y la fecha y hora de este momento.",
+      "SAVED": "Actividad agregada",
+      "ERROR": "No se pudo agregar la actividad"
+    },
     "DETAIL": {
       "TITLE": "Detalle del expediente",
       "NOT_FOUND": "No se encontró el expediente",
@@ -392,6 +405,13 @@
       "ACT_EVIDENCIA_ADJUNTADA": "Evidencia adjuntada",
       "ACT_BY_AGENT": "Agente IA",
       "ACT_BY_TEAM": "Equipo Only Home",
+      "ACT_FORMATO_GENERADO": "Formato generado",
+      "ACT_ETAPA_CAMBIADA": "Etapa cambiada",
+      "ACTIVITY_COUNT": "· {n}",
+      "ACTIVITY_EMPTY": "Aún no hay actividad. Usa + para registrar un seguimiento.",
+      "ACTIVITY_FOLLOW_UP": "Seguimiento",
+      "ACTIVITY_SHOW_ALL": "Ver las {n} actividades",
+      "ACTIVITY_SHOW_LESS": "Ver menos",
       "PRODUCTS": "Productos",
       "TIMELINE": "Línea de proceso",
       "STEP_TERMINAL": "Cierra",

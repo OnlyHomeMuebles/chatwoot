@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_11_09_120000) do
+ActiveRecord::Schema[7.2].define(version: 2026_11_16_120000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1104,6 +1104,20 @@ ActiveRecord::Schema[7.2].define(version: 2026_11_09_120000) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "helic3_actividades", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "ticket_id", null: false
+    t.bigint "autor_id"
+    t.string "autor_nombre"
+    t.string "titulo", null: false
+    t.text "detalle", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "idx_h3_actividades_account"
+    t.index ["autor_id"], name: "idx_h3_actividades_autor"
+    t.index ["ticket_id", "created_at"], name: "idx_h3_actividades_ticket_fecha"
+  end
+
   create_table "helic3_agentes", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "codigo", null: false
@@ -2147,6 +2161,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_11_09_120000) do
   add_foreign_key "campaign_recipients", "campaigns", on_delete: :cascade
   add_foreign_key "campaign_recipients", "contacts", on_delete: :cascade
   add_foreign_key "campaign_recipients", "inboxes", on_delete: :cascade
+  add_foreign_key "helic3_actividades", "accounts"
+  add_foreign_key "helic3_actividades", "helic3_tickets", column: "ticket_id", on_delete: :cascade
+  add_foreign_key "helic3_actividades", "users", column: "autor_id", on_delete: :nullify
   add_foreign_key "helic3_agentes", "accounts", on_delete: :cascade
   add_foreign_key "helic3_agentes", "teams", on_delete: :nullify
   add_foreign_key "helic3_agentes", "users", column: "creado_por_id", on_delete: :nullify

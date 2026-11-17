@@ -115,6 +115,17 @@ export const actions = {
       commit(types.SET_TICKET_UI_FLAG, { isUpdating: false });
     }
   },
+  // crearActividad (ACT-01): seguimiento de una persona en el expediente. Sin catch:
+  // se relanza para que el modal muestre el error.
+  crearActividad: async ({ commit }, { ticketId, actividad }) => {
+    commit(types.SET_TICKET_UI_FLAG, { isUpdating: true });
+    try {
+      const response = await TicketsAPI.crearActividad(ticketId, actividad);
+      commit(types.EDIT_TICKET, response.data);
+    } finally {
+      commit(types.SET_TICKET_UI_FLAG, { isUpdating: false });
+    }
+  },
   // avanzarGarantia (GAR-03): mueve un producto de proceso; el backend cierra el
   // radicado si con eso todos resolvieron. Sin catch, se relanza para revertir.
   avanzarGarantia: async ({ commit }, { garantiaId, itemId, procesoId }) => {
