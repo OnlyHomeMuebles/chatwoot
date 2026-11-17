@@ -359,6 +359,8 @@ Rails.application.routes.draw do
             end
             resources :garantias, only: [] do
               resources :items, only: [:update], controller: 'garantia_items'
+              # GAR-08: anexar/corregir la observacion de una garantia ya cerrada.
+              member { patch :observacion }
             end
             resource :catalogos, only: [:show]
             # ERP-08/15: en una sola consulta, el cliente y sus facturas+productos para el
