@@ -185,6 +185,21 @@ RSpec.describe 'Tickets API', type: :request do
       end
     end
 
+    it 'ERP-18a: guarda el centro de operacion escrito a mano (fuente humano) y lo expone en datos' do
+      radicar_manual(datos: datos_cliente.merge(centro_operacion_nombre: '012 - OM NEIVA SANTA LUCIA'))
+
+      expect(response).to have_http_status(:success)
+      ticket = account.tickets.find(response.parsed_body['id'])
+      expect(ticket.datos.centro_operacion_nombre).to eq('012 - OM NEIVA SANTA LUCIA')
+      expect(ticket.datos.fuentes['centro_operacion_nombre']).to eq('humano')
+
+      get "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+          headers: agent.create_new_auth_token, as: :json
+      datos = response.parsed_body['datos']
+      expect(datos['centro_operacion_nombre']['valor']).to eq('012 - OM NEIVA SANTA LUCIA')
+      expect(datos['centro_operacion_nombre']['fuente']).to eq('humano')
+    end
+
     it 'CA2: sin conversacion y sin cliente_nombre -> 422 y no crea nada' do
       expect do
         radicar_manual(datos: datos_cliente.except(:cliente_nombre))

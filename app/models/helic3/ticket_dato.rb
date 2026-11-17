@@ -8,23 +8,27 @@
 #
 # Table name: helic3_ticket_datos
 #
-#  id                    :bigint           not null, primary key
-#  cedula                :string
-#  ciudad                :string
-#  cliente_email         :string
-#  cliente_nombre        :string
-#  cliente_telefono      :string
-#  direccion             :string
-#  factura_fecha         :date
-#  factura_numero        :string
-#  fuentes               :jsonb            not null
-#  producto_nombre       :string
-#  producto_referencia   :string
-#  created_at            :datetime         not null
-#  updated_at            :datetime         not null
-#  account_id            :bigint           not null
-#  detalle_tipificado_id :bigint
-#  ticket_id             :bigint           not null
+#  id                      :bigint           not null, primary key
+#  cedula                  :string
+#  centro_operacion_ciudad :string
+#  centro_operacion_nombre :string
+#  ciudad                  :string
+#  cliente_email           :string
+#  cliente_nombre          :string
+#  cliente_telefono        :string
+#  direccion               :string
+#  factura_fecha           :date
+#  factura_numero          :string
+#  fuentes                 :jsonb            not null
+#  producto_nombre         :string
+#  producto_referencia     :string
+#  productos               :jsonb            not null
+#  created_at              :datetime         not null
+#  updated_at              :datetime         not null
+#  account_id              :bigint           not null
+#  centro_operacion_id     :string
+#  detalle_tipificado_id   :bigint
+#  ticket_id               :bigint           not null
 #
 # Indexes
 #
@@ -46,9 +50,12 @@ class Helic3::TicketDato < ApplicationRecord
   # los campos recolectados; la clave en `fuentes` es el nombre de la columna.
   # El detalle se guarda por id (es catalogo), el resto es texto libre del caso.
   # MAN-01 suma los datos del cliente y la compra (para la PQR manual sin chat).
+  # ERP-18: centro_operacion_nombre es la tienda de la factura. En 18a se escribe a
+  # mano; en 18b lo trae Siesa (con id y ciudad, que viven en sus propias columnas).
   CAMPOS = %i[
     cedula direccion ciudad factura_numero producto_nombre detalle_tipificado_id
     cliente_nombre cliente_telefono cliente_email producto_referencia factura_fecha
+    centro_operacion_nombre
   ].freeze
 
   belongs_to :account
