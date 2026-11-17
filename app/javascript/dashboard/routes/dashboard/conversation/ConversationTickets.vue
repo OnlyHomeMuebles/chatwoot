@@ -515,6 +515,17 @@ const detalleOptions = computed(() =>
             :fuente="ticket.datos.detalle_tipificado.fuente"
           />
         </div>
+
+        <!-- DET-02: la observacion del caso (ticket.description), solo lectura
+             aqui; se corrige en el expediente completo. -->
+        <div class="flex flex-col gap-0.5">
+          <span class="text-xs text-n-slate-10">
+            {{ t('TICKETS.DATA.FIELDS.OBSERVACION') }}
+          </span>
+          <span class="text-xs break-words whitespace-pre-line text-n-slate-12">
+            {{ ticket.description || t('TICKETS.DATA.SIN_OBSERVACION') }}
+          </span>
+        </div>
       </div>
 
       <!-- VIS-04: abre el expediente completo (con o sin garantia). -->

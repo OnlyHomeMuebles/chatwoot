@@ -524,6 +524,7 @@
       "EDIT": "Edit",
       "SAVE": "Save",
       "CANCEL": "Cancel",
+      "SIN_OBSERVACION": "No observation",
       "DETAIL_PLACEHOLDER": "Select the detail",
       "SOURCE": {
         "IA": "AI",
@@ -542,7 +543,8 @@
         "FACTURA_FECHA": "Purchase date",
         "PRODUCTO_NOMBRE": "Product",
         "PRODUCTO_REFERENCIA": "Reference",
-        "DETALLE": "Detail"
+        "DETALLE": "Detail",
+        "OBSERVACION": "Observation"
       }
     },
     "RESOLVER": {

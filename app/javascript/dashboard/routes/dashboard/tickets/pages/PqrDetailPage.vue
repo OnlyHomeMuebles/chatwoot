@@ -373,6 +373,8 @@ const abrirEdicionFicha = () => {
       CAMPOS_FICHA.map(c => [c.key, d[c.key]?.valor || ''])
     ),
     detalle_tipificado_id: d.detalle_tipificado?.valor?.id || '',
+    // DET-02: la observacion es ticket.description (no un campo de la ficha).
+    observacion: expediente.value?.description || '',
   };
   fichaEdit.value = { ...snapshot };
   fichaOriginal.value = snapshot;
@@ -395,13 +397,23 @@ const guardarFicha = async () => {
   if (detalleId && detalleId !== fichaOriginal.value.detalle_tipificado_id) {
     datos.detalle_tipificado_id = detalleId;
   }
-  if (!Object.keys(datos).length) {
+  // DET-02: la observacion es ticket.description; se guarda por tickets/update
+  // (otro endpoint), solo si cambió, igual que los campos de la ficha.
+  const obsNueva = (fichaEdit.value.observacion ?? '').trim();
+  const obsCambio = obsNueva !== (fichaOriginal.value.observacion ?? '');
+
+  if (!Object.keys(datos).length && !obsCambio) {
     editandoFicha.value = false; // no cambió nada: no molestamos al backend
     return;
   }
   guardandoFicha.value = true;
   try {
-    await store.dispatch('tickets/registrarDatos', { id: props.id, datos });
+    if (Object.keys(datos).length) {
+      await store.dispatch('tickets/registrarDatos', { id: props.id, datos });
+    }
+    if (obsCambio) {
+      await store.dispatch('tickets/update', { id: props.id, description: obsNueva });
+    }
     await refrescar();
     editandoFicha.value = false;
     useAlert(t('TICKETS.DATA.SAVED'));
@@ -521,11 +533,8 @@ const datosLista = computed(() => {
     // '' y no null: Helic3SourceBadge tipa fuente como String.
     fuente: d[c.key]?.fuente ?? '',
   }));
-  filas.push({
-    label: t('TICKETS.DATA.FIELDS.DETALLE'),
-    valor: d.detalle_tipificado?.valor?.nombre ?? null,
-    fuente: d.detalle_tipificado?.fuente ?? '',
-  });
+  // DET-02: la fila "Detalle" se reemplaza por la observacion del caso, que se
+  // muestra en su propio bloque de ancho completo (ver template), no como fila.
   return filas;
 });
 
@@ -1248,6 +1257,23 @@ const formatFechaHora = valor =>
                   </span>
                 </dd>
               </div>
+              <!-- DET-02: la observacion (ticket.description) ocupa toda la fila,
+                   con el texto completo y los saltos de linea, sin badge. -->
+              <div class="flex flex-col gap-0.5 min-w-0 col-span-2">
+                <dt class="text-xs text-n-slate-10">
+                  {{ t('TICKETS.DATA.FIELDS.OBSERVACION') }}
+                </dt>
+                <dd
+                  class="mb-0 text-sm font-medium break-words text-n-slate-12 whitespace-pre-line"
+                >
+                  <template v-if="expediente?.description">
+                    {{ expediente.description }}
+                  </template>
+                  <span v-else class="text-n-slate-11">
+                    {{ t('TICKETS.DATA.SIN_OBSERVACION') }}
+                  </span>
+                </dd>
+              </div>
             </dl>
 
             <!-- Edicion (MAN-03): un campo vacio NO borra el anterior (el backend
@@ -1276,6 +1302,18 @@ const formatFechaHora = valor =>
                   class="!w-full [&>select]:w-full"
                   :options="detalleOptions"
                   :placeholder="t('TICKETS.DATA.DETAIL_PLACEHOLDER')"
+                />
+              </label>
+              <!-- DET-02: corregir la observacion del caso (ticket.description). -->
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-n-slate-12">
+                  {{ t('TICKETS.DATA.FIELDS.OBSERVACION') }}
+                </span>
+                <textarea
+                  v-model="fichaEdit.observacion"
+                  data-testid="textarea-observacion"
+                  rows="3"
+                  class="p-2 text-sm border rounded border-n-weak bg-n-alpha-black1"
                 />
               </label>
               <div class="flex justify-end gap-2">
