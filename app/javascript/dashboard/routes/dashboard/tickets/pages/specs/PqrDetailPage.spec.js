@@ -46,6 +46,14 @@ const GarantiaStub = {
   methods: { open: garantiaOpen },
 };
 
+// ACT-01: stub del modal de nueva actividad con un open() espiable.
+const actividadOpen = vi.fn();
+const NuevaActividadStub = {
+  name: 'NuevaActividadModal',
+  template: '<div />',
+  methods: { open: actividadOpen },
+};
+
 const expedienteBase = {
   id: 7,
   title: 'Sofá rayado',
@@ -74,7 +82,12 @@ const conGarantia = {
 const montar = () =>
   shallowMount(PqrDetailPage, {
     props: { id: 7 },
-    global: { stubs: { GarantiaFormDialog: GarantiaStub } },
+    global: {
+      stubs: {
+        GarantiaFormDialog: GarantiaStub,
+        NuevaActividadModal: NuevaActividadStub,
+      },
+    },
   });
 
 // Busca el <Select> de "Resolver PQR" por su placeholder (único en la vista).
@@ -89,6 +102,7 @@ beforeEach(() => {
   catalogosRef.value = { resultados: [] };
   dispatch.mockClear();
   garantiaOpen.mockClear();
+  actividadOpen.mockClear();
   routerPush.mockClear();
 });
 
@@ -254,13 +268,173 @@ describe('PqrDetailPage.vue — actividad desde la bitácora real (EVI-03, cobro
     expect(wrapper.text()).toContain('TICKETS.DETAIL.ACT_EVIDENCIA_ADJUNTADA');
     expect(wrapper.text()).toContain('TICKETS.DETAIL.ACT_BY_AGENT');
   });
+});
 
-  it('no pinta la tarjeta de actividad cuando el expediente no tiene eventos', () => {
-    expedienteRef.value = { ...expedienteBase, garantia: null, eventos: [] };
+describe('PqrDetailPage.vue — actividades de seguimiento (ACT-01)', () => {
+  const evento = (id, tipo, at) => ({
+    id,
+    tipo,
+    origen: 'humano',
+    actor: { id: 3, name: 'Ana Torres' },
+    created_at: at,
+  });
+  const seguimiento = (id, titulo, at, detalle = 'Detalle') => ({
+    id,
+    titulo,
+    detalle,
+    autor_nombre: 'Karen Vanegas',
+    created_at: at,
+  });
+  const boton = (wrapper, testid) => {
+    const el = wrapper.find(`[data-testid="${testid}"]`).element;
+    return wrapper.findAllComponents(Button).find(b => b.element === el);
+  };
+  const titulosVisibles = wrapper =>
+    wrapper.findAll('[data-testid="hito"]').map(li => li.text());
+
+  it('sin eventos ni actividades la seccion se ve igual, con el + y un aviso', async () => {
+    expedienteRef.value = {
+      ...expedienteBase,
+      garantia: null,
+      eventos: [],
+      actividades: [],
+    };
 
     const wrapper = montar();
 
-    expect(wrapper.text()).not.toContain('TICKETS.DETAIL.ACTIVITY');
+    expect(wrapper.find('[data-testid="seccion-actividad"]').exists()).toBe(
+      true
+    );
+    expect(wrapper.text()).toContain('TICKETS.DETAIL.ACTIVITY_EMPTY');
+    await boton(wrapper, 'btn-nueva-actividad').vm.$emit('click');
+    expect(actividadOpen).toHaveBeenCalled();
+  });
+
+  it('mezcla eventos y seguimientos del mas nuevo al mas antiguo, con la etiqueta Seguimiento', () => {
+    expedienteRef.value = {
+      ...expedienteBase,
+      garantia: null,
+      eventos: [
+        evento(1, 'radicada', '2026-11-10T09:00:00Z'),
+        evento(2, 'formato_generado', '2026-11-12T09:00:00Z'),
+      ],
+      actividades: [
+        seguimiento(5, 'Llamada al cliente', '2026-11-13T10:42:00Z'),
+        seguimiento(4, 'WhatsApp de seguimiento', '2026-11-11T08:00:00Z'),
+      ],
+    };
+
+    const filas = titulosVisibles(montar());
+
+    expect(filas).toHaveLength(4);
+    expect(filas[0]).toContain('Llamada al cliente');
+    expect(filas[0]).toContain('TICKETS.DETAIL.ACTIVITY_FOLLOW_UP');
+    expect(filas[0]).toContain('Karen Vanegas');
+    expect(filas[1]).toContain('TICKETS.DETAIL.ACT_FORMATO_GENERADO');
+    expect(filas[1]).not.toContain('TICKETS.DETAIL.ACTIVITY_FOLLOW_UP');
+    expect(filas[2]).toContain('WhatsApp de seguimiento');
+    expect(filas[3]).toContain('TICKETS.DETAIL.ACT_FILED');
+  });
+
+  it('cerrada muestra las 4 mas recientes; el titulo despliega todas y las vuelve a cerrar', async () => {
+    expedienteRef.value = {
+      ...expedienteBase,
+      garantia: null,
+      eventos: [],
+      actividades: [1, 2, 3, 4, 5, 6].map(n =>
+        seguimiento(n, `Gestion ${n}`, `2026-11-0${n}T10:00:00Z`)
+      ),
+    };
+
+    const wrapper = montar();
+    expect(titulosVisibles(wrapper)).toHaveLength(4);
+    expect(titulosVisibles(wrapper)[0]).toContain('Gestion 6');
+    expect(boton(wrapper, 'ver-todas-actividad').props('label')).toBe(
+      'TICKETS.DETAIL.ACTIVITY_SHOW_ALL {"n":6}'
+    );
+
+    await wrapper.find('[data-testid="titulo-actividad"]').trigger('click');
+    expect(titulosVisibles(wrapper)).toHaveLength(6);
+
+    await wrapper.find('[data-testid="titulo-actividad"]').trigger('click');
+    expect(titulosVisibles(wrapper)).toHaveLength(4);
+
+    await boton(wrapper, 'ver-todas-actividad').vm.$emit('click');
+    expect(titulosVisibles(wrapper)).toHaveLength(6);
+  });
+
+  it('con 4 o menos no muestra "Ver las N"', () => {
+    expedienteRef.value = {
+      ...expedienteBase,
+      garantia: null,
+      eventos: [evento(1, 'radicada', '2026-11-10T09:00:00Z')],
+      actividades: [],
+    };
+
+    expect(montar().find('[data-testid="ver-todas-actividad"]').exists()).toBe(
+      false
+    );
+  });
+
+  it('dos actividades con el mismo titulo se ven las dos', () => {
+    expedienteRef.value = {
+      ...expedienteBase,
+      garantia: null,
+      eventos: [
+        evento(1, 'resultado_aplicado', '2026-11-10T09:00:00Z'),
+        evento(2, 'resultado_aplicado', '2026-11-10T10:00:00Z'),
+      ],
+      actividades: [
+        seguimiento(1, 'Llamada', '2026-11-11T09:00:00Z'),
+        seguimiento(2, 'Llamada', '2026-11-11T10:00:00Z'),
+      ],
+    };
+
+    const filas = titulosVisibles(montar());
+
+    expect(filas.filter(f => f.includes('Llamada'))).toHaveLength(2);
+    expect(
+      filas.filter(f => f.includes('TICKETS.DETAIL.ACT_RESULTADO_APLICADO'))
+    ).toHaveLength(2);
+  });
+
+  it('el detalle va cortado a dos lineas y un clic lo muestra completo', async () => {
+    expedienteRef.value = {
+      ...expedienteBase,
+      garantia: null,
+      eventos: [],
+      actividades: [
+        seguimiento(1, 'Llamada', '2026-11-11T09:00:00Z', 'Texto largo'),
+      ],
+    };
+
+    const wrapper = montar();
+    const detalle = () => wrapper.find('[data-testid="hito-detalle"]');
+    expect(detalle().classes()).toContain('line-clamp-2');
+
+    await detalle().trigger('click');
+    expect(detalle().classes()).not.toContain('line-clamp-2');
+  });
+
+  it('el detalle tambien se despliega con el teclado', async () => {
+    expedienteRef.value = {
+      ...expedienteBase,
+      garantia: null,
+      eventos: [],
+      actividades: [seguimiento(1, 'Llamada', '2026-11-11T09:00:00Z')],
+    };
+
+    const wrapper = montar();
+    const fila = wrapper.find('[data-testid="hito"] [role="button"]');
+    expect(fila.attributes('tabindex')).toBe('0');
+    expect(fila.attributes('aria-expanded')).toBe('false');
+
+    await fila.trigger('keydown', { key: 'Enter' });
+
+    expect(fila.attributes('aria-expanded')).toBe('true');
+    expect(
+      wrapper.find('[data-testid="hito-detalle"]').classes()
+    ).not.toContain('line-clamp-2');
   });
 });
 

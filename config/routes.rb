@@ -347,6 +347,8 @@ Rails.application.routes.draw do
               end
               resource :resolucion, only: [:create], controller: 'resoluciones'
               resource :datos, only: [:update], controller: 'datos'
+              # ACT-01: seguimiento que registra una persona (titulo + detalle).
+              resources :actividades, only: [:create], controller: 'actividades'
               resources :documentos, only: [:index, :create], controller: 'documentos'
               # FMT-04: generar formatos desde el expediente. index = formatos con
               # plantilla activa + items con su sugerido y marcadores vacios;
