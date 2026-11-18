@@ -48,6 +48,9 @@ class Helic3::Garantia < ApplicationRecord
   belongs_to :account
   belongs_to :ticket, class_name: 'Helic3::Ticket'
   belongs_to :cobertura_ciudad, class_name: 'Helic3::Catalogo::CoberturaCiudad', optional: true
+  # GAR-08: quien cerro la garantia con su observacion. Nulo si el User se borra
+  # en Chatwoot (FK on_delete: :nullify); el nombre persiste en el evento.
+  belongs_to :observacion_cierre_por, class_name: 'User', optional: true
   has_many :items, class_name: 'Helic3::GarantiaItem',
                    inverse_of: :garantia, dependent: :destroy
 
@@ -83,6 +86,20 @@ class Helic3::Garantia < ApplicationRecord
     return false unless resuelta?
 
     update!(cerrada_at: cerrada_at || Time.current)
+  end
+
+  # GAR-08: ya cerrada administrativamente (todos los items resolvieron y se sello).
+  def cerrada?
+    cerrada_at.present?
+  end
+
+  # GAR-08: anexa (o corrige) la observacion de cierre con su autor y fecha. El
+  # texto obligatorio lo valida el llamador (servicio/controlador), que es quien
+  # responde 422; aqui solo se persiste de forma uniforme.
+  def anexar_observacion_cierre!(texto, usuario)
+    update!(observacion_cierre: texto,
+            observacion_cierre_at: Time.current,
+            observacion_cierre_por: usuario)
   end
 
   # El enganche del reloj (PLZ-01 calcula, aqui solo se guarda la apertura).

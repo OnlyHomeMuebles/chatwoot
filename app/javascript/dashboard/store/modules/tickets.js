@@ -128,13 +128,35 @@ export const actions = {
   },
   // avanzarGarantia (GAR-03): mueve un producto de proceso; el backend cierra el
   // radicado si con eso todos resolvieron. Sin catch, se relanza para revertir.
-  avanzarGarantia: async ({ commit }, { garantiaId, itemId, procesoId }) => {
+  // GAR-08: si el movimiento cierra, observacion es obligatoria (el modal la pide).
+  avanzarGarantia: async (
+    { commit },
+    { garantiaId, itemId, procesoId, observacion = null }
+  ) => {
     commit(types.SET_TICKET_UI_FLAG, { isUpdating: true });
     try {
       const response = await TicketsAPI.avanzarGarantia(
         garantiaId,
         itemId,
-        procesoId
+        procesoId,
+        observacion
+      );
+      commit(types.EDIT_TICKET, response.data);
+    } finally {
+      commit(types.SET_TICKET_UI_FLAG, { isUpdating: false });
+    }
+  },
+  // GAR-08: anexa/corrige la observacion de una garantia ya cerrada. Sin catch,
+  // se relanza para que el modal muestre el error (p.ej. 422 texto vacio).
+  agregarObservacionCierreGarantia: async (
+    { commit },
+    { garantiaId, observacion }
+  ) => {
+    commit(types.SET_TICKET_UI_FLAG, { isUpdating: true });
+    try {
+      const response = await TicketsAPI.agregarObservacionCierre(
+        garantiaId,
+        observacion
       );
       commit(types.EDIT_TICKET, response.data);
     } finally {

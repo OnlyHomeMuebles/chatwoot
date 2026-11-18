@@ -51,7 +51,7 @@ RSpec.describe 'Tickets API', type: :request do
       it 'creates a ticket with a sequential ticket number and sets the creator' do
         post "/api/v1/accounts/#{account.id}/helic3/tickets",
              params: { ticket: { title: 'Printer on fire', description: 'Third floor',
-                                datos: { cliente_nombre: 'Cliente', cliente_telefono: '3001234567' } } },
+                                 datos: { cliente_nombre: 'Cliente', cliente_telefono: '3001234567' } } },
              headers: agent.create_new_auth_token,
              as: :json
 
@@ -63,7 +63,7 @@ RSpec.describe 'Tickets API', type: :request do
       it 'rejects a ticket without title' do
         post "/api/v1/accounts/#{account.id}/helic3/tickets",
              params: { ticket: { description: 'no title',
-                                datos: { cliente_nombre: 'Cliente', cliente_telefono: '3001234567' } } },
+                                 datos: { cliente_nombre: 'Cliente', cliente_telefono: '3001234567' } } },
              headers: agent.create_new_auth_token,
              as: :json
 
@@ -322,6 +322,18 @@ RSpec.describe 'Tickets API', type: :request do
       expect(response).to have_http_status(:success)
       expect(ticket.reload.categoria.codigo).to eq('garantia')
       expect(ticket.motivo_pqr.codigo).to eq('garantia_producto')
+    end
+
+    it 'DET-02: update permite corregir la observacion (description)' do
+      ticket = Helic3::Casos::Radicar.new(account: account, titulo: 'Caso', motivo_pqr: motivo,
+                                          descripcion: 'obs original', creator: agent, origen: :humano).call
+
+      patch "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+            params: { ticket: { description: 'llego el sofa rayado' } },
+            headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(ticket.reload.description).to eq('llego el sofa rayado')
     end
 
     it 'create aplica status y assignee despues de radicar, sin ignorarlos' do
