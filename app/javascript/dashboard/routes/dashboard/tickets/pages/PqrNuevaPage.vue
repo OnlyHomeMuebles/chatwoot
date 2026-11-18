@@ -56,6 +56,7 @@ const form = reactive({
   producto_referencia: '',
   ciudad: '',
   direccion: '',
+  centro_operacion_nombre: '',
 });
 
 // Cambio A: el wizard puede abrirse desde una conversacion (boton del chat); el
@@ -307,6 +308,7 @@ const crear = async () => {
           cliente_email: form.cliente_email,
           ciudad: form.ciudad,
           direccion: form.direccion,
+          centro_operacion_nombre: form.centro_operacion_nombre,
           producto_nombre: form.producto_nombre,
           producto_referencia: form.producto_referencia,
           factura_fecha: form.factura_fecha || null,
@@ -661,6 +663,29 @@ defineExpose({
                   <ErpBadge v-if="erp.tieneBadge('cliente_email')" />
                   <ErpSinDato v-if="erp.sinDato('cliente_email')" />
                 </div>
+                <!-- ERP-18a: Ciudad y Dirección viven en Datos del cliente. -->
+                <div class="grid gap-5 sm:grid-cols-2">
+                  <div class="flex flex-col gap-1">
+                    <Input
+                      v-model="form.ciudad"
+                      :label="t('TICKETS.NUEVA.DIRECCION.CIUDAD')"
+                      :placeholder="t('TICKETS.NUEVA.DIRECCION.CIUDAD_PH')"
+                      @update:model-value="erp.alEditar('ciudad')"
+                    />
+                    <ErpBadge v-if="erp.tieneBadge('ciudad')" />
+                    <ErpSinDato v-if="erp.sinDato('ciudad')" />
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <Input
+                      v-model="form.direccion"
+                      :label="t('TICKETS.NUEVA.DIRECCION.DIRECCION')"
+                      :placeholder="t('TICKETS.NUEVA.DIRECCION.DIRECCION_PH')"
+                      @update:model-value="erp.alEditar('direccion')"
+                    />
+                    <ErpBadge v-if="erp.tieneBadge('direccion')" />
+                    <ErpSinDato v-if="erp.sinDato('direccion')" />
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -783,38 +808,12 @@ defineExpose({
                     :placeholder="t('TICKETS.NUEVA.COMPRA.REFERENCIA_PH')"
                   />
                 </div>
-              </div>
-            </section>
-
-            <section
-              class="overflow-hidden border rounded-lg border-n-weak bg-n-solid-1"
-            >
-              <div class="px-5 py-4 border-b border-n-weak">
-                <h2 class="mb-0 text-sm font-semibold text-n-slate-12">
-                  {{ t('TICKETS.NUEVA.DIRECCION.TITLE') }}
-                </h2>
-              </div>
-              <div class="flex flex-col gap-5 px-5 py-5">
-                <div class="flex flex-col gap-1">
-                  <Input
-                    v-model="form.ciudad"
-                    :label="t('TICKETS.NUEVA.DIRECCION.CIUDAD')"
-                    :placeholder="t('TICKETS.NUEVA.DIRECCION.CIUDAD_PH')"
-                    @update:model-value="erp.alEditar('ciudad')"
-                  />
-                  <ErpBadge v-if="erp.tieneBadge('ciudad')" />
-                  <ErpSinDato v-if="erp.sinDato('ciudad')" />
-                </div>
-                <div class="flex flex-col gap-1">
-                  <Input
-                    v-model="form.direccion"
-                    :label="t('TICKETS.NUEVA.DIRECCION.DIRECCION')"
-                    :placeholder="t('TICKETS.NUEVA.DIRECCION.DIRECCION_PH')"
-                    @update:model-value="erp.alEditar('direccion')"
-                  />
-                  <ErpBadge v-if="erp.tieneBadge('direccion')" />
-                  <ErpSinDato v-if="erp.sinDato('direccion')" />
-                </div>
+                <!-- ERP-18a: centro de operación a mano (18b lo traerá de Siesa). -->
+                <Input
+                  v-model="form.centro_operacion_nombre"
+                  :label="t('TICKETS.NUEVA.COMPRA.CENTRO')"
+                  :placeholder="t('TICKETS.NUEVA.COMPRA.CENTRO_PH')"
+                />
               </div>
             </section>
           </div>
@@ -939,6 +938,14 @@ defineExpose({
                 </dt>
                 <dd class="mb-0 text-end text-n-slate-12">
                   {{ form.producto_nombre || '—' }}
+                </dd>
+              </div>
+              <div class="flex justify-between gap-4">
+                <dt class="text-n-slate-11">
+                  {{ t('TICKETS.NUEVA.COMPRA.CENTRO') }}
+                </dt>
+                <dd class="mb-0 text-end text-n-slate-12">
+                  {{ form.centro_operacion_nombre || '—' }}
                 </dd>
               </div>
               <div class="flex justify-between gap-4">

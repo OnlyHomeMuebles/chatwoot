@@ -123,6 +123,8 @@
         "PRODUCTO_PH": "Product name",
         "REFERENCIA": "Reference",
         "REFERENCIA_PH": "Product reference or code",
+        "CENTRO": "Operation center",
+        "CENTRO_PH": "Branch or operation center of the purchase",
         "SELECTOR_TITLE": "Invoices in ERP",
         "SELECTOR_HINT": "Choose the invoice and one or more products being claimed. If they are not listed, type them below.",
         "SELECTOR_ELEGIR": "Choose",
