@@ -133,9 +133,9 @@
       },
       "DIRECCION": {
         "TITLE": "Dirección actual",
-        "CIUDAD": "Ciudad actual",
+        "CIUDAD": "Ciudad",
         "CIUDAD_PH": "Ciudad donde está el producto",
-        "DIRECCION": "Dirección actual",
+        "DIRECCION": "Dirección",
         "DIRECCION_PH": "Dirección, barrio y complemento"
       },
       "RESUMEN": {

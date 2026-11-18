@@ -663,28 +663,27 @@ defineExpose({
                   <ErpBadge v-if="erp.tieneBadge('cliente_email')" />
                   <ErpSinDato v-if="erp.sinDato('cliente_email')" />
                 </div>
-                <!-- ERP-18a: Ciudad y Dirección viven en Datos del cliente. -->
-                <div class="grid gap-5 sm:grid-cols-2">
-                  <div class="flex flex-col gap-1">
-                    <Input
-                      v-model="form.ciudad"
-                      :label="t('TICKETS.NUEVA.DIRECCION.CIUDAD')"
-                      :placeholder="t('TICKETS.NUEVA.DIRECCION.CIUDAD_PH')"
-                      @update:model-value="erp.alEditar('ciudad')"
-                    />
-                    <ErpBadge v-if="erp.tieneBadge('ciudad')" />
-                    <ErpSinDato v-if="erp.sinDato('ciudad')" />
-                  </div>
-                  <div class="flex flex-col gap-1">
-                    <Input
-                      v-model="form.direccion"
-                      :label="t('TICKETS.NUEVA.DIRECCION.DIRECCION')"
-                      :placeholder="t('TICKETS.NUEVA.DIRECCION.DIRECCION_PH')"
-                      @update:model-value="erp.alEditar('direccion')"
-                    />
-                    <ErpBadge v-if="erp.tieneBadge('direccion')" />
-                    <ErpSinDato v-if="erp.sinDato('direccion')" />
-                  </div>
+                <!-- ERP-18a: Dirección y Ciudad viven en Datos del cliente, de ancho
+                     completo (como Correo) y en ese orden, según el mockup. -->
+                <div class="flex flex-col gap-1">
+                  <Input
+                    v-model="form.direccion"
+                    :label="t('TICKETS.NUEVA.DIRECCION.DIRECCION')"
+                    :placeholder="t('TICKETS.NUEVA.DIRECCION.DIRECCION_PH')"
+                    @update:model-value="erp.alEditar('direccion')"
+                  />
+                  <ErpBadge v-if="erp.tieneBadge('direccion')" />
+                  <ErpSinDato v-if="erp.sinDato('direccion')" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <Input
+                    v-model="form.ciudad"
+                    :label="t('TICKETS.NUEVA.DIRECCION.CIUDAD')"
+                    :placeholder="t('TICKETS.NUEVA.DIRECCION.CIUDAD_PH')"
+                    @update:model-value="erp.alEditar('ciudad')"
+                  />
+                  <ErpBadge v-if="erp.tieneBadge('ciudad')" />
+                  <ErpSinDato v-if="erp.sinDato('ciudad')" />
                 </div>
               </div>
             </section>
@@ -796,6 +795,13 @@ defineExpose({
                     :label="t('TICKETS.NUEVA.COMPRA.FECHA')"
                   />
                 </div>
+                <!-- ERP-18a: centro de operación a mano, entre Factura/Fecha y
+                     Producto/Referencia según el mockup (18b lo traerá de Siesa). -->
+                <Input
+                  v-model="form.centro_operacion_nombre"
+                  :label="t('TICKETS.NUEVA.COMPRA.CENTRO')"
+                  :placeholder="t('TICKETS.NUEVA.COMPRA.CENTRO_PH')"
+                />
                 <div class="grid gap-5 sm:grid-cols-2">
                   <Input
                     v-model="form.producto_nombre"
@@ -808,12 +814,6 @@ defineExpose({
                     :placeholder="t('TICKETS.NUEVA.COMPRA.REFERENCIA_PH')"
                   />
                 </div>
-                <!-- ERP-18a: centro de operación a mano (18b lo traerá de Siesa). -->
-                <Input
-                  v-model="form.centro_operacion_nombre"
-                  :label="t('TICKETS.NUEVA.COMPRA.CENTRO')"
-                  :placeholder="t('TICKETS.NUEVA.COMPRA.CENTRO_PH')"
-                />
               </div>
             </section>
           </div>

@@ -133,9 +133,9 @@
       },
       "DIRECCION": {
         "TITLE": "Current address",
-        "CIUDAD": "Current city",
+        "CIUDAD": "City",
         "CIUDAD_PH": "City where the product is",
-        "DIRECCION": "Current address",
+        "DIRECCION": "Address",
         "DIRECCION_PH": "Address, neighborhood and details"
       },
       "RESUMEN": {
