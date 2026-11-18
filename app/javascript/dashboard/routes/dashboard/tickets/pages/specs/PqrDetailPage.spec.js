@@ -758,3 +758,50 @@ describe('PqrDetailPage.vue — ficha editable (MAN-03)', () => {
     });
   });
 });
+
+describe('PqrDetailPage.vue — observación del caso (DET-02)', () => {
+  const abrirEdicion = async wrapper => {
+    const btn = wrapper
+      .findAllComponents(Button)
+      .find(b => b.props('label') === 'TICKETS.DATA.EDIT');
+    await btn.vm.$emit('click');
+    await wrapper.vm.$nextTick();
+  };
+
+  it('muestra la observación (description) y ya no la fila "Detalle"', () => {
+    expedienteRef.value = {
+      ...expedienteBase,
+      garantia: null,
+      description: 'Llegó rayado\nen el cabecero',
+      datos: {},
+    };
+
+    const texto = montar().text();
+    expect(texto).toContain('TICKETS.DATA.FIELDS.OBSERVACION');
+    expect(texto).toContain('Llegó rayado');
+    expect(texto).not.toContain('TICKETS.DATA.FIELDS.DETALLE'); // la fila Detalle desapareció
+  });
+
+  it('sin observación muestra "Sin observación"', () => {
+    expedienteRef.value = { ...expedienteBase, garantia: null, description: '', datos: {} };
+
+    expect(montar().text()).toContain('TICKETS.DATA.SIN_OBSERVACION');
+  });
+
+  it('editar la observación la guarda por tickets/update (solo si cambió)', async () => {
+    expedienteRef.value = { ...expedienteBase, garantia: null, description: 'vieja', datos: {} };
+
+    const wrapper = montar();
+    await abrirEdicion(wrapper);
+    await wrapper
+      .find('[data-testid="textarea-observacion"]')
+      .setValue('nueva observación');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(dispatch).toHaveBeenCalledWith('tickets/update', {
+      id: 7,
+      description: 'nueva observación',
+    });
+  });
+});

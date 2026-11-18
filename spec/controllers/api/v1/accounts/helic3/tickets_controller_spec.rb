@@ -309,6 +309,18 @@ RSpec.describe 'Tickets API', type: :request do
       expect(ticket.motivo_pqr.codigo).to eq('garantia_producto')
     end
 
+    it 'DET-02: update permite corregir la observacion (description)' do
+      ticket = Helic3::Casos::Radicar.new(account: account, titulo: 'Caso', motivo_pqr: motivo,
+                                          descripcion: 'obs original', creator: agent, origen: :humano).call
+
+      patch "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+            params: { ticket: { description: 'llego el sofa rayado' } },
+            headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(ticket.reload.description).to eq('llego el sofa rayado')
+    end
+
     it 'create aplica status y assignee despues de radicar, sin ignorarlos' do
       post "/api/v1/accounts/#{account.id}/helic3/tickets",
            params: { ticket: { title: 'Caso', motivo_pqr_id: motivo.id, status: 'pending', assignee_id: agent.id,
