@@ -26,11 +26,10 @@ module Helic3::Erp::SiesaCentros
   end
 
   # ERP-18b: pega a cada factura el nombre de su centro de operacion, buscandolo por
-  # compania + id en la respuesta de centros (que se parsea una sola vez). Si el id no
-  # esta en la lista (viejo o fuera de las 12 companias), deja el nombre en nil y la
-  # factura sigue con su id, sin error (CA2). Puro: no hace red.
-  def con_nombre(facturas, respuesta)
-    centros = parsear(respuesta)
+  # compania + id en la lista YA PARSEADA de centros (la que entrega CentrosCache, parseada
+  # una sola vez). Si el id no esta en la lista (viejo o fuera de las 12 companias), deja el
+  # nombre en nil y la factura sigue con su id, sin error (CA2). Puro: no hace red.
+  def con_nombre(facturas, centros)
     facturas.map do |factura|
       resuelto = nombre(centros, compania: factura.centro_operacion_compania,
                                  id: factura.centro_operacion)

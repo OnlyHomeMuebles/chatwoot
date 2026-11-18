@@ -55,6 +55,9 @@ module Helic3::Erp::Cache
     adaptador = Helic3::Erp.adapter # una sola instancia para las dos consultas (clientes + compras)
     cliente = adaptador.find_customer(cedula: cedula)
     compras = adaptador.invoices(cedula: cedula, desde: ventana(account))
+    # ERP-18b: pegarle el nombre del centro de operacion a cada factura, con la lista global
+    # (cacheada aparte). Se resuelve aqui una vez y se guarda ya con nombre en el cache por cedula.
+    compras = Helic3::Erp::SiesaCentros.con_nombre(compras, Helic3::Erp::CentrosCache.lista(adaptador))
     guardar(account, cedula, cliente, compras)
     Resultado.new(cliente: cliente, compras: compras)
   end
@@ -103,6 +106,6 @@ module Helic3::Erp::Cache
   def rehidratar_factura(hash)
     datos = hash.symbolize_keys
     items = Array(datos[:items]).map { |item| Helic3::Erp::InvoiceItem.new(**item.symbolize_keys) }
-    Helic3::Erp::Invoice.new(**datos.merge(items: items))
+    Helic3::Erp::Invoice.new(**datos, items: items)
   end
 end

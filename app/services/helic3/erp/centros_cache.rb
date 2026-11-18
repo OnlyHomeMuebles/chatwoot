@@ -12,20 +12,22 @@ module Helic3::Erp::CentrosCache
 
   module_function
 
+  # @param adaptador el adaptador del ERP; se pasa cuando el llamador ya lo resolvio (el cache por
+  #   cedula), para no resolverlo dos veces. Se resuelve solo en miss, nunca en cache hit.
   # @return [Array<Hash>] centros parseados ({compania:, id:, nombre:, regional:, activo:}); [] si no hay.
-  def lista
+  def lista(adaptador = nil)
     cacheada = Rails.cache.read(CLAVE)
     return cacheada if cacheada
 
-    centros = traer
+    centros = traer(adaptador || Helic3::Erp.adapter)
     Rails.cache.write(CLAVE, centros, expires_in: VIGENCIA) if centros.any?
     centros
   end
 
   # trae y parsea la lista desde el adaptador; [] si el adaptador no ofrece centros (consulta
   # sin configurar o modo simulado).
-  def traer
-    respuesta = Helic3::Erp.adapter.centros
+  def traer(adaptador)
+    respuesta = adaptador.centros
     respuesta ? Helic3::Erp::SiesaCentros.parsear(respuesta) : []
   end
 end

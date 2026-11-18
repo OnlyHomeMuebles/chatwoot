@@ -59,6 +59,8 @@ class Api::V1::Accounts::Helic3::ErpClientesController < Api::V1::Accounts::Base
     {
       numero: factura.numero, fecha: factura.fecha, total: factura.total,
       saldo: factura.saldo, estado: factura.estado, centro_operacion: factura.centro_operacion,
+      # ERP-18b: el nombre resuelto del centro (nil si no se pudo); el wizard muestra "id - nombre".
+      centro_operacion_nombre: factura.centro_operacion_nombre,
       items: factura.items.map { |item| item_json(item) }
     }
   end

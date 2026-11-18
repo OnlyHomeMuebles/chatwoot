@@ -60,6 +60,19 @@ RSpec.describe Helic3::Erp::Cache do
     expect(Helic3::ErpConsulta.where(account: account, cedula: '99999999')).to exist
   end
 
+  it 'ERP-18b: les pega el nombre del centro de operacion a las compras (desde la lista global)' do
+    factura = Helic3::Erp::Invoice.new(numero: 'FV-1', fecha: '2023-04-03', total: 100, saldo: 0,
+                                       estado: nil, centro_operacion: '001', centro_operacion_compania: 1)
+    centros = JSON.parse(File.read(Rails.root.join('spec/fixtures/helic3/centros_operacion_siesa.json')))
+    adaptador = instance_double(Helic3::Erp::SimulatedAdapter, find_customer: nil,
+                                                               invoices: [factura], centros: centros)
+    allow(Helic3::Erp).to receive(:adapter).and_return(adaptador)
+
+    resultado = described_class.consultar(account: account, cedula: '1032456789')
+
+    expect(resultado.compras.first.centro_operacion_nombre).to eq('OM CALI SUR')
+  end
+
   it 'una fila vigente con forma vieja (campo desconocido) no da 503: reconsulta al adaptador' do
     described_class.consultar(account: account, cedula: '1032456789') # llena el cache
     # Simula una fila guardada por una version anterior con un campo que el contrato ya no tiene:
@@ -85,7 +98,7 @@ RSpec.describe Helic3::Erp::Cache do
     Helic3::Catalogo::Parametro.create!(account: account, clave: 'erp_meses_compras',
                                         valor: '6', unidad: 'meses')
     esperado = (Date.current << 6).iso8601
-    adaptador = instance_double(Helic3::Erp::SimulatedAdapter, find_customer: nil)
+    adaptador = instance_double(Helic3::Erp::SimulatedAdapter, find_customer: nil, centros: nil)
     allow(Helic3::Erp).to receive(:adapter).and_return(adaptador)
     expect(adaptador).to receive(:invoices).with(cedula: '1032456789', desde: esperado).and_return([])
 
@@ -114,12 +127,16 @@ RSpec.describe Helic3::Erp::Cache do
       # tenga que esperar en el lock mientras la 1ra todavia esta llamando al ERP.
       adaptador = Class.new do
         def initialize(alllamar) = (@alllamar = alllamar)
+
         def find_customer(cedula:)
           @alllamar.call
           sleep 0.3
           Helic3::Erp::Customer.new(cedula: cedula, nombre: 'Ana')
         end
+
         def invoices(cedula:, desde: nil) = []
+
+        def centros = nil
       end.new(-> { mutex.synchronize { contador += 1 } })
       allow(Helic3::Erp).to receive(:adapter).and_return(adaptador)
 

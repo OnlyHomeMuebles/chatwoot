@@ -48,6 +48,12 @@ RSpec.describe 'ERP clientes API', type: :request do
                                                 'cantidad' => 2, 'valor' => 900_000)
     end
 
+    it 'ERP-18b: cada factura incluye centro_operacion_nombre (nil en simulado, sin lista de Siesa)' do
+      consultar('1.032.456.789')
+
+      expect(response.parsed_body['facturas'].first).to have_key('centro_operacion_nombre')
+    end
+
     it 'CA1: encontrado false y facturas vacias para una cedula desconocida' do
       consultar('99999999')
 
