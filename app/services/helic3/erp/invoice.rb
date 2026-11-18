@@ -7,9 +7,10 @@
 # factura: el mismo id de C.O. es una tienda distinta según la compañía, así que el nombre del
 # C.O. se resuelve por compañía + id. `items` es el detalle de líneas (InvoiceItem), opcional.
 Helic3::Erp::Invoice = Data.define(:numero, :fecha, :total, :saldo, :estado,
-                                   :centro_operacion, :centro_operacion_compania, :items) do
-  def initialize(numero:, fecha:, total:, saldo:, estado:,
-                 centro_operacion: nil, centro_operacion_compania: nil, items: [])
+                                   :centro_operacion, :centro_operacion_compania,
+                                   :centro_operacion_nombre, :items) do
+  def initialize(numero:, fecha:, total:, saldo:, estado:, centro_operacion: nil,
+                 centro_operacion_compania: nil, centro_operacion_nombre: nil, items: [])
     super
   end
 end

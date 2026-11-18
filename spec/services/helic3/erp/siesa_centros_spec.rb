@@ -36,4 +36,39 @@ RSpec.describe Helic3::Erp::SiesaCentros do
   it 'devuelve [] cuando la respuesta no trae tabla (sin registros, detalle como texto)' do
     expect(described_class.parsear({ 'codigo' => 1, 'detalle' => 'Sin registros' })).to eq([])
   end
+
+  describe '.con_nombre (pega el nombre del C.O. a cada factura)' do
+    def factura(compania:, centro:)
+      Helic3::Erp::Invoice.new(numero: 'FV-1', fecha: '2023-04-03', total: 100, saldo: 0,
+                               estado: nil, centro_operacion: centro, centro_operacion_compania: compania)
+    end
+
+    it 'resuelve por compañía + id: el mismo id da nombre distinto según la compañía (CA8)' do
+      facturas = [factura(compania: 1, centro: '001'), factura(compania: 2, centro: '001')]
+
+      resueltas = described_class.con_nombre(facturas, respuesta)
+
+      expect(resueltas.map(&:centro_operacion_nombre)).to eq(['OM CALI SUR', 'INDIGO MALL'])
+    end
+
+    it 'resuelve también los centros inactivos (CA10)' do
+      resueltas = described_class.con_nombre([factura(compania: 1, centro: '012')], respuesta)
+
+      expect(resueltas.first.centro_operacion_nombre).to eq('OM NEIVA')
+    end
+
+    it 'si el id no está en la lista, deja el nombre en nil y conserva el id (CA2)' do
+      resueltas = described_class.con_nombre([factura(compania: 9, centro: '999')], respuesta)
+
+      expect(resueltas.first.centro_operacion_nombre).to be_nil
+      expect(resueltas.first.centro_operacion).to eq('999')
+    end
+
+    it 'sin tabla de centros, deja las facturas con nombre nil (no revienta)' do
+      resueltas = described_class.con_nombre([factura(compania: 1, centro: '001')],
+                                             { 'codigo' => 1, 'detalle' => 'Sin registros' })
+
+      expect(resueltas.first.centro_operacion_nombre).to be_nil
+    end
+  end
 end
