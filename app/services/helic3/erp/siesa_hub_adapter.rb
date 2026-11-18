@@ -11,10 +11,22 @@
 # ERP-16: no lee configuracion por su cuenta. Helic3::Erp.adaptador_siesa le entrega el
 # cliente HTTP y los nombres de consulta, leidos de Super Admin.
 class Helic3::Erp::SiesaHubAdapter < Helic3::Erp::Base
-  def initialize(cliente:, consultas_compras:, consulta_clientes:)
+  def initialize(cliente:, consultas_compras:, consulta_clientes:, consulta_centros: nil)
+    super()
     @cliente = cliente
     @consultas_compras = consultas_compras
     @consulta_clientes = consulta_clientes
+    @consulta_centros = consulta_centros
+  end
+
+  # ERP-18b: trae la lista COMPLETA de centros de operacion (sin filtro por cedula: es una lista
+  # global, la misma para todos). tam_pag alto para que quepan los ~640 registros de las 12
+  # companias en una pagina. nil si la consulta no esta configurada (campo opcional en Super
+  # Admin) -> el nombre del C.O. no se resuelve y la factura se queda con su id.
+  def centros
+    return nil if @consulta_centros.blank?
+
+    @cliente.consultar(descripcion: @consulta_centros, parametros: '', tam_pag: 1000)
   end
 
   # Facturas por cedula desde la fecha `desde` (ISO). Concatena las fuentes; si una responde

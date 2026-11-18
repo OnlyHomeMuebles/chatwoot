@@ -5,12 +5,12 @@ require 'rails_helper'
 # ERP-05: el adaptador real. Se le inyecta un cliente HTTP falso, asi se prueba el armado del
 # filtro, el parseo y las DOS consultas (clientes + compras) SIN pegarle a Siesa.
 RSpec.describe Helic3::Erp::SiesaHubAdapter do
-  let(:cliente) { instance_double(Helic3::Erp::SiesaHubCliente) }
-
   subject(:adapter) do
     described_class.new(cliente: cliente, consultas_compras: ['API_v2_Ventas_Facturas_DesdePedido'],
                         consulta_clientes: 'enterprise_mm_terceros_clie_v1')
   end
+
+  let(:cliente) { instance_double(Helic3::Erp::SiesaHubCliente) }
 
   def compras(consec)
     { 'codigo' => 0, 'detalle' => { 'Table' => [
@@ -26,6 +26,24 @@ RSpec.describe Helic3::Erp::SiesaHubAdapter do
         'razonSocial' => "#{ape1} #{ape2} #{nombres}", 'telefono' => tel, 'email' => email,
         'direccion1' => dir, 'idCiudad' => '001', 'idDepto' => '63' }
     ] } }
+  end
+
+  describe '#centros (ERP-18b)' do
+    it 'sin consulta configurada, devuelve nil y no llama a Siesa' do
+      expect(cliente).not_to receive(:consultar)
+
+      expect(adapter.centros).to be_nil
+    end
+
+    it 'con consulta configurada, pide la lista completa (sin filtro, tam_pag alto)' do
+      con_centros = described_class.new(cliente: cliente, consultas_compras: ['A'], consulta_clientes: 'C',
+                                        consulta_centros: 'API_v4_CentrosOperacion')
+      expect(cliente).to receive(:consultar)
+        .with(descripcion: 'API_v4_CentrosOperacion', parametros: '', tam_pag: 1000)
+        .and_return({ 'codigo' => 0 })
+
+      expect(con_centros.centros).to eq({ 'codigo' => 0 })
+    end
   end
 
   describe '#invoices' do
