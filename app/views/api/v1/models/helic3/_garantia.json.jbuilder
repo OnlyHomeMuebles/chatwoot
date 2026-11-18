@@ -8,6 +8,13 @@ json.abierta_at resource.abierta_at
 json.cerrada_at resource.cerrada_at
 json.presupuesto_dias_habiles resource.presupuesto_dias_habiles
 
+# GAR-08: la observacion con que se cerro la garantia, su autor y su fecha. El
+# panel muestra el bloque de la tarjeta si observacion_cierre viene; si no, ofrece
+# agregarla (garantias cerradas antes del despliegue).
+json.observacion_cierre resource.observacion_cierre
+json.observacion_cierre_at resource.observacion_cierre_at
+json.observacion_cierre_por resource.observacion_cierre_por&.name
+
 visible = resource.proceso_visible
 if visible
   json.proceso_visible do

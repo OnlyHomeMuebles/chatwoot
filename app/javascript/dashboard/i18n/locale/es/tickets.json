@@ -357,6 +357,17 @@
       "SAVED": "Actividad agregada",
       "ERROR": "No se pudo agregar la actividad"
     },
+    "GARANTIA_CIERRE": {
+      "TITLE": "Finalizar garantía",
+      "TITLE_ADD": "Agregar observación de finalización",
+      "TITLE_EDIT": "Editar observación de finalización",
+      "HINT": "Este cambio cierra la garantía. Deja la observación de cómo terminó el caso.",
+      "LABEL": "Observación de finalización *",
+      "PLACEHOLDER": "Ej. Se reparó el espaldar en fábrica y se entregó al cliente el 16-nov; el cliente firmó conformidad.",
+      "CONFIRM": "Finalizar garantía",
+      "SAVED": "Observación guardada",
+      "ERROR": "No se pudo guardar la observación"
+    },
     "DETAIL": {
       "TITLE": "Detalle del expediente",
       "NOT_FOUND": "No se encontró el expediente",
@@ -407,6 +418,7 @@
       "ACT_BY_TEAM": "Equipo Only Home",
       "ACT_FORMATO_GENERADO": "Formato generado",
       "ACT_ETAPA_CAMBIADA": "Etapa cambiada",
+      "ACT_GARANTIA_FINALIZADA": "Garantía finalizada",
       "ACTIVITY_COUNT": "· {n}",
       "ACTIVITY_EMPTY": "Aún no hay actividad. Usa + para registrar un seguimiento.",
       "ACTIVITY_FOLLOW_UP": "Seguimiento",
@@ -486,6 +498,12 @@
       "ERROR": "Hubo un error al avanzar el proceso",
       "PROCESS_PLACEHOLDER": "Cambiar proceso",
       "PROCESS_LABEL": "Proceso de garantía",
+      "OBS_BLOCK_TITLE": "Observación de finalización",
+      "OBS_EDIT": "Editar",
+      "OBS_META": "{autor} · {fecha}",
+      "OBS_NONE_TITLE": "Sin observación de finalización",
+      "OBS_NONE_HINT": "Esta garantía se cerró antes de que la observación fuera obligatoria.",
+      "OBS_ADD": "Agregar observación",
       "FORM": {
         "TITLE": "Abrir garantía",
         "CONFIRM": "Abrir garantía",

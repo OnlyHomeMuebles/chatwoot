@@ -9,9 +9,15 @@ class Api::V1::Accounts::Helic3::GarantiaItemsController < Api::V1::Accounts::Ba
   # con su garantia refrescada, para que el panel actualice proceso y barra.
   def update
     Helic3::Casos::AvanzarGarantia.new(item: @item, proceso: proceso_de_cuenta,
-                                       decision: params[:decision]).call
+                                       decision: params[:decision],
+                                       observacion: params[:observacion],
+                                       usuario: Current.user).call
     @ticket = @item.garantia.ticket
     render 'api/v1/accounts/helic3/tickets/show', formats: [:json]
+  rescue Helic3::Casos::AvanzarGarantia::ObservacionRequerida => e
+    # GAR-08: el movimiento cerraba el radicado sin observacion. La transaccion
+    # ya revirtio el avance (el producto sigue en su proceso): solo falta avisar.
+    render json: { error: e.message }, status: :unprocessable_entity
   end
 
   private

@@ -16,6 +16,7 @@ import GenerarFormatoModal from '../components/helic3/formatos/GenerarFormatoMod
 import NuevaActividadModal from '../components/helic3/NuevaActividadModal.vue';
 // MAN-03: mismo dialogo de garantia del panel del chat, reusado en el detalle.
 import GarantiaFormDialog from 'dashboard/components/widgets/conversation/GarantiaFormDialog.vue';
+import FinalizarGarantiaModal from 'dashboard/components/widgets/conversation/helic3/FinalizarGarantiaModal.vue';
 
 // Detalle del expediente (DET-01 + VIS-03). Consume el show (GET helic3/tickets/:id)
 // que trae los dos relojes separados (PQR legal y garantia), la clasificacion, los
@@ -208,10 +209,58 @@ const itemEstado = item =>
         cls: 'bg-n-blue-3 text-n-blue-11',
       };
 
+// GAR-08: modal de la observacion de cierre (finalizar / agregar / editar).
+const finalizarModalRef = ref(null);
+
+// El movimiento CIERRA el radicado si el proceso elegido es terminal y este es el
+// ultimo producto pendiente (los demas ya resolvieron). Es el gate del modal; el
+// backend es la red de seguridad (422). Espeja Garantia#resuelta? del backend.
+const movimientoCierra = (item, procesoId) => {
+  const proceso = (garantia.value?.procesos || []).find(
+    p => p.id === procesoId
+  );
+  if (!proceso?.es_terminal) return false;
+  const otrosPendientes = (garantia.value?.items || []).filter(
+    i => i.id !== item.id && !i.resuelto_at
+  );
+  return otrosPendientes.length === 0;
+};
+
+// El error (p.ej. 422) se deja subir para que el modal lo muestre y no se cierre.
+const avanzarConObservacion = async (item, procesoId, observacion) => {
+  await store.dispatch('tickets/avanzarGarantia', {
+    garantiaId: garantia.value.id,
+    itemId: item.id,
+    procesoId,
+    observacion,
+  });
+  await store.dispatch('pqrInbox/fetchOne', props.id);
+  useAlert(t('TICKETS.WARRANTY.ADVANCED'));
+};
+
 // Avanzar un producto de proceso: misma llamada del panel (GAR-03). Al terminar,
 // se refresca el expediente con datos del servidor (no se recalcula en cliente).
 const avanzarItem = async (item, procesoId) => {
   if (!procesoId || procesoId === item.proceso?.id) return;
+  // GAR-08: si cierra, pedir primero la observacion obligatoria en el modal.
+  if (movimientoCierra(item, procesoId)) {
+    // Se difiere a la siguiente macrotarea: abrir el modal directamente desde el
+    // evento 'change' del <select> nativo hace que el clic que lo dispara llegue
+    // al detector de clic-afuera del Dialog y lo cierre en el acto. Al diferir,
+    // ese clic se evalua con el modal aun cerrado (no-op) y luego abre limpio.
+    setTimeout(() => {
+      finalizarModalRef.value?.open({
+        title: t('TICKETS.GARANTIA_CIERRE.TITLE'),
+        onConfirm: observacion =>
+          avanzarConObservacion(item, procesoId, observacion),
+        // cancelar deja el producto donde estaba: revertir el selector a su valor real
+        onCancel: () => {
+          refreshKey.value += 1;
+        },
+      });
+    }, 0);
+    return;
+  }
   try {
     await store.dispatch('tickets/avanzarGarantia', {
       garantiaId: garantia.value.id,
@@ -229,6 +278,30 @@ const avanzarItem = async (item, procesoId) => {
     );
   }
 };
+
+// Anexar/corregir la observacion de una garantia YA cerrada (figura 2 y 3). El
+// error se deja subir al modal.
+const anexarObservacionCierre = async observacion => {
+  await store.dispatch('tickets/agregarObservacionCierreGarantia', {
+    garantiaId: garantia.value.id,
+    observacion,
+  });
+  await store.dispatch('pqrInbox/fetchOne', props.id);
+  useAlert(t('TICKETS.GARANTIA_CIERRE.SAVED'));
+};
+
+const abrirAgregarObservacion = () =>
+  finalizarModalRef.value?.open({
+    title: t('TICKETS.GARANTIA_CIERRE.TITLE_ADD'),
+    onConfirm: anexarObservacionCierre,
+  });
+
+const abrirEditarObservacion = () =>
+  finalizarModalRef.value?.open({
+    title: t('TICKETS.GARANTIA_CIERRE.TITLE_EDIT'),
+    texto: garantia.value?.observacion_cierre || '',
+    onConfirm: anexarObservacionCierre,
+  });
 
 // === MAN-03: resolver la PQR desde el detalle + editar la ficha ===
 // Reutiliza tickets/resolver y GarantiaFormDialog (lo mismo que el panel del chat),
@@ -564,6 +637,7 @@ const TITULOS_EVENTO = {
   evidencia_adjuntada: 'TICKETS.DETAIL.ACT_EVIDENCIA_ADJUNTADA',
   formato_generado: 'TICKETS.DETAIL.ACT_FORMATO_GENERADO',
   etapa_cambiada: 'TICKETS.DETAIL.ACT_ETAPA_CAMBIADA',
+  garantia_finalizada: 'TICKETS.DETAIL.ACT_GARANTIA_FINALIZADA',
 };
 
 // ACT-01: un solo historial con los eventos del sistema y las actividades de
@@ -1141,8 +1215,72 @@ const formatFechaHora = valor =>
               </p>
             </div>
 
+            <!-- GAR-08: observacion de finalizacion de la garantia cerrada.
+                 Con texto -> figura 2 (bloque + editar); sin texto (cerrada antes
+                 del despliegue) -> figura 3 (agregar). -->
+            <div
+              v-if="garantiaCerrada"
+              class="flex flex-col gap-1.5 p-3 border rounded-lg"
+              :class="
+                garantia.observacion_cierre
+                  ? 'border-n-teal-6 bg-n-teal-2'
+                  : 'border-dashed border-n-amber-6 bg-n-amber-2'
+              "
+            >
+              <div class="flex items-center justify-between gap-2">
+                <span
+                  class="text-xs font-semibold"
+                  :class="
+                    garantia.observacion_cierre
+                      ? 'text-n-teal-11'
+                      : 'text-n-amber-11'
+                  "
+                >
+                  {{
+                    garantia.observacion_cierre
+                      ? t('TICKETS.WARRANTY.OBS_BLOCK_TITLE')
+                      : t('TICKETS.WARRANTY.OBS_NONE_TITLE')
+                  }}
+                </span>
+                <button
+                  type="button"
+                  data-testid="btn-observacion-cierre"
+                  class="text-xs font-medium shrink-0 text-n-blue-11 hover:underline"
+                  @click="
+                    garantia.observacion_cierre
+                      ? abrirEditarObservacion()
+                      : abrirAgregarObservacion()
+                  "
+                >
+                  {{
+                    garantia.observacion_cierre
+                      ? t('TICKETS.WARRANTY.OBS_EDIT')
+                      : t('TICKETS.WARRANTY.OBS_ADD')
+                  }}
+                </button>
+              </div>
+              <template v-if="garantia.observacion_cierre">
+                <p class="mb-0 text-sm whitespace-pre-line text-n-slate-12">
+                  {{ garantia.observacion_cierre }}
+                </p>
+                <span class="text-xs text-n-slate-10">
+                  {{
+                    t('TICKETS.WARRANTY.OBS_META', {
+                      autor: garantia.observacion_cierre_por || '—',
+                      fecha: formatFechaHora(garantia.observacion_cierre_at),
+                    })
+                  }}
+                </span>
+              </template>
+              <p v-else class="mb-0 text-xs text-n-slate-11">
+                {{ t('TICKETS.WARRANTY.OBS_NONE_HINT') }}
+              </p>
+            </div>
+
             <!-- FMT-04: modal de generacion; se abre con el boton de arriba. -->
             <GenerarFormatoModal ref="generarModalRef" :ticket-id="props.id" />
+            <!-- GAR-08: modal de la observacion de cierre (finalizar/agregar/editar). -->
+            <FinalizarGarantiaModal ref="finalizarModalRef" />
           </section>
 
           <!-- Aviso cuando la PQR no abrio garantia (abre_garantia: nunca) -->

@@ -357,6 +357,17 @@
       "SAVED": "Activity added",
       "ERROR": "The activity could not be added"
     },
+    "GARANTIA_CIERRE": {
+      "TITLE": "Finish warranty",
+      "TITLE_ADD": "Add closing note",
+      "TITLE_EDIT": "Edit closing note",
+      "HINT": "This change closes the warranty. Leave a note on how the case ended.",
+      "LABEL": "Closing note *",
+      "PLACEHOLDER": "E.g. The backrest was repaired at the factory and delivered on Nov 16; the customer signed off.",
+      "CONFIRM": "Finish warranty",
+      "SAVED": "Note saved",
+      "ERROR": "The note could not be saved"
+    },
     "DETAIL": {
       "TITLE": "Case detail",
       "NOT_FOUND": "Case not found",
@@ -407,6 +418,7 @@
       "ACT_BY_TEAM": "Only Home team",
       "ACT_FORMATO_GENERADO": "Form generated",
       "ACT_ETAPA_CAMBIADA": "Stage changed",
+      "ACT_GARANTIA_FINALIZADA": "Warranty finished",
       "ACTIVITY_COUNT": "· {n}",
       "ACTIVITY_EMPTY": "No activity yet. Use + to log a follow-up.",
       "ACTIVITY_FOLLOW_UP": "Follow-up",
@@ -486,6 +498,12 @@
       "ERROR": "There was an error advancing the process",
       "PROCESS_PLACEHOLDER": "Change process",
       "PROCESS_LABEL": "Warranty process",
+      "OBS_BLOCK_TITLE": "Closing note",
+      "OBS_EDIT": "Edit",
+      "OBS_META": "{autor} · {fecha}",
+      "OBS_NONE_TITLE": "No closing note",
+      "OBS_NONE_HINT": "This warranty was closed before the note became required.",
+      "OBS_ADD": "Add note",
       "FORM": {
         "TITLE": "Open warranty",
         "CONFIRM": "Open warranty",

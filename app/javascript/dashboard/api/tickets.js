@@ -39,11 +39,21 @@ class TicketsAPI extends ApiClient {
 
   // Avanza un producto de la garantia de proceso (GAR-03). El radicado cierra
   // solo cuando todos los productos resuelven; eso lo decide el backend.
-  avanzarGarantia(garantiaId, itemId, procesoId) {
+  // GAR-08: cuando el movimiento cierra, observacion es obligatoria (el backend
+  // responde 422 si falta); en los demas movimientos va vacia y se ignora.
+  avanzarGarantia(garantiaId, itemId, procesoId, observacion = null) {
     const base = this.url.replace(/tickets$/, 'garantias');
     return axios.patch(`${base}/${garantiaId}/items/${itemId}`, {
       proceso_id: procesoId,
+      observacion,
     });
+  }
+
+  // GAR-08: anexa o corrige la observacion de una garantia YA cerrada (figura 3:
+  // cerradas antes del despliegue; figura 2: editar). Texto obligatorio.
+  agregarObservacionCierre(garantiaId, observacion) {
+    const base = this.url.replace(/tickets$/, 'garantias');
+    return axios.patch(`${base}/${garantiaId}/observacion`, { observacion });
   }
 
   // Catalogos de clasificacion (API-01) para poblar los selectores del panel.
