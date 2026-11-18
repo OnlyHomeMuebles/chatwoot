@@ -783,13 +783,23 @@ describe('PqrDetailPage.vue — observación del caso (DET-02)', () => {
   });
 
   it('sin observación muestra "Sin observación"', () => {
-    expedienteRef.value = { ...expedienteBase, garantia: null, description: '', datos: {} };
+    expedienteRef.value = {
+      ...expedienteBase,
+      garantia: null,
+      description: '',
+      datos: {},
+    };
 
     expect(montar().text()).toContain('TICKETS.DATA.SIN_OBSERVACION');
   });
 
   it('editar la observación la guarda por tickets/update (solo si cambió)', async () => {
-    expedienteRef.value = { ...expedienteBase, garantia: null, description: 'vieja', datos: {} };
+    expedienteRef.value = {
+      ...expedienteBase,
+      garantia: null,
+      description: 'vieja',
+      datos: {},
+    };
 
     const wrapper = montar();
     await abrirEdicion(wrapper);

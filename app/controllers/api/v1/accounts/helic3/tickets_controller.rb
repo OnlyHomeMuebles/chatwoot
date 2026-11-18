@@ -304,7 +304,7 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
     @datos_cliente_params ||= params.require(:ticket).fetch(:datos, {}).permit(
       :cedula, :ciudad, :direccion, :producto_nombre,
       :cliente_nombre, :cliente_telefono, :cliente_email,
-      :producto_referencia, :factura_fecha
+      :producto_referencia, :factura_fecha, :centro_operacion_nombre
     )
   end
 

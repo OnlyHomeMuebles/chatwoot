@@ -4,7 +4,8 @@
 fuentes = resource&.fuentes || {}
 
 %i[cedula direccion ciudad factura_numero producto_nombre
-   cliente_nombre cliente_telefono cliente_email producto_referencia factura_fecha].each do |campo|
+   cliente_nombre cliente_telefono cliente_email producto_referencia factura_fecha
+   centro_operacion_nombre].each do |campo|
   valor = resource&.public_send(campo)
   if valor.present?
     json.set! campo do

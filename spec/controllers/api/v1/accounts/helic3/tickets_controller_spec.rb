@@ -51,7 +51,7 @@ RSpec.describe 'Tickets API', type: :request do
       it 'creates a ticket with a sequential ticket number and sets the creator' do
         post "/api/v1/accounts/#{account.id}/helic3/tickets",
              params: { ticket: { title: 'Printer on fire', description: 'Third floor',
-                                datos: { cliente_nombre: 'Cliente', cliente_telefono: '3001234567' } } },
+                                 datos: { cliente_nombre: 'Cliente', cliente_telefono: '3001234567' } } },
              headers: agent.create_new_auth_token,
              as: :json
 
@@ -63,7 +63,7 @@ RSpec.describe 'Tickets API', type: :request do
       it 'rejects a ticket without title' do
         post "/api/v1/accounts/#{account.id}/helic3/tickets",
              params: { ticket: { description: 'no title',
-                                datos: { cliente_nombre: 'Cliente', cliente_telefono: '3001234567' } } },
+                                 datos: { cliente_nombre: 'Cliente', cliente_telefono: '3001234567' } } },
              headers: agent.create_new_auth_token,
              as: :json
 
@@ -183,6 +183,21 @@ RSpec.describe 'Tickets API', type: :request do
          producto_nombre producto_referencia factura_numero factura_fecha].each do |campo|
         expect(ficha.fuentes[campo]).to eq('humano')
       end
+    end
+
+    it 'ERP-18a: guarda el centro de operacion escrito a mano (fuente humano) y lo expone en datos' do
+      radicar_manual(datos: datos_cliente.merge(centro_operacion_nombre: '012 - OM NEIVA SANTA LUCIA'))
+
+      expect(response).to have_http_status(:success)
+      ticket = account.tickets.find(response.parsed_body['id'])
+      expect(ticket.datos.centro_operacion_nombre).to eq('012 - OM NEIVA SANTA LUCIA')
+      expect(ticket.datos.fuentes['centro_operacion_nombre']).to eq('humano')
+
+      get "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}",
+          headers: agent.create_new_auth_token, as: :json
+      datos = response.parsed_body['datos']
+      expect(datos['centro_operacion_nombre']['valor']).to eq('012 - OM NEIVA SANTA LUCIA')
+      expect(datos['centro_operacion_nombre']['fuente']).to eq('humano')
     end
 
     it 'CA2: sin conversacion y sin cliente_nombre -> 422 y no crea nada' do

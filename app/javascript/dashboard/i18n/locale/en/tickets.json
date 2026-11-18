@@ -123,6 +123,8 @@
         "PRODUCTO_PH": "Product name",
         "REFERENCIA": "Reference",
         "REFERENCIA_PH": "Product reference or code",
+        "CENTRO": "Operation center",
+        "CENTRO_PH": "Branch or operation center of the purchase",
         "SELECTOR_TITLE": "Invoices in ERP",
         "SELECTOR_HINT": "Choose the invoice and one or more products being claimed. If they are not listed, type them below.",
         "SELECTOR_ELEGIR": "Choose",
@@ -130,10 +132,9 @@
         "SELECTOR_CANT": "Qty: {n}"
       },
       "DIRECCION": {
-        "TITLE": "Current address",
-        "CIUDAD": "Current city",
+        "CIUDAD": "City",
         "CIUDAD_PH": "City where the product is",
-        "DIRECCION": "Current address",
+        "DIRECCION": "Address",
         "DIRECCION_PH": "Address, neighborhood and details"
       },
       "RESUMEN": {
@@ -561,6 +562,7 @@
         "FACTURA_FECHA": "Purchase date",
         "PRODUCTO_NOMBRE": "Product",
         "PRODUCTO_REFERENCIA": "Reference",
+        "CENTRO_OPERACION": "Operation center",
         "DETALLE": "Detail",
         "OBSERVACION": "Observation"
       }

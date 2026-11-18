@@ -123,6 +123,8 @@
         "PRODUCTO_PH": "Nombre del producto",
         "REFERENCIA": "Referencia",
         "REFERENCIA_PH": "Referencia o código del producto",
+        "CENTRO": "Centro de operación",
+        "CENTRO_PH": "Sucursal o centro de operación de la compra",
         "SELECTOR_TITLE": "Facturas en el ERP",
         "SELECTOR_HINT": "Elige la factura y uno o más productos que reclama. Si no están en la lista, escríbelos abajo.",
         "SELECTOR_ELEGIR": "Elegir",
@@ -130,10 +132,9 @@
         "SELECTOR_CANT": "Cant: {n}"
       },
       "DIRECCION": {
-        "TITLE": "Dirección actual",
-        "CIUDAD": "Ciudad actual",
+        "CIUDAD": "Ciudad",
         "CIUDAD_PH": "Ciudad donde está el producto",
-        "DIRECCION": "Dirección actual",
+        "DIRECCION": "Dirección",
         "DIRECCION_PH": "Dirección, barrio y complemento"
       },
       "RESUMEN": {
@@ -561,6 +562,7 @@
         "FACTURA_FECHA": "Fecha de compra",
         "PRODUCTO_NOMBRE": "Producto",
         "PRODUCTO_REFERENCIA": "Referencia",
+        "CENTRO_OPERACION": "Centro de operación",
         "DETALLE": "Detalle",
         "OBSERVACION": "Observación"
       }

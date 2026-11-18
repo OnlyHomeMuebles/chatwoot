@@ -137,6 +137,21 @@ describe('PqrNuevaPage.vue — crear (MAN-02)', () => {
     expect(payload.datos.cedula).toBe('123');
   });
 
+  // ERP-18a: el centro de operación (sucursal) se escribe a mano y va en la ficha.
+  it('envía el centro de operación en el bloque datos (ERP-18a)', async () => {
+    crearApi.mockResolvedValue({ data: { id: 42, display_id: 7 } });
+    const wrapper = montar();
+    llenarMinimo(wrapper.vm);
+    wrapper.vm.form.centro_operacion_nombre = 'OM CALI SUR';
+
+    await wrapper.vm.crear();
+    await flushPromises();
+
+    expect(crearApi.mock.calls[0][0].ticket.datos.centro_operacion_nombre).toBe(
+      'OM CALI SUR'
+    );
+  });
+
   // GAR-07: el detalle tipificado ya no se pide al radicar; se completa en Datos del caso.
   it('no pide ni envía el detalle tipificado', async () => {
     crearApi.mockResolvedValue({ data: { id: 42, display_id: 7 } });
