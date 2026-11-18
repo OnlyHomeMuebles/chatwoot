@@ -256,14 +256,20 @@ const avanzarItem = async (garantia, item, procesoId) => {
   if (!procesoId || procesoId === item.proceso?.id) return;
   // GAR-08: si cierra, pedir primero la observacion obligatoria en el modal.
   if (movimientoCierra(garantia, item, procesoId)) {
-    finalizarModalRef.value?.open({
-      title: t('TICKETS.GARANTIA_CIERRE.TITLE'),
-      onConfirm: observacion =>
-        avanzarConObservacion(garantia, item, procesoId, observacion),
-      onCancel: () => {
-        selectsRefreshKey.value += 1;
-      },
-    });
+    // Se difiere a la siguiente macrotarea: abrir el modal directamente desde el
+    // evento 'change' del <select> nativo hace que el clic que lo dispara llegue
+    // al detector de clic-afuera del Dialog y lo cierre en el acto. Al diferir,
+    // ese clic se evalua con el modal aun cerrado (no-op) y luego abre limpio.
+    setTimeout(() => {
+      finalizarModalRef.value?.open({
+        title: t('TICKETS.GARANTIA_CIERRE.TITLE'),
+        onConfirm: observacion =>
+          avanzarConObservacion(garantia, item, procesoId, observacion),
+        onCancel: () => {
+          selectsRefreshKey.value += 1;
+        },
+      });
+    }, 0);
     return;
   }
   try {
