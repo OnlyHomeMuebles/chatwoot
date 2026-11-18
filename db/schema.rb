@@ -1624,6 +1624,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_11_17_130000) do
     t.date "factura_fecha"
     t.jsonb "productos", default: [], null: false
     t.string "centro_operacion_id"
+    t.string "centro_operacion_compania"
     t.string "centro_operacion_nombre"
     t.string "centro_operacion_ciudad"
     t.index ["account_id"], name: "idx_h3_ticket_datos_account"

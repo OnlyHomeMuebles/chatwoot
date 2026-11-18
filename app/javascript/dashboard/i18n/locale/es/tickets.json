@@ -132,7 +132,6 @@
         "SELECTOR_CANT": "Cant: {n}"
       },
       "DIRECCION": {
-        "TITLE": "Dirección actual",
         "CIUDAD": "Ciudad",
         "CIUDAD_PH": "Ciudad donde está el producto",
         "DIRECCION": "Dirección",
@@ -563,6 +562,7 @@
         "FACTURA_FECHA": "Fecha de compra",
         "PRODUCTO_NOMBRE": "Producto",
         "PRODUCTO_REFERENCIA": "Referencia",
+        "CENTRO_OPERACION": "Centro de operación",
         "DETALLE": "Detalle",
         "OBSERVACION": "Observación"
       }

@@ -422,6 +422,11 @@ const CAMPOS_FICHA = [
     label: 'TICKETS.DATA.FIELDS.PRODUCTO_REFERENCIA',
     type: 'text',
   },
+  {
+    key: 'centro_operacion_nombre',
+    label: 'TICKETS.DATA.FIELDS.CENTRO_OPERACION',
+    type: 'text',
+  },
 ];
 // Etiquetas ya traducidas (reactivas al idioma), para que la plantilla no use una
 // clave i18n dinamica — mismo criterio que datosLista.
@@ -598,6 +603,10 @@ const datosLista = computed(() => {
     {
       key: 'producto_referencia',
       label: t('TICKETS.DATA.FIELDS.PRODUCTO_REFERENCIA'),
+    },
+    {
+      key: 'centro_operacion_nombre',
+      label: t('TICKETS.DATA.FIELDS.CENTRO_OPERACION'),
     },
   ];
   const filas = campos.map(c => ({

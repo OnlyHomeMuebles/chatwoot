@@ -934,18 +934,18 @@ defineExpose({
               </div>
               <div class="flex justify-between gap-4">
                 <dt class="text-n-slate-11">
-                  {{ t('TICKETS.NUEVA.COMPRA.PRODUCTO') }}
-                </dt>
-                <dd class="mb-0 text-end text-n-slate-12">
-                  {{ form.producto_nombre || '—' }}
-                </dd>
-              </div>
-              <div class="flex justify-between gap-4">
-                <dt class="text-n-slate-11">
                   {{ t('TICKETS.NUEVA.COMPRA.CENTRO') }}
                 </dt>
                 <dd class="mb-0 text-end text-n-slate-12">
                   {{ form.centro_operacion_nombre || '—' }}
+                </dd>
+              </div>
+              <div class="flex justify-between gap-4">
+                <dt class="text-n-slate-11">
+                  {{ t('TICKETS.NUEVA.COMPRA.PRODUCTO') }}
+                </dt>
+                <dd class="mb-0 text-end text-n-slate-12">
+                  {{ form.producto_nombre || '—' }}
                 </dd>
               </div>
               <div class="flex justify-between gap-4">
