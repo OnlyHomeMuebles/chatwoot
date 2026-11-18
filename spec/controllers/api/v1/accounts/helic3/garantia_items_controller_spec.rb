@@ -40,16 +40,31 @@ RSpec.describe 'Garantia items API', type: :request do
     end
 
     context 'when an administrator advances the product to a terminal process' do
-      it 'sella el producto, cierra el radicado y lo devuelve en el JSON' do
+      it 'sella el producto, cierra el radicado con su observacion y lo devuelve en el JSON' do
         patch path,
-              params: { proceso_id: entrega.id },
+              params: { proceso_id: entrega.id, observacion: 'Entregado y firmado.' },
               headers: administrator.create_new_auth_token,
               as: :json
 
         expect(response).to have_http_status(:success)
         expect(item.reload.proceso).to eq(entrega)
         expect(garantia.reload.cerrada_at).to be_present
-        expect(response.parsed_body['garantia']['cerrada_at']).to be_present
+        expect(garantia.observacion_cierre).to eq('Entregado y firmado.')
+        expect(response.parsed_body['garantia']['observacion_cierre']).to eq('Entregado y firmado.')
+      end
+    end
+
+    # GAR-08: cerrar el radicado sin observacion -> 422 y el producto no se mueve.
+    context 'when the movement closes the warranty without observacion' do
+      it 'responde 422 y el producto sigue en su proceso (no cierra)' do
+        patch path,
+              params: { proceso_id: entrega.id },
+              headers: administrator.create_new_auth_token,
+              as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(item.reload.proceso).to eq(visita)
+        expect(garantia.reload.cerrada_at).to be_nil
       end
     end
 

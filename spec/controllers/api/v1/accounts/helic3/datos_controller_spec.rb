@@ -29,6 +29,20 @@ RSpec.describe 'Datos API', type: :request do
       end
     end
 
+    # ERP-18a (CA6): el centro de operación se puede corregir desde la ficha.
+    context 'when the operator edits the centro de operacion' do
+      it 'guarda centro_operacion_nombre con fuente humano' do
+        patch "/api/v1/accounts/#{account.id}/helic3/tickets/#{ticket.id}/datos",
+              params: { datos: { centro_operacion_nombre: 'OM CALI SUR' } },
+              headers: administrator.create_new_auth_token,
+              as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(response.parsed_body['datos']['centro_operacion_nombre']['valor']).to eq('OM CALI SUR')
+        expect(ticket.reload.datos.centro_operacion_nombre).to eq('OM CALI SUR')
+      end
+    end
+
     context 'when the detalle_tipificado belongs to another account' do
       it 'responde 404 y no crea la ficha' do
         otra = create(:account)

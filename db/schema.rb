@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_11_16_120000) do
+ActiveRecord::Schema[7.2].define(version: 2026_11_17_130000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1485,9 +1485,13 @@ ActiveRecord::Schema[7.2].define(version: 2026_11_16_120000) do
     t.bigint "cobertura_ciudad_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "observacion_cierre"
+    t.datetime "observacion_cierre_at"
+    t.bigint "observacion_cierre_por_id"
     t.index ["account_id", "display_id"], name: "idx_h3_garantias_account_dpid", unique: true
     t.index ["account_id"], name: "idx_h3_garantias_account"
     t.index ["cobertura_ciudad_id"], name: "idx_h3_garantias_cobertura"
+    t.index ["observacion_cierre_por_id"], name: "idx_h3_garantias_obs_cierre_por"
     t.index ["ticket_id"], name: "idx_h3_garantias_ticket"
   end
 
@@ -1619,6 +1623,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_11_16_120000) do
     t.string "producto_referencia"
     t.date "factura_fecha"
     t.jsonb "productos", default: [], null: false
+    t.string "centro_operacion_id"
+    t.string "centro_operacion_compania"
+    t.string "centro_operacion_nombre"
+    t.string "centro_operacion_ciudad"
     t.index ["account_id"], name: "idx_h3_ticket_datos_account"
     t.index ["detalle_tipificado_id"], name: "idx_h3_ticket_datos_detalle"
     t.index ["ticket_id"], name: "idx_h3_ticket_datos_ticket", unique: true
@@ -2198,6 +2206,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_11_16_120000) do
   add_foreign_key "helic3_garantia_items", "helic3_garantias", column: "garantia_id"
   add_foreign_key "helic3_garantias", "helic3_catalogo_coberturas_ciudad", column: "cobertura_ciudad_id"
   add_foreign_key "helic3_garantias", "helic3_tickets", column: "ticket_id"
+  add_foreign_key "helic3_garantias", "users", column: "observacion_cierre_por_id", on_delete: :nullify
   add_foreign_key "helic3_plantillas_formato", "accounts"
   add_foreign_key "helic3_plantillas_formato", "helic3_catalogo_formatos", column: "formato_id"
   add_foreign_key "helic3_plantillas_formato", "users", column: "activada_por_id", on_delete: :nullify

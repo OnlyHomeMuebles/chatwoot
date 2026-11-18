@@ -304,7 +304,7 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
     @datos_cliente_params ||= params.require(:ticket).fetch(:datos, {}).permit(
       :cedula, :ciudad, :direccion, :producto_nombre,
       :cliente_nombre, :cliente_telefono, :cliente_email,
-      :producto_referencia, :factura_fecha
+      :producto_referencia, :factura_fecha, :centro_operacion_nombre
     )
   end
 
@@ -329,6 +329,8 @@ class Api::V1::Accounts::Helic3::TicketsController < Api::V1::Accounts::BaseCont
   # Corregir la clasificacion ya radicada (tipo/motivo/categoria) tambien queda
   # fuera: cambiaria la categoria y el plazo sin re-derivarlos (decision de negocio).
   def update_params
-    params.require(:ticket).permit(:status, :assignee_id, :etapa_id)
+    # DET-02: :description es la observacion del caso (lo que el agente/cliente
+    # reporto al crear la PQR); se puede corregir desde "Editar ficha". No es upstream.
+    params.require(:ticket).permit(:status, :assignee_id, :etapa_id, :description)
   end
 end
