@@ -37,7 +37,9 @@ del API con el proveedor (Siesa).
 | `total` | número | Valor total (COP) |
 | `saldo` | número | Saldo pendiente (COP) |
 | `estado` | texto | `pagada` / `pendiente` / `vencida` |
-| `centro_operacion` | texto | Tienda (C.O.) donde se facturó (opcional); cruza con `helic3_facturas_venta` (IND-08) |
+| `centro_operacion` | texto | Id de la tienda (C.O.) donde se facturó (opcional); cruza con `helic3_facturas_venta` (IND-08) |
+| `centro_operacion_compania` | número | Compañía de la factura (ERP-18b); el mismo id de C.O. es otra tienda según la compañía, por eso el nombre se resuelve por compañía + id |
+| `centro_operacion_nombre` | texto | Nombre de la tienda (C.O.), resuelto desde la lista de centros de Siesa por compañía + id (ERP-18b) |
 | `items` | lista | Detalle de líneas (`InvoiceItem`, opcional) — ver tabla abajo |
 
 #### Ítem de factura (`InvoiceItem`)

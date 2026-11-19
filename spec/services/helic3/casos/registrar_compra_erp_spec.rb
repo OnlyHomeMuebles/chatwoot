@@ -105,4 +105,29 @@ RSpec.describe Helic3::Casos::RegistrarCompraErp do
 
     expect(ticket.reload.datos.fuentes['producto_nombre']).to eq('erp')
   end
+
+  # ERP-18b: el centro de operacion de la factura se sella desde el cache (lo resuelve el
+  # simulado via SiesaCentros), con fuente erp, igual que factura_numero/fecha.
+  it 'sella el centro de operacion de la factura con fuente erp' do
+    described_class.new(ticket: ticket, cedula: '1032456789',
+                        datos: { factura_numero: 'FV-1001',
+                                 centro_operacion_nombre: 'OM ARMENIA SANTA LUCIA',
+                                 productos: [{ referencia: 'MIL-200' }] }).call
+
+    ficha = ticket.reload.datos
+    expect(ficha.centro_operacion_nombre).to eq('OM ARMENIA SANTA LUCIA')
+    expect(ficha.fuentes['centro_operacion_nombre']).to eq('erp')
+  end
+
+  # ERP-18b: si el agente edito el centro a mano (distinto al de Siesa), queda humano.
+  it 'si el agente edito el centro a mano, queda humano' do
+    described_class.new(ticket: ticket, cedula: '1032456789',
+                        datos: { factura_numero: 'FV-1001',
+                                 centro_operacion_nombre: 'Bodega improvisada',
+                                 productos: [{ referencia: 'MIL-200' }] }).call
+
+    ficha = ticket.reload.datos
+    expect(ficha.centro_operacion_nombre).to eq('Bodega improvisada')
+    expect(ficha.fuentes['centro_operacion_nombre']).to eq('humano')
+  end
 end

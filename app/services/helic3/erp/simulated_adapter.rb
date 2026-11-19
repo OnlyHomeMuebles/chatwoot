@@ -19,4 +19,10 @@ class Helic3::Erp::SimulatedAdapter < Helic3::Erp::Base
   def account_statement(cedula:)
     Helic3::Erp::SimulatedData.statement(cedula)
   end
+
+  # ERP-18b: la lista de centros de operacion (tiendas), con la misma forma que la respuesta de
+  # Siesa, para que SiesaCentros la parsee igual y el autollenado del centro funcione sin Siesa.
+  def centros
+    Helic3::Erp::SimulatedData.centros
+  end
 end

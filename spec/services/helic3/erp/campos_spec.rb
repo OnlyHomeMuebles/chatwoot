@@ -11,7 +11,8 @@ RSpec.describe 'ERP-07 · Campos requeridos por consulta' do # rubocop:disable R
   end
 
   it 'Invoice expone exactamente los campos documentados' do
-    expect(Helic3::Erp::Invoice.members).to eq(%i[numero fecha total saldo estado centro_operacion items])
+    expect(Helic3::Erp::Invoice.members).to eq(%i[numero fecha total saldo estado centro_operacion
+                                                  centro_operacion_compania centro_operacion_nombre items])
   end
 
   it 'InvoiceItem expone exactamente los campos documentados' do

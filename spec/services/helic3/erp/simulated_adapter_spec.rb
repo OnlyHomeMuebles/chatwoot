@@ -32,4 +32,14 @@ RSpec.describe Helic3::Erp::SimulatedAdapter do
   it 'entrega el estado de cuenta de un cliente en mora' do
     expect(adapter.account_statement(cedula: '52998877').al_dia).to be(false)
   end
+
+  # ERP-18b: el simulado implementa el contrato completo, incluida la lista de centros, para
+  # poder probar el autollenado del centro de operacion sin Siesa. Sus ids coinciden con el
+  # centro_operacion de las facturas simuladas.
+  it 'entrega la lista de centros de operacion, parseable por SiesaCentros' do
+    centros = Helic3::Erp::SiesaCentros.parsear(adapter.centros)
+    expect(centros.map { |c| c[:id] }).to include('Armenia Centro')
+    armenia = centros.find { |c| c[:id] == 'Armenia Centro' }
+    expect(armenia[:nombre]).to eq('OM ARMENIA SANTA LUCIA')
+  end
 end

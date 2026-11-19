@@ -7,7 +7,8 @@
 # un caso del agente queda con los mismos campos y fuentes que uno del formulario.
 class Helic3::Casos::RegistrarDesdeErp
   CAMPOS_CLIENTE = %i[cedula ciudad direccion cliente_nombre cliente_telefono cliente_email].freeze
-  CAMPOS_COMPRA = %i[factura_numero factura_fecha productos producto_nombre producto_referencia].freeze
+  CAMPOS_COMPRA = %i[factura_numero factura_fecha productos producto_nombre producto_referencia
+                     centro_operacion_nombre].freeze
 
   # datos: los del cliente (CAMPOS_CLIENTE) y los de la compra: factura_numero,
   # factura_fecha, productos ([{nombre:, referencia:}]) y producto_nombre/producto_referencia
