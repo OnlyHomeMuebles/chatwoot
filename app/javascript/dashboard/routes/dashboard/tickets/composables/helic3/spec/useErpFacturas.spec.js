@@ -6,16 +6,34 @@ const FACTURAS = [
     numero: 'FV-1001',
     fecha: '2026-05-10',
     total: 1800000,
-    centro_operacion: 'Armenia Centro',
+    centro_operacion: '012',
+    centro_operacion_nombre: 'OM NEIVA SANTA LUCIA',
     items: [
-      { referencia: 'MIL-200', descripcion: 'Puerta Milano', cantidad: 2, valor: 900000 },
-      { referencia: 'CER-050', descripcion: 'Cerradura Premium', cantidad: 1, valor: 900000 },
+      {
+        referencia: 'MIL-200',
+        descripcion: 'Puerta Milano',
+        cantidad: 2,
+        valor: 900000,
+      },
+      {
+        referencia: 'CER-050',
+        descripcion: 'Cerradura Premium',
+        cantidad: 1,
+        valor: 900000,
+      },
     ],
   },
   {
     numero: 'FV-1002',
     fecha: '2026-06-02',
-    items: [{ referencia: 'LAM-010', descripcion: 'Lampara', cantidad: 1, valor: 450000 }],
+    items: [
+      {
+        referencia: 'LAM-010',
+        descripcion: 'Lampara',
+        cantidad: 1,
+        valor: 450000,
+      },
+    ],
   },
 ];
 
@@ -25,6 +43,7 @@ const nuevoForm = () =>
     factura_fecha: '',
     producto_nombre: '',
     producto_referencia: '',
+    centro_operacion_nombre: '',
   });
 
 describe('useErpFacturas (ERP-15)', () => {
@@ -85,8 +104,18 @@ describe('useErpFacturas (ERP-15)', () => {
         numero: 'FV-DUP',
         fecha: '2026-05-10',
         items: [
-          { referencia: 'REP-1', descripcion: 'Repisa (unidad A)', cantidad: 1, valor: 100 },
-          { referencia: 'REP-1', descripcion: 'Repisa (unidad B)', cantidad: 1, valor: 100 },
+          {
+            referencia: 'REP-1',
+            descripcion: 'Repisa (unidad A)',
+            cantidad: 1,
+            valor: 100,
+          },
+          {
+            referencia: 'REP-1',
+            descripcion: 'Repisa (unidad B)',
+            cantidad: 1,
+            valor: 100,
+          },
         ],
       },
     ]);
@@ -96,7 +125,9 @@ describe('useErpFacturas (ERP-15)', () => {
 
     expect(erp.estaElegido(dup, 0)).toBe(true);
     expect(erp.estaElegido(dup, 1)).toBe(false); // la otra linea NO queda marcada
-    expect(erp.productosElegidos()).toEqual([{ nombre: 'Repisa (unidad A)', referencia: 'REP-1' }]);
+    expect(erp.productosElegidos()).toEqual([
+      { nombre: 'Repisa (unidad A)', referencia: 'REP-1' },
+    ]);
   });
 
   it('elegir un producto de otra factura cambia de factura (no mezcla)', () => {
@@ -107,7 +138,9 @@ describe('useErpFacturas (ERP-15)', () => {
     erp.alternar(FACTURAS[1], 0);
 
     expect(erp.facturaElegida.value).toBe('FV-1002');
-    expect(erp.productosElegidos()).toEqual([{ nombre: 'Lampara', referencia: 'LAM-010' }]);
+    expect(erp.productosElegidos()).toEqual([
+      { nombre: 'Lampara', referencia: 'LAM-010' },
+    ]);
   });
 
   it('alternar dos veces la misma linea la quita (y deja la factura sin elegir)', () => {
@@ -119,6 +152,44 @@ describe('useErpFacturas (ERP-15)', () => {
 
     expect(erp.productosElegidos()).toEqual([]);
     expect(erp.facturaElegida.value).toBeNull();
+  });
+
+  // ERP-18b (CA1): al elegir una factura, su centro de operacion autollena el campo y
+  // lo marca como "de Siesa" (badge).
+  it('elegir una factura autollena el centro de operacion y prende el badge', () => {
+    const form = nuevoForm();
+    const erp = useErpFacturas(form);
+    erp.recibir(FACTURAS);
+
+    erp.alternar(FACTURAS[0], 0);
+
+    expect(form.centro_operacion_nombre).toBe('OM NEIVA SANTA LUCIA');
+    expect(erp.centroEsSiesa.value).toBe(true);
+  });
+
+  it('alEditarCentro apaga el badge (el agente lo tocó)', () => {
+    const form = nuevoForm();
+    const erp = useErpFacturas(form);
+    erp.recibir(FACTURAS);
+    erp.alternar(FACTURAS[0], 0);
+
+    erp.alEditarCentro();
+
+    expect(erp.centroEsSiesa.value).toBe(false);
+  });
+
+  // Una factura sin centro (Siesa no lo trae) no borra lo que el agente escribió a mano,
+  // pero el badge no debe quedar prendido (no miente): FV-1002 no trae centro_operacion_nombre.
+  it('una factura sin centro no pisa lo escrito a mano y deja el badge apagado', () => {
+    const form = nuevoForm();
+    form.centro_operacion_nombre = 'Escrito a mano';
+    const erp = useErpFacturas(form);
+    erp.recibir(FACTURAS);
+
+    erp.alternar(FACTURAS[1], 0);
+
+    expect(form.centro_operacion_nombre).toBe('Escrito a mano');
+    expect(erp.centroEsSiesa.value).toBe(false);
   });
 
   it('limpiar vacia las facturas y la seleccion', () => {

@@ -722,7 +722,10 @@ defineExpose({
                       v-if="factura.centro_operacion"
                       class="text-xs text-n-slate-11"
                     >
-                      · {{ factura.centro_operacion }}
+                      · {{ factura.centro_operacion
+                      }}<template v-if="factura.centro_operacion_nombre">
+                        – {{ factura.centro_operacion_nombre }}</template
+                      >
                     </span>
                     <span
                       v-if="factura.total != null"
@@ -795,13 +798,17 @@ defineExpose({
                     :label="t('TICKETS.NUEVA.COMPRA.FECHA')"
                   />
                 </div>
-                <!-- ERP-18a: centro de operación a mano, entre Factura/Fecha y
-                     Producto/Referencia según el mockup (18b lo traerá de Siesa). -->
-                <Input
-                  v-model="form.centro_operacion_nombre"
-                  :label="t('TICKETS.NUEVA.COMPRA.CENTRO')"
-                  :placeholder="t('TICKETS.NUEVA.COMPRA.CENTRO_PH')"
-                />
+                <!-- ERP-18a/b: centro de operación entre Factura/Fecha y Producto/Referencia
+                     según el mockup. 18b lo autollena desde la factura elegida (badge Siesa). -->
+                <div class="flex flex-col gap-1">
+                  <Input
+                    v-model="form.centro_operacion_nombre"
+                    :label="t('TICKETS.NUEVA.COMPRA.CENTRO')"
+                    :placeholder="t('TICKETS.NUEVA.COMPRA.CENTRO_PH')"
+                    @update:model-value="facturasErp.alEditarCentro()"
+                  />
+                  <ErpBadge v-if="facturasErp.centroEsSiesa.value" />
+                </div>
                 <div class="grid gap-5 sm:grid-cols-2">
                   <Input
                     v-model="form.producto_nombre"
