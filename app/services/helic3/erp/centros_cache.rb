@@ -9,6 +9,7 @@
 module Helic3::Erp::CentrosCache
   CLAVE = 'helic3/erp/centros_operacion'
   VIGENCIA = 7.days
+  VIGENCIA_FALLO = 5.minutes # tras un fallo de Siesa: no reintentar (ni esperar el timeout) por cedula
 
   module_function
 
@@ -22,10 +23,18 @@ module Helic3::Erp::CentrosCache
     centros = traer(adaptador || Helic3::Erp.adapter)
     Rails.cache.write(CLAVE, centros, expires_in: VIGENCIA) if centros.any?
     centros
+  rescue Helic3::Erp::NoDisponible => e
+    # Jhan #173: el nombre del C.O. es un enriquecimiento OPCIONAL; si su consulta falla (Siesa
+    # caida/lenta, nombre mal escrito), NO puede tumbar la consulta principal (cliente + facturas,
+    # que Cache#desde_adaptador ya trajo). Devuelve [] y cachea el fallo un rato, para no volver a
+    # esperar el timeout (~46s) en cada cedula mientras Siesa este caida.
+    Rails.logger.warn("[ERP-18b] centros de operacion no disponibles: #{e.message}")
+    Rails.cache.write(CLAVE, [], expires_in: VIGENCIA_FALLO)
+    []
   end
 
-  # trae y parsea la lista desde el adaptador; [] si el adaptador no ofrece centros (consulta
-  # sin configurar o modo simulado).
+  # trae y parsea la lista desde el adaptador; [] si el adaptador no ofrece centros (consulta sin
+  # configurar o modo simulado). Un fallo de Siesa sube como NoDisponible y lo maneja #lista.
   def traer(adaptador)
     respuesta = adaptador.centros
     respuesta ? Helic3::Erp::SiesaCentros.parsear(respuesta) : []

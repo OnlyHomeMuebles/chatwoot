@@ -33,6 +33,14 @@ RSpec.describe Helic3::Erp::SiesaCentros do
     expect(described_class.nombre(centros, compania: 9, id: '999')).to be_nil
   end
 
+  # Jhan #173: la compañía puede llegar como texto por un lado (f350_id_cia de la factura) y
+  # número por el otro (f285_id_cia del centro). La comparación no debe depender del tipo.
+  it 'resuelve aunque la compañía venga como texto en un lado y número en otro' do
+    centros = described_class.parsear(respuesta)
+
+    expect(described_class.nombre(centros, compania: '1', id: '001')).to eq('OM CALI SUR')
+  end
+
   it 'devuelve [] cuando la respuesta no trae tabla (sin registros, detalle como texto)' do
     expect(described_class.parsear({ 'codigo' => 1, 'detalle' => 'Sin registros' })).to eq([])
   end

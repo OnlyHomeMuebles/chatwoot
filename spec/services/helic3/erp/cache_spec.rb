@@ -73,6 +73,22 @@ RSpec.describe Helic3::Erp::Cache do
     expect(resultado.compras.first.centro_operacion_nombre).to eq('OM CALI SUR')
   end
 
+  it 'Jhan #173: si la consulta de centros falla, igual devuelve cliente y facturas (centro sin nombre)' do
+    factura = Helic3::Erp::Invoice.new(numero: 'FV-1', fecha: '2023-04-03', total: 100, saldo: 0,
+                                       estado: nil, centro_operacion: '001', centro_operacion_compania: 1)
+    adaptador = instance_double(Helic3::Erp::SimulatedAdapter,
+                                find_customer: Helic3::Erp::Customer.new(cedula: '1032456789', nombre: 'Ana Ruiz'),
+                                invoices: [factura])
+    allow(adaptador).to receive(:centros).and_raise(Helic3::Erp::NoDisponible)
+    allow(Helic3::Erp).to receive(:adapter).and_return(adaptador)
+
+    resultado = described_class.consultar(account: account, cedula: '1032456789')
+
+    expect(resultado.cliente.nombre).to eq('Ana Ruiz')
+    expect(resultado.compras.map(&:numero)).to eq(['FV-1'])
+    expect(resultado.compras.first.centro_operacion_nombre).to be_nil
+  end
+
   it 'una fila vigente con forma vieja (campo desconocido) no da 503: reconsulta al adaptador' do
     described_class.consultar(account: account, cedula: '1032456789') # llena el cache
     # Simula una fila guardada por una version anterior con un campo que el contrato ya no tiene:

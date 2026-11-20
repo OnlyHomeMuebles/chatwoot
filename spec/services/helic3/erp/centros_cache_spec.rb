@@ -35,4 +35,14 @@ RSpec.describe Helic3::Erp::CentrosCache do
     expect(described_class.lista).to eq([])
     expect(described_class.lista).to eq([])
   end
+
+  # Jhan #173 (bloqueante + opcional): si la consulta de centros FALLA (Siesa caida/lenta/mal
+  # configurada), no se propaga -> [] (no tumba cliente+facturas). Y el fallo se cachea un rato
+  # para no reintentar (y esperar el timeout) en cada cedula mientras Siesa este caida.
+  it 'si la consulta de centros falla, devuelve [] y cachea el fallo (no reintenta en cada cédula)' do
+    expect(adapter).to receive(:centros).once.and_raise(Helic3::Erp::NoDisponible)
+
+    expect(described_class.lista).to eq([])
+    expect(described_class.lista).to eq([]) # la 2da usa el fallo cacheado: centros se llamó una sola vez
+  end
 end

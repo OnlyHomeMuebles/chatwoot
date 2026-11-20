@@ -178,6 +178,21 @@ describe('useErpFacturas (ERP-15)', () => {
     expect(erp.centroEsSiesa.value).toBe(false);
   });
 
+  // Jhan #173: si se quitan todos los productos (la factura queda sin elegir), el badge "Siesa"
+  // del centro no debe seguir prendido (ya no hay factura de la que venga).
+  it('al deseleccionar la factura (quitar todos los productos) apaga el badge del centro', () => {
+    const form = nuevoForm();
+    const erp = useErpFacturas(form);
+    erp.recibir(FACTURAS);
+    erp.alternar(FACTURAS[0], 0);
+    expect(erp.centroEsSiesa.value).toBe(true);
+
+    erp.alternar(FACTURAS[0], 0); // quita el único producto → factura sin elegir
+
+    expect(erp.facturaElegida.value).toBeNull();
+    expect(erp.centroEsSiesa.value).toBe(false);
+  });
+
   // Una factura sin centro (Siesa no lo trae) no borra lo que el agente escribió a mano,
   // pero el badge no debe quedar prendido (no miente): FV-1002 no trae centro_operacion_nombre.
   it('una factura sin centro no pisa lo escrito a mano y deja el badge apagado', () => {

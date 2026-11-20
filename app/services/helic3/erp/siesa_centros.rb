@@ -20,9 +20,12 @@ module Helic3::Erp::SiesaCentros
     []
   end
 
-  # nombre por compania + id EXACTOS (la misma id cambia de nombre entre companias). nil si no esta.
+  # nombre por compania + id EXACTOS (la misma id cambia de nombre entre companias). nil si no
+  # esta. Compara como texto en ambos lados: la compania llega como numero (f285_id_cia del
+  # centro) o texto (f350_id_cia de la factura) segun la fuente, y un == estricto fallaria en
+  # silencio si cambia el tipo (Jhan #173).
   def nombre(centros, compania:, id:)
-    centros.find { |c| c[:compania] == compania && c[:id] == id.to_s }&.fetch(:nombre)
+    centros.find { |c| c[:compania].to_s == compania.to_s && c[:id].to_s == id.to_s }&.fetch(:nombre)
   end
 
   # ERP-18b: pega a cada factura el nombre de su centro de operacion, buscandolo por

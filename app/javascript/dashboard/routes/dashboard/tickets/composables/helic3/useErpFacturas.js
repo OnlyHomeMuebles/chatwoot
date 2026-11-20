@@ -69,7 +69,11 @@ export function useErpFacturas(form) {
       }
     } else if (indicesElegidos.value.includes(idx)) {
       indicesElegidos.value = indicesElegidos.value.filter(i => i !== idx);
-      if (!indicesElegidos.value.length) facturaElegida.value = null;
+      if (!indicesElegidos.value.length) {
+        // Jhan #173: sin factura elegida, el badge "Siesa" del centro ya no debe quedar prendido.
+        facturaElegida.value = null;
+        centroEsSiesa.value = false;
+      }
     } else {
       indicesElegidos.value = [...indicesElegidos.value, idx];
     }
