@@ -100,4 +100,22 @@ RSpec.describe Helic3::Casos::RegistrarDesdeErp do
                                      'direccion' => 'humano')
     expect(ficha.productos).to eq([{ 'nombre' => 'Puerta Milano', 'referencia' => 'MIL-200', 'fuente' => 'erp' }])
   end
+
+  # ERP-18b: al radicar con ERP, el centro de operacion de la factura tambien se guarda. Antes
+  # se perdia: no estaba ni en CAMPOS_CLIENTE ni en CAMPOS_COMPRA, asi que nadie lo escribia.
+  it 'guarda el centro de operacion de la factura (fuente erp)' do
+    ticket = Helic3::Casos::Radicar.new(account: account, titulo: 'Caso', motivo_pqr:
+                                          Helic3::Catalogo::MotivoPqr.find_by!(account: account,
+                                                                               codigo: 'garantia_producto'),
+                                        numero_orden: 'FV-1001').call
+    described_class.new(
+      ticket: ticket, fuente: :humano,
+      datos: { cedula: '1032456789', factura_numero: 'FV-1001',
+               centro_operacion_nombre: 'OM ARMENIA SANTA LUCIA', productos: [{ referencia: 'MIL-200' }] }
+    ).call
+
+    ficha = ticket.reload.datos
+    expect(ficha.centro_operacion_nombre).to eq('OM ARMENIA SANTA LUCIA')
+    expect(ficha.fuentes['centro_operacion_nombre']).to eq('erp')
+  end
 end

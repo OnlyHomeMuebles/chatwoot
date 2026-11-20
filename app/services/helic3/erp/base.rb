@@ -35,4 +35,12 @@ class Helic3::Erp::Base
   def account_statement(cedula:)
     raise NotImplementedError, "#{self.class} debe implementar #account_statement(cedula:)"
   end
+
+  # ERP-18b: respuesta cruda de la consulta de centros de operacion (lista de tiendas), o nil si
+  # el adaptador no la ofrece. OPCIONAL (no NotImplementedError): un adaptador sin centros deja
+  # las facturas con el id del C.O., sin nombre. La parsea Helic3::Erp::SiesaCentros.
+  # @return [Hash, nil]
+  def centros
+    nil
+  end
 end

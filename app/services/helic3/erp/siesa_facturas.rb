@@ -37,6 +37,9 @@ module Helic3::Erp::SiesaFacturas
       saldo: cab['f461_vlr_cxc'],
       estado: nil, # DesdePedido no trae pagada/pendiente/vencida; el selector no lo usa
       centro_operacion: cab['f350_id_co'],
+      # ERP-18b: la compañia de la factura. El nombre del C.O. se resuelve por compañia + id
+      # (el mismo id es una tienda distinta segun la compañia).
+      centro_operacion_compania: cab['f350_id_cia'],
       items: lineas.map { |linea| item(linea) }
     )
   end

@@ -29,6 +29,10 @@ module Helic3::Erp
   CLAVE_ID_COMPANIA = 'HELIC3_SIESA_HUB_ID_COMPANIA'
   CLAVE_CONSULTA_CLIENTES = 'HELIC3_SIESA_HUB_CONSULTA_CLIENTES'
   CLAVE_CONSULTA_COMPRAS = 'HELIC3_SIESA_HUB_CONSULTA_COMPRAS'
+  # ERP-18b: consulta de los centros de operacion (tiendas). OPCIONAL a proposito: no entra a
+  # CLAVES_SIESA, para no romper el ERP de quien aun no la configuro. Sin ella, la factura se
+  # queda con el id del C.O. (sin nombre), sin error.
+  CLAVE_CONSULTA_CENTROS = 'HELIC3_SIESA_HUB_CONSULTA_CENTROS'
   # ERP-05: dos consultas, clientes (nombre y contacto de cualquier cedula) y compras (una o
   # varias, separadas por coma).
   CLAVES_SIESA = [
@@ -116,7 +120,9 @@ module Helic3::Erp
         id_compania: conexion[CLAVE_ID_COMPANIA]
       ),
       consulta_clientes: conexion[CLAVE_CONSULTA_CLIENTES],
-      consultas_compras: conexion[CLAVE_CONSULTA_COMPRAS].split(',').map(&:strip).reject(&:empty?)
+      consultas_compras: conexion[CLAVE_CONSULTA_COMPRAS].split(',').map(&:strip).reject(&:empty?),
+      # opcional: nil si no se configuro (se lee aparte de CLAVES_SIESA, que son obligatorias)
+      consulta_centros: GlobalConfig.get_value(CLAVE_CONSULTA_CENTROS).to_s.strip.presence
     )
   end
 end

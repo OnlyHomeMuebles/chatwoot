@@ -1,0 +1,14 @@
+{
+  "codigo": 0,
+  "mensaje": "Transaccion Exitosa",
+  "detalle": {
+    "Table": [
+      {
+        "JSON_F52E2B61-18A1-11d1-B105-00805F49916B": "[{\"f285_id_cia\":1,\"f285_id\":\"001\",\"f285_descripcion\":\"OM CALI SUR\",\"f285_id_regional\":\"02\",\"f285_ind_estado\":1},{\"f285_id_cia\":2,\"f285_id\":\"001\",\"f285_descripcion\":\""
+      },
+      {
+        "JSON_F52E2B61-18A1-11d1-B105-00805F49916B": "INDIGO MALL\",\"f285_id_regional\":\"02\",\"f285_ind_estado\":1},{\"f285_id_cia\":1,\"f285_id\":\"012\",\"f285_descripcion\":\"OM NEIVA\",\"f285_id_regional\":\"03\",\"f285_ind_estado\":0}]"
+      }
+    ]
+  }
+}

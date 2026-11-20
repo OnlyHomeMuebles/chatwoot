@@ -58,6 +58,13 @@ module Helic3::SuperAdmin::AppConfigsExtension
       'description' => 'Una o varias consultas de facturas, separadas por coma ' \
                        '(p. ej. API_v2_Ventas_Facturas_DesdePedido).',
       'type' => 'text'
+    },
+    Helic3::Erp::CLAVE_CONSULTA_CENTROS => {
+      'display_title' => 'Consulta de centros de operación (opcional)',
+      'description' => 'Nombre de la consulta de Siesa HUB con la lista de tiendas/centros ' \
+                       '(p. ej. API_v4_CentrosOperacion). Si se deja vacía, el centro de ' \
+                       'operación se guarda solo con su id, sin nombre.',
+      'type' => 'text'
     }
   }.freeze
 

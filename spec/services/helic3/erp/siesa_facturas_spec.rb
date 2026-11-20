@@ -30,7 +30,7 @@ RSpec.describe Helic3::Erp::SiesaFacturas do
 
   def linea(rowid:, co:, consec:, prefijo:, fecha:, nit:, neto:, cxc:, ref:, desc:, cant:, vlr:)
     {
-      'f350_rowid' => rowid, 'f350_id_co' => co, 'f350_consec_docto' => consec,
+      'f350_rowid' => rowid, 'f350_id_co' => co, 'f350_id_cia' => '1', 'f350_consec_docto' => consec,
       'f350_prefijo' => prefijo, 'f350_id_tipo_docto' => 'FVE', 'f350_fecha' => fecha,
       'f200_nit_fact' => nit, 'f461_vlr_neto' => neto, 'f461_vlr_cxc' => cxc,
       'f120_referencia' => ref, 'f120_descripcion' => desc, 'f470_cant_1' => cant, 'f470_vlr_neto' => vlr
@@ -47,6 +47,7 @@ RSpec.describe Helic3::Erp::SiesaFacturas do
     factura = described_class.parsear(respuesta).find { |f| f.items.size == 2 }
 
     expect(factura.centro_operacion).to eq('012')
+    expect(factura.centro_operacion_compania).to eq('1') # ERP-18b: compañia de la factura
     expect(factura.fecha).to eq('2023-04-03') # recorta la hora
     expect(factura.total).to eq(1_497_100)
     expect(factura.items.map(&:referencia)).to contain_exactly('2000004000165', '2050003000065')

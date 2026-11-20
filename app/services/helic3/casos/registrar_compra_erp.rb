@@ -120,6 +120,7 @@ class Helic3::Casos::RegistrarCompraErp
       sellar(ficha, 'factura_numero', @datos[:factura_numero], @fuente)
       sellar(ficha, 'factura_fecha', @datos[:factura_fecha], @fuente)
     end
+    sellar_centro(ficha, factura)
 
     unless productos.nil?
       ficha.productos = productos
@@ -130,6 +131,20 @@ class Helic3::Casos::RegistrarCompraErp
     end
 
     ficha.save!
+  end
+
+  # ERP-18b: el centro de operacion de la factura. Si cruza el cache, el nombre lo resolvio
+  # SiesaCentros por compania+id (fuente erp), igual que factura_numero/fecha. Si el agente
+  # escribio uno distinto, o no hubo cruce, queda lo escrito con @fuente. El backend no confia
+  # en que el front diga que vino de Siesa: lo toma del cache, no de lo que mando el formulario.
+  def sellar_centro(ficha, factura)
+    del_erp = factura&.centro_operacion_nombre
+    escrito = @datos[:centro_operacion_nombre]
+    if del_erp.present? && (escrito.blank? || normal(escrito) == normal(del_erp))
+      sellar(ficha, 'centro_operacion_nombre', del_erp, 'erp')
+    else
+      sellar(ficha, 'centro_operacion_nombre', escrito, @fuente)
+    end
   end
 
   # Escritura directa de la compra (no pasa por RegistrarDatos): este servicio es la autoridad

@@ -80,6 +80,20 @@ module Helic3::Erp::SimulatedData
     }
   end
 
+  # ERP-18b: centros de operacion (tiendas) con la forma de la respuesta de Siesa: detalle.Table
+  # con el JSON troceado (SiesaCentros lo une y parsea). Los ids coinciden con el centro_operacion
+  # de las facturas de arriba, para que el nombre se resuelva. compania nil: las facturas simuladas
+  # no traen compania (en Siesa real es compania+id; aqui el id ya es unico).
+  def centros
+    filas = [
+      { f285_id_cia: nil, f285_id: 'Armenia Centro', f285_descripcion: 'OM ARMENIA SANTA LUCIA', f285_ind_estado: 1 },
+      { f285_id_cia: nil, f285_id: 'Bogotá Norte', f285_descripcion: 'OM BOGOTA NORTE', f285_ind_estado: 1 },
+      { f285_id_cia: nil, f285_id: 'Pereira Principal', f285_descripcion: 'OM PEREIRA PRINCIPAL', f285_ind_estado: 1 },
+      { f285_id_cia: nil, f285_id: 'Medellín El Poblado', f285_descripcion: 'OM MEDELLIN EL POBLADO', f285_ind_estado: 1 }
+    ].to_json
+    { 'detalle' => { 'Table' => [{ 'JSON' => filas }] } }
+  end
+
   def cedulas
     customers.keys
   end

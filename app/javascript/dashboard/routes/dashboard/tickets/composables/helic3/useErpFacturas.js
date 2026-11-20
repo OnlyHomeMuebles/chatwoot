@@ -17,6 +17,8 @@ export function useErpFacturas(form) {
   // Indices de LINEA de los productos elegidos (no referencias): una factura puede traer dos
   // lineas con la misma referencia, y por referencia se marcarian/duplicarian juntas.
   const indicesElegidos = ref([]);
+  // ERP-18b (CA1): el centro_operacion_nombre del campo lo llenó la factura elegida (badge Siesa).
+  const centroEsSiesa = ref(false);
 
   const recibir = lista => {
     // De la mas reciente a la mas vieja (la fecha es ISO AAAA-MM-DD, compara cronologico).
@@ -25,25 +27,6 @@ export function useErpFacturas(form) {
     );
     estado.value = facturas.value.length ? 'con_resultados' : 'sin_resultados';
   };
-
-  // Alterna un producto. "Una factura y uno o mas productos": elegir un producto de OTRA
-  // factura cambia la factura y reinicia la seleccion (no se mezclan facturas). Quitar el
-  // ultimo producto deja la factura sin elegir.
-  const alternar = (factura, idx) => {
-    if (facturaElegida.value !== factura.numero) {
-      facturaElegida.value = factura.numero;
-      indicesElegidos.value = [idx];
-    } else if (indicesElegidos.value.includes(idx)) {
-      indicesElegidos.value = indicesElegidos.value.filter(i => i !== idx);
-      if (!indicesElegidos.value.length) facturaElegida.value = null;
-    } else {
-      indicesElegidos.value = [...indicesElegidos.value, idx];
-    }
-    sincronizar();
-  };
-
-  const estaElegido = (factura, idx) =>
-    facturaElegida.value === factura.numero && indicesElegidos.value.includes(idx);
 
   // Productos elegidos como [{nombre, referencia}] para el payload de radicacion, en orden de
   // linea. El backend los vuelve a cruzar contra el cache; aqui solo se manda lo que se marco.
@@ -68,11 +51,50 @@ export function useErpFacturas(form) {
     if (factura?.fecha) form.factura_fecha = factura.fecha;
   };
 
+  // Alterna un producto. "Una factura y uno o mas productos": elegir un producto de OTRA
+  // factura cambia la factura y reinicia la seleccion (no se mezclan facturas). Quitar el
+  // ultimo producto deja la factura sin elegir.
+  const alternar = (factura, idx) => {
+    if (facturaElegida.value !== factura.numero) {
+      facturaElegida.value = factura.numero;
+      indicesElegidos.value = [idx];
+      // ERP-18b (CA1): el centro viene de la factura elegida. Si Siesa lo trae, llena el campo
+      // y prende el badge; si no, respeta lo escrito a mano pero apaga el badge (no debe quedar
+      // marcado "Siesa" con el centro de otra factura).
+      if (factura.centro_operacion_nombre) {
+        form.centro_operacion_nombre = factura.centro_operacion_nombre;
+        centroEsSiesa.value = true;
+      } else {
+        centroEsSiesa.value = false;
+      }
+    } else if (indicesElegidos.value.includes(idx)) {
+      indicesElegidos.value = indicesElegidos.value.filter(i => i !== idx);
+      if (!indicesElegidos.value.length) {
+        // Jhan #173: sin factura elegida, el badge "Siesa" del centro ya no debe quedar prendido.
+        facturaElegida.value = null;
+        centroEsSiesa.value = false;
+      }
+    } else {
+      indicesElegidos.value = [...indicesElegidos.value, idx];
+    }
+    sincronizar();
+  };
+
+  const estaElegido = (factura, idx) =>
+    facturaElegida.value === factura.numero &&
+    indicesElegidos.value.includes(idx);
+
+  // El agente editó el campo del centro: deja de ser "de Siesa" (se quita el badge).
+  const alEditarCentro = () => {
+    centroEsSiesa.value = false;
+  };
+
   const limpiar = () => {
     facturas.value = [];
     estado.value = 'idle';
     facturaElegida.value = null;
     indicesElegidos.value = [];
+    centroEsSiesa.value = false;
   };
 
   return {
@@ -80,10 +102,12 @@ export function useErpFacturas(form) {
     estado,
     facturaElegida,
     indicesElegidos,
+    centroEsSiesa,
     recibir,
     alternar,
     estaElegido,
     productosElegidos,
+    alEditarCentro,
     limpiar,
   };
 }
