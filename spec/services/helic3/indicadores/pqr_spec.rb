@@ -118,6 +118,14 @@ RSpec.describe Helic3::Indicadores::Pqr do
       expect(por_responsable[agente.name][:cantidad]).to eq(1)
       expect(por_responsable[nil][:cantidad]).to eq(2)
     end
+
+    # IND grupo B (espejo Dash CX "peticiones por motivo"): desglose PLANO por motivo
+    # (hasta ahora solo existia motivo_por_trimestre), ordenado de mayor a menor.
+    it 'por_motivo: dos de Calidad, una de Entrega (desglose plano, mayor primero)' do
+      por_motivo = llamar[:por_motivo]
+
+      expect(por_motivo).to eq([{ etiqueta: 'Calidad', cantidad: 2 }, { etiqueta: 'Entrega', cantidad: 1 }])
+    end
   end
 
   it 'CA: una consulta de categoria Informacion (sin radicado) no aparece en ningun conteo' do

@@ -101,6 +101,8 @@
       "MONTHLY": "Monthly detail",
       "MONTHLY_SUBTITLE": "Cases filed by month",
       "MONTHLY_CHART": "Monthly count",
+      "MOTIVE_CHART": "Petitions by motive",
+      "MOTIVE_SUBTITLE": "Number of cases per motive",
       "QUARTERLY": "Quarterly detail",
       "QUARTERLY_SUBTITLE": "Cases filed by quarter",
       "QUARTER_COLUMN": "Quarter",

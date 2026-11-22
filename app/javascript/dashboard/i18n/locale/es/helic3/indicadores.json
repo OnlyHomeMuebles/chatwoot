@@ -101,6 +101,8 @@
       "MONTHLY": "Detalle mensual",
       "MONTHLY_SUBTITLE": "PQR radicadas por mes",
       "MONTHLY_CHART": "Recuento por mes",
+      "MOTIVE_CHART": "Peticiones por motivo",
+      "MOTIVE_SUBTITLE": "Cantidad de PQR por cada motivo",
       "QUARTERLY": "Detalle trimestral",
       "QUARTERLY_SUBTITLE": "PQR radicadas por trimestre",
       "QUARTER_COLUMN": "Trimestre",

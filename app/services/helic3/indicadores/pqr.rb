@@ -26,6 +26,7 @@ class Helic3::Indicadores::Pqr
       mensual: mensual,
       trimestral: trimestral,
       motivo_por_trimestre: motivo_por_trimestre,
+      por_motivo: por_motivo,
       por_tipo: por_tipo,
       por_categoria: por_categoria,
       por_resultado: por_resultado,
@@ -109,6 +110,12 @@ class Helic3::Indicadores::Pqr
     TRIMESTRES.each { |trimestre| fila[:"t#{trimestre}"] = por_trimestre[trimestre] || 0 }
     fila[:total] = por_trimestre.values.sum
     fila
+  end
+
+  # Desglose plano por motivo (espejo de "peticiones por motivo" del Dash CX), aparte de
+  # motivo_por_trimestre. Mismo helper que los otros desgloses.
+  def por_motivo
+    agrupar_catalogo(:motivo_pqr_id, Helic3::Catalogo::MotivoPqr)
   end
 
   def por_tipo

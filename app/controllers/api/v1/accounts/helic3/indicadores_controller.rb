@@ -52,7 +52,7 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
     enviar_csv("indicadores-garantias-#{params[:seccion]}", *filas_garantias(datos, params[:seccion]))
   end
 
-  SECCIONES_PQR = %w[mensual trimestral motivo_por_trimestre por_tipo por_categoria por_resultado
+  SECCIONES_PQR = %w[mensual trimestral motivo_por_trimestre por_motivo por_tipo por_categoria por_resultado
                      por_responsable].freeze
 
   def pqr_csv

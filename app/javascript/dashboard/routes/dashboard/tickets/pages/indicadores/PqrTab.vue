@@ -238,6 +238,24 @@ const comoGrafica = filas => ({
 });
 const graficaMensual = computed(() => comoGrafica(datos.value?.mensual || []));
 
+// Espejo Dash CX "peticiones por motivo": una barra por motivo (categorias = etiqueta, no periodo).
+const graficaPorMotivo = computed(() => {
+  const filas = datos.value?.por_motivo || [];
+  return {
+    categories: filas.map(
+      fila => fila.etiqueta || t('HELIC3_INDICADORES.PQR.NO_MOTIVE')
+    ),
+    series: [
+      {
+        id: 'cantidad',
+        label: t('HELIC3_INDICADORES.PQR.COUNT'),
+        color: 'rgb(var(--blue-9))',
+        data: filas.map(fila => fila.cantidad),
+      },
+    ],
+  };
+});
+
 // Sin catalogo asociado (tipo/responsable), etiqueta es nil -- el frontend
 // decide como traducirlo (mismo patron de GarantiasTab.vue, N3 de PR #113).
 // "Sin asignar" reusa la clave ya existente de TICKETS.UNASSIGNED en vez de
@@ -561,6 +579,24 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Peticiones por motivo (espejo Dash CX): gráfica de barras por motivo -->
+        <div
+          class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
+        >
+          <p class="font-semibold text-n-slate-12">
+            {{ t('HELIC3_INDICADORES.PQR.MOTIVE_CHART') }}
+          </p>
+          <p class="mt-1 mb-2 text-xs text-n-slate-11">
+            {{ t('HELIC3_INDICADORES.PQR.MOTIVE_SUBTITLE') }}
+          </p>
+          <BarChart
+            v-if="datos.por_motivo && datos.por_motivo.length"
+            :data="graficaPorMotivo"
+            :height="ALTURA_GRAFICA"
+            :aria-label="t('HELIC3_INDICADORES.PQR.MOTIVE_CHART')"
+          />
         </div>
 
         <!-- Desgloses -->
