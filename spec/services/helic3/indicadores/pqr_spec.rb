@@ -225,6 +225,30 @@ RSpec.describe Helic3::Indicadores::Pqr do
     end
   end
 
+  # IND grupo B (espejo Dash CX): el filtro "respuesta" de Derechos de Petición es por el
+  # RESULTADO de la petición (Aprobada/Negada/etc. en Siesa; catálogo Resultado en el CRM),
+  # no por si fue respondida. Usa resultado_id, como los demás filtros directos.
+  describe 'filtro por resultado' do
+    let(:resultado_negado) do
+      Helic3::Catalogo::Resultado.create!(account: account, nombre: 'No procede', codigo: 'no_procede')
+    end
+
+    before do
+      crear_ticket(radicada_at: Time.zone.local(2026, 1, 1, 12, 0), resultado: resultado_aprobado)
+      crear_ticket(radicada_at: Time.zone.local(2026, 2, 1, 12, 0), resultado: resultado_aprobado)
+      crear_ticket(radicada_at: Time.zone.local(2026, 3, 1, 12, 0), resultado: resultado_negado)
+    end
+
+    it 'filtra las PQR por su resultado' do
+      expect(llamar(filtros: { resultado_id: resultado_aprobado.id })[:kpis][:radicadas]).to eq(2)
+      expect(llamar(filtros: { resultado_id: resultado_negado.id })[:kpis][:radicadas]).to eq(1)
+    end
+
+    it 'sin filtro de resultado las trae todas' do
+      expect(llamar[:kpis][:radicadas]).to eq(3)
+    end
+  end
+
   it 'aisla por cuenta: una PQR de otra cuenta nunca aparece' do
     otra_cuenta = create(:account)
     otra_categoria = Helic3::Catalogo::Categoria.create!(account: otra_cuenta, nombre: 'PQR', codigo: 'pqr')

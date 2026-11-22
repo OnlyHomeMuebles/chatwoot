@@ -20,7 +20,8 @@
       "TYPE": "Tipo",
       "RESPONSIBLE": "Responsable",
       "CLEAR": "Limpiar filtros",
-      "ALL": "Todos"
+      "ALL": "Todos",
+      "RESPONSE": "Respuesta"
     },
     "EMPTY": "Sin datos para este filtro",
     "ERROR": "No se pudieron cargar los indicadores",

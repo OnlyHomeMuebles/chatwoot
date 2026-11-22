@@ -85,7 +85,7 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
     params.permit(*FILTROS_GARANTIAS).to_h.symbolize_keys
   end
 
-  FILTROS_PQR = %i[anio mes tipo_id categoria_id motivo_pqr_id assignee_id].freeze
+  FILTROS_PQR = %i[anio mes tipo_id categoria_id motivo_pqr_id assignee_id resultado_id].freeze
 
   def filtros_pqr
     params.permit(*FILTROS_PQR).to_h.symbolize_keys

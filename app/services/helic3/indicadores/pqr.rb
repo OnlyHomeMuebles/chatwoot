@@ -150,7 +150,7 @@ class Helic3::Indicadores::Pqr
            .sort_by { |fila| -fila[:cantidad] }
   end
 
-  FILTROS_DIRECTOS = %i[tipo_id categoria_id motivo_pqr_id assignee_id].freeze
+  FILTROS_DIRECTOS = %i[tipo_id categoria_id motivo_pqr_id assignee_id resultado_id].freeze
 
   # cuenta_para_sic excluye las categorias que no generan radicado (p. ej.
   # "Informacion"): una consulta sin radicado no debe inflar ningun conteo.

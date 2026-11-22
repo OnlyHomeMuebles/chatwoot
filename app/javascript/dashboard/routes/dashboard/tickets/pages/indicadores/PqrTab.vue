@@ -37,6 +37,7 @@ const filtros = reactive({
   tipo_id: '',
   motivo_pqr_id: '',
   assignee_id: '',
+  resultado_id: '',
 });
 
 const todos = () => ({ value: '', label: t('HELIC3_INDICADORES.FILTERS.ALL') });
@@ -78,6 +79,15 @@ const responsableOptions = computed(() => [
   todos(),
   ...agentes.value.map(agente => ({ value: agente.id, label: agente.name })),
 ]);
+// IND grupo B (espejo Dash CX): el filtro "respuesta" de Derechos de Petición es por el
+// RESULTADO de la petición (catálogo Resultado del CRM, administrable), no por respondida/pendiente.
+const resultadoOptions = computed(() => [
+  todos(),
+  ...(catalogos.value.resultados || []).map(fila => ({
+    value: fila.id,
+    label: fila.nombre,
+  })),
+]);
 
 const selectFiltros = computed(() => [
   {
@@ -104,6 +114,11 @@ const selectFiltros = computed(() => [
     clave: 'assignee_id',
     label: t('HELIC3_INDICADORES.FILTERS.RESPONSIBLE'),
     opciones: responsableOptions.value,
+  },
+  {
+    clave: 'resultado_id',
+    label: t('HELIC3_INDICADORES.FILTERS.RESPONSE'),
+    opciones: resultadoOptions.value,
   },
 ]);
 
@@ -169,6 +184,7 @@ watch(
     filtros.tipo_id,
     filtros.motivo_pqr_id,
     filtros.assignee_id,
+    filtros.resultado_id,
   ],
   cargar
 );

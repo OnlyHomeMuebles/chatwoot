@@ -20,7 +20,8 @@
       "TYPE": "Type",
       "RESPONSIBLE": "Responsible",
       "CLEAR": "Clear filters",
-      "ALL": "All"
+      "ALL": "All",
+      "RESPONSE": "Response"
     },
     "EMPTY": "No data for this filter",
     "ERROR": "Could not load the indicators",
