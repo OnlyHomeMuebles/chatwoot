@@ -44,7 +44,13 @@ vi.mock('dashboard/store/helic3/indicadores', () => ({
 }));
 
 const indicadoresVacios = () => ({
-  kpis: { devoluciones: 0, solucionadas: 0, en_proceso: 0, productos: 0 },
+  kpis: {
+    devoluciones: 0,
+    solucionadas: 0,
+    en_proceso: 0,
+    productos: 0,
+    tiendas_afectadas: 0,
+  },
   mensual: [],
   trimestral: [],
   por_ciudad: [],
@@ -76,10 +82,16 @@ describe('DevolucionesTab.vue (IND-06)', () => {
     expect(wrapper.text()).toContain('HELIC3_INDICADORES.EMPTY');
   });
 
-  it('muestra las cuatro tarjetas con los kpis que trae el servidor', () => {
+  it('muestra las cinco tarjetas con los kpis que trae el servidor (incluida tiendas afectadas)', () => {
     devolucionesRef = {
       ...indicadoresVacios(),
-      kpis: { devoluciones: 5, solucionadas: 2, en_proceso: 3, productos: 7 },
+      kpis: {
+        devoluciones: 5,
+        solucionadas: 2,
+        en_proceso: 3,
+        productos: 7,
+        tiendas_afectadas: 4,
+      },
     };
     const wrapper = shallowMount(DevolucionesTab);
 
@@ -87,6 +99,10 @@ describe('DevolucionesTab.vue (IND-06)', () => {
     expect(wrapper.text()).toContain('2');
     expect(wrapper.text()).toContain('3');
     expect(wrapper.text()).toContain('7');
+    expect(wrapper.text()).toContain(
+      'HELIC3_INDICADORES.DEVOLUCIONES.KPI_STORES'
+    );
+    expect(wrapper.text()).toContain('4');
   });
 
   it('muestra un aviso de error con boton de reintentar cuando el fetch falla, y reintentar vuelve a pedir', async () => {

@@ -345,7 +345,8 @@ RSpec.describe 'Helic3 Indicadores (IND-01)', type: :request do
       expect(body.keys).to match_array(%w[kpis mensual trimestral por_ciudad por_motivo por_detalle por_proceso
                                           por_producto motivo_por_trimestre motivo_por_mes detalle_por_trimestre
                                           detalle_por_mes])
-      expect(body['kpis']).to eq('devoluciones' => 1, 'solucionadas' => 0, 'en_proceso' => 1, 'productos' => 0)
+      expect(body['kpis']).to eq('devoluciones' => 1, 'solucionadas' => 0, 'en_proceso' => 1, 'productos' => 0,
+                                 'tiendas_afectadas' => 0)
     end
 
     it 'no expone las devoluciones de otra cuenta' do

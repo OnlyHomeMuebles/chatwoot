@@ -138,6 +138,8 @@
       "KPI_IN_PROGRESS_DESC": "New and in progress",
       "KPI_PRODUCTS": "Products",
       "KPI_PRODUCTS_DESC": "Products in the period's returns",
+      "KPI_STORES": "Affected stores",
+      "KPI_STORES_DESC": "Distinct cities with returns",
       "MONTHLY": "Monthly detail",
       "MONTHLY_SUBTITLE": "Returns filed by month",
       "MONTHLY_CHART": "Monthly count",

@@ -57,7 +57,10 @@ class Helic3::Indicadores::Devoluciones
       devoluciones: base.count,
       solucionadas: base.where.not(cerrada_at: nil).count,
       en_proceso: base.where(cerrada_at: nil).count,
-      productos: items_filtrados.count
+      productos: items_filtrados.count,
+      # Espejo Dash CX "tiendas afectadas": ciudades DISTINTAS con devolución (hoy por ciudad;
+      # pasará a tienda con el centro de operación de ERP-18b). Sin ciudad no cuenta.
+      tiendas_afectadas: base.where.not(cobertura_ciudad_id: nil).distinct.count(:cobertura_ciudad_id)
     }
   end
 

@@ -282,6 +282,12 @@ const kpiCards = computed(() => [
     descripcion: t('HELIC3_INDICADORES.DEVOLUCIONES.KPI_PRODUCTS_DESC'),
     color: 'text-n-slate-12',
   },
+  {
+    label: t('HELIC3_INDICADORES.DEVOLUCIONES.KPI_STORES'),
+    valor: datos.value?.kpis.tiendas_afectadas,
+    descripcion: t('HELIC3_INDICADORES.DEVOLUCIONES.KPI_STORES_DESC'),
+    color: 'text-n-slate-12',
+  },
 ]);
 
 // "Recuento vs. ratio" (mockup v12): la linea muestra % solucionadas en vez

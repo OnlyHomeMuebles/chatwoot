@@ -47,8 +47,19 @@ RSpec.describe Helic3::Indicadores::Devoluciones do
                        ])
     end
 
-    it 'kpis: 2 devoluciones, 1 solucionada, 1 en proceso, 3 productos' do
-      expect(llamar[:kpis]).to eq(devoluciones: 2, solucionadas: 1, en_proceso: 1, productos: 3)
+    it 'kpis: 2 devoluciones, 1 solucionada, 1 en proceso, 3 productos, 1 tienda afectada' do
+      expect(llamar[:kpis]).to eq(devoluciones: 2, solucionadas: 1, en_proceso: 1, productos: 3,
+                                  tiendas_afectadas: 1)
+    end
+
+    # Pieza 4 (espejo Dash CX "tiendas afectadas"): cuenta ciudades DISTINTAS con devolución
+    # (una misma ciudad no suma dos veces; la devolución sin ciudad no cuenta).
+    it 'tiendas_afectadas cuenta ciudades distintas' do
+      pereira = Helic3::Catalogo::CoberturaCiudad.create!(account: account, nombre: 'Pereira', codigo: 'pereira')
+      crear_devolucion(abierta_at: Time.zone.local(2026, 2, 1), ciudad: manizales)
+      crear_devolucion(abierta_at: Time.zone.local(2026, 2, 2), ciudad: pereira)
+
+      expect(llamar[:kpis][:tiendas_afectadas]).to eq(2)
     end
 
     it 'mensual trae solucionadas/en_proceso por radicado, no por producto' do
