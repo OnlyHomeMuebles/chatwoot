@@ -63,6 +63,10 @@ const indicadoresVacios = () => ({
   por_detalle: [],
   por_proceso: [],
   por_producto: [],
+  motivo_por_trimestre: [],
+  motivo_por_mes: [],
+  detalle_por_trimestre: [],
+  detalle_por_mes: [],
 });
 
 describe('GarantiasTab.vue (IND-01)', () => {
@@ -226,5 +230,43 @@ describe('GarantiasTab.vue (IND-01)', () => {
       expect(fetchGarantias).toHaveBeenCalledWith({ producto: 'Cama' });
       vi.useRealTimers();
     });
+  });
+
+  // Paridad con el Dash CX ("Garantías por motivo"): clickear un trimestre del
+  // gráfico de colores lo despliega por mes, sin pedir nada al backend (reusa
+  // DesgloseTrimestral, igual que Devoluciones).
+  it('al hacer click en un trimestre de "Motivo por trimestre", lo despliega por mes', async () => {
+    garantiasRef = {
+      ...indicadoresVacios(),
+      kpis: {
+        garantias: 4,
+        solucionadas: 0,
+        en_proceso: 4,
+        productos: 0,
+        facturas: 0,
+        ratio: 0,
+      },
+      motivo_por_trimestre: [
+        { motivo: 'Calidad', t1: 2, t2: 3, t3: 0, t4: 0, total: 5 },
+      ],
+      motivo_por_mes: [
+        { motivo: 'Calidad', periodo: '2026-04', cantidad: 3 },
+        { motivo: 'Calidad', periodo: '2026-01', cantidad: 2 },
+      ],
+    };
+    const wrapper = mount(GarantiasTab);
+    await flushPromises();
+
+    const grupoT2 = wrapper
+      .findAll('g')
+      .find(g => g.text().trim().startsWith('T2'));
+    expect(grupoT2).toBeTruthy();
+    await grupoT2.trigger('click');
+
+    expect(wrapper.text()).toContain('2026-04');
+    expect(wrapper.text()).not.toContain('2026-01');
+    expect(wrapper.text()).toContain(
+      'HELIC3_INDICADORES.GARANTIAS.BACK_TO_QUARTERS'
+    );
   });
 });

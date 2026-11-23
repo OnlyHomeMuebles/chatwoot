@@ -18,7 +18,7 @@ RSpec.describe 'Helic3 Indicadores (IND-01)', type: :request do
     expect(response).to have_http_status(:unauthorized)
   end
 
-  it 'devuelve las siete secciones de la respuesta' do
+  it 'devuelve todas las secciones de la respuesta (incluidas las matrices por mes/trimestre)' do
     Helic3::Garantia.create!(account: account, ticket: ticket, abierta_at: Time.zone.local(2026, 1, 1))
 
     get_garantias
@@ -26,7 +26,8 @@ RSpec.describe 'Helic3 Indicadores (IND-01)', type: :request do
     expect(response).to have_http_status(:success)
     body = response.parsed_body
     expect(body.keys).to match_array(%w[kpis mensual trimestral por_ciudad por_motivo por_detalle por_proceso
-                                        por_producto])
+                                        por_producto motivo_por_trimestre motivo_por_mes
+                                        detalle_por_trimestre detalle_por_mes])
     expect(body['kpis']).to eq('garantias' => 1, 'solucionadas' => 0, 'en_proceso' => 1, 'productos' => 0,
                                'facturas' => 0, 'ratio' => 0.0)
   end

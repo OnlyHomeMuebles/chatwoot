@@ -293,4 +293,35 @@ RSpec.describe Helic3::Indicadores::Garantias do
       expect(resultado[:casos].size).to eq(1)
     end
   end
+
+  # Pieza 3 (opción A, decisión de Jhan): Garantías enchufa DesgloseTrimestral igual que
+  # Devoluciones -> matriz motivo/detalle x trimestre y x mes, para las gráficas por mes.
+  describe 'desglose por motivo y detalle (matriz trimestre/mes, reusa DesgloseTrimestral)' do
+    before do
+      crear_garantia(abierta_at: Time.zone.local(2026, 1, 10),
+                     productos: [{ producto_nombre: 'A', motivo_garantia: calidad,
+                                   detalle_tipificado: tela_motosa }])
+      crear_garantia(abierta_at: Time.zone.local(2026, 2, 10),
+                     productos: [{ producto_nombre: 'B', motivo_garantia: calidad, detalle_tipificado: tela_motosa },
+                                 { producto_nombre: 'C', motivo_garantia: fabricacion }])
+    end
+
+    it 'motivo_por_trimestre: matriz motivo x trimestre con total' do
+      filas = llamar[:motivo_por_trimestre].index_by { |fila| fila[:motivo] }
+      expect(filas['Calidad - producto comprado']).to include(t1: 2, total: 2)
+      expect(filas['Reparación - primera entrega']).to include(t1: 1, total: 1)
+    end
+
+    it 'motivo_por_mes: una fila por motivo y mes (para la gráfica por mes)' do
+      calidad_feb = llamar[:motivo_por_mes].find do |fila|
+        fila[:motivo] == 'Calidad - producto comprado' && fila[:periodo] == '2026-02'
+      end
+      expect(calidad_feb[:cantidad]).to eq(1)
+    end
+
+    it 'detalle_por_trimestre y detalle_por_mes salen con el detalle tipificado' do
+      expect(llamar[:detalle_por_trimestre].map { |fila| fila[:detalle] }).to include('Tela motosa')
+      expect(llamar[:detalle_por_mes].map { |fila| fila[:periodo] }).to include('2026-01', '2026-02')
+    end
+  end
 end

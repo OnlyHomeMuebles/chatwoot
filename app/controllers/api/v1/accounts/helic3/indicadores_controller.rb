@@ -43,7 +43,8 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
   # IND-05: la misma tabla que se esta viendo en pantalla, con los mismos
   # filtros, descargada en CSV. Nunca se calcula nada que la tabla no muestre
   # ya -- esto solo reempaqueta la respuesta de los servicios existentes.
-  SECCIONES_GARANTIAS = %w[mensual trimestral por_ciudad por_motivo por_detalle por_proceso por_producto].freeze
+  SECCIONES_GARANTIAS = %w[mensual trimestral por_ciudad por_motivo por_detalle por_proceso por_producto
+                           motivo_por_trimestre detalle_por_trimestre].freeze
 
   def garantias_csv
     return render_seccion_invalida unless SECCIONES_GARANTIAS.include?(params[:seccion])
