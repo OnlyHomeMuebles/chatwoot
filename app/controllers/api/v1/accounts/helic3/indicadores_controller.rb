@@ -63,7 +63,7 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
     enviar_csv("indicadores-pqr-#{params[:seccion]}", *filas_pqr(datos, params[:seccion]))
   end
 
-  SECCIONES_DEVOLUCIONES = %w[mensual trimestral por_ciudad por_motivo por_detalle por_proceso por_producto
+  SECCIONES_DEVOLUCIONES = %w[mensual trimestral por_ciudad por_tienda por_motivo por_detalle por_proceso por_producto
                               motivo_por_trimestre detalle_por_trimestre].freeze
 
   def devoluciones_csv
@@ -115,6 +115,7 @@ class Api::V1::Accounts::Helic3::IndicadoresController < Api::V1::Accounts::Base
   # identico al que ya ve Karen en la tabla en pantalla.
   FALLBACK_ETIQUETA = {
     'por_ciudad' => 'Sin ciudad',
+    'por_tienda' => 'Sin tienda',
     'por_motivo' => 'Sin motivo',
     'por_detalle' => 'Sin detalle',
     'por_proceso' => 'Sin etapa',

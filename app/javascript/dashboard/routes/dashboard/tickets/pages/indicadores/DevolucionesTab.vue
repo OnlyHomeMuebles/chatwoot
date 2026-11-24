@@ -441,6 +441,7 @@ const detallePorMesPivot = computed(() =>
 
 const ETIQUETA_SIN_DATO = {
   BY_CITY: 'NO_CITY',
+  BY_STORE: 'NO_STORE',
   BY_MOTIVE: 'NO_MOTIVE',
   BY_DETAIL: 'NO_DETAIL',
   BY_STAGE: 'NO_STAGE',
@@ -461,6 +462,21 @@ const maxPorCiudad = computed(() =>
   Math.max(1, ...porCiudadConNombre.value.map(fila => fila.cantidad))
 );
 const anchoBarra = cantidad => `${(cantidad / maxPorCiudad.value) * 100}%`;
+
+// Pieza 5: desglose por tienda (centro de operación). Solo-lectura (no es
+// filtro, a diferencia de ciudad): la tabla arranca vacía y se va llenando a
+// medida que las PQR se radican con centro de operación (ERP-18b).
+const porTiendaConNombre = computed(() =>
+  (datos.value?.por_tienda || []).map(fila => ({
+    ...fila,
+    nombre: etiquetaDe('BY_STORE', fila.etiqueta),
+  }))
+);
+const maxPorTienda = computed(() =>
+  Math.max(1, ...porTiendaConNombre.value.map(fila => fila.cantidad))
+);
+const anchoBarraTienda = cantidad =>
+  `${(cantidad / maxPorTienda.value) * 100}%`;
 
 const maxPorProducto = computed(() =>
   Math.max(1, ...(datos.value?.por_producto || []).map(fila => fila.cantidad))
@@ -935,6 +951,85 @@ const conversacionUrlDe = fila =>
                     />
                   </div>
                 </button>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Por tienda (centro de operación, ERP-18b): solo lectura, junto al
+        "Por ciudad" (no lo reemplaza). Arranca vacía y se llena a medida que
+        las PQR se radican con centro de operación. -->
+        <div class="grid grid-cols-1 gap-3 xl:grid-cols-[1.4fr_1fr]">
+          <table
+            class="w-full text-sm rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
+          >
+            <caption class="p-3 caption-top">
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-left text-n-slate-12">
+                  {{ t('HELIC3_INDICADORES.DEVOLUCIONES.BY_STORE') }}
+                </span>
+                <Button
+                  icon="i-lucide-download"
+                  variant="ghost"
+                  color="slate"
+                  size="xs"
+                  :is-loading="descargando.por_tienda"
+                  :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+                  @click="descargarCsv('por_tienda')"
+                />
+              </div>
+            </caption>
+            <tbody>
+              <tr
+                v-for="fila in porTiendaConNombre"
+                :key="fila.nombre"
+                class="border-t border-n-weak"
+              >
+                <td class="px-3 py-2 text-n-slate-11">{{ fila.nombre }}</td>
+                <td class="px-3 py-2 font-medium text-right text-n-slate-12">
+                  {{ fila.cantidad }}
+                </td>
+              </tr>
+              <tr v-if="!porTiendaConNombre.length">
+                <td class="px-3 py-6 text-center text-n-slate-11" colspan="2">
+                  {{ t('HELIC3_INDICADORES.EMPTY') }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div
+            class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
+          >
+            <p class="font-semibold text-n-slate-12">
+              {{ t('HELIC3_INDICADORES.DEVOLUCIONES.BY_STORE_CHART') }}
+            </p>
+            <p class="mt-1 mb-3 text-xs text-n-slate-11">
+              {{ t('HELIC3_INDICADORES.DEVOLUCIONES.BY_STORE_CHART_SUBTITLE') }}
+            </p>
+            <ul class="space-y-2">
+              <li
+                v-for="fila in porTiendaConNombre"
+                :key="fila.nombre"
+                class="text-sm"
+              >
+                <div class="flex items-baseline justify-between mb-1">
+                  <span class="text-n-slate-11">{{ fila.nombre }}</span>
+                  <span class="font-medium tabular-nums text-n-slate-12">
+                    {{ fila.cantidad }}
+                  </span>
+                </div>
+                <div class="h-1.5 rounded-full bg-n-slate-4 overflow-hidden">
+                  <div
+                    class="h-full rounded-full bg-n-blue-9"
+                    :style="{ width: anchoBarraTienda(fila.cantidad) }"
+                  />
+                </div>
+              </li>
+              <li
+                v-if="!porTiendaConNombre.length"
+                class="text-sm text-n-slate-11"
+              >
+                {{ t('HELIC3_INDICADORES.EMPTY') }}
               </li>
             </ul>
           </div>

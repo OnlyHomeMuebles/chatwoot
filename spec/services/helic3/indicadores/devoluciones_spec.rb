@@ -75,6 +75,26 @@ RSpec.describe Helic3::Indicadores::Devoluciones do
       expect(por_ciudad).not_to have_key(nil)
     end
 
+    # Pieza 5 (desglose por tienda): el centro de operación lo trae ERP-18b a la
+    # PQR (helic3_ticket_datos, 1:1 con el ticket). La devolución lo hereda por
+    # su ticket; las que aún no pasaron por el centro quedan excluidas (igual que
+    # "sin ciudad" en por_ciudad) y se irán sumando con el uso.
+    it 'por_tienda agrupa por el centro de operacion del ticket, excluye las que no tienen' do
+      armenia = create(:ticket, account: account)
+      pereira = create(:ticket, account: account)
+      Helic3::TicketDato.create!(account: account, ticket: armenia, centro_operacion_nombre: 'OM Armenia AXM')
+      Helic3::TicketDato.create!(account: account, ticket: pereira, centro_operacion_nombre: 'OM Pereira')
+      Helic3::Devolucion.create!(account: account, ticket: armenia, abierta_at: Time.zone.local(2026, 1, 5))
+      Helic3::Devolucion.create!(account: account, ticket: pereira, abierta_at: Time.zone.local(2026, 1, 6))
+
+      por_tienda = llamar[:por_tienda].index_by { |fila| fila[:etiqueta] }
+
+      # las 2 del `before` comparten un ticket sin centro -> no aparecen
+      expect(por_tienda['OM Armenia AXM'][:cantidad]).to eq(1)
+      expect(por_tienda['OM Pereira'][:cantidad]).to eq(1)
+      expect(por_tienda).not_to have_key(nil)
+    end
+
     it 'por_motivo cuenta PRODUCTOS, no radicados: cambio_talla aparece 2 veces' do
       por_motivo = llamar[:por_motivo].index_by { |fila| fila[:etiqueta] }
 

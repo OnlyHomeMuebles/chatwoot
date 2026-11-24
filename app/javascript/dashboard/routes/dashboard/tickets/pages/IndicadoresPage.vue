@@ -50,7 +50,7 @@ const TABS = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full overflow-hidden">
+  <div class="flex flex-col h-full w-full overflow-hidden bg-n-background">
     <!-- Mismo estilo de pestañas con línea inferior del mockup/Dash CX -->
     <nav class="flex gap-4 flex-wrap mx-6 mt-6 border-b border-n-weak shrink-0">
       <router-link
@@ -61,7 +61,7 @@ const TABS = computed(() => {
         class="px-1 py-3 text-sm border-b-2"
         :class="
           route.name === tab.name
-            ? 'border-n-brand text-n-brand font-medium'
+            ? 'border-n-blue-9 text-n-blue-11 font-medium'
             : 'border-transparent text-n-slate-11 hover:text-n-slate-12'
         "
       >

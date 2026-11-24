@@ -54,6 +54,7 @@ const indicadoresVacios = () => ({
   mensual: [],
   trimestral: [],
   por_ciudad: [],
+  por_tienda: [],
   por_motivo: [],
   por_detalle: [],
   por_proceso: [],
@@ -103,6 +104,26 @@ describe('DevolucionesTab.vue (IND-06)', () => {
       'HELIC3_INDICADORES.DEVOLUCIONES.KPI_STORES'
     );
     expect(wrapper.text()).toContain('4');
+  });
+
+  // Pieza 5: desglose por tienda (centro de operación). Es solo lectura y vive
+  // al lado de "por ciudad"; cuando llega, lista las tiendas con su conteo.
+  it('muestra el desglose por tienda cuando el servidor lo trae', () => {
+    devolucionesRef = {
+      ...indicadoresVacios(),
+      kpis: { devoluciones: 4, solucionadas: 0, en_proceso: 4, productos: 0 },
+      por_tienda: [
+        { etiqueta: 'OM Armenia AXM', cantidad: 3 },
+        { etiqueta: 'OM Pereira', cantidad: 1 },
+      ],
+    };
+    const wrapper = shallowMount(DevolucionesTab);
+
+    expect(wrapper.text()).toContain(
+      'HELIC3_INDICADORES.DEVOLUCIONES.BY_STORE'
+    );
+    expect(wrapper.text()).toContain('OM Armenia AXM');
+    expect(wrapper.text()).toContain('OM Pereira');
   });
 
   it('muestra un aviso de error con boton de reintentar cuando el fetch falla, y reintentar vuelve a pedir', async () => {
