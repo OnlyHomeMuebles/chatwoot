@@ -185,6 +185,27 @@ describe('PqrTab.vue (IND-02)', () => {
     expect(wrapper.text()).toContain('HELIC3_INDICADORES.PQR.NO_CATEGORY');
   });
 
+  // Click-to-filter: hundir un tipo/categoría/resultado/responsable (con su id)
+  // filtra todo el tablero por él, igual que "producto" en Garantías.
+  it('al hundir un tipo, filtra el tablero por su tipo_id', async () => {
+    pqrRef = {
+      ...indicadoresVacios(),
+      kpis: { ...indicadoresVacios().kpis, radicadas: 3 },
+      por_tipo: [{ etiqueta: 'Reclamo', valor: 7, cantidad: 3 }],
+    };
+    const wrapper = mount(PqrTab);
+    await flushPromises();
+    fetchPqr.mockClear();
+
+    const boton = wrapper
+      .findAll('button')
+      .find(btn => btn.text() === 'Reclamo');
+    await boton.trigger('click');
+    await flushPromises();
+
+    expect(fetchPqr).toHaveBeenCalledWith({ tipo_id: 7 });
+  });
+
   // IND grupo B: además de la gráfica mensual, hay una segunda gráfica "por motivo"
   // (espejo del Dash CX). Con datos mensual + por_motivo debe haber DOS BarChart.
   it('muestra una segunda gráfica "por motivo" además de la mensual', () => {

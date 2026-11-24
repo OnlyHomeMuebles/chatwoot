@@ -145,8 +145,11 @@ class Helic3::Indicadores::Pqr
     ordenar_por_cantidad(conteos) { |id| nombres[id] }
   end
 
+  # valor (el id) viaja junto a la etiqueta para el click-to-filter de las
+  # tablas (por tipo/categoria/resultado/responsable), igual que por_ciudad en
+  # Garantias/Devoluciones. Donde no se usa (la grafica por_motivo) se ignora.
   def ordenar_por_cantidad(conteos)
-    conteos.map { |id, cantidad| { etiqueta: yield(id), cantidad: cantidad } }
+    conteos.map { |id, cantidad| { etiqueta: yield(id), valor: id, cantidad: cantidad } }
            .sort_by { |fila| -fila[:cantidad] }
   end
 

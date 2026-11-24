@@ -35,10 +35,18 @@ const filtros = reactive({
   anio: '',
   mes: '',
   tipo_id: '',
+  categoria_id: '',
   motivo_pqr_id: '',
   assignee_id: '',
   resultado_id: '',
 });
+
+// Click-to-filter de las tablas (tipo/categoría/resultado/responsable): hundir
+// un valor filtra todo el tablero por él, igual que "producto" en Garantías.
+const seleccionarFiltro = (clave, valor) => {
+  if (!valor) return;
+  filtros[clave] = valor;
+};
 
 const todos = () => ({ value: '', label: t('HELIC3_INDICADORES.FILTERS.ALL') });
 const anioOptions = computed(() => [
@@ -188,6 +196,7 @@ watch(
     filtros.anio,
     filtros.mes,
     filtros.tipo_id,
+    filtros.categoria_id,
     filtros.motivo_pqr_id,
     filtros.assignee_id,
     filtros.resultado_id,
@@ -634,20 +643,28 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
         <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <table
             v-for="seccion in [
-              { titulo: 'BY_TYPE', clave: 'por_tipo', filas: datos.por_tipo },
+              {
+                titulo: 'BY_TYPE',
+                clave: 'por_tipo',
+                filtro: 'tipo_id',
+                filas: datos.por_tipo,
+              },
               {
                 titulo: 'BY_CATEGORY',
                 clave: 'por_categoria',
+                filtro: 'categoria_id',
                 filas: datos.por_categoria,
               },
               {
                 titulo: 'BY_RESULT',
                 clave: 'por_resultado',
+                filtro: 'resultado_id',
                 filas: datos.por_resultado,
               },
               {
                 titulo: 'BY_RESPONSIBLE',
                 clave: 'por_responsable',
+                filtro: 'assignee_id',
                 filas: datos.por_responsable,
               },
             ]"
@@ -659,15 +676,26 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
                 <span class="font-semibold text-left text-n-slate-12">
                   {{ t(`HELIC3_INDICADORES.PQR.${seccion.titulo}`) }}
                 </span>
-                <Button
-                  icon="i-lucide-download"
-                  variant="ghost"
-                  color="slate"
-                  size="xs"
-                  :is-loading="descargando[seccion.clave]"
-                  :title="t('HELIC3_INDICADORES.DOWNLOAD')"
-                  @click="descargarCsv(seccion.clave)"
-                />
+                <div class="flex items-center gap-1">
+                  <Button
+                    v-if="filtros[seccion.filtro]"
+                    icon="i-lucide-arrow-left"
+                    :label="t('HELIC3_INDICADORES.FILTERS.REMOVE')"
+                    variant="ghost"
+                    color="slate"
+                    size="xs"
+                    @click="filtros[seccion.filtro] = ''"
+                  />
+                  <Button
+                    icon="i-lucide-download"
+                    variant="ghost"
+                    color="slate"
+                    size="xs"
+                    :is-loading="descargando[seccion.clave]"
+                    :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+                    @click="descargarCsv(seccion.clave)"
+                  />
+                </div>
               </div>
             </caption>
             <tbody>
@@ -677,7 +705,22 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
                 class="border-t border-n-weak"
               >
                 <td class="px-3 py-2 text-n-slate-11">
-                  {{ etiquetaDe(seccion.titulo, fila.etiqueta) }}
+                  <button
+                    v-if="fila.valor"
+                    type="button"
+                    class="text-start hover:text-n-blue-11"
+                    :class="
+                      filtros[seccion.filtro] === fila.valor
+                        ? 'text-n-blue-11 font-medium'
+                        : ''
+                    "
+                    @click="seleccionarFiltro(seccion.filtro, fila.valor)"
+                  >
+                    {{ etiquetaDe(seccion.titulo, fila.etiqueta) }}
+                  </button>
+                  <template v-else>
+                    {{ etiquetaDe(seccion.titulo, fila.etiqueta) }}
+                  </template>
                 </td>
                 <td
                   class="px-3 py-2 font-medium text-right tabular-nums text-n-slate-12"
