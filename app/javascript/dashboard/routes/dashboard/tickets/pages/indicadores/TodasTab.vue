@@ -78,6 +78,12 @@ const seleccionarPeriodo = periodo => {
   filtros.mes = Number(mes);
 };
 
+// Quitar el filtro de periodo sin tocar los demás (la flecha de "Detalle mensual").
+const limpiarPeriodo = () => {
+  filtros.anio = '';
+  filtros.mes = '';
+};
+
 onMounted(cargar);
 
 watch(() => [filtros.anio, filtros.mes], cargar);
@@ -177,7 +183,7 @@ const graficaMensual = computed(() => comoGrafica(datos.value?.mensual || []));
       {{ t('HELIC3_INDICADORES.TODAS.SUBTITLE') }}
     </p>
 
-    <div v-if="cargando" class="flex justify-center py-12">
+    <div v-if="cargando && !datos" class="flex justify-center py-12">
       <Spinner :size="32" />
     </div>
 
@@ -201,14 +207,12 @@ const graficaMensual = computed(() => comoGrafica(datos.value?.mensual || []));
       </p>
 
       <template v-else>
-        <!-- Tarjetas -->
-        <div
-          class="grid grid-cols-2 divide-x divide-y divide-n-weak rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 md:grid-cols-5 md:divide-y-0 overflow-hidden"
-        >
+        <!-- Tarjetas KPI: cada métrica en su propia card con separación, como el Dash CX -->
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-5">
           <div
             v-for="tarjeta in kpiCards"
             :key="tarjeta.label"
-            class="p-4 min-w-0"
+            class="p-4 min-w-0 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
           >
             <p class="text-sm text-n-slate-11">{{ tarjeta.label }}</p>
             <p
@@ -228,9 +232,20 @@ const graficaMensual = computed(() => comoGrafica(datos.value?.mensual || []));
           <div
             class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 overflow-x-auto"
           >
-            <p class="font-semibold text-n-slate-12">
-              {{ t('HELIC3_INDICADORES.TODAS.MONTHLY') }}
-            </p>
+            <div class="flex items-center justify-between">
+              <p class="font-semibold text-n-slate-12">
+                {{ t('HELIC3_INDICADORES.TODAS.MONTHLY') }}
+              </p>
+              <Button
+                v-if="filtros.anio || filtros.mes"
+                icon="i-lucide-arrow-left"
+                :label="t('HELIC3_INDICADORES.FILTERS.REMOVE')"
+                variant="ghost"
+                color="slate"
+                size="xs"
+                @click="limpiarPeriodo"
+              />
+            </div>
             <table class="w-full min-w-[26rem] text-sm mt-3">
               <thead class="text-xs text-n-slate-11">
                 <tr>

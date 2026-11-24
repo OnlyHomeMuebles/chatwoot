@@ -169,6 +169,12 @@ const seleccionarPeriodo = periodo => {
   filtros.mes = Number(mes);
 };
 
+// Quitar el filtro de periodo sin tocar los demás (la flecha de "Detalle mensual").
+const limpiarPeriodo = () => {
+  filtros.anio = '';
+  filtros.mes = '';
+};
+
 onMounted(() => {
   store.dispatch('tickets/getCatalogos');
   store.dispatch('agents/get');
@@ -321,7 +327,7 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
       </div>
     </div>
 
-    <div v-if="cargando" class="flex justify-center py-12">
+    <div v-if="cargando && !datos" class="flex justify-center py-12">
       <Spinner :size="32" />
     </div>
 
@@ -345,14 +351,12 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
       </p>
 
       <template v-else>
-        <!-- Tarjetas -->
-        <div
-          class="grid grid-cols-2 divide-x divide-y divide-n-weak rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 md:grid-cols-4 md:divide-y-0 overflow-hidden"
-        >
+        <!-- Tarjetas KPI: cada métrica en su propia card con separación, como el Dash CX -->
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
           <div
             v-for="tarjeta in kpiCards"
             :key="tarjeta.label"
-            class="p-4 min-w-0"
+            class="p-4 min-w-0 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
           >
             <p class="text-sm text-n-slate-11">{{ tarjeta.label }}</p>
             <p
@@ -381,15 +385,26 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
                   {{ t('HELIC3_INDICADORES.PQR.MONTHLY_SUBTITLE') }}
                 </p>
               </div>
-              <Button
-                icon="i-lucide-download"
-                variant="ghost"
-                color="slate"
-                size="xs"
-                :is-loading="descargando.mensual"
-                :title="t('HELIC3_INDICADORES.DOWNLOAD')"
-                @click="descargarCsv('mensual')"
-              />
+              <div class="flex items-center gap-1">
+                <Button
+                  v-if="filtros.anio || filtros.mes"
+                  icon="i-lucide-arrow-left"
+                  :label="t('HELIC3_INDICADORES.FILTERS.REMOVE')"
+                  variant="ghost"
+                  color="slate"
+                  size="xs"
+                  @click="limpiarPeriodo"
+                />
+                <Button
+                  icon="i-lucide-download"
+                  variant="ghost"
+                  color="slate"
+                  size="xs"
+                  :is-loading="descargando.mensual"
+                  :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+                  @click="descargarCsv('mensual')"
+                />
+              </div>
             </div>
             <table class="w-full min-w-[28rem] text-sm">
               <thead class="text-xs text-n-slate-11">

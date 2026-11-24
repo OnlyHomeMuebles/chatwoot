@@ -20,6 +20,7 @@
       "TYPE": "Type",
       "RESPONSIBLE": "Responsible",
       "CLEAR": "Clear filters",
+      "REMOVE": "Remove this filter",
       "ALL": "All",
       "RESPONSE": "Response"
     },
@@ -57,6 +58,8 @@
       "BY_DETAIL": "By detail",
       "BY_STAGE": "By stage",
       "BY_PRODUCT": "By product (top 20)",
+      "BY_PRODUCT_CHART": "Count by product",
+      "BY_PRODUCT_CHART_SUBTITLE": "Sorted from highest to lowest",
       "MOTIVE_QUARTER": "Motive by quarter",
       "MOTIVE_QUARTER_SUBTITLE": "Number of warranties by motive in each quarter",
       "MOTIVE_COLUMN": "Motive",

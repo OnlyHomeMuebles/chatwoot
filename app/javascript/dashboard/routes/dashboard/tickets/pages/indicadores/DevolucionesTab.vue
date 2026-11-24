@@ -219,6 +219,12 @@ const seleccionarProducto = nombre => {
   filtros.producto = nombre;
 };
 
+// Quitar un filtro individual sin tocar los demás (la flecha de cada tabla).
+const limpiarPeriodo = () => {
+  filtros.anio = '';
+  filtros.mes = '';
+};
+
 const cargarCatalogos = async () => {
   try {
     await store.dispatch('tickets/getCatalogos');
@@ -573,7 +579,7 @@ const conversacionUrlDe = fila =>
       </div>
     </div>
 
-    <div v-if="cargando" class="flex justify-center py-12">
+    <div v-if="cargando && !datos" class="flex justify-center py-12">
       <Spinner :size="32" />
     </div>
 
@@ -597,14 +603,12 @@ const conversacionUrlDe = fila =>
       </p>
 
       <template v-else>
-        <!-- Tarjetas -->
-        <div
-          class="grid grid-cols-2 divide-x divide-y divide-n-weak rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 md:grid-cols-4 md:divide-y-0 overflow-hidden"
-        >
+        <!-- Tarjetas KPI: cada métrica en su propia card con separación, como el Dash CX -->
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
           <div
             v-for="tarjeta in kpiCards"
             :key="tarjeta.label"
-            class="p-4 min-w-0"
+            class="p-4 min-w-0 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
           >
             <p class="text-sm text-n-slate-11">{{ tarjeta.label }}</p>
             <p
@@ -633,15 +637,26 @@ const conversacionUrlDe = fila =>
                   {{ t('HELIC3_INDICADORES.DEVOLUCIONES.MONTHLY_SUBTITLE') }}
                 </p>
               </div>
-              <Button
-                icon="i-lucide-download"
-                variant="ghost"
-                color="slate"
-                size="xs"
-                :is-loading="descargando.mensual"
-                :title="t('HELIC3_INDICADORES.DOWNLOAD')"
-                @click="descargarCsv('mensual')"
-              />
+              <div class="flex items-center gap-1">
+                <Button
+                  v-if="filtros.anio || filtros.mes"
+                  icon="i-lucide-arrow-left"
+                  :label="t('HELIC3_INDICADORES.FILTERS.REMOVE')"
+                  variant="ghost"
+                  color="slate"
+                  size="xs"
+                  @click="limpiarPeriodo"
+                />
+                <Button
+                  icon="i-lucide-download"
+                  variant="ghost"
+                  color="slate"
+                  size="xs"
+                  :is-loading="descargando.mensual"
+                  :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+                  @click="descargarCsv('mensual')"
+                />
+              </div>
             </div>
             <table class="w-full min-w-[28rem] text-sm">
               <thead class="text-xs text-n-slate-11">
@@ -864,15 +879,26 @@ const conversacionUrlDe = fila =>
                 <span class="font-medium text-left text-n-slate-12">
                   {{ t('HELIC3_INDICADORES.DEVOLUCIONES.BY_CITY') }}
                 </span>
-                <Button
-                  icon="i-lucide-download"
-                  variant="ghost"
-                  color="slate"
-                  size="xs"
-                  :is-loading="descargando.por_ciudad"
-                  :title="t('HELIC3_INDICADORES.DOWNLOAD')"
-                  @click="descargarCsv('por_ciudad')"
-                />
+                <div class="flex items-center gap-1">
+                  <Button
+                    v-if="filtros.cobertura_ciudad_id"
+                    icon="i-lucide-arrow-left"
+                    :label="t('HELIC3_INDICADORES.FILTERS.REMOVE')"
+                    variant="ghost"
+                    color="slate"
+                    size="xs"
+                    @click="filtros.cobertura_ciudad_id = ''"
+                  />
+                  <Button
+                    icon="i-lucide-download"
+                    variant="ghost"
+                    color="slate"
+                    size="xs"
+                    :is-loading="descargando.por_ciudad"
+                    :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+                    @click="descargarCsv('por_ciudad')"
+                  />
+                </div>
               </div>
             </caption>
             <tbody>
@@ -944,9 +970,9 @@ const conversacionUrlDe = fila =>
                       {{ fila.cantidad }}
                     </span>
                   </div>
-                  <div class="h-1.5 rounded-full bg-n-slate-4 overflow-hidden">
+                  <div class="h-4 rounded bg-n-slate-4 overflow-hidden">
                     <div
-                      class="h-full rounded-full bg-n-blue-9"
+                      class="h-full rounded bg-n-blue-9"
                       :style="{ width: anchoBarra(fila.cantidad) }"
                     />
                   </div>
@@ -1018,9 +1044,9 @@ const conversacionUrlDe = fila =>
                     {{ fila.cantidad }}
                   </span>
                 </div>
-                <div class="h-1.5 rounded-full bg-n-slate-4 overflow-hidden">
+                <div class="h-4 rounded bg-n-slate-4 overflow-hidden">
                   <div
-                    class="h-full rounded-full bg-n-blue-9"
+                    class="h-full rounded bg-n-blue-9"
                     :style="{ width: anchoBarraTienda(fila.cantidad) }"
                   />
                 </div>
@@ -1047,15 +1073,26 @@ const conversacionUrlDe = fila =>
                 <span class="font-medium text-left text-n-slate-12">
                   {{ t('HELIC3_INDICADORES.DEVOLUCIONES.BY_PRODUCT') }}
                 </span>
-                <Button
-                  icon="i-lucide-download"
-                  variant="ghost"
-                  color="slate"
-                  size="xs"
-                  :is-loading="descargando.por_producto"
-                  :title="t('HELIC3_INDICADORES.DOWNLOAD')"
-                  @click="descargarCsv('por_producto')"
-                />
+                <div class="flex items-center gap-1">
+                  <Button
+                    v-if="filtros.producto"
+                    icon="i-lucide-arrow-left"
+                    :label="t('HELIC3_INDICADORES.FILTERS.REMOVE')"
+                    variant="ghost"
+                    color="slate"
+                    size="xs"
+                    @click="filtros.producto = ''"
+                  />
+                  <Button
+                    icon="i-lucide-download"
+                    variant="ghost"
+                    color="slate"
+                    size="xs"
+                    :is-loading="descargando.por_producto"
+                    :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+                    @click="descargarCsv('por_producto')"
+                  />
+                </div>
               </div>
             </caption>
             <tbody>
@@ -1128,9 +1165,9 @@ const conversacionUrlDe = fila =>
                       {{ fila.cantidad }}
                     </span>
                   </div>
-                  <div class="h-1.5 rounded-full bg-n-slate-4 overflow-hidden">
+                  <div class="h-4 rounded bg-n-slate-4 overflow-hidden">
                     <div
-                      class="h-full rounded-full bg-n-blue-9"
+                      class="h-full rounded bg-n-blue-9"
                       :style="{ width: anchoBarraProducto(fila.cantidad) }"
                     />
                   </div>

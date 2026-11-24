@@ -20,6 +20,7 @@
       "TYPE": "Tipo",
       "RESPONSIBLE": "Responsable",
       "CLEAR": "Limpiar filtros",
+      "REMOVE": "Quitar este filtro",
       "ALL": "Todos",
       "RESPONSE": "Respuesta"
     },
@@ -57,6 +58,8 @@
       "BY_DETAIL": "Por detalle",
       "BY_STAGE": "Por etapa",
       "BY_PRODUCT": "Por producto (top 20)",
+      "BY_PRODUCT_CHART": "Recuento por producto",
+      "BY_PRODUCT_CHART_SUBTITLE": "Ordenado de mayor a menor",
       "MOTIVE_QUARTER": "Motivo por trimestre",
       "MOTIVE_QUARTER_SUBTITLE": "Cantidad de garantías por motivo en cada trimestre",
       "MOTIVE_COLUMN": "Motivo",
