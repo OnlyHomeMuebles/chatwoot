@@ -96,6 +96,18 @@ RSpec.describe Helic3::Indicadores::Pqr do
       expect(filas['Entrega']).to eq(motivo: 'Entrega', t1: 1, t2: 0, t3: 0, t4: 0, total: 1)
     end
 
+    # Drill-down (igual que Garantías/Devoluciones): motivo_por_mes despliega
+    # cada motivo en sus meses, para abrir un trimestre por mes al hacer click.
+    it 'motivo_por_mes: cada motivo desglosado por mes' do
+      por_mes = llamar[:motivo_por_mes]
+      calidad = por_mes.select { |f| f[:motivo] == 'Calidad' }.index_by { |f| f[:periodo] }
+
+      expect(calidad['2026-01'][:cantidad]).to eq(1)
+      expect(calidad['2026-03'][:cantidad]).to eq(1)
+      expect(por_mes.select { |f| f[:motivo] == 'Entrega' }.map { |f| [f[:periodo], f[:cantidad]] })
+        .to eq([['2026-01', 1]])
+    end
+
     it 'por_tipo: las tres PQR son Reclamo, con su id para filtrar al hundir' do
       expect(llamar[:por_tipo]).to contain_exactly({ etiqueta: 'Reclamo', valor: tipo_reclamo.id, cantidad: 3 })
     end

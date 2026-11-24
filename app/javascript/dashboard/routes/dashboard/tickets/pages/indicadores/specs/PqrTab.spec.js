@@ -206,6 +206,37 @@ describe('PqrTab.vue (IND-02)', () => {
     expect(fetchPqr).toHaveBeenCalledWith({ tipo_id: 7 });
   });
 
+  // Drill-down (como Garantías/Devoluciones): clickear un trimestre del gráfico
+  // de colores lo despliega por mes, sin pedir nada al backend (motivo_por_mes
+  // viaja completo en la misma respuesta).
+  it('al hundir un trimestre de "Motivo por trimestre", lo despliega por mes', async () => {
+    pqrRef = {
+      ...indicadoresVacios(),
+      kpis: { ...indicadoresVacios().kpis, radicadas: 3 },
+      motivo_por_trimestre: [
+        { motivo: 'Calidad', t1: 2, t2: 1, t3: 0, t4: 0, total: 3 },
+      ],
+      motivo_por_mes: [
+        { motivo: 'Calidad', periodo: '2026-02', cantidad: 1 },
+        { motivo: 'Calidad', periodo: '2026-01', cantidad: 1 },
+      ],
+    };
+    const wrapper = mount(PqrTab);
+    await flushPromises();
+
+    const grupoT1 = wrapper
+      .findAll('g')
+      .find(g => g.text().trim().startsWith('T1'));
+    expect(grupoT1).toBeTruthy();
+    await grupoT1.trigger('click');
+
+    expect(wrapper.text()).toContain('2026-01');
+    expect(wrapper.text()).toContain('2026-02');
+    expect(wrapper.text()).toContain(
+      'HELIC3_INDICADORES.PQR.BACK_TO_QUARTERS'
+    );
+  });
+
   // IND grupo B: además de la gráfica mensual, hay una segunda gráfica "por motivo"
   // (espejo del Dash CX). Con datos mensual + por_motivo debe haber DOS BarChart.
   it('muestra una segunda gráfica "por motivo" además de la mensual', () => {

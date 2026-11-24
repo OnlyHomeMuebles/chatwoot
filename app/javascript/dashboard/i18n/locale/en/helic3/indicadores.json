@@ -122,6 +122,7 @@
       "MOTIVE_QUARTER_SUBTITLE": "Number of cases by motive in each quarter",
       "MOTIVE_COLUMN": "Motive",
       "TOTAL_COLUMN": "Total",
+      "BACK_TO_QUARTERS": "Quarters",
       "BY_TYPE": "By type",
       "BY_CATEGORY": "By category",
       "BY_RESULT": "By result",
