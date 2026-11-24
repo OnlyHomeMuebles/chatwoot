@@ -628,6 +628,9 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
             :height="ALTURA_GRAFICA"
             :aria-label="t('HELIC3_INDICADORES.PQR.MOTIVE_CHART')"
           />
+          <p v-else class="py-8 text-sm text-center text-n-slate-11">
+            {{ t('HELIC3_INDICADORES.EMPTY') }}
+          </p>
         </div>
 
         <!-- Desgloses -->
