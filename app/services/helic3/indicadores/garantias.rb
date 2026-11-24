@@ -19,6 +19,10 @@ class Helic3::Indicadores::Garantias
   # tambien podria desalinear estas cifras frente al Dash CX en los cierres de
   # mes. Se convierte explicitamente a la zona del modulo antes de truncar/extraer.
   FECHA_LOCAL = "(abierta_at AT TIME ZONE 'UTC') AT TIME ZONE '#{Helic3::CalendarioHabil::ZONA}'".freeze
+  # Calificada con la tabla, para el join del item con la garantia (mismo criterio que
+  # Devoluciones): el item no tiene fecha, la hereda del radicado padre.
+  FECHA_LOCAL_ITEM = "(helic3_garantias.abierta_at AT TIME ZONE 'UTC') " \
+                     "AT TIME ZONE '#{Helic3::CalendarioHabil::ZONA}'".freeze
 
   def self.call(account:, filtros: {})
     new(account: account, filtros: filtros).call
@@ -38,7 +42,11 @@ class Helic3::Indicadores::Garantias
       por_motivo: por_motivo,
       por_detalle: por_detalle,
       por_proceso: por_proceso,
-      por_producto: por_producto
+      por_producto: por_producto,
+      motivo_por_trimestre: motivo_desglose.por_trimestre,
+      motivo_por_mes: motivo_desglose.por_mes,
+      detalle_por_trimestre: detalle_desglose.por_trimestre,
+      detalle_por_mes: detalle_desglose.por_mes
     }
   end
 
@@ -202,6 +210,24 @@ class Helic3::Indicadores::Garantias
                    .map { |nombre, cantidad| { etiqueta: nombre, cantidad: cantidad } }
                    .sort_by { |fila| -fila[:cantidad] }
                    .first(TOP_PRODUCTOS)
+  end
+
+  # Paridad con el Dash CX ("Garantías por motivo"/"Detalle tipificado"): la matriz
+  # trimestre + despliegue por mes vive en DesgloseTrimestral, compartida con Devoluciones.
+  # Memoizado porque #call pide trimestre y mes del mismo desglose.
+  def motivo_desglose
+    @motivo_desglose ||= desglose(:motivo_garantia_id, Helic3::Catalogo::MotivoGarantia, :motivo)
+  end
+
+  def detalle_desglose
+    @detalle_desglose ||= desglose(:detalle_tipificado_id, Helic3::Catalogo::DetalleTipificado, :detalle)
+  end
+
+  def desglose(columna, catalogo_clase, campo)
+    Helic3::Indicadores::DesgloseTrimestral.new(
+      items_con_fecha: items_filtrados.joins(:garantia), fecha_local_sql: FECHA_LOCAL_ITEM,
+      columna: columna, catalogo_clase: catalogo_clase, campo: campo
+    )
   end
 
   def ordenar_por_cantidad(conteos)

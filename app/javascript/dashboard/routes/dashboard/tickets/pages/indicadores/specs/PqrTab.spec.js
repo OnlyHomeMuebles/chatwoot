@@ -1,5 +1,6 @@
 import { shallowMount, mount, flushPromises } from '@vue/test-utils';
 import Button from 'dashboard/components-next/button/Button.vue';
+import BarChart from 'shared/components/charts/BarChart.vue';
 import PqrTab from '../PqrTab.vue';
 
 // vi.mock(...) se iza (hoisted) al tope del archivo; vi.hoisted() es la forma
@@ -12,6 +13,7 @@ const { dispatch, fetchPqr, catalogosRef, agentesRef } = vi.hoisted(() => ({
     value: {
       tipos: [{ id: 1, nombre: 'Reclamo' }],
       motivos_pqr: [{ id: 2, nombre: 'Calidad' }],
+      resultados: [{ id: 5, nombre: 'Procede garantía' }],
     },
   },
   agentesRef: { value: [{ id: 3, name: 'Juan' }] },
@@ -58,6 +60,7 @@ const indicadoresVacios = () => ({
   mensual: [],
   trimestral: [],
   motivo_por_trimestre: [],
+  por_motivo: [],
   por_tipo: [],
   por_categoria: [],
   por_resultado: [],
@@ -182,6 +185,26 @@ describe('PqrTab.vue (IND-02)', () => {
     expect(wrapper.text()).toContain('HELIC3_INDICADORES.PQR.NO_CATEGORY');
   });
 
+  // IND grupo B: además de la gráfica mensual, hay una segunda gráfica "por motivo"
+  // (espejo del Dash CX). Con datos mensual + por_motivo debe haber DOS BarChart.
+  it('muestra una segunda gráfica "por motivo" además de la mensual', () => {
+    pqrRef = {
+      ...indicadoresVacios(),
+      kpis: { ...indicadoresVacios().kpis, radicadas: 3 },
+      mensual: [
+        { periodo: '2026-01', cantidad: 3, respondidas: 0, pendientes: 3 },
+      ],
+      por_motivo: [
+        { etiqueta: 'Calidad', cantidad: 2 },
+        { etiqueta: 'Entrega', cantidad: 1 },
+      ],
+    };
+    const wrapper = shallowMount(PqrTab);
+
+    expect(wrapper.findAllComponents(BarChart)).toHaveLength(2);
+    expect(wrapper.text()).toContain('HELIC3_INDICADORES.PQR.MOTIVE_CHART');
+  });
+
   it('motivo_por_trimestre: muestra cada trimestre y el total', () => {
     pqrRef = {
       ...indicadoresVacios(),
@@ -221,6 +244,21 @@ describe('PqrTab.vue (IND-02)', () => {
       .map(opcion => opcion.text());
 
     expect(opciones).toContain('Juan');
+  });
+
+  // IND grupo B (espejo Dash CX): el filtro "respuesta" es por el RESULTADO de la petición
+  // (catálogo Resultado del CRM), no por respondida/pendiente.
+  it('el selector de respuesta ofrece los resultados del catálogo', () => {
+    const wrapper = mount(PqrTab);
+
+    const selectorRespuesta = wrapper.find(
+      'select[aria-label="HELIC3_INDICADORES.FILTERS.RESPONSE"]'
+    );
+    const opciones = selectorRespuesta
+      .findAll('option')
+      .map(opcion => opcion.text());
+
+    expect(opciones).toContain('Procede garantía');
   });
 
   it('limpiar filtros vuelve a pedir los indicadores sin parametros', async () => {

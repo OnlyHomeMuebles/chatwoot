@@ -63,6 +63,10 @@ const indicadoresVacios = () => ({
   por_detalle: [],
   por_proceso: [],
   por_producto: [],
+  motivo_por_trimestre: [],
+  motivo_por_mes: [],
+  detalle_por_trimestre: [],
+  detalle_por_mes: [],
 });
 
 describe('GarantiasTab.vue (IND-01)', () => {
@@ -226,5 +230,110 @@ describe('GarantiasTab.vue (IND-01)', () => {
       expect(fetchGarantias).toHaveBeenCalledWith({ producto: 'Cama' });
       vi.useRealTimers();
     });
+
+    // Paridad con Devoluciones y con el Dash CX: clickear un producto de la
+    // tabla "Por producto" filtra todo el tablero por el (mismo filtro que el
+    // campo de texto, con el mismo debounce).
+    it('al hacer click en un producto, lo deja como filtro y vuelve a pedir', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      garantiasRef = {
+        ...indicadoresVacios(),
+        kpis: { garantias: 4, solucionadas: 0, en_proceso: 4, productos: 4 },
+        por_producto: [{ etiqueta: 'Cama Barcelona', cantidad: 4 }],
+      };
+      const wrapper = mount(GarantiasTab);
+      await flushPromises();
+      fetchGarantias.mockClear();
+
+      const boton = wrapper
+        .findAll('button')
+        .find(btn => btn.text() === 'Cama Barcelona');
+      await boton.trigger('click');
+
+      vi.advanceTimersByTime(300);
+      await flushPromises();
+      expect(fetchGarantias).toHaveBeenCalledWith({
+        producto: 'Cama Barcelona',
+      });
+      vi.useRealTimers();
+    });
+
+    // El rediseño sustituye las tablas planas motivo/detalle/etapa por la
+    // gráfica "Recuento por producto" (paridad con Devoluciones).
+    it('muestra la gráfica "Recuento por producto"', () => {
+      garantiasRef = {
+        ...indicadoresVacios(),
+        kpis: { garantias: 4, solucionadas: 0, en_proceso: 4, productos: 4 },
+        por_producto: [{ etiqueta: 'Cama Barcelona', cantidad: 4 }],
+      };
+      const wrapper = shallowMount(GarantiasTab);
+
+      expect(wrapper.text()).toContain(
+        'HELIC3_INDICADORES.GARANTIAS.BY_PRODUCT_CHART'
+      );
+    });
+
+    // Al hundir un producto aparece una "x" para quitar ESE filtro sin tocar
+    // los demás (misma idea que la "x" de las matrices por trimestre).
+    it('al hundir un producto aparece la "x" para quitar ese filtro', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      garantiasRef = {
+        ...indicadoresVacios(),
+        kpis: { garantias: 4, solucionadas: 0, en_proceso: 4, productos: 4 },
+        por_producto: [{ etiqueta: 'Cama Barcelona', cantidad: 4 }],
+      };
+      const wrapper = mount(GarantiasTab);
+      await flushPromises();
+
+      const boton = wrapper
+        .findAll('button')
+        .find(btn => btn.text() === 'Cama Barcelona');
+      await boton.trigger('click');
+      await flushPromises();
+
+      const hayX = wrapper
+        .findAllComponents(Button)
+        .some(b => b.props('label') === 'HELIC3_INDICADORES.FILTERS.REMOVE');
+      expect(hayX).toBe(true);
+      vi.useRealTimers();
+    });
+  });
+
+  // Paridad con el Dash CX ("Garantías por motivo"): clickear un trimestre del
+  // gráfico de colores lo despliega por mes, sin pedir nada al backend (reusa
+  // DesgloseTrimestral, igual que Devoluciones).
+  it('al hacer click en un trimestre de "Motivo por trimestre", lo despliega por mes', async () => {
+    garantiasRef = {
+      ...indicadoresVacios(),
+      kpis: {
+        garantias: 4,
+        solucionadas: 0,
+        en_proceso: 4,
+        productos: 0,
+        facturas: 0,
+        ratio: 0,
+      },
+      motivo_por_trimestre: [
+        { motivo: 'Calidad', t1: 2, t2: 3, t3: 0, t4: 0, total: 5 },
+      ],
+      motivo_por_mes: [
+        { motivo: 'Calidad', periodo: '2026-04', cantidad: 3 },
+        { motivo: 'Calidad', periodo: '2026-01', cantidad: 2 },
+      ],
+    };
+    const wrapper = mount(GarantiasTab);
+    await flushPromises();
+
+    const grupoT2 = wrapper
+      .findAll('g')
+      .find(g => g.text().trim().startsWith('T2'));
+    expect(grupoT2).toBeTruthy();
+    await grupoT2.trigger('click');
+
+    expect(wrapper.text()).toContain('2026-04');
+    expect(wrapper.text()).not.toContain('2026-01');
+    expect(wrapper.text()).toContain(
+      'HELIC3_INDICADORES.GARANTIAS.BACK_TO_QUARTERS'
+    );
   });
 });

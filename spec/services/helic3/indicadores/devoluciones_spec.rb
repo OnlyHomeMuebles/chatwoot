@@ -47,8 +47,19 @@ RSpec.describe Helic3::Indicadores::Devoluciones do
                        ])
     end
 
-    it 'kpis: 2 devoluciones, 1 solucionada, 1 en proceso, 3 productos' do
-      expect(llamar[:kpis]).to eq(devoluciones: 2, solucionadas: 1, en_proceso: 1, productos: 3)
+    it 'kpis: 2 devoluciones, 1 solucionada, 1 en proceso, 3 productos, 1 tienda afectada' do
+      expect(llamar[:kpis]).to eq(devoluciones: 2, solucionadas: 1, en_proceso: 1, productos: 3,
+                                  tiendas_afectadas: 1)
+    end
+
+    # Pieza 4 (espejo Dash CX "tiendas afectadas"): cuenta ciudades DISTINTAS con devolución
+    # (una misma ciudad no suma dos veces; la devolución sin ciudad no cuenta).
+    it 'tiendas_afectadas cuenta ciudades distintas' do
+      pereira = Helic3::Catalogo::CoberturaCiudad.create!(account: account, nombre: 'Pereira', codigo: 'pereira')
+      crear_devolucion(abierta_at: Time.zone.local(2026, 2, 1), ciudad: manizales)
+      crear_devolucion(abierta_at: Time.zone.local(2026, 2, 2), ciudad: pereira)
+
+      expect(llamar[:kpis][:tiendas_afectadas]).to eq(2)
     end
 
     it 'mensual trae solucionadas/en_proceso por radicado, no por producto' do
@@ -62,6 +73,26 @@ RSpec.describe Helic3::Indicadores::Devoluciones do
 
       expect(por_ciudad['Manizales'][:cantidad]).to eq(1)
       expect(por_ciudad).not_to have_key(nil)
+    end
+
+    # Pieza 5 (desglose por tienda): el centro de operación lo trae ERP-18b a la
+    # PQR (helic3_ticket_datos, 1:1 con el ticket). La devolución lo hereda por
+    # su ticket; las que aún no pasaron por el centro quedan excluidas (igual que
+    # "sin ciudad" en por_ciudad) y se irán sumando con el uso.
+    it 'por_tienda agrupa por el centro de operacion del ticket, excluye las que no tienen' do
+      armenia = create(:ticket, account: account)
+      pereira = create(:ticket, account: account)
+      Helic3::TicketDato.create!(account: account, ticket: armenia, centro_operacion_nombre: 'OM Armenia AXM')
+      Helic3::TicketDato.create!(account: account, ticket: pereira, centro_operacion_nombre: 'OM Pereira')
+      Helic3::Devolucion.create!(account: account, ticket: armenia, abierta_at: Time.zone.local(2026, 1, 5))
+      Helic3::Devolucion.create!(account: account, ticket: pereira, abierta_at: Time.zone.local(2026, 1, 6))
+
+      por_tienda = llamar[:por_tienda].index_by { |fila| fila[:etiqueta] }
+
+      # las 2 del `before` comparten un ticket sin centro -> no aparecen
+      expect(por_tienda['OM Armenia AXM'][:cantidad]).to eq(1)
+      expect(por_tienda['OM Pereira'][:cantidad]).to eq(1)
+      expect(por_tienda).not_to have_key(nil)
     end
 
     it 'por_motivo cuenta PRODUCTOS, no radicados: cambio_talla aparece 2 veces' do

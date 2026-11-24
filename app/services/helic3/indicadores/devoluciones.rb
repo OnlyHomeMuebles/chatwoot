@@ -28,6 +28,7 @@ class Helic3::Indicadores::Devoluciones
       mensual: mensual,
       trimestral: trimestral,
       por_ciudad: por_ciudad,
+      por_tienda: por_tienda,
       por_motivo: por_motivo,
       por_detalle: por_detalle,
       por_proceso: por_proceso,
@@ -57,7 +58,10 @@ class Helic3::Indicadores::Devoluciones
       devoluciones: base.count,
       solucionadas: base.where.not(cerrada_at: nil).count,
       en_proceso: base.where(cerrada_at: nil).count,
-      productos: items_filtrados.count
+      productos: items_filtrados.count,
+      # Espejo Dash CX "tiendas afectadas": ciudades DISTINTAS con devolución (hoy por ciudad;
+      # pasará a tienda con el centro de operación de ERP-18b). Sin ciudad no cuenta.
+      tiendas_afectadas: base.where.not(cobertura_ciudad_id: nil).distinct.count(:cobertura_ciudad_id)
     }
   end
 
@@ -90,6 +94,20 @@ class Helic3::Indicadores::Devoluciones
     conteos = devoluciones_filtradas.where.not(cobertura_ciudad_id: nil).group(:cobertura_ciudad_id).count
     nombres = Helic3::Catalogo::CoberturaCiudad.where(id: conteos.keys).pluck(:id, :nombre).to_h
     conteos.map { |id, cantidad| { etiqueta: nombres[id], valor: id, cantidad: cantidad } }
+           .sort_by { |fila| -fila[:cantidad] }
+  end
+
+  # Desglose por TIENDA (centro de operación de Siesa). A diferencia de
+  # Garantías (que lo saca de la factura), la devolución no tiene factura: el
+  # centro lo trae ERP-18b a la PQR (helic3_ticket_datos, ticket_id único), y la
+  # devolución lo hereda por su ticket. Las que aún no pasaron por el centro se
+  # excluyen (como "sin ciudad" en por_ciudad) y se van sumando con el uso.
+  def por_tienda
+    conteos = devoluciones_filtradas
+              .joins('JOIN helic3_ticket_datos td ON td.ticket_id = helic3_devoluciones.ticket_id')
+              .where("td.centro_operacion_nombre IS NOT NULL AND td.centro_operacion_nombre <> ''")
+              .group('td.centro_operacion_nombre').count
+    conteos.map { |nombre, cantidad| { etiqueta: nombre, cantidad: cantidad } }
            .sort_by { |fila| -fila[:cantidad] }
   end
 

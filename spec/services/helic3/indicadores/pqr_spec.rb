@@ -118,6 +118,14 @@ RSpec.describe Helic3::Indicadores::Pqr do
       expect(por_responsable[agente.name][:cantidad]).to eq(1)
       expect(por_responsable[nil][:cantidad]).to eq(2)
     end
+
+    # IND grupo B (espejo Dash CX "peticiones por motivo"): desglose PLANO por motivo
+    # (hasta ahora solo existia motivo_por_trimestre), ordenado de mayor a menor.
+    it 'por_motivo: dos de Calidad, una de Entrega (desglose plano, mayor primero)' do
+      por_motivo = llamar[:por_motivo]
+
+      expect(por_motivo).to eq([{ etiqueta: 'Calidad', cantidad: 2 }, { etiqueta: 'Entrega', cantidad: 1 }])
+    end
   end
 
   it 'CA: una consulta de categoria Informacion (sin radicado) no aparece en ningun conteo' do
@@ -214,6 +222,30 @@ RSpec.describe Helic3::Indicadores::Pqr do
 
     it 'ignora un anio/mes no numerico en vez de tumbar la consulta' do
       expect(llamar(filtros: { anio: 'abc', mes: 'xyz' })[:kpis][:radicadas]).to eq(3)
+    end
+  end
+
+  # IND grupo B (espejo Dash CX): el filtro "respuesta" de Derechos de Petición es por el
+  # RESULTADO de la petición (Aprobada/Negada/etc. en Siesa; catálogo Resultado en el CRM),
+  # no por si fue respondida. Usa resultado_id, como los demás filtros directos.
+  describe 'filtro por resultado' do
+    let(:resultado_negado) do
+      Helic3::Catalogo::Resultado.create!(account: account, nombre: 'No procede', codigo: 'no_procede')
+    end
+
+    before do
+      crear_ticket(radicada_at: Time.zone.local(2026, 1, 1, 12, 0), resultado: resultado_aprobado)
+      crear_ticket(radicada_at: Time.zone.local(2026, 2, 1, 12, 0), resultado: resultado_aprobado)
+      crear_ticket(radicada_at: Time.zone.local(2026, 3, 1, 12, 0), resultado: resultado_negado)
+    end
+
+    it 'filtra las PQR por su resultado' do
+      expect(llamar(filtros: { resultado_id: resultado_aprobado.id })[:kpis][:radicadas]).to eq(2)
+      expect(llamar(filtros: { resultado_id: resultado_negado.id })[:kpis][:radicadas]).to eq(1)
+    end
+
+    it 'sin filtro de resultado las trae todas' do
+      expect(llamar[:kpis][:radicadas]).to eq(3)
     end
   end
 

@@ -26,6 +26,7 @@ class Helic3::Indicadores::Pqr
       mensual: mensual,
       trimestral: trimestral,
       motivo_por_trimestre: motivo_por_trimestre,
+      por_motivo: por_motivo,
       por_tipo: por_tipo,
       por_categoria: por_categoria,
       por_resultado: por_resultado,
@@ -111,6 +112,12 @@ class Helic3::Indicadores::Pqr
     fila
   end
 
+  # Desglose plano por motivo (espejo de "peticiones por motivo" del Dash CX), aparte de
+  # motivo_por_trimestre. Mismo helper que los otros desgloses.
+  def por_motivo
+    agrupar_catalogo(:motivo_pqr_id, Helic3::Catalogo::MotivoPqr)
+  end
+
   def por_tipo
     agrupar_catalogo(:tipo_id, Helic3::Catalogo::Tipo)
   end
@@ -143,7 +150,7 @@ class Helic3::Indicadores::Pqr
            .sort_by { |fila| -fila[:cantidad] }
   end
 
-  FILTROS_DIRECTOS = %i[tipo_id categoria_id motivo_pqr_id assignee_id].freeze
+  FILTROS_DIRECTOS = %i[tipo_id categoria_id motivo_pqr_id assignee_id resultado_id].freeze
 
   # cuenta_para_sic excluye las categorias que no generan radicado (p. ej.
   # "Informacion"): una consulta sin radicado no debe inflar ningun conteo.

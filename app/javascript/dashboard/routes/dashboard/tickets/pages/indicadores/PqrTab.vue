@@ -37,6 +37,7 @@ const filtros = reactive({
   tipo_id: '',
   motivo_pqr_id: '',
   assignee_id: '',
+  resultado_id: '',
 });
 
 const todos = () => ({ value: '', label: t('HELIC3_INDICADORES.FILTERS.ALL') });
@@ -78,6 +79,15 @@ const responsableOptions = computed(() => [
   todos(),
   ...agentes.value.map(agente => ({ value: agente.id, label: agente.name })),
 ]);
+// IND grupo B (espejo Dash CX): el filtro "respuesta" de Derechos de Petición es por el
+// RESULTADO de la petición (catálogo Resultado del CRM, administrable), no por respondida/pendiente.
+const resultadoOptions = computed(() => [
+  todos(),
+  ...(catalogos.value.resultados || []).map(fila => ({
+    value: fila.id,
+    label: fila.nombre,
+  })),
+]);
 
 const selectFiltros = computed(() => [
   {
@@ -104,6 +114,11 @@ const selectFiltros = computed(() => [
     clave: 'assignee_id',
     label: t('HELIC3_INDICADORES.FILTERS.RESPONSIBLE'),
     opciones: responsableOptions.value,
+  },
+  {
+    clave: 'resultado_id',
+    label: t('HELIC3_INDICADORES.FILTERS.RESPONSE'),
+    opciones: resultadoOptions.value,
   },
 ]);
 
@@ -154,6 +169,12 @@ const seleccionarPeriodo = periodo => {
   filtros.mes = Number(mes);
 };
 
+// Quitar el filtro de periodo sin tocar los demás (la flecha de "Detalle mensual").
+const limpiarPeriodo = () => {
+  filtros.anio = '';
+  filtros.mes = '';
+};
+
 onMounted(() => {
   store.dispatch('tickets/getCatalogos');
   store.dispatch('agents/get');
@@ -169,6 +190,7 @@ watch(
     filtros.tipo_id,
     filtros.motivo_pqr_id,
     filtros.assignee_id,
+    filtros.resultado_id,
   ],
   cargar
 );
@@ -238,6 +260,24 @@ const comoGrafica = filas => ({
 });
 const graficaMensual = computed(() => comoGrafica(datos.value?.mensual || []));
 
+// Espejo Dash CX "peticiones por motivo": una barra por motivo (categorias = etiqueta, no periodo).
+const graficaPorMotivo = computed(() => {
+  const filas = datos.value?.por_motivo || [];
+  return {
+    categories: filas.map(
+      fila => fila.etiqueta || t('HELIC3_INDICADORES.PQR.NO_MOTIVE')
+    ),
+    series: [
+      {
+        id: 'cantidad',
+        label: t('HELIC3_INDICADORES.PQR.COUNT'),
+        color: 'rgb(var(--blue-9))',
+        data: filas.map(fila => fila.cantidad),
+      },
+    ],
+  };
+});
+
 // Sin catalogo asociado (tipo/responsable), etiqueta es nil -- el frontend
 // decide como traducirlo (mismo patron de GarantiasTab.vue, N3 de PR #113).
 // "Sin asignar" reusa la clave ya existente de TICKETS.UNASSIGNED en vez de
@@ -287,7 +327,7 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
       </div>
     </div>
 
-    <div v-if="cargando" class="flex justify-center py-12">
+    <div v-if="cargando && !datos" class="flex justify-center py-12">
       <Spinner :size="32" />
     </div>
 
@@ -311,14 +351,12 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
       </p>
 
       <template v-else>
-        <!-- Tarjetas -->
-        <div
-          class="grid grid-cols-2 divide-x divide-y divide-n-weak rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 md:grid-cols-4 md:divide-y-0 overflow-hidden"
-        >
+        <!-- Tarjetas KPI: cada métrica en su propia card con separación, como el Dash CX -->
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
           <div
             v-for="tarjeta in kpiCards"
             :key="tarjeta.label"
-            class="p-4 min-w-0"
+            class="p-4 min-w-0 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
           >
             <p class="text-sm text-n-slate-11">{{ tarjeta.label }}</p>
             <p
@@ -347,15 +385,26 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
                   {{ t('HELIC3_INDICADORES.PQR.MONTHLY_SUBTITLE') }}
                 </p>
               </div>
-              <Button
-                icon="i-lucide-download"
-                variant="ghost"
-                color="slate"
-                size="xs"
-                :is-loading="descargando.mensual"
-                :title="t('HELIC3_INDICADORES.DOWNLOAD')"
-                @click="descargarCsv('mensual')"
-              />
+              <div class="flex items-center gap-1">
+                <Button
+                  v-if="filtros.anio || filtros.mes"
+                  icon="i-lucide-arrow-left"
+                  :label="t('HELIC3_INDICADORES.FILTERS.REMOVE')"
+                  variant="ghost"
+                  color="slate"
+                  size="xs"
+                  @click="limpiarPeriodo"
+                />
+                <Button
+                  icon="i-lucide-download"
+                  variant="ghost"
+                  color="slate"
+                  size="xs"
+                  :is-loading="descargando.mensual"
+                  :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+                  @click="descargarCsv('mensual')"
+                />
+              </div>
             </div>
             <table class="w-full min-w-[28rem] text-sm">
               <thead class="text-xs text-n-slate-11">
@@ -561,6 +610,27 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Peticiones por motivo (espejo Dash CX): gráfica de barras por motivo -->
+        <div
+          class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1"
+        >
+          <p class="font-semibold text-n-slate-12">
+            {{ t('HELIC3_INDICADORES.PQR.MOTIVE_CHART') }}
+          </p>
+          <p class="mt-1 mb-2 text-xs text-n-slate-11">
+            {{ t('HELIC3_INDICADORES.PQR.MOTIVE_SUBTITLE') }}
+          </p>
+          <BarChart
+            v-if="datos.por_motivo && datos.por_motivo.length"
+            :data="graficaPorMotivo"
+            :height="ALTURA_GRAFICA"
+            :aria-label="t('HELIC3_INDICADORES.PQR.MOTIVE_CHART')"
+          />
+          <p v-else class="py-8 text-sm text-center text-n-slate-11">
+            {{ t('HELIC3_INDICADORES.EMPTY') }}
+          </p>
         </div>
 
         <!-- Desgloses -->
