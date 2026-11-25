@@ -54,6 +54,16 @@ RSpec.describe 'Helic3 Catalogos API', type: :request do
         expect(response.parsed_body['coberturas_ciudad'].pluck('proceso_inicial_nombre').compact).not_to be_empty
       end
 
+      # GAR: el panel avisa al resolver si la factura ya superó el amparo; el meses
+      # viene del MISMO parámetro que lee el agente de IA (amparo_garantia), como entero.
+      it 'expone amparo_garantia_meses como entero (aviso de amparo vencido)' do
+        get "/api/v1/accounts/#{account.id}/helic3/catalogos",
+            headers: agent.create_new_auth_token, as: :json
+
+        esperado = Helic3::Catalogo::Parametro.find_by(account: account, clave: 'amparo_garantia').valor.to_i
+        expect(response.parsed_body['amparo_garantia_meses']).to eq(esperado)
+      end
+
       it 'devuelve cada catalogo en el orden de posicion' do
         get "/api/v1/accounts/#{account.id}/helic3/catalogos",
             headers: agent.create_new_auth_token, as: :json

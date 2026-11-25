@@ -573,7 +573,8 @@
       "PLACEHOLDER": "Elegir resultado…",
       "PROPOSAL_PENDING": "El agente dejó una propuesta de resolución pendiente de aprobación.",
       "GO_TO_DECISIONS": "Ir a Decisiones",
-      "CATALOG_ERROR": "No se pudieron cargar los resultados para resolver la PQR."
+      "CATALOG_ERROR": "No se pudieron cargar los resultados para resolver la PQR.",
+      "AMPARO_VENCIDO": "Aviso: la factura es del {fecha}. El amparo de garantía es de {meses} meses y esta compra ya lo superó; solo la enfermedad de la madera tiene garantía extendida. Revisa antes de proceder."
     },
     "DELETE": {
       "TITLE": "Eliminar ticket",

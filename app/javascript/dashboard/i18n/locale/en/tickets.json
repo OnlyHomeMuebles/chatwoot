@@ -573,7 +573,8 @@
       "PLACEHOLDER": "Pick a result…",
       "PROPOSAL_PENDING": "The agent left a resolution proposal pending approval.",
       "GO_TO_DECISIONS": "Go to Decisions",
-      "CATALOG_ERROR": "The results needed to resolve the PQR could not be loaded."
+      "CATALOG_ERROR": "The results needed to resolve the PQR could not be loaded.",
+      "AMPARO_VENCIDO": "Notice: the invoice is dated {fecha}. The warranty coverage is {meses} months and this purchase already exceeded it; only wood disease has extended warranty. Review before proceeding."
     },
     "DELETE": {
       "TITLE": "Delete ticket",

@@ -50,3 +50,7 @@ json.erp_habilitado Helic3::Erp.habilitado?
 json.motivos_devolucion @motivos_devolucion do |motivo|
   json.call(motivo, :id, :codigo, :nombre)
 end
+
+# Amparo de garantia (meses desde la compra): el panel avisa al resolver si la
+# factura del ERP ya supero el plazo. Mismo parametro que lee el agente de IA.
+json.amparo_garantia_meses @amparo_garantia_meses

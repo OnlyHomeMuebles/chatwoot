@@ -345,6 +345,24 @@ const resolver = async resultadoId => {
   }
 };
 
+// Aviso (no bloquea): si la compra ya superó el amparo de garantía, se le avisa
+// al agente antes de abrir la garantía. El amparo (meses) viene del catálogo,
+// el MISMO parámetro que lee el agente de IA. La enfermedad de la madera tiene
+// garantía extendida; se menciona para que el agente lo considere.
+const avisarSiAmparoVencido = datos => {
+  const fecha = datos.factura_fecha?.valor; // 'YYYY-MM-DD' (columna :date)
+  const meses = catalogos.value?.amparo_garantia_meses;
+  if (!fecha || !meses) return;
+  // T00:00:00 fuerza medianoche LOCAL (no UTC): asi sumar los meses no cruza de dia
+  // en una zona UTC-negativa (Colombia, UTC-5) y el calculo es obviamente correcto.
+  const limite = new Date(`${fecha}T00:00:00`);
+  limite.setMonth(limite.getMonth() + meses);
+  if (new Date() > limite) {
+    const fechaFmt = fecha.split('-').reverse().join('/'); // dd/mm/aaaa, como el resto del modulo
+    useAlert(t('TICKETS.RESOLVER.AMPARO_VENCIDO', { fecha: fechaFmt, meses }));
+  }
+};
+
 const onResultadoElegido = resultadoId => {
   resolverKey.value += 1; // el selector vuelve al placeholder si el server rechaza o se cancela
   if (!resultadoId) return;
@@ -353,6 +371,7 @@ const onResultadoElegido = resultadoId => {
   );
   if (resultado?.abre_garantia) {
     const d = expediente.value?.datos || {};
+    avisarSiAmparoVencido(d);
     garantiaDialogRef.value?.open(expediente.value, resultadoId, {
       // ERP-15: una fila por producto de la ficha; fallback al producto unico si no hay lista.
       productos: d.productos || [],

@@ -37,6 +37,12 @@ vi.mock('vue-i18n', () => ({
   }),
 }));
 
+// Aviso de amparo vencido (GAR): el único uso de composables en el componente es
+// useAlert; lo espiamos para comprobar el toast.
+import { useAlert } from 'dashboard/composables';
+
+vi.mock('dashboard/composables', () => ({ useAlert: vi.fn() }));
+
 // MAN-03: stub del dialogo de garantia con un open() espiable, para comprobar que
 // un resultado que abre garantia abre el dialogo (en vez de resolver directo).
 const garantiaOpen = vi.fn();
@@ -104,6 +110,7 @@ beforeEach(() => {
   garantiaOpen.mockClear();
   actividadOpen.mockClear();
   routerPush.mockClear();
+  useAlert.mockClear();
 });
 
 describe('PqrDetailPage.vue — bloque de garantía (DET-01)', () => {
@@ -813,5 +820,55 @@ describe('PqrDetailPage.vue — observación del caso (DET-02)', () => {
       id: 7,
       description: 'nueva observación',
     });
+  });
+});
+
+describe('PqrDetailPage.vue — aviso de amparo de garantía vencido (GAR)', () => {
+  const resultadoGarantia = [
+    { id: 20, nombre: 'Procede garantía', abre_garantia: true },
+  ];
+  // Dispara "Procede garantía" (abre_garantia) sobre un expediente con factura_fecha.
+  const resolverConFactura = async facturaFecha => {
+    expedienteRef.value = {
+      ...expedienteBase,
+      garantia: null,
+      datos: { factura_fecha: { valor: facturaFecha, fuente: 'erp' } },
+    };
+    const wrapper = montar();
+    await selectResolver(wrapper).vm.$emit('update:modelValue', 20);
+    await flushPromises();
+  };
+
+  it('avisa cuando la factura ya superó el amparo (factura vieja + 12 meses < hoy)', async () => {
+    catalogosRef.value = { resultados: resultadoGarantia, amparo_garantia_meses: 12 };
+
+    await resolverConFactura('2020-01-01');
+
+    // el diálogo se abre igual (es aviso, no bloqueo) y además sale el toast,
+    // con la fecha ya en dd/mm/aaaa (como el resto del módulo)
+    expect(garantiaOpen).toHaveBeenCalled();
+    expect(useAlert).toHaveBeenCalledWith(
+      'TICKETS.RESOLVER.AMPARO_VENCIDO {"fecha":"01/01/2020","meses":12}'
+    );
+  });
+
+  it('NO avisa cuando la factura sigue dentro del amparo', async () => {
+    catalogosRef.value = { resultados: resultadoGarantia, amparo_garantia_meses: 12 };
+
+    // factura de hoy + 12 meses siempre cae en el futuro: fecha dinámica para que el
+    // test no se vuelva una bomba de tiempo cuando el reloj avance.
+    const hoy = new Date().toISOString().slice(0, 10);
+    await resolverConFactura(hoy);
+
+    expect(garantiaOpen).toHaveBeenCalled();
+    expect(useAlert).not.toHaveBeenCalled();
+  });
+
+  it('NO avisa si no hay amparo configurado o falta la fecha de factura', async () => {
+    catalogosRef.value = { resultados: resultadoGarantia }; // sin amparo_garantia_meses
+
+    await resolverConFactura('2020-01-01');
+
+    expect(useAlert).not.toHaveBeenCalled();
   });
 });

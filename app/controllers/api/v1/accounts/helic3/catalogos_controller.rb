@@ -25,6 +25,11 @@ class Api::V1::Accounts::Helic3::CatalogosController < Api::V1::Accounts::BaseCo
     @motivos_garantia = Helic3::Catalogo::MotivoGarantia.where(account: Current.account).activos
     @detalles_tipificados = Helic3::Catalogo::DetalleTipificado.where(account: Current.account).activos
     @procesos_garantia = Helic3::Catalogo::ProcesoGarantia.where(account: Current.account).activos
+    # Amparo de garantía (meses desde la compra), el MISMO parámetro que lee el
+    # agente de IA (pqrs_agent): el panel avisa al resolver si la factura ya lo
+    # superó. Administrable desde catálogos; nil si no está configurado.
+    @amparo_garantia_meses =
+      Helic3::Catalogo::Parametro.find_by(account: Current.account, clave: 'amparo_garantia')&.valor&.to_i
   end
 
   # IND-06: motivo propio de Devolucion; detalle/proceso se reusan de garantia
