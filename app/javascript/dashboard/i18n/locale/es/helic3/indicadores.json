@@ -118,6 +118,8 @@
       "QUARTERLY": "Detalle trimestral",
       "QUARTERLY_SUBTITLE": "PQR radicadas por trimestre",
       "QUARTER_COLUMN": "Trimestre",
+      "QUARTER_DETAIL_TITLE": "Detalle de {trimestre}",
+      "RESPONDED_RATE": "% respondidas",
       "MOTIVE_QUARTER": "Motivo por trimestre",
       "MOTIVE_QUARTER_SUBTITLE": "Cantidad de PQR por motivo en cada trimestre",
       "MOTIVE_COLUMN": "Motivo",

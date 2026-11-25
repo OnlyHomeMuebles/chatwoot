@@ -8,6 +8,7 @@ import Button from 'dashboard/components-next/button/Button.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import BarChart from 'shared/components/charts/BarChart.vue';
 import MultiSeriesBarChart from 'dashboard/components-next/helic3/MultiSeriesBarChart.vue';
+import ComboBarLineChart from 'dashboard/components-next/helic3/ComboBarLineChart.vue';
 import { useIndicadoresStore } from 'dashboard/store/helic3/indicadores';
 import IndicadoresAPI from 'dashboard/api/helic3/indicadores';
 import { downloadBlobResponse } from 'dashboard/helper/helic3/downloadHelper';
@@ -164,10 +165,15 @@ const descargarCsv = async seccion => {
   }
 };
 
+// Detalle trimestral: trimestre abierto en el drill-down (declarado aquí para
+// que limpiarFiltros también lo cierre, igual que GarantiasTab).
+const trimestreDetalleSeleccionado = ref(null);
+
 const limpiarFiltros = () => {
   Object.keys(filtros).forEach(clave => {
     filtros[clave] = '';
   });
+  trimestreDetalleSeleccionado.value = null;
 };
 
 // Mismo ajuste de interactividad que GarantiasTab.vue (mockup v12): click en
@@ -309,6 +315,51 @@ const motivoPorMesPivot = computed(() => {
   }));
   return { categorias, series };
 });
+
+// Detalle trimestral con drill-down (misma mecánica que Garantías): al hundir un
+// trimestre se despliega por mes en una gráfica combo. Sin pedir nada al backend:
+// datos.mensual ya viaja completo; se filtra por el rango de meses del trimestre.
+const seleccionarTrimestreDetalle = periodo => {
+  trimestreDetalleSeleccionado.value =
+    trimestreDetalleSeleccionado.value === periodo ? null : periodo;
+};
+const mesesDelTrimestre = periodo => {
+  const [anioTexto, trimestreTexto] = periodo.split('-T');
+  const trimestre = Number(trimestreTexto);
+  const primerMes = (trimestre - 1) * 3 + 1;
+  const ultimoMes = trimestre * 3;
+  return (datos.value?.mensual || []).filter(fila => {
+    const [anioFila, mesFila] = fila.periodo.split('-').map(Number);
+    return (
+      String(anioFila) === anioTexto &&
+      mesFila >= primerMes &&
+      mesFila <= ultimoMes
+    );
+  });
+};
+const filaTrimestreDetalle = computed(() =>
+  (datos.value?.trimestral || []).find(
+    fila => fila.periodo === trimestreDetalleSeleccionado.value
+  )
+);
+const mesesTrimestreDetalle = computed(() =>
+  trimestreDetalleSeleccionado.value
+    ? mesesDelTrimestre(trimestreDetalleSeleccionado.value)
+    : []
+);
+const categoriasTrimestreDetalle = computed(() =>
+  mesesTrimestreDetalle.value.map(fila => fila.periodo)
+);
+const cantidadTrimestreDetalle = computed(() =>
+  mesesTrimestreDetalle.value.map(fila => fila.cantidad)
+);
+// La línea del combo es "% respondidas" por mes (PQR no tiene "solucionadas").
+// Un decimal, igual que GarantiasTab y que el backend (porcentaje .round(1)).
+const pctRespondidasTrimestreDetalle = computed(() =>
+  mesesTrimestreDetalle.value.map(fila =>
+    fila.cantidad ? Math.round((fila.respondidas / fila.cantidad) * 1000) / 10 : 0
+  )
+);
 
 // Espejo Dash CX "peticiones por motivo": una barra por motivo (categorias = etiqueta, no periodo).
 const graficaPorMotivo = computed(() => {
@@ -573,7 +624,20 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
                 :key="fila.periodo"
                 class="border-t border-n-weak"
               >
-                <td class="px-3 py-2 text-n-slate-11">{{ fila.periodo }}</td>
+                <td class="px-3 py-2">
+                  <button
+                    type="button"
+                    class="hover:text-n-brand"
+                    :class="
+                      trimestreDetalleSeleccionado === fila.periodo
+                        ? 'text-n-brand font-medium'
+                        : 'text-n-slate-11'
+                    "
+                    @click="seleccionarTrimestreDetalle(fila.periodo)"
+                  >
+                    {{ fila.periodo }}
+                  </button>
+                </td>
                 <td
                   class="px-3 py-2 text-right font-medium tabular-nums text-n-slate-12"
                 >
@@ -588,6 +652,66 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
               </tr>
             </tbody>
           </table>
+
+          <!-- Detalle del trimestre elegido: info + gráfica de sus meses. Se
+          calcula en el cliente (datos.mensual ya está en memoria), igual que
+          GarantiasTab. -->
+          <div
+            v-if="trimestreDetalleSeleccionado && filaTrimestreDetalle"
+            class="p-4 mt-4 rounded-xl bg-n-solid-2"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <p class="text-sm font-medium text-n-slate-12">
+                {{
+                  t('HELIC3_INDICADORES.PQR.QUARTER_DETAIL_TITLE', {
+                    trimestre: trimestreDetalleSeleccionado,
+                  })
+                }}
+              </p>
+              <Button
+                icon="i-lucide-x"
+                variant="ghost"
+                color="slate"
+                size="xs"
+                @click="trimestreDetalleSeleccionado = null"
+              />
+            </div>
+            <div class="flex flex-wrap gap-6 mt-2 text-xs text-n-slate-11">
+              <span>
+                {{ t('HELIC3_INDICADORES.PQR.COUNT') }}:
+                <strong class="text-n-slate-12">{{
+                  filaTrimestreDetalle.cantidad
+                }}</strong>
+              </span>
+              <span>
+                {{ t('HELIC3_INDICADORES.PQR.KPI_RESPONDED') }}:
+                <strong class="text-n-teal-11">{{
+                  filaTrimestreDetalle.respondidas
+                }}</strong>
+              </span>
+              <span>
+                {{ t('HELIC3_INDICADORES.PQR.KPI_PENDING') }}:
+                <strong class="text-n-amber-11">{{
+                  filaTrimestreDetalle.pendientes
+                }}</strong>
+              </span>
+            </div>
+            <ComboBarLineChart
+              v-if="mesesTrimestreDetalle.length"
+              class="mt-4"
+              :categories="categoriasTrimestreDetalle"
+              :bar-data="cantidadTrimestreDetalle"
+              :bar-label="t('HELIC3_INDICADORES.PQR.COUNT')"
+              :line-data="pctRespondidasTrimestreDetalle"
+              :line-label="t('HELIC3_INDICADORES.PQR.RESPONDED_RATE')"
+              :height="180"
+              :aria-label="
+                t('HELIC3_INDICADORES.PQR.QUARTER_DETAIL_TITLE', {
+                  trimestre: trimestreDetalleSeleccionado,
+                })
+              "
+            />
+          </div>
         </div>
 
         <!-- Motivo por trimestre: matriz T1-T4 + gráfica de colores; al hundir

@@ -1,6 +1,7 @@
 import { shallowMount, mount, flushPromises } from '@vue/test-utils';
 import Button from 'dashboard/components-next/button/Button.vue';
 import BarChart from 'shared/components/charts/BarChart.vue';
+import ComboBarLineChart from 'dashboard/components-next/helic3/ComboBarLineChart.vue';
 import PqrTab from '../PqrTab.vue';
 
 // vi.mock(...) se iza (hoisted) al tope del archivo; vi.hoisted() es la forma
@@ -269,6 +270,40 @@ describe('PqrTab.vue (IND-02)', () => {
 
     expect(wrapper.text()).toContain('Calidad');
     expect(wrapper.text()).toContain('T1');
+  });
+
+  // Drill-down del "Detalle trimestral" (el total por trimestre, distinto de
+  // "Motivo por trimestre"): hundir un trimestre despliega sus meses en una
+  // gráfica combo, sin pedir nada al backend (datos.mensual ya viaja completo).
+  it('al hundir un trimestre de "Detalle trimestral", despliega sus meses y la gráfica; volver a hundirlo la cierra', async () => {
+    pqrRef = {
+      ...indicadoresVacios(),
+      kpis: { ...indicadoresVacios().kpis, radicadas: 3, respondidas: 2, pendientes: 1 },
+      trimestral: [{ periodo: '2026-T1', cantidad: 3, respondidas: 2, pendientes: 1 }],
+      mensual: [
+        { periodo: '2026-01', cantidad: 2, respondidas: 1, pendientes: 1 },
+        { periodo: '2026-02', cantidad: 1, respondidas: 1, pendientes: 0 },
+      ],
+    };
+    const wrapper = mount(PqrTab);
+    await flushPromises();
+
+    // antes del click no hay detalle del trimestre ni gráfica combo
+    expect(wrapper.findComponent(ComboBarLineChart).exists()).toBe(false);
+
+    const botonTrimestre = wrapper
+      .findAll('button')
+      .find(btn => btn.text() === '2026-T1');
+    expect(botonTrimestre).toBeTruthy();
+    await botonTrimestre.trigger('click');
+
+    // aparece el detalle con el título y la gráfica de los meses del trimestre
+    expect(wrapper.text()).toContain('HELIC3_INDICADORES.PQR.QUARTER_DETAIL_TITLE');
+    expect(wrapper.findComponent(ComboBarLineChart).exists()).toBe(true);
+
+    // volver a hundir el mismo trimestre lo cierra (toggle)
+    await botonTrimestre.trigger('click');
+    expect(wrapper.findComponent(ComboBarLineChart).exists()).toBe(false);
   });
 
   it('el selector de mes muestra nombres de mes, no numeros', () => {
