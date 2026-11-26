@@ -30,6 +30,7 @@ const catalogosRef = ref({
   detalles_tipificados: [{ id: 100, nombre: 'Tela motosa' }],
 });
 const agentsRef = ref([{ id: 5, name: 'Agente Uno' }]);
+const currentUserIdRef = ref(5);
 // route mutable: algunos tests abren el wizard desde una conversación (?conversation=)
 const routeState = { query: {} };
 
@@ -45,6 +46,7 @@ vi.mock('dashboard/composables/store', () => ({
   useStore: () => ({ dispatch }),
   useMapGetter: getter => {
     if (getter === 'agents/getAgents') return agentsRef;
+    if (getter === 'getCurrentUserID') return currentUserIdRef;
     return catalogosRef; // tickets/getCatalogos
   },
 }));
@@ -85,6 +87,14 @@ beforeEach(() => {
 });
 
 describe('PqrNuevaPage.vue — validación por paso (MAN-02)', () => {
+  // El responsable arranca en el usuario actual (quien crea la PQR); el campo
+  // sigue editable para reasignarlo a otro agente.
+  it('al montar, el responsable arranca en el usuario actual', () => {
+    const wrapper = montar();
+
+    expect(wrapper.vm.form.assignee_id).toBe(5);
+  });
+
   it('«Continuar» no avanza sin motivo o descripción', () => {
     const wrapper = montar();
 

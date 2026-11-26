@@ -29,6 +29,7 @@ const { t } = useI18n();
 
 const catalogos = useMapGetter('tickets/getCatalogos');
 const agents = useMapGetter('agents/getAgents');
+const currentUserId = useMapGetter('getCurrentUserID');
 
 const TOTAL_PASOS = 2;
 const paso = ref(1);
@@ -177,6 +178,9 @@ const responsableNombre = computed(
 );
 
 onMounted(() => {
+  // El responsable arranca en el usuario actual (quien crea la PQR); el campo
+  // sigue editable para reasignarlo a otro agente.
+  form.assignee_id = currentUserId.value;
   store
     .dispatch('tickets/getCatalogos')
     .catch(() => useAlert(t('TICKETS.CREATE.CATALOGS_ERROR')));
