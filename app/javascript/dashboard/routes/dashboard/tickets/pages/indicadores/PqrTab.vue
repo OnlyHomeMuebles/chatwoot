@@ -7,6 +7,8 @@ import Select from 'dashboard/components-next/select/Select.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import BarChart from 'shared/components/charts/BarChart.vue';
+import MultiSeriesBarChart from 'dashboard/components-next/helic3/MultiSeriesBarChart.vue';
+import ComboBarLineChart from 'dashboard/components-next/helic3/ComboBarLineChart.vue';
 import { useIndicadoresStore } from 'dashboard/store/helic3/indicadores';
 import IndicadoresAPI from 'dashboard/api/helic3/indicadores';
 import { downloadBlobResponse } from 'dashboard/helper/helic3/downloadHelper';
@@ -35,10 +37,18 @@ const filtros = reactive({
   anio: '',
   mes: '',
   tipo_id: '',
+  categoria_id: '',
   motivo_pqr_id: '',
   assignee_id: '',
   resultado_id: '',
 });
+
+// Click-to-filter de las tablas (tipo/categoría/resultado/responsable): hundir
+// un valor filtra todo el tablero por él, igual que "producto" en Garantías.
+const seleccionarFiltro = (clave, valor) => {
+  if (!valor) return;
+  filtros[clave] = valor;
+};
 
 const todos = () => ({ value: '', label: t('HELIC3_INDICADORES.FILTERS.ALL') });
 const anioOptions = computed(() => [
@@ -155,10 +165,15 @@ const descargarCsv = async seccion => {
   }
 };
 
+// Detalle trimestral: trimestre abierto en el drill-down (declarado aquí para
+// que limpiarFiltros también lo cierre, igual que GarantiasTab).
+const trimestreDetalleSeleccionado = ref(null);
+
 const limpiarFiltros = () => {
   Object.keys(filtros).forEach(clave => {
     filtros[clave] = '';
   });
+  trimestreDetalleSeleccionado.value = null;
 };
 
 // Mismo ajuste de interactividad que GarantiasTab.vue (mockup v12): click en
@@ -188,6 +203,7 @@ watch(
     filtros.anio,
     filtros.mes,
     filtros.tipo_id,
+    filtros.categoria_id,
     filtros.motivo_pqr_id,
     filtros.assignee_id,
     filtros.resultado_id,
@@ -259,6 +275,91 @@ const comoGrafica = filas => ({
   ],
 });
 const graficaMensual = computed(() => comoGrafica(datos.value?.mensual || []));
+
+// Motivo por trimestre con drill-down (misma mecánica que Garantías/
+// Devoluciones): matriz T1-T4 + gráfico de colores; al hundir un trimestre se
+// despliega por mes. La fuente es motivo_por_mes, que viaja completo del
+// backend (sin un fetch aparte por cada click).
+const trimestreMotivoSeleccionado = ref(null);
+const TRIMESTRES_NUMERO = { T1: 1, T2: 2, T3: 3, T4: 4 };
+const alternarTrimestreMotivo = trimestre => {
+  trimestreMotivoSeleccionado.value =
+    trimestreMotivoSeleccionado.value === trimestre ? null : trimestre;
+};
+const seriesMotivoTrimestre = computed(() =>
+  (datos.value?.motivo_por_trimestre || []).map(fila => ({
+    nombre: fila.motivo ?? t('HELIC3_INDICADORES.PQR.NO_MOTIVE'),
+    valores: [fila.t1, fila.t2, fila.t3, fila.t4],
+  }))
+);
+const trimestreDeMes = periodo =>
+  Math.floor((Number(periodo.split('-')[1]) - 1) / 3) + 1;
+const motivoPorMesPivot = computed(() => {
+  const trimestre = trimestreMotivoSeleccionado.value;
+  if (!trimestre) return { categorias: [], series: [] };
+  const sinDato = t('HELIC3_INDICADORES.PQR.NO_MOTIVE');
+  const delTrimestre = (datos.value?.motivo_por_mes || []).filter(
+    fila => TRIMESTRES_NUMERO[trimestre] === trimestreDeMes(fila.periodo)
+  );
+  const categorias = [...new Set(delTrimestre.map(fila => fila.periodo))].sort();
+  const nombres = [...new Set(delTrimestre.map(fila => fila.motivo ?? sinDato))];
+  const series = nombres.map(nombre => ({
+    nombre,
+    valores: categorias.map(
+      periodo =>
+        delTrimestre.find(
+          fila =>
+            (fila.motivo ?? sinDato) === nombre && fila.periodo === periodo
+        )?.cantidad || 0
+    ),
+  }));
+  return { categorias, series };
+});
+
+// Detalle trimestral con drill-down (misma mecánica que Garantías): al hundir un
+// trimestre se despliega por mes en una gráfica combo. Sin pedir nada al backend:
+// datos.mensual ya viaja completo; se filtra por el rango de meses del trimestre.
+const seleccionarTrimestreDetalle = periodo => {
+  trimestreDetalleSeleccionado.value =
+    trimestreDetalleSeleccionado.value === periodo ? null : periodo;
+};
+const mesesDelTrimestre = periodo => {
+  const [anioTexto, trimestreTexto] = periodo.split('-T');
+  const trimestre = Number(trimestreTexto);
+  const primerMes = (trimestre - 1) * 3 + 1;
+  const ultimoMes = trimestre * 3;
+  return (datos.value?.mensual || []).filter(fila => {
+    const [anioFila, mesFila] = fila.periodo.split('-').map(Number);
+    return (
+      String(anioFila) === anioTexto &&
+      mesFila >= primerMes &&
+      mesFila <= ultimoMes
+    );
+  });
+};
+const filaTrimestreDetalle = computed(() =>
+  (datos.value?.trimestral || []).find(
+    fila => fila.periodo === trimestreDetalleSeleccionado.value
+  )
+);
+const mesesTrimestreDetalle = computed(() =>
+  trimestreDetalleSeleccionado.value
+    ? mesesDelTrimestre(trimestreDetalleSeleccionado.value)
+    : []
+);
+const categoriasTrimestreDetalle = computed(() =>
+  mesesTrimestreDetalle.value.map(fila => fila.periodo)
+);
+const cantidadTrimestreDetalle = computed(() =>
+  mesesTrimestreDetalle.value.map(fila => fila.cantidad)
+);
+// La línea del combo es "% respondidas" por mes (PQR no tiene "solucionadas").
+// Un decimal, igual que GarantiasTab y que el backend (porcentaje .round(1)).
+const pctRespondidasTrimestreDetalle = computed(() =>
+  mesesTrimestreDetalle.value.map(fila =>
+    fila.cantidad ? Math.round((fila.respondidas / fila.cantidad) * 1000) / 10 : 0
+  )
+);
 
 // Espejo Dash CX "peticiones por motivo": una barra por motivo (categorias = etiqueta, no periodo).
 const graficaPorMotivo = computed(() => {
@@ -523,7 +624,20 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
                 :key="fila.periodo"
                 class="border-t border-n-weak"
               >
-                <td class="px-3 py-2 text-n-slate-11">{{ fila.periodo }}</td>
+                <td class="px-3 py-2">
+                  <button
+                    type="button"
+                    class="hover:text-n-brand"
+                    :class="
+                      trimestreDetalleSeleccionado === fila.periodo
+                        ? 'text-n-brand font-medium'
+                        : 'text-n-slate-11'
+                    "
+                    @click="seleccionarTrimestreDetalle(fila.periodo)"
+                  >
+                    {{ fila.periodo }}
+                  </button>
+                </td>
                 <td
                   class="px-3 py-2 text-right font-medium tabular-nums text-n-slate-12"
                 >
@@ -538,18 +652,77 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
               </tr>
             </tbody>
           </table>
+
+          <!-- Detalle del trimestre elegido: info + gráfica de sus meses. Se
+          calcula en el cliente (datos.mensual ya está en memoria), igual que
+          GarantiasTab. -->
+          <div
+            v-if="trimestreDetalleSeleccionado && filaTrimestreDetalle"
+            class="p-4 mt-4 rounded-xl bg-n-solid-2"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <p class="text-sm font-medium text-n-slate-12">
+                {{
+                  t('HELIC3_INDICADORES.PQR.QUARTER_DETAIL_TITLE', {
+                    trimestre: trimestreDetalleSeleccionado,
+                  })
+                }}
+              </p>
+              <Button
+                icon="i-lucide-x"
+                variant="ghost"
+                color="slate"
+                size="xs"
+                @click="trimestreDetalleSeleccionado = null"
+              />
+            </div>
+            <div class="flex flex-wrap gap-6 mt-2 text-xs text-n-slate-11">
+              <span>
+                {{ t('HELIC3_INDICADORES.PQR.COUNT') }}:
+                <strong class="text-n-slate-12">{{
+                  filaTrimestreDetalle.cantidad
+                }}</strong>
+              </span>
+              <span>
+                {{ t('HELIC3_INDICADORES.PQR.KPI_RESPONDED') }}:
+                <strong class="text-n-teal-11">{{
+                  filaTrimestreDetalle.respondidas
+                }}</strong>
+              </span>
+              <span>
+                {{ t('HELIC3_INDICADORES.PQR.KPI_PENDING') }}:
+                <strong class="text-n-amber-11">{{
+                  filaTrimestreDetalle.pendientes
+                }}</strong>
+              </span>
+            </div>
+            <ComboBarLineChart
+              v-if="mesesTrimestreDetalle.length"
+              class="mt-4"
+              :categories="categoriasTrimestreDetalle"
+              :bar-data="cantidadTrimestreDetalle"
+              :bar-label="t('HELIC3_INDICADORES.PQR.COUNT')"
+              :line-data="pctRespondidasTrimestreDetalle"
+              :line-label="t('HELIC3_INDICADORES.PQR.RESPONDED_RATE')"
+              :height="180"
+              :aria-label="
+                t('HELIC3_INDICADORES.PQR.QUARTER_DETAIL_TITLE', {
+                  trimestre: trimestreDetalleSeleccionado,
+                })
+              "
+            />
+          </div>
         </div>
 
-        <!-- Motivo por trimestre -->
-        <div
-          class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1 overflow-x-auto"
-        >
-          <div class="flex items-start justify-between">
+        <!-- Motivo por trimestre: matriz T1-T4 + gráfica de colores; al hundir
+        un trimestre se despliega por mes (como Garantías/Devoluciones). -->
+        <div class="p-4 rounded-xl outline outline-1 outline-n-weak bg-n-solid-1">
+          <div class="flex items-start justify-between gap-3">
             <div>
               <p class="font-semibold text-n-slate-12">
                 {{ t('HELIC3_INDICADORES.PQR.MOTIVE_QUARTER') }}
               </p>
-              <p class="mt-1 mb-3 text-xs text-n-slate-11">
+              <p class="mt-1 text-xs text-n-slate-11">
                 {{ t('HELIC3_INDICADORES.PQR.MOTIVE_QUARTER_SUBTITLE') }}
               </p>
             </div>
@@ -563,53 +736,129 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
               @click="descargarCsv('motivo_por_trimestre')"
             />
           </div>
-          <table class="w-full min-w-[32rem] text-sm">
-            <thead class="text-xs text-n-slate-11">
-              <tr>
-                <th class="px-3 py-2 text-left font-medium">
-                  {{ t('HELIC3_INDICADORES.PQR.MOTIVE_COLUMN') }}
-                </th>
-                <th
-                  v-for="columna in COLUMNAS_TRIMESTRE"
-                  :key="columna"
-                  class="px-3 py-2 text-right font-medium"
-                >
-                  {{ columna }}
-                </th>
-                <th class="px-3 py-2 text-right font-medium">
-                  {{ t('HELIC3_INDICADORES.PQR.TOTAL_COLUMN') }}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="fila in datos.motivo_por_trimestre"
-                :key="fila.motivo"
-                class="border-t border-n-weak"
-              >
-                <td class="px-3 py-2 text-n-slate-11">
-                  {{ fila.motivo ?? t('HELIC3_INDICADORES.PQR.NO_MOTIVE') }}
-                </td>
-                <td class="px-3 py-2 text-right tabular-nums text-n-slate-11">
-                  {{ fila.t1 }}
-                </td>
-                <td class="px-3 py-2 text-right tabular-nums text-n-slate-11">
-                  {{ fila.t2 }}
-                </td>
-                <td class="px-3 py-2 text-right tabular-nums text-n-slate-11">
-                  {{ fila.t3 }}
-                </td>
-                <td class="px-3 py-2 text-right tabular-nums text-n-slate-11">
-                  {{ fila.t4 }}
-                </td>
-                <td
-                  class="px-3 py-2 text-right font-medium tabular-nums text-n-slate-12"
-                >
-                  {{ fila.total }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="grid grid-cols-1 gap-3 mt-3 xl:grid-cols-[1.4fr_1fr]">
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[28rem] text-sm">
+                <thead class="text-xs text-n-slate-11">
+                  <tr>
+                    <th class="px-3 py-2 text-left font-medium">
+                      {{ t('HELIC3_INDICADORES.PQR.MOTIVE_COLUMN') }}
+                    </th>
+                    <template v-if="!trimestreMotivoSeleccionado">
+                      <th
+                        v-for="columna in ['T1', 'T2', 'T3', 'T4']"
+                        :key="columna"
+                        class="px-3 py-2 text-right font-medium"
+                      >
+                        {{ columna }}
+                      </th>
+                      <th class="px-3 py-2 text-right font-medium">
+                        {{ t('HELIC3_INDICADORES.PQR.TOTAL_COLUMN') }}
+                      </th>
+                    </template>
+                    <th
+                      v-for="periodo in trimestreMotivoSeleccionado
+                        ? motivoPorMesPivot.categorias
+                        : []"
+                      :key="periodo"
+                      class="px-3 py-2 text-right font-medium"
+                    >
+                      {{ periodo }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template v-if="!trimestreMotivoSeleccionado">
+                    <tr
+                      v-for="fila in datos.motivo_por_trimestre"
+                      :key="fila.motivo ?? 'sin-dato'"
+                      class="border-t border-n-weak"
+                    >
+                      <td class="px-3 py-2 text-n-slate-11">
+                        {{
+                          fila.motivo ?? t('HELIC3_INDICADORES.PQR.NO_MOTIVE')
+                        }}
+                      </td>
+                      <td
+                        class="px-3 py-2 text-right tabular-nums text-n-slate-11"
+                      >
+                        {{ fila.t1 }}
+                      </td>
+                      <td
+                        class="px-3 py-2 text-right tabular-nums text-n-slate-11"
+                      >
+                        {{ fila.t2 }}
+                      </td>
+                      <td
+                        class="px-3 py-2 text-right tabular-nums text-n-slate-11"
+                      >
+                        {{ fila.t3 }}
+                      </td>
+                      <td
+                        class="px-3 py-2 text-right tabular-nums text-n-slate-11"
+                      >
+                        {{ fila.t4 }}
+                      </td>
+                      <td
+                        class="px-3 py-2 text-right font-medium tabular-nums text-n-slate-12"
+                      >
+                        {{ fila.total }}
+                      </td>
+                    </tr>
+                  </template>
+                  <template v-else>
+                    <tr
+                      v-for="serie in motivoPorMesPivot.series"
+                      :key="serie.nombre"
+                      class="border-t border-n-weak"
+                    >
+                      <td class="px-3 py-2 text-n-slate-11">
+                        {{ serie.nombre }}
+                      </td>
+                      <td
+                        v-for="(valor, indice) in serie.valores"
+                        :key="indice"
+                        class="px-3 py-2 text-right tabular-nums text-n-slate-11"
+                      >
+                        {{ valor }}
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <Button
+                v-if="trimestreMotivoSeleccionado"
+                variant="faded"
+                color="slate"
+                size="xs"
+                icon="i-lucide-arrow-left"
+                :label="t('HELIC3_INDICADORES.PQR.BACK_TO_QUARTERS')"
+                class="mb-2"
+                @click="alternarTrimestreMotivo(trimestreMotivoSeleccionado)"
+              />
+              <MultiSeriesBarChart
+                :categories="
+                  trimestreMotivoSeleccionado
+                    ? motivoPorMesPivot.categorias
+                    : ['T1', 'T2', 'T3', 'T4']
+                "
+                :series="
+                  trimestreMotivoSeleccionado
+                    ? motivoPorMesPivot.series
+                    : seriesMotivoTrimestre
+                "
+                :selected-category="trimestreMotivoSeleccionado"
+                :aria-label="t('HELIC3_INDICADORES.PQR.MOTIVE_QUARTER')"
+                @select-category="
+                  categoria =>
+                    !trimestreMotivoSeleccionado &&
+                    alternarTrimestreMotivo(categoria)
+                "
+              />
+            </div>
+          </div>
         </div>
 
         <!-- Peticiones por motivo (espejo Dash CX): gráfica de barras por motivo -->
@@ -637,20 +886,28 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
         <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <table
             v-for="seccion in [
-              { titulo: 'BY_TYPE', clave: 'por_tipo', filas: datos.por_tipo },
+              {
+                titulo: 'BY_TYPE',
+                clave: 'por_tipo',
+                filtro: 'tipo_id',
+                filas: datos.por_tipo,
+              },
               {
                 titulo: 'BY_CATEGORY',
                 clave: 'por_categoria',
+                filtro: 'categoria_id',
                 filas: datos.por_categoria,
               },
               {
                 titulo: 'BY_RESULT',
                 clave: 'por_resultado',
+                filtro: 'resultado_id',
                 filas: datos.por_resultado,
               },
               {
                 titulo: 'BY_RESPONSIBLE',
                 clave: 'por_responsable',
+                filtro: 'assignee_id',
                 filas: datos.por_responsable,
               },
             ]"
@@ -662,15 +919,26 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
                 <span class="font-semibold text-left text-n-slate-12">
                   {{ t(`HELIC3_INDICADORES.PQR.${seccion.titulo}`) }}
                 </span>
-                <Button
-                  icon="i-lucide-download"
-                  variant="ghost"
-                  color="slate"
-                  size="xs"
-                  :is-loading="descargando[seccion.clave]"
-                  :title="t('HELIC3_INDICADORES.DOWNLOAD')"
-                  @click="descargarCsv(seccion.clave)"
-                />
+                <div class="flex items-center gap-1">
+                  <Button
+                    v-if="filtros[seccion.filtro]"
+                    icon="i-lucide-arrow-left"
+                    :label="t('HELIC3_INDICADORES.FILTERS.REMOVE')"
+                    variant="ghost"
+                    color="slate"
+                    size="xs"
+                    @click="filtros[seccion.filtro] = ''"
+                  />
+                  <Button
+                    icon="i-lucide-download"
+                    variant="ghost"
+                    color="slate"
+                    size="xs"
+                    :is-loading="descargando[seccion.clave]"
+                    :title="t('HELIC3_INDICADORES.DOWNLOAD')"
+                    @click="descargarCsv(seccion.clave)"
+                  />
+                </div>
               </div>
             </caption>
             <tbody>
@@ -680,7 +948,22 @@ const etiquetaDe = (seccionTitulo, etiqueta) => {
                 class="border-t border-n-weak"
               >
                 <td class="px-3 py-2 text-n-slate-11">
-                  {{ etiquetaDe(seccion.titulo, fila.etiqueta) }}
+                  <button
+                    v-if="fila.valor"
+                    type="button"
+                    class="text-start hover:text-n-blue-11"
+                    :class="
+                      filtros[seccion.filtro] === fila.valor
+                        ? 'text-n-blue-11 font-medium'
+                        : ''
+                    "
+                    @click="seleccionarFiltro(seccion.filtro, fila.valor)"
+                  >
+                    {{ etiquetaDe(seccion.titulo, fila.etiqueta) }}
+                  </button>
+                  <template v-else>
+                    {{ etiquetaDe(seccion.titulo, fila.etiqueta) }}
+                  </template>
                 </td>
                 <td
                   class="px-3 py-2 font-medium text-right tabular-nums text-n-slate-12"

@@ -9,8 +9,6 @@ class Helic3::Indicadores::Pqr
   # que una PQR radicada tarde en la noche en Bogota caiga en el mes siguiente.
   FECHA_LOCAL = "(radicada_at AT TIME ZONE 'UTC') AT TIME ZONE '#{Helic3::CalendarioHabil::ZONA}'".freeze
 
-  TRIMESTRES = (1..4)
-
   def self.call(account:, filtros: {})
     new(account: account, filtros: filtros).call
   end
@@ -25,7 +23,8 @@ class Helic3::Indicadores::Pqr
       kpis: kpis,
       mensual: mensual,
       trimestral: trimestral,
-      motivo_por_trimestre: motivo_por_trimestre,
+      motivo_por_trimestre: motivo_desglose.por_trimestre,
+      motivo_por_mes: motivo_desglose.por_mes,
       por_motivo: por_motivo,
       por_tipo: por_tipo,
       por_categoria: por_categoria,
@@ -95,21 +94,15 @@ class Helic3::Indicadores::Pqr
   # Motivo x trimestre (T1-T4, sumando todos los anios que entren por los
   # filtros -- igual que el resto de desgloses, que operan sobre el scope ya
   # filtrado). Una sola consulta agrupada por (motivo, trimestre-del-anio).
-  def motivo_por_trimestre
-    conteos = pqr_filtradas.group(:motivo_pqr_id, Arel.sql("EXTRACT(quarter FROM #{FECHA_LOCAL})")).count
-    motivo_ids = conteos.keys.filter_map(&:first)
-    nombres = Helic3::Catalogo::MotivoPqr.where(id: motivo_ids).pluck(:id, :nombre).to_h
-    por_motivo = conteos.group_by { |(motivo_id, _trimestre), _cantidad| motivo_id }
-    filas = por_motivo.map { |motivo_id, grupo| fila_motivo_trimestre(motivo_id, grupo, nombres) }
-    filas.sort_by { |fila| -fila[:total] }
-  end
-
-  def fila_motivo_trimestre(motivo_id, grupo, nombres)
-    por_trimestre = grupo.to_h { |(_motivo_id, trimestre), cantidad| [trimestre.to_i, cantidad] }
-    fila = { motivo: nombres[motivo_id] }
-    TRIMESTRES.each { |trimestre| fila[:"t#{trimestre}"] = por_trimestre[trimestre] || 0 }
-    fila[:total] = por_trimestre.values.sum
-    fila
+  # Matriz motivo x trimestre + despliegue por mes (para el drill-down al hacer
+  # click en un trimestre), reusando la clase compartida con Garantías y
+  # Devoluciones: la clasificación vive en la columna, la fecha en el radicado.
+  # El scope son las PQR ya filtradas (no hay "item" aparte como en garantías).
+  def motivo_desglose
+    @motivo_desglose ||= Helic3::Indicadores::DesgloseTrimestral.new(
+      items_con_fecha: pqr_filtradas, fecha_local_sql: FECHA_LOCAL,
+      columna: :motivo_pqr_id, catalogo_clase: Helic3::Catalogo::MotivoPqr, campo: :motivo
+    )
   end
 
   # Desglose plano por motivo (espejo de "peticiones por motivo" del Dash CX), aparte de
@@ -145,8 +138,11 @@ class Helic3::Indicadores::Pqr
     ordenar_por_cantidad(conteos) { |id| nombres[id] }
   end
 
+  # valor (el id) viaja junto a la etiqueta para el click-to-filter de las
+  # tablas (por tipo/categoria/resultado/responsable), igual que por_ciudad en
+  # Garantias/Devoluciones. Donde no se usa (la grafica por_motivo) se ignora.
   def ordenar_por_cantidad(conteos)
-    conteos.map { |id, cantidad| { etiqueta: yield(id), cantidad: cantidad } }
+    conteos.map { |id, cantidad| { etiqueta: yield(id), valor: id, cantidad: cantidad } }
            .sort_by { |fila| -fila[:cantidad] }
   end
 

@@ -1,6 +1,7 @@
 import { shallowMount, mount, flushPromises } from '@vue/test-utils';
 import Button from 'dashboard/components-next/button/Button.vue';
 import BarChart from 'shared/components/charts/BarChart.vue';
+import ComboBarLineChart from 'dashboard/components-next/helic3/ComboBarLineChart.vue';
 import PqrTab from '../PqrTab.vue';
 
 // vi.mock(...) se iza (hoisted) al tope del archivo; vi.hoisted() es la forma
@@ -185,6 +186,58 @@ describe('PqrTab.vue (IND-02)', () => {
     expect(wrapper.text()).toContain('HELIC3_INDICADORES.PQR.NO_CATEGORY');
   });
 
+  // Click-to-filter: hundir un tipo/categoría/resultado/responsable (con su id)
+  // filtra todo el tablero por él, igual que "producto" en Garantías.
+  it('al hundir un tipo, filtra el tablero por su tipo_id', async () => {
+    pqrRef = {
+      ...indicadoresVacios(),
+      kpis: { ...indicadoresVacios().kpis, radicadas: 3 },
+      por_tipo: [{ etiqueta: 'Reclamo', valor: 7, cantidad: 3 }],
+    };
+    const wrapper = mount(PqrTab);
+    await flushPromises();
+    fetchPqr.mockClear();
+
+    const boton = wrapper
+      .findAll('button')
+      .find(btn => btn.text() === 'Reclamo');
+    await boton.trigger('click');
+    await flushPromises();
+
+    expect(fetchPqr).toHaveBeenCalledWith({ tipo_id: 7 });
+  });
+
+  // Drill-down (como Garantías/Devoluciones): clickear un trimestre del gráfico
+  // de colores lo despliega por mes, sin pedir nada al backend (motivo_por_mes
+  // viaja completo en la misma respuesta).
+  it('al hundir un trimestre de "Motivo por trimestre", lo despliega por mes', async () => {
+    pqrRef = {
+      ...indicadoresVacios(),
+      kpis: { ...indicadoresVacios().kpis, radicadas: 3 },
+      motivo_por_trimestre: [
+        { motivo: 'Calidad', t1: 2, t2: 1, t3: 0, t4: 0, total: 3 },
+      ],
+      motivo_por_mes: [
+        { motivo: 'Calidad', periodo: '2026-02', cantidad: 1 },
+        { motivo: 'Calidad', periodo: '2026-01', cantidad: 1 },
+      ],
+    };
+    const wrapper = mount(PqrTab);
+    await flushPromises();
+
+    const grupoT1 = wrapper
+      .findAll('g')
+      .find(g => g.text().trim().startsWith('T1'));
+    expect(grupoT1).toBeTruthy();
+    await grupoT1.trigger('click');
+
+    expect(wrapper.text()).toContain('2026-01');
+    expect(wrapper.text()).toContain('2026-02');
+    expect(wrapper.text()).toContain(
+      'HELIC3_INDICADORES.PQR.BACK_TO_QUARTERS'
+    );
+  });
+
   // IND grupo B: además de la gráfica mensual, hay una segunda gráfica "por motivo"
   // (espejo del Dash CX). Con datos mensual + por_motivo debe haber DOS BarChart.
   it('muestra una segunda gráfica "por motivo" además de la mensual', () => {
@@ -217,6 +270,40 @@ describe('PqrTab.vue (IND-02)', () => {
 
     expect(wrapper.text()).toContain('Calidad');
     expect(wrapper.text()).toContain('T1');
+  });
+
+  // Drill-down del "Detalle trimestral" (el total por trimestre, distinto de
+  // "Motivo por trimestre"): hundir un trimestre despliega sus meses en una
+  // gráfica combo, sin pedir nada al backend (datos.mensual ya viaja completo).
+  it('al hundir un trimestre de "Detalle trimestral", despliega sus meses y la gráfica; volver a hundirlo la cierra', async () => {
+    pqrRef = {
+      ...indicadoresVacios(),
+      kpis: { ...indicadoresVacios().kpis, radicadas: 3, respondidas: 2, pendientes: 1 },
+      trimestral: [{ periodo: '2026-T1', cantidad: 3, respondidas: 2, pendientes: 1 }],
+      mensual: [
+        { periodo: '2026-01', cantidad: 2, respondidas: 1, pendientes: 1 },
+        { periodo: '2026-02', cantidad: 1, respondidas: 1, pendientes: 0 },
+      ],
+    };
+    const wrapper = mount(PqrTab);
+    await flushPromises();
+
+    // antes del click no hay detalle del trimestre ni gráfica combo
+    expect(wrapper.findComponent(ComboBarLineChart).exists()).toBe(false);
+
+    const botonTrimestre = wrapper
+      .findAll('button')
+      .find(btn => btn.text() === '2026-T1');
+    expect(botonTrimestre).toBeTruthy();
+    await botonTrimestre.trigger('click');
+
+    // aparece el detalle con el título y la gráfica de los meses del trimestre
+    expect(wrapper.text()).toContain('HELIC3_INDICADORES.PQR.QUARTER_DETAIL_TITLE');
+    expect(wrapper.findComponent(ComboBarLineChart).exists()).toBe(true);
+
+    // volver a hundir el mismo trimestre lo cierra (toggle)
+    await botonTrimestre.trigger('click');
+    expect(wrapper.findComponent(ComboBarLineChart).exists()).toBe(false);
   });
 
   it('el selector de mes muestra nombres de mes, no numeros', () => {
