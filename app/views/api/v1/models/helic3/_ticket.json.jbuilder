@@ -61,6 +61,24 @@ if local_assigns.fetch(:detallado, true)
     json.garantia nil
   end
 
+  # GAR-09: vigencia de la garantía (dentro/fuera del amparo), para el aviso de
+  # "Datos del caso". nil si el expediente no es de garantía o falta el parámetro;
+  # en ese caso el frontend no pinta aviso. Solo en detallado: consulta el
+  # parámetro una vez por expediente, no una vez por fila de la bandeja.
+  vigencia = Helic3::VigenciaGarantia.para(resource)
+  if vigencia
+    json.vigencia_garantia do
+      json.estado vigencia[:estado]
+      json.fecha_radicacion vigencia[:fecha_radicacion]
+      json.factura_fecha vigencia[:factura_fecha]
+      json.amparo_meses vigencia[:amparo_meses]
+      json.amparo_hasta vigencia[:amparo_hasta]
+      json.antiguedad_meses vigencia[:antiguedad_meses]
+    end
+  else
+    json.vigencia_garantia nil
+  end
+
   # Datos del caso con su procedencia (DAT-01): siempre presente; cada campo es
   # {valor, fuente} o null. resource.datos es nil si aun no se recolecto nada.
   json.datos do

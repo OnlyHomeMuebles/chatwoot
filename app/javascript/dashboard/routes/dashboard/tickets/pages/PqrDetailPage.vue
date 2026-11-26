@@ -14,6 +14,8 @@ import Helic3SourceBadge from 'dashboard/components-next/helic3/Helic3SourceBadg
 // FMT-04: modal para generar formatos desde la garantia del expediente.
 import GenerarFormatoModal from '../components/helic3/formatos/GenerarFormatoModal.vue';
 import NuevaActividadModal from '../components/helic3/NuevaActividadModal.vue';
+import AvisoVigenciaGarantia from '../components/helic3/AvisoVigenciaGarantia.vue';
+import { fechaDMY } from 'dashboard/helper/helic3/fecha';
 // MAN-03: mismo dialogo de garantia del panel del chat, reusado en el detalle.
 import GarantiaFormDialog from 'dashboard/components/widgets/conversation/GarantiaFormDialog.vue';
 import FinalizarGarantiaModal from 'dashboard/components/widgets/conversation/helic3/FinalizarGarantiaModal.vue';
@@ -582,6 +584,25 @@ const clasificacion = computed(() => {
 const formatFechaSolo = iso =>
   iso ? new Date(`${iso}T00:00:00`).toLocaleDateString() : null;
 
+// GAR-09: vigencia de la garantía calculada por el backend; el aviso de "Datos del
+// caso" solo la pinta. null cuando el expediente no es de garantía o falta el parámetro.
+const vigenciaGarantia = computed(
+  () => expediente.value?.vigencia_garantia || null
+);
+
+// GAR-09: etiqueta junto a la fila "Fecha de compra" (color por estado).
+const TAGS_VIGENCIA = {
+  dentro: { key: 'TICKETS.DATA.VIGENCIA.DENTRO_TAG', clase: 'text-n-teal-11' },
+  fuera: { key: 'TICKETS.DATA.VIGENCIA.FUERA_TAG', clase: 'text-n-ruby-11' },
+  sin_fecha_compra: {
+    key: 'TICKETS.DATA.VIGENCIA.SIN_FECHA_TAG',
+    clase: 'text-n-amber-11',
+  },
+};
+const vigenciaTag = computed(
+  () => TAGS_VIGENCIA[vigenciaGarantia.value?.estado] || null
+);
+
 // Datos del caso con procedencia (DAT-01): cada campo trae { valor, fuente }.
 // El badge lo pinta Helic3SourceBadge (VIS-04), extraido del panel para que el
 // panel, la bandeja y el expediente no lo copien cada uno por su lado.
@@ -610,6 +631,7 @@ const datosLista = computed(() => {
     },
   ];
   const filas = campos.map(c => ({
+    key: c.key,
     label: c.label,
     valor:
       c.key === 'factura_fecha'
@@ -1387,6 +1409,12 @@ const formatFechaHora = valor =>
               />
             </div>
 
+            <!-- GAR-09: aviso de vigencia de garantía, solo en modo lectura. -->
+            <AvisoVigenciaGarantia
+              v-if="!editandoFicha"
+              :vigencia="vigenciaGarantia"
+            />
+
             <!-- Lectura -->
             <dl v-if="!editandoFicha" class="grid grid-cols-2 gap-x-4 gap-y-3">
               <div
@@ -1396,7 +1424,7 @@ const formatFechaHora = valor =>
               >
                 <dt class="text-xs text-n-slate-10">{{ dato.label }}</dt>
                 <dd
-                  class="flex items-center gap-2 mb-0 text-sm font-medium text-n-slate-12"
+                  class="flex flex-wrap items-center gap-2 mb-0 text-sm font-medium text-n-slate-12"
                 >
                   <template v-if="dato.valor">
                     <span class="min-w-0 break-words">{{ dato.valor }}</span>
@@ -1405,7 +1433,42 @@ const formatFechaHora = valor =>
                   <span v-else class="text-n-slate-11">
                     {{ t('TICKETS.INBOX.PENDING') }}
                   </span>
+                  <!-- GAR-09: etiqueta de vigencia junto a la fecha de compra. -->
+                  <span
+                    v-if="dato.key === 'factura_fecha' && vigenciaTag"
+                    class="text-xs font-medium"
+                    :class="vigenciaTag.clase"
+                  >
+                    {{ t(vigenciaTag.key) }}
+                  </span>
                 </dd>
+                <!-- GAR-09: dos líneas de contexto bajo la fecha de compra. -->
+                <div
+                  v-if="dato.key === 'factura_fecha' && vigenciaGarantia"
+                  class="text-xs leading-snug text-n-slate-10"
+                >
+                  <template
+                    v-if="vigenciaGarantia.estado === 'sin_fecha_compra'"
+                  >
+                    {{ t('TICKETS.DATA.VIGENCIA.SIN_FECHA_SUB') }}
+                  </template>
+                  <template v-else>
+                    <p class="mb-0">
+                      {{
+                        t('TICKETS.DATA.VIGENCIA.AMPARO_HASTA', {
+                          hasta: fechaDMY(vigenciaGarantia.amparo_hasta),
+                        })
+                      }}
+                    </p>
+                    <p class="mb-0">
+                      {{
+                        t('TICKETS.DATA.VIGENCIA.RADICADO', {
+                          fecha: fechaDMY(vigenciaGarantia.fecha_radicacion),
+                        })
+                      }}
+                    </p>
+                  </template>
+                </div>
               </div>
               <!-- DET-02: la observacion (ticket.description) ocupa toda la fila,
                    con el texto completo y los saltos de linea, sin badge. -->
