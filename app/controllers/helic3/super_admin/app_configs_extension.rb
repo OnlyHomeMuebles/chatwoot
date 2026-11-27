@@ -10,6 +10,9 @@
 module Helic3::SuperAdmin::AppConfigsExtension
   PAGINA_IA = 'helic3_ia'
   PAGINA_ERP = 'helic3_erp'
+  # MIG-02: no es una página de config (campos clave-valor) sino una con acciones,
+  # así que la tarjeta no abre el formulario de app_config: redirige a su controlador.
+  PAGINA_MIGRACION = 'helic3_migracion'
 
   # Metadatos que pinta app/views/super_admin/app_configs/show.html.erb.
   CAMPOS_IA = {
@@ -71,6 +74,8 @@ module Helic3::SuperAdmin::AppConfigsExtension
   PAGINAS = { PAGINA_IA => CAMPOS_IA, PAGINA_ERP => CAMPOS_ERP }.freeze
 
   def show
+    return redirect_to(helic3_admin_migraciones_path) if params[:config] == PAGINA_MIGRACION
+
     super
     @installation_configs.merge!(PAGINAS[@config]) if PAGINAS.key?(@config)
   end

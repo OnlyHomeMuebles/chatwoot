@@ -1,0 +1,56 @@
+<% content_for(:title) do %>Corrida #<%= @corrida.id %><% end %>
+
+<header class="main-content__header" role="banner">
+  <h1 class="main-content__page-title" id="page-title">
+    Corrida #<%= @corrida.id %> · <%= @corrida.tipo.titleize %>
+  </h1>
+</header>
+
+<section class="main-content__body">
+  <p class="mb-2">
+    Estado: <strong><%= @corrida.estado %></strong>
+    &middot; Leídos: <%= @corrida.total_leidos %>
+    &middot; OK: <%= @corrida.total_ok %>
+    &middot; Omitidos: <%= @corrida.total_omitidos %>
+    &middot; Fallidos: <%= @corrida.total_fallidos %>
+  </p>
+  <p class="mb-6 text-sm">
+    <%= link_to 'Refrescar', helic3_admin_migracione_path(@corrida), class: 'text-blue-600' %> |
+    <%= link_to 'Volver', helic3_admin_migraciones_path(account_id: @corrida.account_id), class: 'text-blue-600' %>
+  </p>
+
+  <% if @corrida.estado == 'simulado' %>
+    <%= form_with url: confirmar_helic3_admin_migracione_path(@corrida), method: :post, local: true do |f| %>
+      <%= f.submit 'Confirmar y migrar de verdad', class: 'button',
+                   data: { confirm: 'Se crearán los casos en la base de datos. ¿Confirmar?' } %>
+    <% end %>
+  <% end %>
+
+  <% if @corrida.tipo == 'vaciado' && @corrida.conteos.present? %>
+    <h2 class="text-lg mt-6 mb-2">Borrado por tabla</h2>
+    <ul class="text-sm">
+      <% @corrida.conteos.each do |tabla, n| %>
+        <li><%= tabla %>: <strong><%= n %></strong></li>
+      <% end %>
+    </ul>
+  <% end %>
+
+  <% if @corrida.tipo == 'migracion' %>
+    <h2 class="text-lg mt-6 mb-2">Casos (primeros 500)</h2>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left border-b"><th class="py-1">Consecutivo</th><th>Resultado</th><th>Mensaje</th><th>Ajustes</th></tr>
+      </thead>
+      <tbody>
+        <% @corrida.casos.order(:consecutivo).limit(500).each do |caso| %>
+          <tr class="border-b">
+            <td class="py-1"><%= caso.consecutivo %></td>
+            <td><%= caso.resultado %></td>
+            <td class="text-slate-500"><%= caso.mensaje %></td>
+            <td class="text-slate-500"><%= Array(caso.ajustes).join('; ') %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</section>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_11_17_130000) do
+ActiveRecord::Schema[7.2].define(version: 2026_11_27_120000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1542,6 +1542,46 @@ ActiveRecord::Schema[7.2].define(version: 2026_11_17_130000) do
     t.index ["conversation_id"], name: "index_helic3_knowledge_faq_suggestions_on_conversation_id"
   end
 
+  create_table "helic3_migracion_casos", force: :cascade do |t|
+    t.bigint "migracion_id", null: false
+    t.bigint "account_id", null: false
+    t.integer "consecutivo", null: false
+    t.bigint "ticket_id"
+    t.bigint "garantia_id"
+    t.string "resultado", null: false
+    t.text "mensaje"
+    t.jsonb "ajustes", default: [], null: false
+    t.boolean "simulacion", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "idx_h3_migracion_casos_account"
+    t.index ["garantia_id"], name: "idx_h3_migracion_casos_garantia"
+    t.index ["migracion_id", "consecutivo"], name: "idx_h3_migracion_casos_unico", unique: true
+    t.index ["migracion_id"], name: "idx_h3_migracion_casos_migracion"
+    t.index ["ticket_id"], name: "idx_h3_migracion_casos_ticket"
+  end
+
+  create_table "helic3_migraciones", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "tipo", null: false
+    t.string "estado", default: "pendiente", null: false
+    t.string "archivo_nombre"
+    t.integer "total_leidos", default: 0, null: false
+    t.integer "total_ok", default: 0, null: false
+    t.integer "total_omitidos", default: 0, null: false
+    t.integer "total_fallidos", default: 0, null: false
+    t.bigint "subido_por_id"
+    t.bigint "confirmado_por_id"
+    t.datetime "iniciado_at"
+    t.datetime "finalizado_at"
+    t.jsonb "conteos", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "idx_h3_migraciones_account"
+    t.index ["confirmado_por_id"], name: "idx_h3_migraciones_confirmado_por"
+    t.index ["subido_por_id"], name: "idx_h3_migraciones_subido_por"
+  end
+
   create_table "helic3_plantillas_formato", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "formato_id", null: false
@@ -2207,6 +2247,13 @@ ActiveRecord::Schema[7.2].define(version: 2026_11_17_130000) do
   add_foreign_key "helic3_garantias", "helic3_catalogo_coberturas_ciudad", column: "cobertura_ciudad_id"
   add_foreign_key "helic3_garantias", "helic3_tickets", column: "ticket_id"
   add_foreign_key "helic3_garantias", "users", column: "observacion_cierre_por_id", on_delete: :nullify
+  add_foreign_key "helic3_migracion_casos", "accounts"
+  add_foreign_key "helic3_migracion_casos", "helic3_garantias", column: "garantia_id", on_delete: :nullify
+  add_foreign_key "helic3_migracion_casos", "helic3_migraciones", column: "migracion_id", on_delete: :cascade
+  add_foreign_key "helic3_migracion_casos", "helic3_tickets", column: "ticket_id", on_delete: :nullify
+  add_foreign_key "helic3_migraciones", "accounts"
+  add_foreign_key "helic3_migraciones", "users", column: "confirmado_por_id", on_delete: :nullify
+  add_foreign_key "helic3_migraciones", "users", column: "subido_por_id", on_delete: :nullify
   add_foreign_key "helic3_plantillas_formato", "accounts"
   add_foreign_key "helic3_plantillas_formato", "helic3_catalogo_formatos", column: "formato_id"
   add_foreign_key "helic3_plantillas_formato", "users", column: "activada_por_id", on_delete: :nullify

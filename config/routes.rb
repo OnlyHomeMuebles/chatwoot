@@ -853,6 +853,21 @@ Rails.application.routes.draw do
       # resources that doesn't appear in primary navigation in super admin
       resources :account_users, only: [:new, :create, :show, :destroy]
     end
+    # MIG-02: la pantalla de migración de garantías de Helic3. Controlador propio
+    # (Helic3::SuperAdmin::MigracionesController) porque tiene acciones (subir,
+    # simular, confirmar, vaciar), a diferencia de Agentes IA/ERP que solo editan config.
+    # Va bajo /helic3-admin (NO /super_admin) para que administrate no la tome como un
+    # recurso de su menú; la autenticación la da el controlador, no la ruta.
+    scope 'helic3-admin', module: 'helic3/super_admin', as: 'helic3_admin' do
+      resources :migraciones, only: %i[index show create destroy] do
+        member do
+          post :simular
+          post :confirmar
+          post :revertir
+        end
+        collection { post :vaciar }
+      end
+    end
     authenticated :super_admin do
       mount Sidekiq::Web => '/monitoring/sidekiq'
     end
