@@ -14,6 +14,7 @@
 #  estado            :string           default("pendiente"), not null
 #  finalizado_at     :datetime
 #  iniciado_at       :datetime
+#  mensaje_error     :text
 #  tipo              :string           not null
 #  total_fallidos    :integer          default(0), not null
 #  total_leidos      :integer          default(0), not null
@@ -42,7 +43,11 @@ class Helic3::Migracion::Corrida < ApplicationRecord
   self.table_name = 'helic3_migraciones'
 
   TIPOS = %w[vaciado migracion].freeze
-  ESTADOS = %w[pendiente simulando simulado confirmando completada fallida revertida descartada].freeze
+  ESTADOS = %w[pendiente simulando simulado confirmando completada fallida revirtiendo revertida descartada].freeze
+  # mientras una corrida está en alguno de estos, la cuenta no admite otra (ni vaciar).
+  EN_CURSO = %w[pendiente simulando confirmando revirtiendo].freeze
+  # al llegar a uno de estos el CSV (cédulas, teléfonos, correos) ya no hace falta.
+  TERMINADOS = %w[completada fallida].freeze
 
   belongs_to :account
   belongs_to :subido_por, class_name: 'User', optional: true
@@ -59,4 +64,14 @@ class Helic3::Migracion::Corrida < ApplicationRecord
 
   scope :migraciones, -> { where(tipo: 'migracion') }
   scope :completadas, -> { where(estado: 'completada') }
+  scope :en_curso, -> { where(estado: EN_CURSO) }
+
+  # regla 8 de MIG-02: el archivo no se queda en ActiveStorage al terminar o fallar.
+  # En 'simulado' se conserva porque hace falta para confirmar.
+  after_update_commit -> { archivo.purge_later },
+                      if: -> { saved_change_to_estado? && estado.in?(TERMINADOS) && archivo.attached? }
+
+  def en_curso?
+    estado.in?(EN_CURSO)
+  end
 end

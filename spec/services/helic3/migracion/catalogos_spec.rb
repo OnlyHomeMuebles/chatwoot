@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Helic3::Migracion::Catalogos do
+  subject(:catalogos) { described_class.new(account: account) }
+
   let(:account) { create(:account) }
   let!(:responsable) { create(:user, name: 'Experiencia al cliente', account: account) }
 
@@ -40,8 +42,6 @@ RSpec.describe Helic3::Migracion::Catalogos do
                                                 codigo: 'producto_desajustado', motivo_garantia: m_calidad)
   end
   let!(:cobertura) { Helic3::Catalogo::CoberturaCiudad.create!(account: account, nombre: 'Bogotá', codigo: 'bogota') }
-
-  subject(:catalogos) { described_class.new(account: account) }
 
   def caso(etapa:, proceso:, motivo: 'Calidad - Producto Comprado', detalle: 'Producto desajustado', ciudad: 'Cali')
     { etapa_caso: etapa, proceso: proceso, motivo: motivo, ciudad: ciudad,

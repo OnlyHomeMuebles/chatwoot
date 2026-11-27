@@ -42,6 +42,17 @@ class Helic3::Migracion::LectorDataGrid
   PRODUCTO_SIN_REGISTRO = 'Producto no registrado en la migración'
   ETAPAS_ABIERTAS = ['en gestion', 'nuevo'].freeze
 
+  # Casos puntuales de MIG-01: el CSV los trae mal y el área confirmó su estado real.
+  # Se aplican ANTES de las reglas generales, cada uno con su ajuste en el reporte.
+  CORRECCIONES = {
+    2927 => { cambios: { etapa_caso: 'Solucionado', proceso: PROCESO_SIN_PROCESO, fecha_finalizacion: '04/11/2026' },
+              ajuste: 'corrección MIG-01: cerrada en Garantía Finalizada el 04/11/2026' },
+    2976 => { cambios: { etapa_caso: 'Solucionado', proceso: PROCESO_SIN_PROCESO, fecha_finalizacion: '26/11/2026' },
+              ajuste: 'corrección MIG-01: cerrada en Garantía Finalizada el 26/11/2026' },
+    3249 => { cambios: { proceso: 'RECOLECCION' },
+              ajuste: 'corrección MIG-01: abierta en Recolección' }
+  }.freeze
+
   def self.leer(csv_texto)
     new(csv_texto).leer
   end
@@ -65,7 +76,10 @@ class Helic3::Migracion::LectorDataGrid
     casos = agrupar_por_consecutivo(filas)
 
     casos_ok, excluidos = casos.partition { |caso| !caso_de_prueba?(caso) }
-    casos_ok.each { |caso| aplicar_reglas!(caso) }
+    casos_ok.each do |caso|
+      aplicar_correccion!(caso)
+      aplicar_reglas!(caso)
+    end
 
     { columnas_ok: true, columnas_faltantes: [],
       casos: casos_ok, excluidos: excluidos,
@@ -153,6 +167,14 @@ class Helic3::Migracion::LectorDataGrid
 
   def caso_de_prueba?(caso)
     caso[:observaciones].to_s.strip.upcase.start_with?('PRUEBA')
+  end
+
+  def aplicar_correccion!(caso)
+    correccion = CORRECCIONES[caso[:consecutivo]]
+    return unless correccion
+
+    caso.merge!(correccion[:cambios])
+    caso[:ajustes] << correccion[:ajuste]
   end
 
   def aplicar_reglas!(caso)

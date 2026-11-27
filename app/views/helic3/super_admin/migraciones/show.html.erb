@@ -14,16 +14,53 @@
     &middot; Omitidos: <%= @corrida.total_omitidos %>
     &middot; Fallidos: <%= @corrida.total_fallidos %>
   </p>
+  <p class="mb-2 text-sm text-slate-500">
+    <% if @corrida.subido_por %>Subido por <%= @corrida.subido_por.name %><% end %>
+    <% if @corrida.confirmado_por %> &middot; Confirmado por <%= @corrida.confirmado_por.name %><% end %>
+  </p>
   <p class="mb-6 text-sm">
     <%= link_to 'Refrescar', helic3_admin_migracione_path(@corrida), class: 'text-blue-600' %> |
     <%= link_to 'Volver', helic3_admin_migraciones_path(account_id: @corrida.account_id), class: 'text-blue-600' %>
   </p>
 
+  <% if @corrida.mensaje_error.present? %>
+    <p class="mb-6 p-3 rounded-md bg-red-50 text-red-800"><%= @corrida.mensaje_error %></p>
+  <% end %>
+
   <% if @corrida.estado == 'simulado' %>
     <%= form_with url: confirmar_helic3_admin_migracione_path(@corrida), method: :post, local: true do |f| %>
+      <% if @corrida.total_fallidos.positive? %>
+        <h2 class="text-lg mb-2">Casos que no se migrarán</h2>
+        <ul class="text-sm mb-3">
+          <% @corrida.casos.where(resultado: 'fallido').order(:consecutivo).each do |caso| %>
+            <li>#<%= caso.consecutivo %>: <%= caso.mensaje %></li>
+          <% end %>
+        </ul>
+        <label class="flex items-center gap-2 mb-3">
+          <%= f.check_box :entiendo, { required: true }, '1', nil %>
+          Entiendo que <%= @corrida.total_fallidos %> casos no se migrarán
+        </label>
+      <% end %>
       <%= f.submit 'Confirmar y migrar de verdad', class: 'button',
                    data: { confirm: 'Se crearán los casos en la base de datos. ¿Confirmar?' } %>
     <% end %>
+  <% end %>
+
+  <% if @corrida.tipo == 'migracion' && @corrida.estado == 'completada' %>
+    <%= form_with url: revertir_helic3_admin_migracione_path(@corrida), method: :post, local: true do |f| %>
+      <%= f.submit 'Revertir esta migración', class: 'button button--danger',
+                   data: { confirm: 'Se borrarán los PQR que creó esta corrida. Si alguno se modificó después de migrar, no se revierte nada. ¿Seguro?' } %>
+    <% end %>
+  <% end %>
+
+  <% if @por_proceso %>
+    <h2 class="text-lg mt-6 mb-2">Garantías por proceso</h2>
+    <p class="text-sm mb-2">Abiertas: <strong><%= @abiertas %></strong> &middot; Cerradas: <strong><%= @cerradas %></strong></p>
+    <ul class="text-sm">
+      <% @por_proceso.sort_by { |_, n| -n }.each do |proceso, n| %>
+        <li><%= proceso %>: <strong><%= n %></strong></li>
+      <% end %>
+    </ul>
   <% end %>
 
   <% if @corrida.tipo == 'vaciado' && @corrida.conteos.present? %>

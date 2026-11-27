@@ -22,56 +22,45 @@ class Helic3::Migracion::VaciarCasos
     new(corrida: corrida).call
   end
 
+  # cuántos registros borraría el vaciado de la cuenta, por tabla (más los archivos de
+  # los documentos), para mostrarlos ANTES de borrar.
+  def self.conteos(account)
+    conteos = TABLAS.transform_values { |clase| clase.where(account: account).count }
+    documentos = Helic3::Documento.where(account: account).select(:id)
+    conteos.merge('archivos' => ActiveStorage::Attachment.where(record_type: Helic3::Documento.name, record_id: documentos).count)
+  end
+
+  # Borrado explícito hijos -> padres: los dependent: :destroy del ticket no garantizan
+  # el orden frente a las FK RESTRICT (en dev una devolución quedaba referenciando el
+  # ticket). Eventos y documentos primero (apuntan a garantia_id). Lo usa también
+  # RevertirCorrida.
+  def self.borrar_ticket(ticket)
+    ticket.eventos.destroy_all
+    ticket.documentos.destroy_all  # purga el blob de ActiveStorage
+    ticket.garantia&.destroy       # + ítems
+    ticket.devolucion&.destroy     # + ítems
+    ticket.datos&.destroy
+    ticket.actividades.destroy_all
+    ticket.destroy
+  end
+
   def initialize(corrida:)
     @corrida = corrida
     @account = corrida.account
   end
 
   def call
-    conteos = TABLAS.transform_values { |clase| clase.where(account: @account).count }
+    conteos = self.class.conteos(@account)
 
     # .ids (no find_each): borrar mientras se itera un batch se salta filas.
     Helic3::Ticket.where(account: @account).ids.each do |id|
       ticket = Helic3::Ticket.find_by(id: id)
-      next unless ticket
-
-      # Borrado explícito hijos -> padres: los dependent: :destroy del ticket no
-      # garantizan el orden frente a las FK RESTRICT (en dev una devolución quedaba
-      # referenciando el ticket). Eventos y documentos primero (apuntan a garantia_id).
-      ticket.eventos.destroy_all
-      ticket.documentos.destroy_all  # purga el blob de ActiveStorage
-      ticket.garantia&.destroy       # + ítems
-      ticket.devolucion&.destroy     # + ítems
-      ticket.datos&.destroy
-      ticket.actividades.destroy_all
-      ticket.destroy
+      self.class.borrar_ticket(ticket) if ticket
     end
 
-    reiniciar_secuencias
+    Helic3::Migracion::Secuencias.new(@account).reiniciar
     @corrida.update!(estado: 'completada', conteos: conteos,
                      total_ok: conteos['tickets'], finalizado_at: Time.current)
     @corrida
-  end
-
-  private
-
-  # PQR arranca de nuevo en 1; garantías en radicado_garantia_inicio (parámetro, o 1).
-  def reiniciar_secuencias
-    reiniciar("helic3_ticket_dpid_seq_#{@account.id}", 1)
-    reiniciar("helic3_garantia_dpid_seq_#{@account.id}", inicio_garantia)
-  end
-
-  # is_called: false -> el próximo nextval devuelve exactamente ese valor.
-  def reiniciar(secuencia, valor)
-    conexion.execute("CREATE SEQUENCE IF NOT EXISTS #{secuencia}")
-    conexion.execute("SELECT setval('#{secuencia}', #{valor}, false)")
-  end
-
-  def inicio_garantia
-    Helic3::Catalogo::Parametro.find_by(account_id: @account.id, clave: 'radicado_garantia_inicio')&.valor_entero || 1
-  end
-
-  def conexion
-    ActiveRecord::Base.connection
   end
 end

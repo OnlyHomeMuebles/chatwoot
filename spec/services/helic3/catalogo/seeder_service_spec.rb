@@ -157,6 +157,7 @@ RSpec.describe Helic3::Catalogo::SeederService do
 
     chapilla = Helic3::Catalogo::DetalleTipificado.find_by!(account: account, codigo: 'chapilla_leventada')
     expect(chapilla.motivo_garantia).to be_nil
+    expect(chapilla.nombre).to eq('Chapilla levantada')
   end
 
   it 'siembra los 7 estados de producto con los plazos confirmados' do

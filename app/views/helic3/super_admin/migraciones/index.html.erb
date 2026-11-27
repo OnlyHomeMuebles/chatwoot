@@ -14,20 +14,41 @@
   <% end %>
 
   <% if @cuenta %>
-    <div class="flex gap-4 mb-8">
-      <%= form_with url: helic3_admin_migraciones_path(account_id: @cuenta.id), method: :post, multipart: true, local: true do |f| %>
-        <%= f.file_field :archivo, accept: '.csv', required: true %>
-        <%= f.submit 'Subir y simular', class: 'button' %>
-      <% end %>
-
-      <% unless @tiene_migracion %>
-        <%= form_with url: vaciar_helic3_admin_migraciones_path(account_id: @cuenta.id), method: :post, local: true do |f| %>
-          <%= f.submit 'Vaciar los PQR de prueba',
-                       class: 'button button--danger',
-                       data: { confirm: 'Esto BORRA todos los PQR de prueba de la cuenta y no se puede deshacer. ¿Seguro?' } %>
+    <% if @en_curso %>
+      <p class="mb-6 p-3 rounded-md bg-amber-50 text-amber-800">
+        Hay una simulación, migración o vaciado en curso en esta cuenta. Espera a que termine para lanzar otra.
+      </p>
+    <% else %>
+      <div class="flex flex-col gap-8 mb-8">
+        <%= form_with url: helic3_admin_migraciones_path(account_id: @cuenta.id), method: :post, multipart: true, local: true do |f| %>
+          <%= f.file_field :archivo, accept: '.csv', required: true %>
+          <%= f.submit 'Subir y simular', class: 'button' %>
         <% end %>
-      <% end %>
-    </div>
+
+        <% unless @tiene_migracion %>
+          <div>
+            <h2 class="text-lg mb-2">Vaciar los PQR de prueba</h2>
+            <p class="text-sm mb-2">Se borrarán, sin poder deshacerlo:</p>
+            <ul class="text-sm mb-3">
+              <li>PQR: <strong><%= @conteos_vaciado['tickets'] %></strong></li>
+              <li>Garantías: <strong><%= @conteos_vaciado['garantias'] %></strong></li>
+              <li>Documentos: <strong><%= @conteos_vaciado['documentos'] %></strong></li>
+              <li>Archivos: <strong><%= @conteos_vaciado['archivos'] %></strong></li>
+            </ul>
+            <%= form_with url: vaciar_helic3_admin_migraciones_path(account_id: @cuenta.id), method: :post, local: true do |f| %>
+              <label class="field-unit__label block mb-1" for="confirmacion">
+                Escribe el nombre de la cuenta (<strong><%= @cuenta.name %></strong>) para habilitar el botón
+              </label>
+              <%= f.text_field :confirmacion, id: 'confirmacion', autocomplete: 'off',
+                               class: 'border border-slate-100 p-1 rounded-md mr-2',
+                               data: { cuenta: @cuenta.name },
+                               oninput: 'this.form.querySelector("[type=submit]").disabled = this.value !== this.dataset.cuenta' %>
+              <%= f.submit 'Vaciar los PQR de prueba', class: 'button button--danger', disabled: true %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
 
     <h2 class="text-lg mb-2">Historial</h2>
     <table class="w-full text-sm">

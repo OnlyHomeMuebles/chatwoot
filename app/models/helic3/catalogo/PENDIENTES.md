@@ -6,7 +6,7 @@ fuente esperada. La estructura está completa; lo pendiente es DATO.
 
 | Tema | Qué falta | Fuente esperada |
 |---|---|---|
-| DetalleTipificado | El PDF de asignación habla de 28 detalles "acordados con producción"; el correo del 04/08 entregó 31 (sembrados, literales, erratas incluidas: "Chapilla leventada", "Productos decolorado"). Conciliar cuál lista rige | Producción / Jhan |
+| DetalleTipificado | El PDF de asignación habla de 28 detalles "acordados con producción"; el correo del 04/08 entregó 31 (sembrados, literales, erratas incluidas: "Productos decolorado"; "Chapilla leventada" ya se corrigió a "Chapilla levantada" en MIG-01). Conciliar cuál lista rige | Producción / Jhan |
 | CoberturaCiudad | Confirmar si Palmira y Buenaventura tienen técnico propio: el diseño dice "Eje Cafetero y Valle" y el correo solo nombró Armenia, Manizales, Pereira y Cali (las sembradas) | Operaciones |
 | ProcesoGarantia | [P] Confirmar si el **desistimiento del cliente** cuenta también como terminal (hoy se resuelve con la decisión del ítem, no con un proceso). Marcarlo sería una fila más, no código | Only Home / Jhan |
 | ProcesoGarantia | El plazo de "Reparación en fábrica" es dinámico (= saldo del presupuesto de 30 días) y por eso queda null: lo calcula PLZ-01. Entrega, devolución y garantía negada no llevan plazo por ser terminales | Resuelto por diseño (insumos Sprint 3) |

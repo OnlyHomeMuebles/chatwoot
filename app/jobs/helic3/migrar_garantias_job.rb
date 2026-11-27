@@ -5,6 +5,8 @@
 # va dejando el reporte en los Helic3::Migracion::Caso.
 class Helic3::MigrarGarantiasJob < ApplicationJob
   queue_as :default
+  # una migración o un vaciado que falla se revisa en la página; no se repite solo.
+  sidekiq_options retry: false
 
   def perform(corrida, simulacion:)
     corrida.update!(estado: simulacion ? 'simulando' : 'confirmando', iniciado_at: Time.current)
@@ -13,7 +15,7 @@ class Helic3::MigrarGarantiasJob < ApplicationJob
     csv = corrida.archivo.download.force_encoding('UTF-8')
     Helic3::Migracion::ImportarGarantias.new(corrida: corrida, csv: csv, simulacion: simulacion).call
   rescue StandardError => e
-    corrida.update(estado: 'fallida', finalizado_at: Time.current)
+    corrida.update(estado: 'fallida', mensaje_error: "#{e.class}: #{e.message}", finalizado_at: Time.current)
     raise e
   end
 end

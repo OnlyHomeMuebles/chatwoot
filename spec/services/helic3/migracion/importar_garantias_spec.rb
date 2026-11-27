@@ -49,9 +49,7 @@ RSpec.describe Helic3::Migracion::ImportarGarantias do
     CSV
   end
 
-  def corrida(tipo: 'migracion')
-    Helic3::Migracion::Corrida.create!(account: account, tipo: tipo, estado: 'simulando')
-  end
+  let(:corrida) { Helic3::Migracion::Corrida.create!(account: account, tipo: 'migracion', estado: 'simulando') }
 
   describe 'migración real (simulacion: false)' do
     let!(:resultado_corrida) { described_class.new(corrida: corrida, csv: csv, simulacion: false).call }
@@ -81,6 +79,21 @@ RSpec.describe Helic3::Migracion::ImportarGarantias do
       expect(gar.items.first.proceso).to eq(p_cambio)
     end
 
+    it 'escribe el último proceso del CRM anterior en la actividad de las cerradas que no venían finalizadas' do
+      cambio = csv.sub('Solucionado,PQR FINALIZADA', 'Solucionado,CAMBIO PRODUCTO').sub(/^100,/, '300,')
+      described_class.new(corrida: Helic3::Migracion::Corrida.create!(account: account, tipo: 'migracion', estado: 'confirmando'),
+                          csv: cambio, simulacion: false).call
+
+      expect(Helic3::Ticket.find_by(account: account, display_id: 300).actividades.first.detalle)
+        .to include('Último proceso en el CRM anterior: CAMBIO PRODUCTO')
+      expect(Helic3::Ticket.find_by(account: account, display_id: 100).actividades.first.detalle)
+        .not_to include('Último proceso')
+    end
+
+    it 'deja el siguiente PQR en el consecutivo más alto + 1' do
+      expect(Helic3::Ticket.create!(account: account, title: 'Nuevo', etapa: etapa).display_id).to eq(201)
+    end
+
     it 'registra un Caso por consecutivo y cierra la corrida como completada' do
       corrida = resultado_corrida
       expect(corrida.estado).to eq('completada')
@@ -107,10 +120,66 @@ RSpec.describe Helic3::Migracion::ImportarGarantias do
     end
   end
 
-  describe 'idempotencia y colisión' do
-    it 'omite los casos ya migrados al correr el mismo archivo de nuevo' do
+  describe 'simular y confirmar sobre la misma corrida (como la pantalla)' do
+    it 'crea todos los casos y deja una fila real en ok por cada uno' do
+      described_class.new(corrida: corrida, csv: csv, simulacion: true).call
       described_class.new(corrida: corrida, csv: csv, simulacion: false).call
-      segunda = described_class.new(corrida: corrida, csv: csv, simulacion: false).call
+
+      expect(corrida.reload.estado).to eq('completada')
+      expect(Helic3::Ticket.where(account: account).count).to eq(2)
+      expect(corrida.casos.count).to eq(2)
+      expect(corrida.casos.creados.where(simulacion: false).where.not(ticket_id: nil).count).to eq(2)
+    end
+
+    it 'purga el CSV al terminar' do
+      corrida.archivo.attach(io: StringIO.new(csv), filename: 'datagrid.csv', content_type: 'text/csv')
+      described_class.new(corrida: corrida, csv: csv, simulacion: true).call
+      expect(corrida.reload.archivo.attached?).to be(true)
+
+      described_class.new(corrida: corrida, csv: csv, simulacion: false).call
+      expect(corrida.reload.archivo.attached?).to be(false)
+    end
+  end
+
+  describe 'secuencias tras simular con la base vacía' do
+    it 'deja el siguiente PQR en 1 y la siguiente garantía en radicado_garantia_inicio' do
+      Helic3::Catalogo::Parametro.create!(account: account, clave: 'radicado_garantia_inicio', valor: '500', unidad: 'cantidad')
+      described_class.new(corrida: corrida, csv: csv, simulacion: true).call
+
+      ticket = Helic3::Ticket.create!(account: account, title: 'Nuevo', etapa: etapa)
+      expect(ticket.display_id).to eq(1)
+      expect(Helic3::Garantia.create!(account: account, ticket: ticket).display_id).to eq(500)
+    end
+  end
+
+  describe 'validación previa de catálogos' do
+    it 'deja la corrida fallida con el detalle que falta y no crea casos' do
+      described_class.new(corrida: corrida, csv: csv.sub(',Producto desajustado,3001112233', ',Detalle inventado,3001112233'),
+                          simulacion: false).call
+
+      expect(corrida.reload.estado).to eq('fallida')
+      expect(corrida.mensaje_error).to include("detalle tipificado 'Detalle inventado'")
+      expect(corrida.casos).to be_empty
+      expect(Helic3::Ticket.where(account: account)).to be_empty
+    end
+  end
+
+  describe 'garantía abierta con un proceso fuera de la Tabla 4' do
+    it 'sale fallida con su mensaje, nunca ok sin proceso' do
+      described_class.new(corrida: corrida, csv: csv.sub('CAMBIO PRODUCTO', 'PROCESO RARO'), simulacion: false).call
+
+      caso = corrida.casos.find_by(consecutivo: 200)
+      expect(caso.resultado).to eq('fallido')
+      expect(caso.mensaje).to include("proceso 'PROCESO RARO'")
+      expect(Helic3::Ticket.find_by(account: account, display_id: 200)).to be_nil
+    end
+  end
+
+  describe 'idempotencia y colisión' do
+    it 'omite los casos ya migrados al correr el mismo archivo en una corrida nueva' do
+      described_class.new(corrida: corrida, csv: csv, simulacion: false).call
+      otra = Helic3::Migracion::Corrida.create!(account: account, tipo: 'migracion', estado: 'confirmando')
+      segunda = described_class.new(corrida: otra, csv: csv, simulacion: false).call
 
       expect(Helic3::Ticket.where(account: account).count).to eq(2)
       expect(segunda.total_omitidos).to eq(2)

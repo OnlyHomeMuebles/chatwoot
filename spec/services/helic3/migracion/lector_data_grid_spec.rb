@@ -5,6 +5,8 @@ require 'rails_helper'
 RSpec.describe Helic3::Migracion::LectorDataGrid do
   # 22 columnas con tildes, como las descarga el CRM anterior. Las fechas vienen
   # "dd/mm/aaaa, h:mm" (con coma, entre comillas) y las observaciones con comas.
+  subject(:resultado) { described_class.leer(csv) }
+
   let(:csv) do
     <<~CSV
       Consecutivo,Fecha de creación,Prioridad,Centros de operacion,Etapa del Caso,Proceso PQR,Motivo,Detalle Tipificado,Telefono de contacto,Fecha de Finalizacion,productos,Seguimiento u/o Observaciones,Identificación,Nombre del Cliente,Apellido del Cliente,Correo Electrónico,Direccion,Factura / Pedido / Orden de Compra,nro factura,Ciudad,Fecha Última Compra,Tipo Identificación
@@ -16,8 +18,6 @@ RSpec.describe Helic3::Migracion::LectorDataGrid do
       400,"10/09/2026, 11:00",Alta,--,En gestión,VISITA TECNICA,,Producto sucio,3002223344,30/9/2026,,Cliente molesto,555,Maria,Ruiz,maria@mail.com,Calle 4,,,Cali,15/08/2026,Cedula de ciudadania
     CSV
   end
-
-  subject(:resultado) { described_class.leer(csv) }
 
   it 'valida que estén las 22 columnas' do
     expect(resultado[:columnas_ok]).to be(true)
@@ -69,5 +69,32 @@ RSpec.describe Helic3::Migracion::LectorDataGrid do
     res = described_class.leer(sin_columna)
     expect(res[:columnas_ok]).to be(false)
     expect(res[:columnas_faltantes]).to include('ciudad')
+  end
+
+  describe 'casos puntuales de MIG-01' do
+    let(:csv_puntuales) do
+      <<~CSV
+        Consecutivo,Fecha de creación,Prioridad,Centros de operacion,Etapa del Caso,Proceso PQR,Motivo,Detalle Tipificado,Telefono de contacto,Fecha de Finalizacion,productos,Seguimiento u/o Observaciones,Identificación,Nombre del Cliente,Apellido del Cliente,Correo Electrónico,Direccion,Factura / Pedido / Orden de Compra,nro factura,Ciudad,Fecha Última Compra,Tipo Identificación
+        2927,"21/9/2026, 15:50",Media,OH CALI,En gestión,--,Devoluciones - Primera Entrega,Variación en el tono,3001112233,,,Caso,1,Ana,Perez,a@mail.com,Calle 1,,,Cali,,Cedula de ciudadania
+        2976,"26/9/2026, 9:32",Media,OH CALI,En gestión,PQR FINALIZADA ,Calidad - Producto Comprado,Baja densidad de espuma,3001112233,,,Caso,2,Ana,Perez,a@mail.com,Calle 1,,,Cali,,Cedula de ciudadania
+        3249,"28/10/2026, 12:40",Media,OH CALI,En gestión,--,Calidad - Producto Comprado,Chapilla levantada,3001112233,,,Caso,3,Ana,Perez,a@mail.com,Calle 1,,,Cali,,Cedula de ciudadania
+      CSV
+    end
+    let(:casos) { described_class.leer(csv_puntuales)[:casos].index_by { |c| c[:consecutivo] } }
+
+    it 'cierra el 2927 en Garantía Finalizada el 04/11/2026' do
+      expect(casos[2927]).to include(etapa_caso: 'Solucionado', proceso: 'PQR FINALIZADA', fecha_finalizacion: '04/11/2026')
+      expect(casos[2927][:ajustes]).to include(%r{corrección MIG-01: cerrada .* 04/11/2026})
+    end
+
+    it 'cierra el 2976 en Garantía Finalizada el 26/11/2026' do
+      expect(casos[2976]).to include(etapa_caso: 'Solucionado', proceso: 'PQR FINALIZADA', fecha_finalizacion: '26/11/2026')
+      expect(casos[2976][:ajustes]).to include(%r{corrección MIG-01: cerrada .* 26/11/2026})
+    end
+
+    it 'deja el 3249 abierto en Recolección' do
+      expect(casos[3249]).to include(etapa_caso: 'En gestión', proceso: 'RECOLECCION')
+      expect(casos[3249][:ajustes]).to include('corrección MIG-01: abierta en Recolección')
+    end
   end
 end

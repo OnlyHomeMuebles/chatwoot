@@ -26,17 +26,24 @@ class Helic3::Migracion::ImportarGarantias
     @csv = csv
     @simulacion = simulacion
     @catalogos = Helic3::Migracion::Catalogos.new(account: @account)
+    @secuencias = Helic3::Migracion::Secuencias.new(@account)
   end
 
   def call
+    # simular y confirmar corren sobre la misma corrida: las filas de una simulación
+    # previa se descartan; las reales (ok con ticket_id) se conservan para Revertir.
+    @corrida.casos.where(simulacion: true).delete_all
     lectura = Helic3::Migracion::LectorDataGrid.leer(@csv)
     return fallar!("faltan columnas: #{lectura[:columnas_faltantes].join(', ')}") unless lectura[:columnas_ok]
 
     @casos = lectura[:casos]
+    faltas = @catalogos.faltantes(@casos)
+    return fallar!("faltan en catálogos: #{faltas.join(', ')}") if faltas.any?
+
     @totales = Hash.new(0)
     subir_secuencias_antes
     @casos.each { |caso| migrar_uno(caso) }
-    dejar_secuencias_en_max
+    @secuencias.dejar_en_max
     cerrar!
     @corrida
   end
@@ -47,9 +54,13 @@ class Helic3::Migracion::ImportarGarantias
     consecutivo = caso[:consecutivo]
     return registrar(caso, 'omitido', 'ya migrado en una corrida anterior') if ya_migrado?(consecutivo)
     return registrar(caso, 'fallido', 'número ocupado por un caso no migrado') if numero_ocupado?(consecutivo)
+    # MIG-01: una garantía abierta nunca queda con el proceso vacío en silencio.
+    if @catalogos.abierta?(caso) && @catalogos.proceso_para(caso).nil?
+      return registrar(caso, 'fallido', "garantía abierta con proceso '#{caso[:proceso]}' fuera de la Tabla 4 de MIG-01")
+    end
 
     ids = {}
-    Helic3::Ticket.transaction do
+    Helic3::Ticket.transaction(requires_new: true) do
       ticket = crear_pqr(caso, consecutivo)
       crear_ficha(ticket, caso)
       garantia = crear_garantia(ticket, caso)
@@ -126,17 +137,24 @@ class Helic3::Migracion::ImportarGarantias
       )
     end
 
-    if cerrada
-      garantia.update!(cerrada_at: cierre, observacion_cierre: OBSERVACION_CIERRE, observacion_cierre_at: cierre)
-    end
+    garantia.update!(cerrada_at: cierre, observacion_cierre: OBSERVACION_CIERRE, observacion_cierre_at: cierre) if cerrada
     garantia
   end
 
   def crear_actividad(ticket, caso)
     detalle = "Caso migrado del CRM anterior (consecutivo #{caso[:consecutivo]})."
+    detalle += " Último proceso en el CRM anterior: #{caso[:proceso]}." if ultimo_proceso_relevante?(caso)
     detalle += " Ajustes: #{caso[:ajustes].join('; ')}." if caso[:ajustes].any?
     ticket.actividades.create!(account: @account, titulo: TITULO_ACTIVIDAD,
                                detalle: detalle, autor_nombre: AUTOR_ACTIVIDAD)
+  end
+
+  # en las cerradas el ítem queda en Garantía Finalizada: el proceso real del CRM
+  # anterior (p. ej. CAMBIO PRODUCTO) solo se conserva en este detalle. Las negadas
+  # ya lo tienen en el ítem, y PQR FINALIZADA no aporta nada.
+  def ultimo_proceso_relevante?(caso)
+    @catalogos.codigo_proceso(caso) == Helic3::Migracion::Catalogos::PROCESO_CERRADA &&
+      caso[:proceso].strip.casecmp(Helic3::Migracion::LectorDataGrid::PROCESO_SIN_PROCESO).nonzero?
   end
 
   def fijar_numeros(ticket, garantia, consecutivo)
@@ -161,49 +179,33 @@ class Helic3::Migracion::ImportarGarantias
   def subir_secuencias_antes
     return if @casos.empty?
 
-    tope = ([@casos.map { |c| c[:consecutivo] }.max] + [max_display_id(:helic3_tickets),
-                                                         max_display_id(:helic3_garantias)]).compact.max
-    conexion.execute("CREATE SEQUENCE IF NOT EXISTS #{secuencia(:garantia)}")
-    [secuencia(:ticket), secuencia(:garantia)].each { |s| conexion.execute("SELECT setval('#{s}', #{tope}, true)") }
-  end
-
-  def dejar_secuencias_en_max
-    conexion.execute("SELECT setval('#{secuencia(:ticket)}', #{max_display_id(:helic3_tickets) || 1}, true)")
-    conexion.execute("CREATE SEQUENCE IF NOT EXISTS #{secuencia(:garantia)}")
-    conexion.execute("SELECT setval('#{secuencia(:garantia)}', #{max_display_id(:helic3_garantias) || 1}, true)")
-  end
-
-  def max_display_id(tabla)
-    conexion.select_value("SELECT MAX(display_id) FROM #{tabla} WHERE account_id = #{@account.id}")
-  end
-
-  def secuencia(entidad)
-    "helic3_#{entidad}_dpid_seq_#{@account.id}"
-  end
-
-  def conexion
-    ActiveRecord::Base.connection
+    tope = [@casos.pluck(:consecutivo).max, @secuencias.max_display_id(:helic3_tickets),
+            @secuencias.max_display_id(:helic3_garantias)].compact.max
+    @secuencias.subir_a(tope)
   end
 
   # --- reporte ---
 
+  # Idempotente por consecutivo dentro de la corrida. Una fila real ya creada (ok con
+  # su ticket_id) no se pisa: es la lista para Revertir.
   def registrar(caso, resultado, mensaje, ids = {})
-    @corrida.casos.create!(account: @account, consecutivo: caso[:consecutivo], resultado: resultado,
-                           mensaje: mensaje, ajustes: caso[:ajustes], simulacion: @simulacion, **ids)
-    @totales[resultado] += 1
+    fila = @corrida.casos.find_or_initialize_by(consecutivo: caso[:consecutivo])
+    unless fila.resultado == 'ok' && fila.ticket_id.present?
+      fila.update!(account: @account, resultado: resultado, mensaje: mensaje,
+                   ajustes: caso[:ajustes], simulacion: @simulacion, **ids)
+    end
+    @totales[fila.resultado] += 1
   end
 
   def cerrar!
-    @corrida.update!(estado: @simulacion ? 'simulado' : 'completada',
+    @corrida.update!(estado: @simulacion ? 'simulado' : 'completada', mensaje_error: nil,
                      total_leidos: @casos.size, total_ok: @totales['ok'],
                      total_omitidos: @totales['omitido'], total_fallidos: @totales['fallido'],
                      finalizado_at: Time.current)
   end
 
   def fallar!(mensaje)
-    @corrida.update!(estado: 'fallida', finalizado_at: Time.current)
-    @corrida.casos.create!(account: @account, consecutivo: 0, resultado: 'fallido',
-                           mensaje: mensaje, simulacion: @simulacion)
+    @corrida.update!(estado: 'fallida', mensaje_error: mensaje, finalizado_at: Time.current)
     @corrida
   end
 

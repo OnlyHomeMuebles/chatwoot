@@ -8,8 +8,9 @@
 # El indice unico de cada tabla es la red de seguridad final.
 #
 # Los nombres del correo se conservan LITERALES como los escribio el area
-# (incluidas posibles erratas como "Chapilla leventada"): corregirlos sin
-# confirmacion seria resolver por cuenta propia.
+# (incluidas posibles erratas como "Productos decolorado"): corregirlos sin
+# confirmacion seria resolver por cuenta propia. "Chapilla levantada" ya se
+# corrigio (MIG-01, requisito 8) conservando su codigo original.
 #
 # Lo que sigue sin confirmar esta en app/models/helic3/catalogo/PENDIENTES.md.
 #
@@ -103,12 +104,16 @@ class Helic3::Catalogo::SeederService
     'Referencia diferente a la solicitada', 'Referencia incorrecta', 'Falta de asesoría en la venta',
     'Producto roto en entrega', 'Entrega parcial', 'Falta de piezas o manuales', 'Entrega fuera de plazo',
     'Producto inestable / cojo', 'Producto desajustado', 'Producto fracturado o roto', 'Producto dilatado',
-    'Herraje oxidado o defectuoso', 'Producto mal pintado', 'Chapilla leventada', 'Baja densidad de espuma',
+    'Herraje oxidado o defectuoso', 'Producto mal pintado', 'Chapilla levantada', 'Baja densidad de espuma',
     'Tela destemplada', 'Falla en acabados o alineación', 'Producto rayado', 'Producto sucio',
     'Variación en el tono', 'Tonos diferentes entre productos', 'Productos decolorado', 'Tela motosa',
     'Tela o madera diferente', 'Producto con mal olor', 'Producto con hongos, insectos, humedad',
     'Desiste de la garantía', 'Cambio de patas', 'Golpes y rayones', 'Enfermedad en madera', 'Descosidos'
   ].freeze
+
+  # nombres corregidos despues de sembrados: conservan el codigo con que nacieron
+  # para no duplicar la fila en las cuentas que ya los tienen.
+  CODIGOS_HEREDADOS = { 'Chapilla levantada' => 'chapilla_leventada' }.freeze
 
   # los 7 estados de producto de la maquina de estados (insumos del Sprint 3,
   # lista del 19/08): el septimo es "Garantía negada", terminal desde el
@@ -262,7 +267,7 @@ class Helic3::Catalogo::SeederService
     return unless tabla_lista?(modelo)
 
     nombres.each_with_index do |nombre, indice|
-      sembrar_fila(modelo, codigo_de(nombre), nombre: nombre, posicion: indice)
+      sembrar_fila(modelo, CODIGOS_HEREDADOS.fetch(nombre) { codigo_de(nombre) }, nombre: nombre, posicion: indice)
     end
   end
 
