@@ -1,0 +1,79 @@
+<% content_for(:title) do %>Helic3 · Migración de garantías<% end %>
+
+<header class="main-content__header" role="banner">
+  <h1 class="main-content__page-title" id="page-title">Helic3 · Migración de garantías</h1>
+</header>
+
+<section class="main-content__body">
+  <%= form_with url: helic3_admin_migraciones_path, method: :get, local: true do |f| %>
+    <div class="flex items-center mb-6">
+      <span class="field-unit__label mr-2">Cuenta</span>
+      <%= f.select :account_id, @cuentas.map { |c| [c.name, c.id] }, { selected: @cuenta&.id },
+                   onchange: 'this.form.submit()', class: 'border border-slate-100 p-1 rounded-md' %>
+    </div>
+  <% end %>
+
+  <% if @cuenta %>
+    <% if @en_curso %>
+      <p class="mb-6 p-3 rounded-md bg-amber-50 text-amber-800">
+        Hay una simulación, migración o vaciado en curso en esta cuenta. Espera a que termine para lanzar otra.
+      </p>
+    <% else %>
+      <div class="flex flex-col gap-8 mb-8">
+        <%= form_with url: helic3_admin_migraciones_path(account_id: @cuenta.id), method: :post, multipart: true, local: true do |f| %>
+          <%= f.file_field :archivo, accept: '.csv', required: true %>
+          <%= f.submit 'Subir y simular', class: 'button' %>
+        <% end %>
+
+        <% unless @tiene_migracion %>
+          <div>
+            <h2 class="text-lg mb-2">Vaciar los PQR de prueba</h2>
+            <p class="text-sm mb-2">Se borrarán, sin poder deshacerlo:</p>
+            <ul class="text-sm mb-3">
+              <li>PQR: <strong><%= @conteos_vaciado['tickets'] %></strong></li>
+              <li>Garantías: <strong><%= @conteos_vaciado['garantias'] %></strong></li>
+              <li>Documentos: <strong><%= @conteos_vaciado['documentos'] %></strong></li>
+              <li>Archivos: <strong><%= @conteos_vaciado['archivos'] %></strong></li>
+            </ul>
+            <%= form_with url: vaciar_helic3_admin_migraciones_path(account_id: @cuenta.id), method: :post, local: true do |f| %>
+              <label class="field-unit__label block mb-1" for="confirmacion">
+                Escribe el nombre de la cuenta (<strong><%= @cuenta.name %></strong>) para habilitar el botón
+              </label>
+              <%= f.text_field :confirmacion, id: 'confirmacion', autocomplete: 'off',
+                               class: 'border border-slate-100 p-1 rounded-md mr-2',
+                               data: { cuenta: @cuenta.name },
+                               oninput: 'this.form.querySelector("[type=submit]").disabled = this.value !== this.dataset.cuenta' %>
+              <%= f.submit 'Vaciar los PQR de prueba', class: 'button button--danger', disabled: true %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <h2 class="text-lg mb-2">Historial</h2>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left border-b">
+          <th class="py-1">#</th><th>Tipo</th><th>Estado</th><th>OK</th><th>Omit.</th><th>Fall.</th><th>Fecha</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @corridas.each do |c| %>
+          <tr class="border-b">
+            <td class="py-1"><%= c.id %></td>
+            <td><%= c.tipo %></td>
+            <td><%= c.estado %></td>
+            <td><%= c.total_ok %></td>
+            <td><%= c.total_omitidos %></td>
+            <td><%= c.total_fallidos %></td>
+            <td><%= c.created_at.strftime('%d/%m/%Y %H:%M') %></td>
+            <td><%= link_to 'Ver', helic3_admin_migracione_path(c), class: 'text-blue-600' %></td>
+          </tr>
+        <% end %>
+        <% if @corridas.empty? %>
+          <tr><td colspan="8" class="py-4 text-slate-400 italic">Aún no hay corridas.</td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</section>

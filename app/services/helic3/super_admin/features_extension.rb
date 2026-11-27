@@ -11,7 +11,10 @@ module Helic3::SuperAdmin::FeaturesExtension
       paginas::PAGINA_IA => tarjeta(paginas::PAGINA_IA, 'Helic3 · Agentes IA',
                                     'Llave de OpenAI de los agentes de Helic3.', 'icon-robot-line'),
       paginas::PAGINA_ERP => tarjeta(paginas::PAGINA_ERP, 'Helic3 · ERP Siesa',
-                                     'Conexión de Helic3 con el ERP Siesa.', 'icon-building-4-line')
+                                     'Conexión de Helic3 con el ERP Siesa.', 'icon-building-4-line'),
+      paginas::PAGINA_MIGRACION => tarjeta(paginas::PAGINA_MIGRACION, 'Helic3 · Migración de garantías',
+                                           'Vaciar los PQR de prueba y migrar las garantías del CRM anterior.',
+                                           'icon-upload-2-line')
     )
   end
 
